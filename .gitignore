@@ -22,5 +22,8 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 
+# Local reference (private, not part of the open-source repo)
+.noodle/reference-path
+
 # Obsidian
 brain/.obsidian/
