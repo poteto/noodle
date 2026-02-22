@@ -59,7 +59,8 @@ type ReviewConfig struct {
 }
 
 type RecoveryConfig struct {
-	MaxRetries int `toml:"max_retries"`
+	MaxRetries         int    `toml:"max_retries"`
+	RetrySuffixPattern string `toml:"retry_suffix_pattern"`
 }
 
 type MonitorConfig struct {
@@ -143,7 +144,8 @@ func DefaultConfig() Config {
 			Enabled: true,
 		},
 		Recovery: RecoveryConfig{
-			MaxRetries: 3,
+			MaxRetries:         3,
+			RetrySuffixPattern: "-recover-%d",
 		},
 		Monitor: MonitorConfig{
 			StuckThreshold: "120s",
@@ -255,6 +257,9 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	if !metadata.IsDefined("recovery", "max_retries") {
 		config.Recovery.MaxRetries = 3
 	}
+	if !metadata.IsDefined("recovery", "retry_suffix_pattern") {
+		config.Recovery.RetrySuffixPattern = "-recover-%d"
+	}
 
 	if !metadata.IsDefined("monitor", "stuck_threshold") {
 		config.Monitor.StuckThreshold = "120s"
@@ -325,6 +330,9 @@ func validateParsedValues(config Config) error {
 
 	if config.Recovery.MaxRetries < 0 {
 		return fmt.Errorf("recovery.max_retries: must be greater than or equal to 0")
+	}
+	if !strings.Contains(config.Recovery.RetrySuffixPattern, "%d") {
+		return fmt.Errorf("recovery.retry_suffix_pattern: must include %%d placeholder")
 	}
 	if config.Concurrency.MaxCooks <= 0 {
 		return fmt.Errorf("concurrency.max_cooks: must be greater than 0")

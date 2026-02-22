@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/parse"
 )
 
@@ -18,6 +19,7 @@ type tmuxSession struct {
 	worktreePath  string
 	env           []string
 	canonicalPath string
+	eventWriter   *event.EventWriter
 	run           commandRunner
 
 	mu       sync.Mutex
@@ -38,6 +40,7 @@ func newTmuxSession(
 	worktreePath string,
 	env []string,
 	canonicalPath string,
+	eventWriter *event.EventWriter,
 	startWarnings []string,
 	run commandRunner,
 ) *tmuxSession {
@@ -47,6 +50,7 @@ func newTmuxSession(
 		worktreePath:  worktreePath,
 		env:           append([]string(nil), env...),
 		canonicalPath: canonicalPath,
+		eventWriter:   eventWriter,
 		run:           run,
 		status:        "running",
 		done:          make(chan struct{}),
@@ -203,6 +207,84 @@ func (s *tmuxSession) consumeCanonical(event parse.CanonicalEvent) {
 		TokensIn:  event.TokensIn,
 		TokensOut: event.TokensOut,
 	})
+	s.writeEventLog(event)
+}
+
+func (s *tmuxSession) writeEventLog(canonical parse.CanonicalEvent) {
+	if s.eventWriter == nil {
+		return
+	}
+
+	record, ok := eventFromCanonical(s.id, canonical)
+	if !ok {
+		return
+	}
+	if err := s.eventWriter.Append(context.Background(), record); err != nil {
+		s.publish(SessionEvent{
+			Type:      "warning",
+			Message:   "event log append failed: " + err.Error(),
+			Timestamp: nowUTC(),
+		})
+	}
+}
+
+func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event.Event, bool) {
+	timestamp := canonical.Timestamp
+	if timestamp.IsZero() {
+		timestamp = nowUTC()
+	}
+
+	makePayload := func(values map[string]any) json.RawMessage {
+		payload, err := json.Marshal(values)
+		if err != nil {
+			return nil
+		}
+		return payload
+	}
+
+	switch canonical.Type {
+	case parse.EventInit:
+		return event.Event{
+			Type:      event.EventSpawned,
+			Payload:   makePayload(map[string]any{"message": canonical.Message, "provider": canonical.Provider}),
+			Timestamp: timestamp,
+			SessionID: sessionID,
+		}, true
+	case parse.EventAction:
+		return event.Event{
+			Type:      event.EventAction,
+			Payload:   makePayload(map[string]any{"message": canonical.Message}),
+			Timestamp: timestamp,
+			SessionID: sessionID,
+		}, true
+	case parse.EventResult:
+		return event.Event{
+			Type: event.EventCost,
+			Payload: makePayload(map[string]any{
+				"cost_usd":   canonical.CostUSD,
+				"tokens_in":  canonical.TokensIn,
+				"tokens_out": canonical.TokensOut,
+			}),
+			Timestamp: timestamp,
+			SessionID: sessionID,
+		}, true
+	case parse.EventError:
+		return event.Event{
+			Type:      event.EventStateChange,
+			Payload:   makePayload(map[string]any{"to_status": "failed", "reason": canonical.Message}),
+			Timestamp: timestamp,
+			SessionID: sessionID,
+		}, true
+	case parse.EventComplete:
+		return event.Event{
+			Type:      event.EventExited,
+			Payload:   makePayload(map[string]any{"message": canonical.Message, "outcome": "completed"}),
+			Timestamp: timestamp,
+			SessionID: sessionID,
+		}, true
+	default:
+		return event.Event{}, false
+	}
 }
 
 func (s *tmuxSession) publish(event SessionEvent) {

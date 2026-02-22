@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/skill"
 	wt "github.com/poteto/noodle/worktree"
 )
@@ -86,6 +87,10 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create session directory: %w", err)
 	}
+	eventWriter, err := event.NewEventWriter(s.runtimeDir, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("create event writer: %w", err)
+	}
 
 	skillBundle, err := loadSkillBundle(s.skillResolver, req.Provider, req.Skill)
 	if err != nil {
@@ -122,6 +127,10 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %s: %w", strings.TrimSpace(string(output)), err)
 	}
+	if err := writeSpawnMetadata(s.runtimeDir, sessionID, req, nowUTC()); err != nil {
+		_, _ = s.run(ctx, req.WorktreePath, buildSpawnEnv(req), "tmux", "kill-session", "-t", tmuxName)
+		return nil, fmt.Errorf("write spawn metadata: %w", err)
+	}
 
 	session := newTmuxSession(
 		sessionID,
@@ -129,6 +138,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		req.WorktreePath,
 		buildSpawnEnv(req),
 		canonicalPath,
+		eventWriter,
 		skillBundle.Warnings,
 		s.run,
 	)

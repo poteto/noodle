@@ -85,6 +85,37 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 	if err := scanner.Err(); err != nil {
 		return SessionClaims{}, fmt.Errorf("read canonical events: %w", err)
 	}
+	if metadata, err := r.readSpawnMetadata(sessionID); err == nil {
+		if claims.Provider == "" {
+			claims.Provider = metadata.Provider
+		}
+		if claims.Model == "" {
+			claims.Model = metadata.Model
+		}
+	}
 
 	return claims, nil
+}
+
+func (r *CanonicalClaimsReader) readSpawnMetadata(sessionID string) (SessionClaims, error) {
+	path := filepath.Join(r.runtimeDir, "sessions", sessionID, "spawn.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return SessionClaims{}, nil
+		}
+		return SessionClaims{}, fmt.Errorf("read spawn metadata: %w", err)
+	}
+
+	var payload struct {
+		Provider string `json:"provider"`
+		Model    string `json:"model"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return SessionClaims{}, fmt.Errorf("parse spawn metadata: %w", err)
+	}
+	return SessionClaims{
+		Provider: strings.TrimSpace(payload.Provider),
+		Model:    strings.TrimSpace(payload.Model),
+	}, nil
 }
