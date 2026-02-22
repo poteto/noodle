@@ -1,0 +1,7 @@
+{
+  "mise_result": {
+    "warnings": [
+      "backlog sync script missing; returning empty backlog"
+    ]
+  }
+}
