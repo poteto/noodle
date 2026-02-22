@@ -1,7 +1,7 @@
 ---
 id: 1
 created: 2026-02-20
-updated: 2026-02-21
+updated: 2026-02-22
 status: active
 ---
 
@@ -136,22 +136,9 @@ Target: the Go code that remains should be the minimal infrastructure loop — m
 1. `noodle init` (Go CLI) — writes minimal `.noodle/config.toml` with sensible defaults
 2. `noodle bootstrap` (spawns agent with bootstrap skill) — detects missing pieces (brain folder? backlog? plans?), creates appropriate defaults or adapts to what exists
 
-## Repository Extraction
-
-Noodle moves from the parent project's `noodle/` subdirectory to its own repository at `~/code/noodle/`. This is the first major step — extract cleanly, then redesign in the new home.
-
-**Extraction strategy: duplicate the original project, then prune.**
-
-1. **Copy the entire original project** to `~/code/noodle/` as a new git repo with fresh history. This gives us all the dev tooling (Claude settings, skills, hooks, brain, principles) as a starting point.
-2. **Move `noodle/` to `old_noodle/`** — the original Go code becomes reference material for the rewrite, not the active source.
-3. **Delete parent-project-specific files** — frontend (`src/`, `src-tauri/`), package management, project-specific brain plans/todos, product-specific skills. Keep general-purpose dev skills (debugging, commit, worktree, plan, review, etc.) and brain principles.
-4. **Adapt project config** — rewrite CLAUDE.md for Noodle, update hooks, clean up brain references.
-5. **The parent project is left completely untouched.** Cleanup of its `noodle/` subdirectory is a separate, later task.
-
 ## Scope
 
 In scope:
-- **Repository extraction** — move Noodle to `~/code/noodle/` as its own repo, parent project references via relative path
 - Kitchen brigade renaming across the entire codebase (Go, skills, TUI, CLI, docs)
 - Actor model simplification (Director/Manager/Operator/Apprentice → Cook)
 - Skills as the only extension point (no per-skill metadata, centralized config)
@@ -176,13 +163,11 @@ Out of scope:
 
 ## Constraints
 
-- **Copy first, redesign second:** Noodle is copied (not moved) to `~/code/noodle/` before architectural changes begin. The parent project is left completely untouched — no risk of breakage. Parent project cleanup is a separate later task.
 - **Cross-platform:** macOS local dev, Windows/Linux CI. Sync scripts must be POSIX-compatible or have platform alternatives. No bash 4+ features.
 - **Boundary discipline:** Config validation happens at command boundaries. Skill resolver internals are pure functions. Sync scripts are called at the boundary and their output is validated before the mise consumes it.
 - **No backwards compatibility:** This is a hard cutover. Legacy templates, agent definitions, role constants, and scoring code are deleted, not adapted. Per the prelaunch posture: no external users yet, prefer deletion over compatibility layers.
 - **Skills stay pure:** A Noodle skill is just a Claude Code skill. No Noodle-specific file format, frontmatter, or metadata inside the skill directory. If Noodle needs to know something about a skill, it's declared in config.
 - **Deterministic execution:** The Go loop never makes judgment calls. Judgment lives in the sous chef (LLM). The Go loop reads the queue and enforces hard constraints mechanically.
-- **Relative path dependency:** The parent project references Noodle at `../noodle/` during the transition. No Go module dependency or binary installation required yet.
 
 Design alternatives considered:
 1. **Per-skill `noodle.toml` metadata** for declaring what a skill provides to Noodle.
@@ -217,13 +202,7 @@ Design alternatives considered:
 
 ## Phases
 
-### Repo Extraction (duplicate the original project, prune to Noodle, leave the parent project untouched)
-- [[plans/01-noodle-extensible-skill-layering/phase-01-init-repo-and-copy-go-source]]
-- [[plans/01-noodle-extensible-skill-layering/phase-02-copy-skills-agents-hooks-templates]]
-- [[plans/01-noodle-extensible-skill-layering/phase-03-create-noodle-claude-md-and-config]]
-- [[plans/01-noodle-extensible-skill-layering/phase-04-verify-standalone-build-and-test]]
-
-### Architecture Redesign (TBD — planned after extraction is complete)
+### Architecture Redesign (TBD)
 
 ## Verification
 
@@ -231,7 +210,6 @@ Design alternatives considered:
   - `go -C ~/code/noodle test ./...`
   - `go -C ~/code/noodle run . commands --json`
 - Runtime:
-  - Repo extraction: Noodle builds and tests pass in `~/code/noodle/`. The parent project is completely untouched and still works with its local `noodle/` copy.
   - Skill precedence: project override beats user override beats bundled default.
   - Adapter sync: custom sync script output is consumed correctly by mise.
   - Sous chef cycle: LLM prioritization runs, produces ordered queue, Go loop spawns from it.
