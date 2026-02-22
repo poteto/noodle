@@ -51,7 +51,7 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	skillName := nonEmpty(item.Skill, sousChefSkill(l.config))
 	req := spawner.SpawnRequest{
 		Name:                 name,
-		Prompt:               buildSousChefPrompt(item, resumePrompt),
+		Prompt:               buildSousChefPrompt(skillName, item, resumePrompt),
 		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -75,9 +75,9 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	return nil
 }
 
-func buildSousChefPrompt(item QueueItem, resumePrompt string) string {
+func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) string {
 	parts := []string{
-		"Use your sous-chef skill to refresh .noodle/queue.json from .noodle/mise.json.",
+		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)
