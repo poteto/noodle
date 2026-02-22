@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet run start status skills commands worktree watch watch-verbose clean
+.PHONY: help build test test-short vet run start status tui skills commands worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -45,6 +45,10 @@ start:
 
 status:
 	$(NOODLE) status
+
+tui:
+	@echo "make tui has been removed. Use: make start"
+	@exit 1
 
 skills:
 	$(NOODLE) skills
