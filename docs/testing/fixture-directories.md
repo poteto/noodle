@@ -28,12 +28,14 @@ Rules:
 - `regression` is the stable string label for the fixture/regression case.
 - `expected.md` frontmatter `schema_version` must match `fixturedir.FixtureSchemaVersion`.
 - `source_hash` is derived from fixture input files (all files under the fixture except `expected.md`).
-- `noodle fixtures sync` updates `expected.md` `source_hash` values.
+- Use make-driven tooling for fixture maintenance; fixture dev commands are not exposed in `noodle` CLI.
 
 ## Dev Command
 
-- `noodle fixtures sync`: update `expected.md` `source_hash` values.
-- `noodle fixtures check`: fail when any fixture `source_hash` is out of date.
+- `make fixtures-hash MODE=sync`: update `expected.md` `source_hash` values.
+- `make fixtures-hash MODE=check`: fail when any fixture `source_hash` is out of date.
+- `make fixtures-loop MODE=record`: regenerate `loop` fixture `Runtime Dump` sections and sync hashes.
+- `make fixtures-loop MODE=check`: verify `loop` runtime dumps and hashes are up to date.
 
 ## Config Precedence
 
@@ -47,9 +49,9 @@ State-level config always wins over fixture-level config for that state.
 
 ## Loop Mapping Rule
 
-Loop fixtures map filesystem state keys directly to expected keys:
+Loop fixtures map filesystem state keys directly to runtime dump keys:
 
-- `state-01` directory maps to `expected.states["state-01"]`
-- `state-02` directory maps to `expected.states["state-02"]`
+- `state-01` directory maps to `runtime_dump.states["state-01"]`
+- `state-02` directory maps to `runtime_dump.states["state-02"]`
 
 No numeric index math is used for expectation lookup.

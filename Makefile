@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet run start status skills commands fixtures fixtures-check bugs worktree watch watch-verbose clean
+.PHONY: help build test test-short vet run start status skills commands fixtures-loop fixtures-hash bugs worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -21,8 +21,8 @@ help:
 	@echo "  make status      Show runtime status"
 	@echo "  make skills      List resolved skills"
 	@echo "  make commands    List available commands"
-	@echo "  make fixtures    Regenerate fixture expected.md files"
-	@echo "  make fixtures-check Check fixture generated files are in sync"
+	@echo "  make fixtures-loop MODE=check|record  Verify or regenerate loop runtime dump fixtures"
+	@echo "  make fixtures-hash MODE=check|sync    Verify or sync fixture source hashes"
 	@echo "  make bugs        List fixture expected.md files with bug=true"
 	@echo "  make worktree    Show worktree help"
 	@echo "  make watch       Rebuild on changes with Air (silent mode)"
@@ -55,11 +55,39 @@ skills:
 commands:
 	$(NOODLE) commands --json
 
-fixtures:
-	$(NOODLE) fixtures sync
+fixtures-loop:
+	@mode="$${MODE:-check}"; \
+	case "$$mode" in \
+		record) \
+			echo "loop fixtures: record"; \
+			NOODLE_LOOP_FIXTURE_MODE=record $(GO) test ./loop -run TestLoopDirectoryFixtures -count=1; \
+			$(GO) run ./scripts/fixturehash sync --root loop/testdata; \
+			;; \
+		check) \
+			echo "loop fixtures: check"; \
+			NOODLE_LOOP_FIXTURE_MODE=check $(GO) test ./loop -run TestLoopDirectoryFixtures -count=1; \
+			$(GO) run ./scripts/fixturehash check --root loop/testdata; \
+			;; \
+		*) \
+			echo "unsupported MODE=$$mode (expected check|record)"; \
+			exit 1; \
+			;; \
+	esac
 
-fixtures-check:
-	$(NOODLE) fixtures check
+fixtures-hash:
+	@mode="$${MODE:-check}"; \
+	case "$$mode" in \
+		sync) \
+			$(GO) run ./scripts/fixturehash sync; \
+			;; \
+		check) \
+			$(GO) run ./scripts/fixturehash check; \
+			;; \
+		*) \
+			echo "unsupported MODE=$$mode (expected check|sync)"; \
+			exit 1; \
+			;; \
+	esac
 
 bugs:
 	@rg --files -g '**/expected.md' | sort | while IFS= read -r f; do \

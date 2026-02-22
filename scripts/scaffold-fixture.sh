@@ -52,12 +52,12 @@ regression: $fixture_name
 source_hash: pending
 ---
 
-## Expected
+## Runtime Dump
 
 \`\`\`json
 {}
 \`\`\`
 EOF_EXPECTED
-go run . fixtures sync --root "$fixture_root"
+go run ./scripts/fixturehash sync --root "$fixture_root"
 
 echo "Created fixture: $fixture_root"
