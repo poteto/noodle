@@ -39,6 +39,12 @@ func CommandCatalog() []Command {
 			Category:    "internal",
 			Run:         runStampCommand,
 		},
+		{
+			Name:        "spawn",
+			Description: "Spawn a cook session in tmux",
+			Category:    "internal",
+			Run:         runSpawnCommand,
+		},
 	}
 }
 
