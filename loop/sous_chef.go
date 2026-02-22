@@ -95,6 +95,7 @@ func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) 
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 		"Do not modify .noodle/mise.json.",
+		"Operate fully autonomously. Never ask the user questions.",
 		queueSchemaPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {

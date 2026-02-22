@@ -12,6 +12,9 @@ description: >
 
 Read `.noodle/mise.json` and write `.noodle/queue.json`.
 
+Operate fully autonomously. Never ask the user to choose between options, and
+never pause for confirmation.
+
 ## Required Workflow Order
 
 1. `Plan -> Review from Chef` (blocking)

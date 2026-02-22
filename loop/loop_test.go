@@ -423,6 +423,9 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", sp.calls[0].Prompt)
 	}
+	if !strings.Contains(sp.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {
+		t.Fatalf("spawn prompt missing autonomous mode note: %q", sp.calls[0].Prompt)
+	}
 	if strings.Contains(sp.calls[0].Prompt, "mise.json schema (JSON):") {
 		t.Fatalf("spawn prompt must not include mise schema: %q", sp.calls[0].Prompt)
 	}
