@@ -27,6 +27,12 @@ func CommandCatalog() []Command {
 			Category:    "core",
 			Run:         runCommandsCommand,
 		},
+		{
+			Name:        "skills",
+			Description: "List resolved skills",
+			Category:    "core",
+			Run:         runSkillsCommand,
+		},
 	}
 }
 
