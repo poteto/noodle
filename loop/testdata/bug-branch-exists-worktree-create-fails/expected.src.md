@@ -1,7 +1,7 @@
 ---
 schema_version: 1
-expected_failure: true
-bug: true
+expected_failure: false
+bug: false
 regression: bug-branch-exists-worktree-create-fails
 ---
 

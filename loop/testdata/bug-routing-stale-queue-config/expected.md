@@ -1,9 +1,9 @@
 ---
 schema_version: 1
-expected_failure: true
-bug: true
+expected_failure: false
+bug: false
 regression: bug-routing-stale-queue-config
-source_hash: 0454be512607d6b604b7c5bc0f6d21a356022b91d405ef84823a5fc62f4c2cba
+source_hash: 34db33b5ffe3ec77ec53809052d08524d2bd3f0de5ba219d7acf4ab7ab1e16f3
 ---
 
 ## Expected

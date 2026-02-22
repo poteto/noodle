@@ -333,6 +333,27 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 }
 
+func TestCreateReusesExistingBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	runGitIn(t, dir, "branch", "reuse-branch")
+
+	app := &App{Root: dir}
+	if err := app.Create("reuse-branch"); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	wtPath := WorktreePath(dir, "reuse-branch")
+	if !fileExists(wtPath) {
+		t.Fatalf("worktree path missing: %s", wtPath)
+	}
+	if branch := gitOutputIn(t, wtPath, "branch", "--show-current"); branch != "reuse-branch" {
+		t.Fatalf("worktree branch = %q, want %q", branch, "reuse-branch")
+	}
+}
+
 func TestExec(t *testing.T) {
 	t.Parallel()
 	skipWorktreeIntegrationShort(t)

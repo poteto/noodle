@@ -66,3 +66,30 @@ func queueFromBacklog(items []adapter.BacklogItem, cfg config.Config) Queue {
 	}
 	return queue
 }
+
+func applyQueueRoutingDefaults(queue Queue, cfg config.Config) (Queue, bool) {
+	provider := strings.TrimSpace(cfg.Routing.Defaults.Provider)
+	model := strings.TrimSpace(cfg.Routing.Defaults.Model)
+	if provider == "" && model == "" {
+		return queue, false
+	}
+
+	items := make([]QueueItem, len(queue.Items))
+	copy(items, queue.Items)
+	changed := false
+	for i := range items {
+		if provider != "" && strings.TrimSpace(items[i].Provider) != provider {
+			items[i].Provider = provider
+			changed = true
+		}
+		if model != "" && strings.TrimSpace(items[i].Model) != model {
+			items[i].Model = model
+			changed = true
+		}
+	}
+	if !changed {
+		return queue, false
+	}
+	queue.Items = items
+	return queue, true
+}

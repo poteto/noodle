@@ -168,6 +168,12 @@ func (l *Loop) Cycle(ctx context.Context) error {
 			}
 		}
 	}
+	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.config); changed {
+		queue = updatedQueue
+		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+			return err
+		}
+	}
 	if shouldRecoverMissingSyncScripts(warnings, queue) &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
@@ -195,7 +201,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 			continue
 		}
 		if err := l.spawnCook(ctx, item, 0, ""); err != nil {
-			return err
+			return l.handleRuntimeIssue(ctx, "loop.spawn", err, nil)
 		}
 	}
 	return nil

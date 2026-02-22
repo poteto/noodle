@@ -28,9 +28,16 @@ func (a *App) Create(name string) error {
 
 	a.info(fmt.Sprintf("Creating worktree at %s...", wtPath))
 	if err := a.gitRun("worktree", "add", wtPath, "-b", name); err != nil {
+		// Reuse an existing local branch if it already exists but has no worktree path.
+		if a.branchExists(name) {
+			if retryErr := a.gitRun("worktree", "add", wtPath, name); retryErr == nil {
+				goto created
+			}
+		}
 		return fmt.Errorf("failed to create worktree: %w", err)
 	}
 
+created:
 	settingsPath := filepath.Join(a.Root, ".claude", "settings.local.json")
 	if _, err := os.Stat(settingsPath); err == nil {
 		wtClaudeDir := filepath.Join(wtPath, ".claude")

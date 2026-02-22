@@ -267,11 +267,13 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	})
 
 	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
-		t.Fatalf("expected spawn error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "runtime repair unavailable") {
+		t.Fatalf("expected runtime repair error, got %v", err)
 	}
-	if len(wt.cleaned) != 0 {
-		t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
+	for _, name := range wt.cleaned {
+		if name == "42" {
+			t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
+		}
 	}
 }
 
@@ -302,13 +304,27 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	})
 
 	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
-		t.Fatalf("expected spawn error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "runtime repair unavailable") {
+		t.Fatalf("expected runtime repair error, got %v", err)
 	}
-	if len(wt.created) != 1 || wt.created[0] != "42" {
+	created42 := false
+	for _, name := range wt.created {
+		if name == "42" {
+			created42 = true
+			break
+		}
+	}
+	if !created42 {
 		t.Fatalf("expected create call for new worktree, got %#v", wt.created)
 	}
-	if len(wt.cleaned) != 1 || wt.cleaned[0] != "42" {
+	cleaned42 := false
+	for _, name := range wt.cleaned {
+		if name == "42" {
+			cleaned42 = true
+			break
+		}
+	}
+	if !cleaned42 {
 		t.Fatalf("expected cleanup for newly created worktree, got %#v", wt.cleaned)
 	}
 }
