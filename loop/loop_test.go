@@ -3,6 +3,7 @@ package loop
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,24 +33,29 @@ func (s *fakeSession) Kill() error                         { s.status = "killed"
 type fakeSpawner struct {
 	calls    []spawner.SpawnRequest
 	sessions []*fakeSession
+	spawnErr error
 }
 
 func (f *fakeSpawner) Spawn(_ context.Context, req spawner.SpawnRequest) (spawner.Session, error) {
 	f.calls = append(f.calls, req)
+	if f.spawnErr != nil {
+		return nil, f.spawnErr
+	}
 	s := &fakeSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
 	f.sessions = append(f.sessions, s)
 	return s, nil
 }
 
 type fakeWorktree struct {
-	created []string
-	merged  []string
-	cleaned []string
+	created   []string
+	merged    []string
+	cleaned   []string
+	createErr error
 }
 
 func (f *fakeWorktree) Create(name string) error {
 	f.created = append(f.created, name)
-	return nil
+	return f.createErr
 }
 func (f *fakeWorktree) Merge(name string) error {
 	f.merged = append(f.merged, name)
@@ -119,6 +125,166 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	}
 	if len(wt.created) != 1 {
 		t.Fatalf("worktree creates = %d", len(wt.created))
+	}
+}
+
+func TestCycleReusesExistingWorktree(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
+	if err := os.MkdirAll(existingWorktree, 0o755); err != nil {
+		t.Fatalf("mkdir existing worktree: %v", err)
+	}
+
+	sp := &fakeSpawner{}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if len(wt.created) != 0 {
+		t.Fatalf("expected no worktree create calls, got %d", len(wt.created))
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(sp.calls))
+	}
+	if sp.calls[0].WorktreePath != existingWorktree {
+		t.Fatalf("spawn worktree path = %q, want %q", sp.calls[0].WorktreePath, existingWorktree)
+	}
+}
+
+func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
+	sp := &fakeSpawner{}
+	wt := &fakeWorktree{createErr: errors.New("worktree '42' already exists at " + existingWorktree)}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if len(wt.created) != 1 {
+		t.Fatalf("expected one create call, got %d", len(wt.created))
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(sp.calls))
+	}
+}
+
+func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "42"), 0o755); err != nil {
+		t.Fatalf("mkdir existing worktree: %v", err)
+	}
+
+	sp := &fakeSpawner{spawnErr: errors.New("spawn failed")}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+
+	err := l.Cycle(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
+		t.Fatalf("expected spawn error, got %v", err)
+	}
+	if len(wt.cleaned) != 0 {
+		t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
+	}
+}
+
+func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	sp := &fakeSpawner{spawnErr: errors.New("spawn failed")}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+
+	err := l.Cycle(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
+		t.Fatalf("expected spawn error, got %v", err)
+	}
+	if len(wt.created) != 1 || wt.created[0] != "42" {
+		t.Fatalf("expected create call for new worktree, got %#v", wt.created)
+	}
+	if len(wt.cleaned) != 1 || wt.cleaned[0] != "42" {
+		t.Fatalf("expected cleanup for newly created worktree, got %#v", wt.cleaned)
 	}
 }
 

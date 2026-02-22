@@ -204,10 +204,12 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		reviewEnabled = *item.Review
 	}
 
-	if err := l.deps.Worktree.Create(name); err != nil {
+	created, err := l.ensureWorktree(name)
+	if err != nil {
 		return fmt.Errorf("create worktree %s: %w", name, err)
 	}
 
+	worktreePath := l.worktreePath(name)
 	prompt := buildCookPrompt(item, resumePrompt)
 	req := spawner.SpawnRequest{
 		Name:         name,
@@ -215,11 +217,13 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		Provider:     nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:        nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:        item.Skill,
-		WorktreePath: filepath.Join(l.projectDir, ".worktrees", name),
+		WorktreePath: worktreePath,
 	}
 	session, err := l.deps.Spawner.Spawn(ctx, req)
 	if err != nil {
-		_ = l.deps.Worktree.Cleanup(name, true)
+		if created {
+			_ = l.deps.Worktree.Cleanup(name, true)
+		}
 		return err
 	}
 	cook := &activeCook{
@@ -307,6 +311,32 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 		l.dropAdoptedTarget(targetID, sessionID)
 	}
 	return nil
+}
+
+func (l *Loop) worktreePath(name string) string {
+	return filepath.Join(l.projectDir, ".worktrees", name)
+}
+
+func (l *Loop) ensureWorktree(name string) (bool, error) {
+	path := l.worktreePath(name)
+	info, err := os.Stat(path)
+	if err == nil {
+		if !info.IsDir() {
+			return false, fmt.Errorf("worktree path %s is not a directory", path)
+		}
+		return false, nil
+	}
+	if !os.IsNotExist(err) {
+		return false, fmt.Errorf("stat worktree path %s: %w", path, err)
+	}
+
+	if err := l.deps.Worktree.Create(name); err != nil {
+		if isWorktreeAlreadyExistsError(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
@@ -578,6 +608,14 @@ func isMissingAdapter(err error) bool {
 	}
 	text := strings.ToLower(err.Error())
 	return strings.Contains(text, "not configured") || strings.Contains(text, "no such file")
+}
+
+func isWorktreeAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "worktree") && strings.Contains(text, "already exists at")
 }
 
 func buildCookPrompt(item QueueItem, resumePrompt string) string {
