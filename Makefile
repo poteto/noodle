@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet run start status skills commands fixtures-loop fixtures-hash bugs worktree watch watch-verbose clean
+.PHONY: help build test test-short vet ci run start status skills commands fixtures-loop fixtures-hash bugs worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -16,6 +16,7 @@ help:
 	@echo "  make test        Run all tests"
 	@echo "  make test-short  Run short tests"
 	@echo "  make vet         Run go vet"
+	@echo "  make ci          Run full local CI checks"
 	@echo "  make run         Alias for start"
 	@echo "  make start       Run scheduling loop"
 	@echo "  make status      Show runtime status"
@@ -40,6 +41,8 @@ test-short:
 
 vet:
 	$(GO) vet ./...
+
+ci: test vet fixtures-loop fixtures-hash
 
 run: start
 
