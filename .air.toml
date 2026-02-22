@@ -1,0 +1,31 @@
+#:schema https://json.schemastore.org/any.json
+
+root = "."
+tmp_dir = "tmp/air-noodle"
+
+[build]
+# Rebuild the noodle CLI into ./bin on source changes.
+cmd = "go build -o ./bin/noodle ."
+bin = "./bin/noodle"
+
+# Default entrypoint keeps watch mode healthy (exits 0 after build) while
+# emitting a short success marker only.
+# To auto-restart a long-running noodle command, replace this with:
+# entrypoint = ["./bin/noodle", "start"]
+entrypoint = ["node", "scripts/watch-success.js"]
+
+include_ext = ["go", "mod", "sum"]
+exclude_dir = [".git", ".worktrees", "node_modules", "dist", "target", "tmp"]
+exclude_regex = ["_test\\.go"]
+log = "tmp/air-noodle/build-errors.log"
+
+stop_on_error = true
+send_interrupt = true
+kill_delay = "500ms"
+delay = 300
+
+[log]
+silent = true
+
+[misc]
+clean_on_exit = true
