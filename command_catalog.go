@@ -33,6 +33,12 @@ func CommandCatalog() []Command {
 			Category:    "core",
 			Run:         runSkillsCommand,
 		},
+		{
+			Name:        "stamp",
+			Description: "Stamp NDJSON logs and emit canonical sidecar events",
+			Category:    "internal",
+			Run:         runStampCommand,
+		},
 	}
 }
 
