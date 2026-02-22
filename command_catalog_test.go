@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func TestCommandCatalogRegistersStatusAndWorktree(t *testing.T) {
+func TestCommandCatalogRegistersStatusTuiAndWorktree(t *testing.T) {
 	catalog := CommandCatalog()
 
 	start, ok := FindCommand(catalog, "start")
@@ -19,6 +19,14 @@ func TestCommandCatalogRegistersStatusAndWorktree(t *testing.T) {
 	}
 	if status.Category != "core" {
 		t.Fatalf("status category = %q", status.Category)
+	}
+
+	tui, ok := FindCommand(catalog, "tui")
+	if !ok {
+		t.Fatal("tui command not registered")
+	}
+	if tui.Category != "core" {
+		t.Fatalf("tui category = %q", tui.Category)
 	}
 
 	worktree, ok := FindCommand(catalog, "worktree")

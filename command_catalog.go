@@ -46,6 +46,12 @@ func CommandCatalog() []Command {
 			Run:         runStatusCommand,
 		},
 		{
+			Name:        "tui",
+			Description: "Open the terminal dashboard",
+			Category:    "core",
+			Run:         runTuiCommand,
+		},
+		{
 			Name:        "worktree",
 			Description: "Manage linked git worktrees",
 			Category:    "core",
