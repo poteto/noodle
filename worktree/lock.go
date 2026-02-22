@@ -111,7 +111,7 @@ func (a *App) acquireMergeLock() error {
 
 		if err := writeMergeLock(lockPath); err == nil {
 			if waited {
-				info("Merge lock acquired.")
+				a.info("Merge lock acquired.")
 			}
 			return nil
 		} else if !os.IsExist(err) {
@@ -124,7 +124,7 @@ func (a *App) acquireMergeLock() error {
 				sleepUntilMergeLockRetry(deadline, staleOrMissingLockRetryInterval)
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "WARNING: removing stale merge lock %s (invalid lock format)\n", lockPath)
+			a.warnf("WARNING: removing stale merge lock %s (invalid lock format)\n", lockPath)
 			if rmErr := os.Remove(lockPath); rmErr != nil && !os.IsNotExist(rmErr) {
 				return fmt.Errorf("failed to remove stale merge lock: %w", rmErr)
 			}
@@ -133,7 +133,7 @@ func (a *App) acquireMergeLock() error {
 		}
 
 		if !isProcessAlive(pid) {
-			fmt.Fprintf(os.Stderr, "WARNING: removing stale merge lock %s (PID %d)\n", lockPath, pid)
+			a.warnf("WARNING: removing stale merge lock %s (PID %d)\n", lockPath, pid)
 			currentPID, readErr := readMergeLockPID(lockPath)
 			if readErr != nil {
 				if !os.IsNotExist(readErr) {
@@ -149,7 +149,7 @@ func (a *App) acquireMergeLock() error {
 		}
 
 		if !waited {
-			info(fmt.Sprintf("Waiting for merge lock (held by PID %d)...", pid))
+			a.info(fmt.Sprintf("Waiting for merge lock (held by PID %d)...", pid))
 			waited = true
 		}
 		sleepUntilMergeLockRetry(deadline, liveProcessLockRetryInterval)

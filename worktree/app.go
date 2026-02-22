@@ -2,6 +2,7 @@ package worktree
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,7 @@ type App struct {
 	CmdPrefix         string        // command prefix for user-facing messages (e.g., "noodle worktree")
 	MergeLockTimeout  time.Duration // 0 uses defaultMergeLockTimeout
 	IntegrationBranch string        // override for the integration branch; auto-discovered when empty
+	Quiet             bool          // suppress stdout/stderr chatter for programmatic callers
 }
 
 // cmdName returns the full command name for user-facing messages.
@@ -136,8 +138,8 @@ func (a *App) gitOutput(args ...string) (string, error) {
 // gitRun runs a git command with stdout/stderr connected to the terminal.
 func (a *App) gitRun(args ...string) error {
 	cmd := a.git(args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = a.stdout()
+	cmd.Stderr = a.stderr()
 	return cmd.Run()
 }
 
@@ -291,17 +293,48 @@ func (a *App) installDeps(dir string) {
 	pm := DetectPkgManager(dir)
 	bin, args := InstallArgs(pm)
 	if bin == "" {
-		info("No lock file found — skipping dep install")
+		a.info("No lock file found — skipping dep install")
 		return
 	}
-	info(fmt.Sprintf("Installing deps with %s...", pm))
+	a.info(fmt.Sprintf("Installing deps with %s...", pm))
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = a.stdout()
+	cmd.Stderr = a.stderr()
 	_ = cmd.Run()
 }
 
-func info(msg string) {
-	fmt.Printf("  %s\n", msg)
+func (a *App) stdout() io.Writer {
+	if a.Quiet {
+		return io.Discard
+	}
+	return os.Stdout
+}
+
+func (a *App) stderr() io.Writer {
+	if a.Quiet {
+		return io.Discard
+	}
+	return os.Stderr
+}
+
+func (a *App) info(msg string) {
+	if a.Quiet {
+		return
+	}
+	fmt.Fprintf(a.stdout(), "  %s\n", msg)
+}
+
+func (a *App) warnf(format string, args ...any) {
+	if a.Quiet {
+		return
+	}
+	fmt.Fprintf(a.stderr(), format, args...)
+}
+
+func (a *App) printf(format string, args ...any) {
+	if a.Quiet {
+		return
+	}
+	fmt.Fprintf(a.stdout(), format, args...)
 }

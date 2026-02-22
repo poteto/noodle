@@ -28,3 +28,4 @@ Thumbs.db
 
 # Obsidian
 brain/.obsidian/
+.worktrees/
