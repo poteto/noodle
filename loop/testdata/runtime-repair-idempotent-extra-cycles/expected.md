@@ -6,58 +6,60 @@ regression: runtime-repair-idempotent-extra-cycles
 source_hash: cb2415591cd231c25693985e11d4a16642e66354f49ca44e65f869a5bea686bd
 ---
 
-## Expected
+## Runtime Dump
 
 ```json
 {
   "states": {
     "state-01": {
-      "error": {
-        "absent": true
-      },
-      "transition": "paused"
+      "transition": "paused",
+      "runtime_repair_in_flight": true,
+      "repair_task_scheduled": true,
+      "oops_task_scheduled": false,
+      "normal_task_scheduled": false,
+      "spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
+      "created_worktrees": 1,
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
+      }
     },
     "state-02": {
-      "transition": "paused"
+      "transition": "paused",
+      "runtime_repair_in_flight": true,
+      "repair_task_scheduled": true,
+      "oops_task_scheduled": false,
+      "normal_task_scheduled": false,
+      "spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
+      "created_worktrees": 1,
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
+      }
     },
     "state-03": {
       "transition": "paused",
-      "actions": {
-        "normal_task_scheduled": false,
-        "repair_task_scheduled": true
-      },
-      "state": {
-        "paused": true,
-        "runtime_repair_in_flight": true
-      },
-      "counts": {
-        "normal_spawn_calls": {
-          "eq": 0
-        },
-        "runtime_repair_spawn_calls": {
-          "eq": 1
-        },
-        "spawn_calls": {
-          "eq": 1
-        }
-      },
-      "absence": {
-        "normal_task_scheduled": true
-      },
-      "routing": {
-        "runtime_repair_name": {
-          "prefix": "repair-runtime-"
-        },
-        "runtime_repair_prompt": {
-          "contains": "Scope: mise.sync"
-        },
-        "runtime_repair_skill": {
-          "equals": "debugging"
-        }
-      },
-      "idempotence": {
-        "no_duplicate_runtime_repairs_on_extra_cycles": true,
-        "no_new_spawns_on_extra_cycles": true
+      "runtime_repair_in_flight": true,
+      "repair_task_scheduled": true,
+      "oops_task_scheduled": false,
+      "normal_task_scheduled": false,
+      "spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
+      "created_worktrees": 1,
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
       }
     }
   }

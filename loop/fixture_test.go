@@ -2,10 +2,13 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +20,8 @@ import (
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/spawner"
 )
+
+var runtimeRepairNamePattern = regexp.MustCompile(`repair-runtime-\d{8}-\d{6}-\d+`)
 
 type loopFixtureSetup struct {
 	SpawnerError                  string            `json:"spawner_error"`
@@ -39,19 +44,30 @@ type loopFixtureStateInput struct {
 	RuntimeRepairSessionIndex  *int               `json:"runtime_repair_session_index"`
 }
 
-type loopFixtureStateExpectation struct {
-	Error       *fixturedir.ErrorExpectation            `json:"error"`
-	Transition  string                                  `json:"transition"`
-	Actions     map[string]bool                         `json:"actions"`
-	State       map[string]bool                         `json:"state"`
-	Counts      map[string]fixturedir.CountExpectation  `json:"counts"`
-	Absence     map[string]bool                         `json:"absence"`
-	Routing     map[string]fixturedir.StringExpectation `json:"routing"`
-	Idempotence map[string]bool                         `json:"idempotence"`
+type loopFixtureRuntimeDump struct {
+	States map[string]loopFixtureStateDump `json:"states"`
 }
 
-type loopFixtureExpected struct {
-	States map[string]loopFixtureStateExpectation `json:"states"`
+type loopFixtureStateDump struct {
+	CycleError             string                `json:"cycle_error,omitempty"`
+	Transition             string                `json:"transition"`
+	RuntimeRepairInFlight  bool                  `json:"runtime_repair_in_flight"`
+	RepairTaskScheduled    bool                  `json:"repair_task_scheduled"`
+	OopsTaskScheduled      bool                  `json:"oops_task_scheduled"`
+	NormalTaskScheduled    bool                  `json:"normal_task_scheduled"`
+	SpawnCalls             int                   `json:"spawn_calls"`
+	RuntimeRepairSpawnCall int                   `json:"runtime_repair_spawn_calls"`
+	NormalSpawnCalls       int                   `json:"normal_spawn_calls"`
+	CreatedWorktrees       int                   `json:"created_worktrees"`
+	FirstSpawn             *loopFixtureSpawnDump `json:"first_spawn,omitempty"`
+	RuntimeRepairSpawn     *loopFixtureSpawnDump `json:"runtime_repair_spawn,omitempty"`
+}
+
+type loopFixtureSpawnDump struct {
+	Name     string `json:"name,omitempty"`
+	Skill    string `json:"skill,omitempty"`
+	Provider string `json:"provider,omitempty"`
+	Model    string `json:"model,omitempty"`
 }
 
 type fixtureConfigOverride struct {
@@ -64,25 +80,32 @@ type fixtureConfigOverride struct {
 	} `toml:"routing"`
 }
 
-type loopObservedCounts struct {
-	SpawnCalls              int
-	RuntimeRepairSpawnCalls int
-}
-
 func TestLoopDirectoryFixtures(t *testing.T) {
 	inventory := fixturedir.LoadInventory(t, "testdata")
 	fixturedir.AssertValidFixtureRoot(t, "testdata")
+
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("NOODLE_LOOP_FIXTURE_MODE")))
+	if mode == "" {
+		mode = "check"
+	}
+	if mode != "check" && mode != "record" {
+		t.Fatalf("invalid NOODLE_LOOP_FIXTURE_MODE %q (expected check|record)", mode)
+	}
 
 	for _, fixtureCase := range inventory.Cases {
 		fixtureCase := fixtureCase
 		t.Run(fixtureCase.Name, func(t *testing.T) {
 			setup, _ := fixturedir.ParseOptionalStateJSON[loopFixtureSetup](t, fixtureCase.States[0], "setup.json")
-			expected := fixturedir.ParseJSON[loopFixtureExpected](
-				t,
-				[]byte(fixturedir.MustSection(t, fixtureCase, "Expected")),
-				"expected",
-			)
-			assertStateExpectationCoverage(t, fixtureCase, expected)
+
+			expected := loopFixtureRuntimeDump{}
+			if mode == "check" {
+				expected = fixturedir.ParseJSON[loopFixtureRuntimeDump](
+					t,
+					[]byte(fixturedir.MustSection(t, fixtureCase, "Runtime Dump")),
+					"runtime dump",
+				)
+				assertRuntimeDumpCoverage(t, fixtureCase, expected)
+			}
 
 			stateInputs := make([]loopFixtureStateInput, 0, len(fixtureCase.States))
 			for _, state := range fixtureCase.States {
@@ -118,6 +141,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 					}
 				}
 			}
+
 			baseCfg := config.DefaultConfig()
 			applySetupConfig(&baseCfg, setup)
 			if path := strings.TrimSpace(fixtureCase.Layout.BaseConfigPath); path != "" {
@@ -144,7 +168,9 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				}
 			}
 
-			prevCounts := loopObservedCounts{}
+			observed := loopFixtureRuntimeDump{
+				States: make(map[string]loopFixtureStateDump, len(fixtureCase.States)),
+			}
 			for index, state := range fixtureCase.States {
 				applyStateRuntimeSnapshot(t, state, runtimeDir)
 				cfg := cloneConfig(baseCfg)
@@ -156,80 +182,40 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				applySessionStatusInput(t, sp, stateInputs[index], index)
 
 				err := l.Cycle(context.Background())
-				expectation := expected.States[state.ID]
-				fixturedir.AssertError(t, fmt.Sprintf("%s cycle", state.ID), err, expectation.Error)
-
 				repairCalls := runtimeRepairCalls(sp.calls)
 				normalCalls := normalSpawnCalls(sp.calls)
-				firstSpawn := spawner.SpawnRequest{}
-				if len(sp.calls) > 0 {
-					firstSpawn = sp.calls[0]
+
+				stateDump := loopFixtureStateDump{
+					CycleError:             normalizeDynamicText(errorString(err)),
+					Transition:             strings.ToLower(strings.TrimSpace(string(l.state))),
+					RuntimeRepairInFlight:  l.runtimeRepairInFlight != nil,
+					RepairTaskScheduled:    len(repairCalls) > 0,
+					OopsTaskScheduled:      hasSkill(repairCalls, "oops"),
+					NormalTaskScheduled:    len(normalCalls) > 0,
+					SpawnCalls:             len(sp.calls),
+					RuntimeRepairSpawnCall: len(repairCalls),
+					NormalSpawnCalls:       len(normalCalls),
+					CreatedWorktrees:       len(wt.created),
 				}
-				firstRepair := spawner.SpawnRequest{}
+				if len(normalCalls) > 0 {
+					stateDump.FirstSpawn = requestDump(normalCalls[0])
+				}
 				if len(repairCalls) > 0 {
-					firstRepair = repairCalls[0]
+					stateDump.RuntimeRepairSpawn = requestDump(repairCalls[0])
 				}
 
-				if value := strings.TrimSpace(expectation.Transition); value != "" {
-					actual := strings.ToLower(strings.TrimSpace(string(l.state)))
-					if actual != strings.ToLower(value) {
-						t.Fatalf("transition for %s = %q, want %q", state.ID, actual, strings.ToLower(value))
-					}
-				}
-				if len(expectation.Actions) > 0 {
-					fixturedir.AssertBools(t, "actions", map[string]bool{
-						"repair_task_scheduled": len(repairCalls) > 0,
-						"oops_task_scheduled":   hasSkill(repairCalls, "oops"),
-						"normal_task_scheduled": len(normalCalls) > 0,
-					}, expectation.Actions)
-				}
-				if len(expectation.State) > 0 {
-					fixturedir.AssertBools(t, "state", map[string]bool{
-						"runtime_repair_in_flight": l.runtimeRepairInFlight != nil,
-						"running":                  l.state == StateRunning,
-						"paused":                   l.state == StatePaused,
-						"draining":                 l.state == StateDraining,
-					}, expectation.State)
-				}
-				if len(expectation.Counts) > 0 {
-					fixturedir.AssertCounts(t, "counts", map[string]int{
-						"spawn_calls":                len(sp.calls),
-						"runtime_repair_spawn_calls": len(repairCalls),
-						"normal_spawn_calls":         len(normalCalls),
-						"created_worktrees":          len(wt.created),
-					}, expectation.Counts)
-				}
-				if len(expectation.Absence) > 0 {
-					fixturedir.AssertBools(t, "absence", map[string]bool{
-						"repair_task_scheduled": len(repairCalls) == 0,
-						"oops_task_scheduled":   !hasSkill(repairCalls, "oops"),
-						"normal_task_scheduled": len(normalCalls) == 0,
-					}, expectation.Absence)
-				}
-				if len(expectation.Routing) > 0 {
-					fixturedir.AssertStrings(t, "routing", map[string]string{
-						"first_spawn_name":        firstSpawn.Name,
-						"first_spawn_skill":       firstSpawn.Skill,
-						"first_spawn_provider":    firstSpawn.Provider,
-						"first_spawn_model":       firstSpawn.Model,
-						"runtime_repair_name":     firstRepair.Name,
-						"runtime_repair_skill":    firstRepair.Skill,
-						"runtime_repair_provider": firstRepair.Provider,
-						"runtime_repair_model":    firstRepair.Model,
-						"runtime_repair_prompt":   firstRepair.Prompt,
-					}, expectation.Routing)
-				}
-				if len(expectation.Idempotence) > 0 {
-					fixturedir.AssertBools(t, "idempotence", map[string]bool{
-						"no_new_spawns_on_extra_cycles":                len(sp.calls) == prevCounts.SpawnCalls,
-						"no_duplicate_runtime_repairs_on_extra_cycles": len(repairCalls) == prevCounts.RuntimeRepairSpawnCalls,
-					}, expectation.Idempotence)
-				}
+				observed.States[state.ID] = stateDump
+			}
 
-				prevCounts = loopObservedCounts{
-					SpawnCalls:              len(sp.calls),
-					RuntimeRepairSpawnCalls: len(repairCalls),
+			if mode == "record" {
+				if err := writeRuntimeDumpSection(fixtureCase.Layout.ExpectedPath, observed); err != nil {
+					t.Fatalf("write runtime dump section for %s: %v", fixtureCase.Layout.ExpectedPath, err)
 				}
+				return
+			}
+
+			if !reflect.DeepEqual(observed, expected) {
+				t.Fatalf("runtime dump mismatch\nactual:\n%s\nexpected:\n%s", mustJSON(observed), mustJSON(expected))
 			}
 		})
 	}
@@ -338,16 +324,16 @@ func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runt
 	}
 }
 
-func assertStateExpectationCoverage(t *testing.T, fixtureCase fixturedir.FixtureCase, expected loopFixtureExpected) {
+func assertRuntimeDumpCoverage(t *testing.T, fixtureCase fixturedir.FixtureCase, expected loopFixtureRuntimeDump) {
 	t.Helper()
 	for _, state := range fixtureCase.States {
 		if _, ok := expected.States[state.ID]; !ok {
-			t.Fatalf("fixture %s missing expected.states key for %s", fixtureCase.Name, state.ID)
+			t.Fatalf("fixture %s missing runtime dump key for %s", fixtureCase.Name, state.ID)
 		}
 	}
 	for stateID := range expected.States {
 		if _, ok := fixtureCase.State(stateID); !ok {
-			t.Fatalf("fixture %s has extra expected.states key %s with no matching state directory", fixtureCase.Name, stateID)
+			t.Fatalf("fixture %s has extra runtime dump key %s with no matching state directory", fixtureCase.Name, stateID)
 		}
 	}
 }
@@ -379,4 +365,115 @@ func hasSkill(calls []spawner.SpawnRequest, skill string) bool {
 		}
 	}
 	return false
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return strings.TrimSpace(err.Error())
+}
+
+func requestDump(request spawner.SpawnRequest) *loopFixtureSpawnDump {
+	dump := &loopFixtureSpawnDump{
+		Name:     normalizeSpawnName(request.Name),
+		Skill:    strings.TrimSpace(request.Skill),
+		Provider: strings.TrimSpace(request.Provider),
+		Model:    strings.TrimSpace(request.Model),
+	}
+	return dump
+}
+
+func normalizeSpawnName(name string) string {
+	name = strings.TrimSpace(name)
+	if strings.HasPrefix(name, "repair-runtime-") {
+		return "repair-runtime-*"
+	}
+	return name
+}
+
+func normalizeDynamicText(input string) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return ""
+	}
+	return runtimeRepairNamePattern.ReplaceAllString(input, "repair-runtime-*")
+}
+
+func mustJSON(value any) string {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"error":"%v"}`, err)
+	}
+	return string(data)
+}
+
+func writeRuntimeDumpSection(expectedPath string, dump loopFixtureRuntimeDump) error {
+	content, err := os.ReadFile(expectedPath)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", expectedPath, err)
+	}
+	frontmatter, body, err := splitExpectedMarkdown(string(content))
+	if err != nil {
+		return err
+	}
+	runtimeJSON := mustJSON(dump)
+	expectedErrorJSON, hasExpectedError := extractJSONSection(body, "Expected Error")
+
+	var out strings.Builder
+	out.WriteString(strings.TrimRight(frontmatter, "\n"))
+	out.WriteString("\n\n## Runtime Dump\n\n```json\n")
+	out.WriteString(runtimeJSON)
+	out.WriteString("\n```\n")
+	if hasExpectedError {
+		out.WriteString("\n## Expected Error\n\n```json\n")
+		out.WriteString(strings.TrimSpace(expectedErrorJSON))
+		out.WriteString("\n```\n")
+	}
+	return os.WriteFile(expectedPath, []byte(normalizeFixtureMarkdown(out.String())), 0o644)
+}
+
+func splitExpectedMarkdown(content string) (string, string, error) {
+	content = normalizeFixtureMarkdown(content)
+	lines := strings.Split(content, "\n")
+	if len(lines) < 3 || strings.TrimSpace(lines[0]) != "---" {
+		return "", "", fmt.Errorf("expected.md must start with frontmatter delimited by ---")
+	}
+	closingIndex := -1
+	for index := 1; index < len(lines); index++ {
+		if strings.TrimSpace(lines[index]) == "---" {
+			closingIndex = index
+			break
+		}
+	}
+	if closingIndex < 0 {
+		return "", "", fmt.Errorf("expected.md frontmatter is missing closing --- delimiter")
+	}
+	frontmatter := strings.Join(lines[:closingIndex+1], "\n")
+	body := strings.Join(lines[closingIndex+1:], "\n")
+	return frontmatter, body, nil
+}
+
+func extractJSONSection(body string, heading string) (string, bool) {
+	heading = regexp.QuoteMeta(strings.TrimSpace(heading))
+	if heading == "" {
+		return "", false
+	}
+	pattern := regexp.MustCompile(
+		`(?ms)^##\s+` + heading + `\s*\n\s*` + "```json" + `\s*\n(.*?)\n` + "```" + `\s*`,
+	)
+	matches := pattern.FindStringSubmatch(body)
+	if len(matches) != 2 {
+		return "", false
+	}
+	return strings.TrimSpace(matches[1]), true
+}
+
+func normalizeFixtureMarkdown(content string) string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.TrimRight(content, "\n")
+	if content == "" {
+		return "\n"
+	}
+	return content + "\n"
 }

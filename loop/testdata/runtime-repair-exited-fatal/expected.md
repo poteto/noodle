@@ -6,43 +6,44 @@ regression: runtime-repair-exited-fatal
 source_hash: 25b2d0fef4066efd7ce30bbb2345a819b6e60359286b7a6e1e5b183fdac18698
 ---
 
-## Expected
+## Runtime Dump
 
 ```json
 {
   "states": {
     "state-01": {
-      "error": {
-        "absent": true
-      },
-      "transition": "paused"
+      "transition": "paused",
+      "runtime_repair_in_flight": true,
+      "repair_task_scheduled": true,
+      "oops_task_scheduled": false,
+      "normal_task_scheduled": false,
+      "spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
+      "created_worktrees": 1,
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
+      }
     },
     "state-02": {
-      "error": {
-        "contains": "exited before completion"
-      },
+      "cycle_error": "runtime repair session repair-runtime-*-id exited before completion",
       "transition": "paused",
-      "actions": {
-        "normal_task_scheduled": false,
-        "repair_task_scheduled": true
-      },
-      "state": {
-        "paused": true,
-        "runtime_repair_in_flight": false
-      },
-      "counts": {
-        "created_worktrees": {
-          "eq": 1
-        },
-        "normal_spawn_calls": {
-          "eq": 0
-        },
-        "runtime_repair_spawn_calls": {
-          "eq": 1
-        },
-        "spawn_calls": {
-          "eq": 1
-        }
+      "runtime_repair_in_flight": false,
+      "repair_task_scheduled": true,
+      "oops_task_scheduled": false,
+      "normal_task_scheduled": false,
+      "spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
+      "created_worktrees": 1,
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
       }
     }
   }
