@@ -14,6 +14,7 @@ This phase will be implemented by Codex. Keep it simple:
 
 - **No over-engineering.** The bootstrap skill should be a clear, focused SKILL.md — not an exhaustive reference manual. The README should be direct and practical.
 - **No backwards compatibility.** This is a greenfield build — there's nothing to be backwards-compatible with.
+- **Prefer markdown fixture tests for parser/protocol flows.** Keep input and expected output in the same anonymized `*.fixture.md` file under `testdata/`, and use this pattern wherever practical.
 
 ## The Bootstrap Skill
 

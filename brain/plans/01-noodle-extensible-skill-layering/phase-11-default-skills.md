@@ -15,6 +15,8 @@ This phase will be implemented by Codex. Keep it simple:
 - **No over-engineering.** Skills should be clear, concise SKILL.md files — not sprawling reference manuals. Adapter scripts should be minimal POSIX shell.
 - **No backwards compatibility.** This is a greenfield build — there's nothing to be backwards-compatible with.
 - **Tests should increase confidence, not coverage.** Test the critical adapter flows (round-trip parse/serialize, tag extraction, ID management, plan phase status derivation). Skip testing trivial formatting or obvious string operations. Ask: "does this test help us iterate faster?"
+- **Prefer markdown fixture tests for parser/protocol flows.** Keep input and expected output in the same anonymized `*.fixture.md` file under `testdata/`, and use this pattern wherever practical.
+
 
 - **End-of-phase Claude review (required).** After implementing this phase, run a non-interactive Claude review of your changes and capture NDJSON output, for example: `claude -p --output-format stream-json --verbose --include-partial-messages "Review the changes for this phase. Report risks, regressions, and missing tests." | tee .noodle/reviews/<phase-id>-review.ndjson`.
 - **Observe NDJSON liveness while it runs.** Watch the review log (`tail -f .noodle/reviews/<phase-id>-review.ndjson`). Any appended NDJSON line (`stream_event`, `assistant`, `user`, `system`, `result`) means Claude is still working.
