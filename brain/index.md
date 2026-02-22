@@ -41,6 +41,7 @@
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
+- [[codebase/fixture-frontmatter-contract]]
 - [[codebase/plan-phase-discipline]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
