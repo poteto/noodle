@@ -18,14 +18,14 @@ description: >
 - **Not valid by default**: primary checkout at repo root
 - **Allowed exception**: interactive, single-agent, small changes can run in primary checkout when that is the deliberate choice
 
-All operations use `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree` — it enforces CWD safety, correct sequencing, stash/rebase handling, and dep reinstall.
+All operations use `go run -C $CLAUDE_PROJECT_DIR . worktree` — it enforces CWD safety, correct sequencing, stash/rebase handling, and dep reinstall.
 
 ## Commands
 
 ### Preflight
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree list
+go run -C $CLAUDE_PROJECT_DIR . worktree list
 ```
 
 Shows all worktrees with merge status. Run at session start to spot stale worktrees from crashed sessions.
@@ -33,7 +33,7 @@ Shows all worktrees with merge status. Run at session start to spot stale worktr
 ### Create
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree create <name>
+go run -C $CLAUDE_PROJECT_DIR . worktree create <name>
 ```
 
 Creates worktree + branch at `.worktrees/<name>`, symlinks `.claude/settings.local.json`, auto-detects package manager, installs deps.
@@ -41,16 +41,16 @@ Creates worktree + branch at `.worktrees/<name>`, symlinks `.claude/settings.loc
 ### Run commands inside a worktree
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree exec <name> <command...>
+go run -C $CLAUDE_PROJECT_DIR . worktree exec <name> <command...>
 ```
 
 Runs the command inside the worktree via `cmd.Dir`. **The parent shell's CWD never changes** — this is the safe way to run builds, tests, or any tool that needs the worktree as CWD.
 
 ```bash
 # Examples
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree exec my-feature go test ./...
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree exec my-feature go build ./...
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree exec my-feature go test ./...
+go run -C $CLAUDE_PROJECT_DIR . worktree exec my-feature go test ./...
+go run -C $CLAUDE_PROJECT_DIR . worktree exec my-feature go build ./...
+go run -C $CLAUDE_PROJECT_DIR . worktree exec my-feature go test ./...
 ```
 
 For git operations, `git -C` also works and doesn't need `exec`:
@@ -66,7 +66,7 @@ File reads/edits use absolute paths directly — no `exec` needed.
 ### Merge back to main
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree merge <name>
+go run -C $CLAUDE_PROJECT_DIR . worktree merge <name>
 ```
 
 Single command does: CWD safety check -> stash worktree noise -> rebase onto integration branch -> merge -> remove worktree -> delete branch -> prune -> reinstall deps. Refuses to run if CWD is inside the worktree or if root checkout is not on the integration branch.
@@ -80,7 +80,7 @@ Merges are serialized via lockfile (`.worktrees/.merge-lock`). If another merge 
 ### Prune merged/patch-equivalent worktrees
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree prune
+go run -C $CLAUDE_PROJECT_DIR . worktree prune
 ```
 
 Auto-cleans safe worktrees:
@@ -91,7 +91,7 @@ Auto-cleans safe worktrees:
 ### Clean up without merging
 
 ```bash
-go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree cleanup <name>
+go run -C $CLAUDE_PROJECT_DIR . worktree cleanup <name>
 ```
 
 Warns if there are unmerged commits. Use `--force` to discard them.
@@ -106,17 +106,17 @@ Warns if there are unmerged commits. Use `--force` to discard them.
 The Bash tool maintains a persistent shell — `cd` in one call persists to ALL future calls. A later `rm -rf` or `git worktree remove` on that path kills the shell instantly.
 
 **Always use one of these instead:**
-1. `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree exec <name> <cmd>` — CWD-safe by design
+1. `go run -C $CLAUDE_PROJECT_DIR . worktree exec <name> <cmd>` — CWD-safe by design
 2. Subshells: `(cd /path && cmd)` — CWD resets when subshell exits
 3. Absolute paths: `go build /path/to/pkg/...`
 4. Tool flags: `git -C <path>`, `go -C <path>`
 
 ## Parallel Agent Teams
 
-1. Lead creates one worktree per teammate: `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree create phase-1`
+1. Lead creates one worktree per teammate: `go run -C $CLAUDE_PROJECT_DIR . worktree create phase-1`
 2. Spawn each with `mode: "acceptEdits"` — worktrees are isolated scratch space
 3. Each teammate commits on its own branch
-4. Lead merges each: `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree merge phase-1`
+4. Lead merges each: `go run -C $CLAUDE_PROJECT_DIR . worktree merge phase-1`
 
 **Foundational changes**: If Phase 1 is a foundation later phases need, do it on main first, commit, then create parallel worktrees. Branches start from the commit they were created at.
 
@@ -131,8 +131,8 @@ The Bash tool maintains a persistent shell — `cd` in one call persists to ALL 
 
 ## Stale Worktree Triage
 
-Use `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree list` to check status, then:
+Use `go run -C $CLAUDE_PROJECT_DIR . worktree list` to check status, then:
 
-1. **Merged** (shows "safe to clean up") -> `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree cleanup <name>`
+1. **Merged** (shows "safe to clean up") -> `go run -C $CLAUDE_PROJECT_DIR . worktree cleanup <name>`
 2. **Unmerged with commits** -> report to user, let them decide merge vs discard
-3. **No commits** -> crashed session artifact -> `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree cleanup <name>`
+3. **No commits** -> crashed session artifact -> `go run -C $CLAUDE_PROJECT_DIR . worktree cleanup <name>`

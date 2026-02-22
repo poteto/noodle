@@ -54,7 +54,7 @@ Do the work directly using Read, Write, Edit, Bash, Glob, and Grep. Follow codeb
 
 Run lint and fix ALL issues before committing:
 
-- **Go**: `go -C <worktree>/old_noodle test ./... && go -C <worktree>/old_noodle vet ./...`
+- **Go**: `go -C <worktree> test ./... && go -C <worktree> vet ./...`
 
 Do not leave lint violations for cleanup. Fix them now.
 
