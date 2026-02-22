@@ -91,14 +91,14 @@ Chosen because it most directly encodes stateful behavior and removes recurring 
 
 ## Phases
 
-- [ ] [[plans/21-fixture-directory-redesign/phase-01-scaffold]] — Scaffold
-- [ ] [[plans/21-fixture-directory-redesign/phase-02-fixture-directory-contract-and-loader]] — Fixture Directory Contract and Loader
-- [ ] [[plans/21-fixture-directory-redesign/phase-03-metadata-and-assertion-contract]] — Metadata and Assertion Contract
-- [ ] [[plans/21-fixture-directory-redesign/phase-04-parse-adapter-stamp-migration]] — Parse Adapter Stamp Migration
-- [ ] [[plans/21-fixture-directory-redesign/phase-05-event-monitor-spawner-migration]] — Event Monitor Spawner Migration
-- [ ] [[plans/21-fixture-directory-redesign/phase-06-loop-state-snapshot-model]] — Loop State Snapshot Model
-- [ ] [[plans/21-fixture-directory-redesign/phase-07-loop-fixture-migration]] — Loop Fixture Migration
-- [ ] [[plans/21-fixture-directory-redesign/phase-08-fixture-validator-and-tooling]] — Fixture Validator and Tooling
+- [x] [[plans/21-fixture-directory-redesign/phase-01-scaffold]] — Scaffold
+- [x] [[plans/21-fixture-directory-redesign/phase-02-fixture-directory-contract-and-loader]] — Fixture Directory Contract and Loader
+- [x] [[plans/21-fixture-directory-redesign/phase-03-metadata-and-assertion-contract]] — Metadata and Assertion Contract
+- [x] [[plans/21-fixture-directory-redesign/phase-04-parse-adapter-stamp-migration]] — Parse Adapter Stamp Migration
+- [x] [[plans/21-fixture-directory-redesign/phase-05-event-monitor-spawner-migration]] — Event Monitor Spawner Migration
+- [x] [[plans/21-fixture-directory-redesign/phase-06-loop-state-snapshot-model]] — Loop State Snapshot Model
+- [x] [[plans/21-fixture-directory-redesign/phase-07-loop-fixture-migration]] — Loop Fixture Migration
+- [x] [[plans/21-fixture-directory-redesign/phase-08-fixture-validator-and-tooling]] — Fixture Validator and Tooling
 - [ ] [[plans/21-fixture-directory-redesign/phase-09-cleanup-and-final-verification]] — Cleanup and Final Verification
 
 ## Verification
