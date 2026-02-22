@@ -34,6 +34,18 @@ func CommandCatalog() []Command {
 			Run:         runSkillsCommand,
 		},
 		{
+			Name:        "status",
+			Description: "Show compact runtime status",
+			Category:    "core",
+			Run:         runStatusCommand,
+		},
+		{
+			Name:        "worktree",
+			Description: "Manage linked git worktrees",
+			Category:    "core",
+			Run:         runWorktreeCommand,
+		},
+		{
 			Name:        "stamp",
 			Description: "Stamp NDJSON logs and emit canonical sidecar events",
 			Category:    "internal",
