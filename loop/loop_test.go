@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -205,5 +206,190 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 	if ack.ID != "cmd-1" || ack.Status != "ok" {
 		t.Fatalf("ack = %#v", ack)
+	}
+}
+
+func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Recovery.MaxRetries = 0
+
+	sp := &fakeSpawner{}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "failed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("failure cycle: %v", err)
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("expected no respawn, spawn calls = %d", len(sp.calls))
+	}
+	if _, ok := l.failedTargets["42"]; !ok {
+		t.Fatal("expected target to be marked failed")
+	}
+	if _, err := os.Stat(filepath.Join(runtimeDir, "failed.json")); err != nil {
+		t.Fatalf("expected failed.json: %v", err)
+	}
+
+	parsed, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if len(parsed.Items) != 0 {
+		t.Fatalf("queue should be trimmed after max retries: %#v", parsed.Items)
+	}
+}
+
+func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:  &fakeSpawner{},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise: &fakeMise{brief: mise.Brief{
+			Backlog: []adapter.BacklogItem{{ID: "1", Title: "Fix", Status: adapter.BacklogStatusOpen}},
+		}},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+
+	if err := l.steer("sous-chef", "prioritize security tasks"); err != nil {
+		t.Fatalf("steer sous-chef: %v", err)
+	}
+	queue, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if len(queue.Items) != 1 {
+		t.Fatalf("queue items = %d", len(queue.Items))
+	}
+	if queue.Items[0].Rationale != "Chef steer: prioritize security tasks" {
+		t.Fatalf("unexpected rationale: %q", queue.Items[0].Rationale)
+	}
+}
+
+func TestReadTasterVerdictFromCanonical(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "canonical.ndjson")
+	content := `{"provider":"claude","type":"action","message":"text: {\"accept\":false,\"feedback\":\"needs tests\"}","timestamp":"2026-02-22T20:00:00Z"}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write canonical: %v", err)
+	}
+	verdict, found, err := readTasterVerdict(path)
+	if err != nil {
+		t.Fatalf("read verdict: %v", err)
+	}
+	if !found {
+		t.Fatal("expected verdict to be found")
+	}
+	if verdict.Accept {
+		t.Fatalf("expected reject verdict: %#v", verdict)
+	}
+	if verdict.Feedback != "needs tests" {
+		t.Fatalf("feedback = %q", verdict.Feedback)
+	}
+}
+
+func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "prompt.txt")
+	content := "Work backlog item plan/phase_02-ticket.7\n\nContext: test"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write prompt: %v", err)
+	}
+	target := readSessionTarget(path)
+	if target != "plan/phase_02-ticket.7" {
+		t.Fatalf("target = %q", target)
+	}
+}
+
+func TestTmuxSessionNameMatchesSanitizedLength(t *testing.T) {
+	sessionID := strings.Repeat("A", 80) + "-with spaces"
+	name := tmuxSessionName(sessionID)
+	if !strings.HasPrefix(name, "noodle-") {
+		t.Fatalf("unexpected prefix: %q", name)
+	}
+	token := strings.TrimPrefix(name, "noodle-")
+	if len(token) > 48 {
+		t.Fatalf("token too long: %d", len(token))
+	}
+}
+
+func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", "stale-session"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(runtimeDir, "sessions", "stale-session", "meta.json"),
+		[]byte(`{"status":"exited"}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write meta: %v", err)
+	}
+
+	review := false
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Concurrency.MaxCooks = 1
+	sp := &fakeSpawner{}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Spawner:   sp,
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	l.adoptedTargets = map[string]string{"legacy-1": "stale-session"}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(sp.calls))
+	}
+	if len(l.adoptedTargets) != 0 {
+		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
 	}
 }

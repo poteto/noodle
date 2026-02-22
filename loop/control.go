@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -58,11 +57,11 @@ func (l *Loop) processControlCommands() error {
 	}
 	defer lock.Close()
 
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+	if err := acquireFileLock(lock.Fd()); err != nil {
 		return fmt.Errorf("lock control file: %w", err)
 	}
 	defer func() {
-		_ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+		_ = releaseFileLock(lock.Fd())
 	}()
 
 	data, err := os.ReadFile(controlPath)

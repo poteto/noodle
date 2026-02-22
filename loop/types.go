@@ -100,7 +100,10 @@ type Loop struct {
 
 	state State
 
-	activeByTarget map[string]*activeCook
-	activeByID     map[string]*activeCook
-	processedIDs   map[string]struct{}
+	activeByTarget  map[string]*activeCook
+	activeByID      map[string]*activeCook
+	adoptedTargets  map[string]string
+	adoptedSessions []string
+	failedTargets   map[string]string
+	processedIDs    map[string]struct{}
 }

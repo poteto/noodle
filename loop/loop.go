@@ -1,19 +1,25 @@
 package loop
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/debate"
 	"github.com/poteto/noodle/mise"
+	"github.com/poteto/noodle/monitor"
+	"github.com/poteto/noodle/parse"
 	"github.com/poteto/noodle/recover"
 	"github.com/poteto/noodle/spawner"
 )
@@ -60,6 +66,9 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		state:           StateRunning,
 		activeByTarget:  map[string]*activeCook{},
 		activeByID:      map[string]*activeCook{},
+		adoptedTargets:  map[string]string{},
+		adoptedSessions: []string{},
+		failedTargets:   map[string]string{},
 		processedIDs:    map[string]struct{}{},
 	}
 }
@@ -71,7 +80,10 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
 	}
-	if err := l.reconcile(); err != nil {
+	if err := l.loadFailedTargets(); err != nil {
+		return err
+	}
+	if err := l.reconcile(ctx); err != nil {
 		return err
 	}
 	if err := l.hydrateProcessedCommands(); err != nil {
@@ -128,6 +140,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
 		return err
 	}
+	l.refreshAdoptedTargets()
 	brief, _, err := l.deps.Mise.Build(ctx)
 	if err != nil {
 		return err
@@ -154,10 +167,16 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		limit = 1
 	}
 	for _, item := range queue.Items {
-		if len(l.activeByID) >= limit {
+		if len(l.activeByID)+len(l.adoptedTargets) >= limit {
 			break
 		}
 		if _, busy := l.activeByTarget[item.ID]; busy {
+			continue
+		}
+		if _, failed := l.failedTargets[item.ID]; failed {
+			continue
+		}
+		if _, adopted := l.adoptedTargets[item.ID]; adopted {
 			continue
 		}
 		if hasActiveTicket(brief, item.ID) {
@@ -261,6 +280,10 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
 	nextAttempt := cook.attempt + 1
 	if nextAttempt > l.config.Recovery.MaxRetries {
+		if err := l.markFailed(cook.queueItem.ID, reason); err != nil {
+			return err
+		}
+		_ = l.skipQueueItem(cook.queueItem.ID)
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 		return nil
 	}
@@ -294,11 +317,24 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 		return false, ctx.Err().Error()
 	case <-session.Done():
 	}
+
+	verdict, found, err := readTasterVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson"))
+	if err == nil && found {
+		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
+		if verdict.Accept {
+			return true, verdict.Feedback
+		}
+		return false, verdict.Feedback
+	}
+
 	status := strings.ToLower(strings.TrimSpace(session.Status()))
 	if status == "completed" || status == "exited" {
+		_ = l.writeDebateVerdict(cook, true, "")
 		return true, ""
 	}
-	return false, "taster rejected with status " + status
+	feedback := "taster rejected with status " + status
+	_ = l.writeDebateVerdict(cook, false, feedback)
+	return false, feedback
 }
 
 func (l *Loop) pollInterval() time.Duration {
@@ -313,7 +349,7 @@ func (l *Loop) pollInterval() time.Duration {
 	return duration
 }
 
-func (l *Loop) reconcile() error {
+func (l *Loop) reconcile(ctx context.Context) error {
 	if err := os.MkdirAll(filepath.Join(l.runtimeDir, "sessions"), 0o755); err != nil {
 		return err
 	}
@@ -324,26 +360,55 @@ func (l *Loop) reconcile() error {
 		}
 		return err
 	}
+
 	alive := map[string]struct{}{}
 	for _, name := range listTmuxSessions() {
 		alive[name] = struct{}{}
 	}
+	knownTmux := map[string]struct{}{}
+	l.adoptedTargets = map[string]string{}
+	l.adoptedSessions = l.adoptedSessions[:0]
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		metaPath := filepath.Join(l.runtimeDir, "sessions", entry.Name(), "meta.json")
+		sessionID := entry.Name()
+		sessionName := tmuxSessionName(sessionID)
+		knownTmux[sessionName] = struct{}{}
+
+		metaPath := filepath.Join(l.runtimeDir, "sessions", sessionID, "meta.json")
 		data, err := os.ReadFile(metaPath)
 		if err != nil {
 			continue
 		}
 		if strings.Contains(string(data), `"status":"running"`) {
-			sessionName := "noodle-" + sanitizeName(entry.Name())
 			if _, ok := alive[sessionName]; !ok {
 				updated := strings.Replace(string(data), `"status":"running"`, `"status":"exited"`, 1)
 				_ = os.WriteFile(metaPath, []byte(updated), 0o644)
+				continue
 			}
+			target := readSessionTarget(filepath.Join(l.runtimeDir, "sessions", sessionID, "prompt.txt"))
+			if target != "" {
+				l.adoptedTargets[target] = sessionID
+			}
+			l.adoptedSessions = append(l.adoptedSessions, sessionID)
 		}
+	}
+
+	for name := range alive {
+		if !strings.HasPrefix(name, "noodle-") {
+			continue
+		}
+		if _, ok := knownTmux[name]; ok {
+			continue
+		}
+		_ = exec.Command("tmux", "kill-session", "-t", name).Run()
+	}
+
+	if len(l.adoptedSessions) > 0 {
+		tickets := monitor.NewEventTicketMaterializer(l.runtimeDir)
+		_ = tickets.Materialize(ctx, l.adoptedSessions)
 	}
 	return nil
 }
@@ -474,9 +539,7 @@ func (l *Loop) steer(target string, prompt string) error {
 		return fmt.Errorf("steer requires target")
 	}
 	if strings.EqualFold(target, "sous-chef") {
-		// Queue recalculation is driven by queue file updates; this command is an
-		// acknowledgment hook for TUI workflows.
-		return nil
+		return l.reprioritizeForChefPrompt(prompt)
 	}
 	for _, cook := range l.activeByID {
 		if cook.worktreeName != target && cook.session.ID() != target {
@@ -490,4 +553,182 @@ func (l *Loop) steer(target string, prompt string) error {
 		return l.spawnCook(context.Background(), cook.queueItem, cook.attempt, strings.TrimSpace(prompt))
 	}
 	return errors.New("session not found")
+}
+
+func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
+	brief, _, err := l.deps.Mise.Build(context.Background())
+	if err != nil {
+		return err
+	}
+	queue := queueFromBacklog(brief.Backlog, l.config)
+	prompt = strings.TrimSpace(prompt)
+	for i := range queue.Items {
+		if prompt != "" {
+			queue.Items[i].Rationale = "Chef steer: " + prompt
+		}
+	}
+	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func (l *Loop) trimQueueForAdoptedTargets() error {
+	if len(l.adoptedTargets) == 0 {
+		return nil
+	}
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return err
+	}
+	filtered := make([]QueueItem, 0, len(queue.Items))
+	for _, item := range queue.Items {
+		if _, adopted := l.adoptedTargets[item.ID]; adopted {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	queue.Items = filtered
+	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+var promptItemRegexp = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
+
+func readSessionTarget(promptPath string) string {
+	data, err := os.ReadFile(promptPath)
+	if err != nil {
+		return ""
+	}
+	matches := promptItemRegexp.FindStringSubmatch(string(data))
+	if len(matches) != 2 {
+		return ""
+	}
+	return strings.TrimSpace(matches[1])
+}
+
+func (l *Loop) refreshAdoptedTargets() {
+	if len(l.adoptedTargets) == 0 {
+		return
+	}
+	alive := map[string]struct{}{}
+	for _, name := range listTmuxSessions() {
+		alive[name] = struct{}{}
+	}
+	nextTargets := make(map[string]string, len(l.adoptedTargets))
+	nextSessions := make([]string, 0, len(l.adoptedTargets))
+	for target, sessionID := range l.adoptedTargets {
+		metaPath := filepath.Join(l.runtimeDir, "sessions", sessionID, "meta.json")
+		data, err := os.ReadFile(metaPath)
+		if err != nil {
+			continue
+		}
+		if !strings.Contains(string(data), `"status":"running"`) {
+			continue
+		}
+		if _, ok := alive[tmuxSessionName(sessionID)]; !ok {
+			continue
+		}
+		nextTargets[target] = sessionID
+		nextSessions = append(nextSessions, sessionID)
+	}
+	l.adoptedTargets = nextTargets
+	l.adoptedSessions = nextSessions
+}
+
+func tmuxSessionName(sessionID string) string {
+	return "noodle-" + sanitizeSessionToken(sessionID, "cook")
+}
+
+func sanitizeSessionToken(value string, fallback string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		value = fallback
+	}
+	var out strings.Builder
+	lastHyphen := false
+	for _, r := range value {
+		isAlphaNum := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+		if isAlphaNum {
+			out.WriteRune(r)
+			lastHyphen = false
+			continue
+		}
+		if !lastHyphen {
+			out.WriteByte('-')
+			lastHyphen = true
+		}
+	}
+	result := strings.Trim(out.String(), "-")
+	if result == "" {
+		result = fallback
+	}
+	if len(result) > 48 {
+		result = strings.Trim(result[:48], "-")
+	}
+	if result == "" {
+		return fallback
+	}
+	return result
+}
+
+type tasterVerdict struct {
+	Accept   bool   `json:"accept"`
+	Feedback string `json:"feedback,omitempty"`
+}
+
+var verdictJSONRegexp = regexp.MustCompile(`\{[^{}]*"accept"\s*:\s*(true|false)[^{}]*\}`)
+
+func readTasterVerdict(path string) (tasterVerdict, bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return tasterVerdict{}, false, nil
+		}
+		return tasterVerdict{}, false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var event parse.CanonicalEvent
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			continue
+		}
+		verdict, found := verdictFromText(event.Message)
+		if found {
+			return verdict, true, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return tasterVerdict{}, false, err
+	}
+	return tasterVerdict{}, false, nil
+}
+
+func verdictFromText(text string) (tasterVerdict, bool) {
+	match := verdictJSONRegexp.FindString(text)
+	if match == "" {
+		return tasterVerdict{}, false
+	}
+	var verdict tasterVerdict
+	if err := json.Unmarshal([]byte(match), &verdict); err != nil {
+		return tasterVerdict{}, false
+	}
+	return verdict, true
+}
+
+func (l *Loop) writeDebateVerdict(cook *activeCook, accept bool, feedback string) error {
+	store, err := debate.NewStore(filepath.Join(l.projectDir, "brain", "debates"))
+	if err != nil {
+		return err
+	}
+	d, err := store.Create("cook-"+cook.queueItem.ID, 6)
+	if err != nil {
+		return err
+	}
+	if _, err := store.AddRound(d, "reviewer", "Taster review for item "+cook.queueItem.ID); err != nil {
+		return err
+	}
+	return store.WriteVerdict(d, debate.Verdict{Consensus: accept, Summary: strings.TrimSpace(feedback)})
 }
