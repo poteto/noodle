@@ -219,12 +219,14 @@ func (l *Loop) advanceRuntimeRepair(ctx context.Context) error {
 	}
 
 	retryIssue := inFlight.Issue
-	retryIssue.Message = fmt.Sprintf(
-		"%s; repair session %s ended with status %s",
-		nonEmpty(strings.TrimSpace(retryIssue.Message), "runtime issue"),
-		nonEmpty(strings.TrimSpace(inFlight.SessionID), "unknown-session"),
-		nonEmpty(status, "unknown"),
-	)
+	retryIssue.Stack = strings.TrimSpace(strings.Join([]string{
+		strings.TrimSpace(retryIssue.Stack),
+		fmt.Sprintf(
+			"repair session %s ended with status %s",
+			nonEmpty(strings.TrimSpace(inFlight.SessionID), "unknown-session"),
+			nonEmpty(status, "unknown"),
+		),
+	}, "\n"))
 	return l.ensureRuntimeRepair(ctx, retryIssue)
 }
 
