@@ -5,46 +5,46 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/internal/testutil/fixturemd"
 	"github.com/poteto/noodle/parse"
 )
 
 func TestProcessorMarkdownFixtures(t *testing.T) {
-	paths, err := filepath.Glob(filepath.Join("testdata", "*.fixture.md"))
-	if err != nil {
-		t.Fatalf("glob fixtures: %v", err)
-	}
-	sort.Strings(paths)
-	if len(paths) == 0 {
-		t.Fatal("no stamp fixtures found")
-	}
+	paths := fixturemd.Paths(t, "testdata")
 
 	for _, fixturePath := range paths {
 		fixturePath := fixturePath
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
+			expectError := fixturemd.IsErrorFixture(fixturePath)
 			processor := NewProcessor()
 			processor.Now = func() time.Time {
 				return time.Date(2026, 2, 22, 18, 20, 0, 0, time.UTC)
 			}
 
-			input := []byte(strings.Join(readFixtureBlockLines(t, fixturePath, "Input"), "\n") + "\n")
+			input := []byte(strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Input"), "\n") + "\n")
 			var stampedOut bytes.Buffer
 			var eventsOut bytes.Buffer
-			if err := processor.Process(context.Background(), bytes.NewReader(input), &stampedOut, &eventsOut); err != nil {
+			err := processor.Process(context.Background(), bytes.NewReader(input), &stampedOut, &eventsOut)
+			if expectError {
+				if err == nil {
+					t.Fatalf("expected processor error for fixture %s", filepath.Base(fixturePath))
+				}
+				return
+			}
+			if err != nil {
 				t.Fatalf("process fixture input: %v", err)
 			}
 
 			actualStamped := readJSONObjects(t, stampedOut.Bytes())
 			expectedStamped := readJSONObjects(
 				t,
-				[]byte(strings.Join(readFixtureBlockLines(t, fixturePath, "Expected Stamped"), "\n")+"\n"),
+				[]byte(strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected Stamped"), "\n")+"\n"),
 			)
 			if !reflect.DeepEqual(actualStamped, expectedStamped) {
 				t.Fatalf("stamped fixture mismatch\nactual:   %#v\nexpected: %#v", actualStamped, expectedStamped)
@@ -53,7 +53,7 @@ func TestProcessorMarkdownFixtures(t *testing.T) {
 			actualEvents := readCanonicalEvents(t, eventsOut.Bytes())
 			expectedEvents := readCanonicalEvents(
 				t,
-				[]byte(strings.Join(readFixtureBlockLines(t, fixturePath, "Expected Events"), "\n")+"\n"),
+				[]byte(strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected Events"), "\n")+"\n"),
 			)
 			if !reflect.DeepEqual(actualEvents, expectedEvents) {
 				t.Fatalf("events fixture mismatch\nactual:   %#v\nexpected: %#v", actualEvents, expectedEvents)
@@ -105,51 +105,6 @@ func readNonEmptyLines(t *testing.T, data []byte) []string {
 	}
 	if err := scanner.Err(); err != nil {
 		t.Fatalf("scan fixture lines: %v", err)
-	}
-	return lines
-}
-
-func readFixtureBlockLines(t *testing.T, fixturePath, section string) []string {
-	t.Helper()
-
-	file, err := os.Open(fixturePath)
-	if err != nil {
-		t.Fatalf("open %s: %v", fixturePath, err)
-	}
-	defer file.Close()
-
-	heading := "## " + section
-	insideSection := false
-	insideFence := false
-
-	lines := make([]string, 0)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmed, "## ") {
-			insideSection = trimmed == heading
-			insideFence = false
-			continue
-		}
-		if !insideSection {
-			continue
-		}
-		if strings.HasPrefix(trimmed, "```") {
-			insideFence = !insideFence
-			continue
-		}
-		if !insideFence || trimmed == "" {
-			continue
-		}
-		lines = append(lines, line)
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatalf("scan %s: %v", fixturePath, err)
-	}
-	if len(lines) == 0 {
-		t.Fatalf("no fixture lines found in %s section %q", fixturePath, section)
 	}
 	return lines
 }

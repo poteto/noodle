@@ -1,44 +1,55 @@
 package parse
 
 import (
-	"bufio"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
+
+	"github.com/poteto/noodle/internal/testutil/fixturemd"
 )
 
 func TestMarkdownFixtures(t *testing.T) {
 	t.Helper()
 
-	paths, err := filepath.Glob(filepath.Join("testdata", "*.fixture.md"))
-	if err != nil {
-		t.Fatalf("glob fixtures: %v", err)
-	}
-	sort.Strings(paths)
-	if len(paths) == 0 {
-		t.Fatal("no parse fixtures found")
-	}
+	paths := fixturemd.Paths(t, "testdata")
 
 	for _, fixturePath := range paths {
 		fixturePath := fixturePath
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
 			adapter := adapterForFixture(t, fixturePath)
-			inputLines := readFixtureBlockLines(t, fixturePath, "Input")
-			expectedEvents := parseCanonicalEvents(t, readFixtureBlockLines(t, fixturePath, "Expected Events"))
+			inputLines := fixturemd.ReadSectionLines(t, fixturePath, "Input")
+			expectError := fixturemd.IsErrorFixture(fixturePath)
+
+			expectedEvents := make([]CanonicalEvent, 0)
+			if !expectError {
+				expectedEvents = parseCanonicalEvents(
+					t,
+					fixturemd.ReadSectionLines(t, fixturePath, "Expected Events"),
+				)
+			}
 
 			actualEvents := make([]CanonicalEvent, 0)
+			var parseErr error
 			for _, line := range inputLines {
 				events, err := adapter.Parse([]byte(line))
 				if err != nil {
-					t.Fatalf("parse fixture line %q: %v", line, err)
+					parseErr = err
+					break
 				}
 				actualEvents = append(actualEvents, events...)
 			}
 
+			if expectError {
+				if parseErr == nil {
+					t.Fatalf("expected parse error for fixture %s", filepath.Base(fixturePath))
+				}
+				return
+			}
+			if parseErr != nil {
+				t.Fatalf("parse fixture failed: %v", parseErr)
+			}
 			if !reflect.DeepEqual(actualEvents, expectedEvents) {
 				t.Fatalf("fixture mismatch\nactual:   %#v\nexpected: %#v", actualEvents, expectedEvents)
 			}
@@ -73,52 +84,4 @@ func parseCanonicalEvents(t *testing.T, lines []string) []CanonicalEvent {
 		events = append(events, event)
 	}
 	return events
-}
-
-func readFixtureBlockLines(t *testing.T, fixturePath, section string) []string {
-	t.Helper()
-
-	file, err := os.Open(fixturePath)
-	if err != nil {
-		t.Fatalf("open %s: %v", fixturePath, err)
-	}
-	defer file.Close()
-
-	heading := "## " + section
-	insideSection := false
-	insideFence := false
-
-	lines := make([]string, 0)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmed, "## ") {
-			insideSection = trimmed == heading
-			insideFence = false
-			continue
-		}
-
-		if !insideSection {
-			continue
-		}
-
-		if strings.HasPrefix(trimmed, "```") {
-			insideFence = !insideFence
-			continue
-		}
-		if !insideFence || trimmed == "" {
-			continue
-		}
-
-		lines = append(lines, line)
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatalf("scan %s: %v", fixturePath, err)
-	}
-	if len(lines) == 0 {
-		t.Fatalf("no fixture lines found in %s section %q", fixturePath, section)
-	}
-	return lines
 }
