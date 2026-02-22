@@ -251,7 +251,7 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 			return err
 		}
 	}
-	return nil
+	return l.collectAdoptedCompletions(ctx)
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
@@ -272,9 +272,134 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 				return err
 			}
 		}
+		if err := l.skipQueueItem(cook.queueItem.ID); err != nil {
+			return err
+		}
 		return nil
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
+}
+
+func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
+	for targetID, sessionID := range l.adoptedTargets {
+		status, ok, err := l.readSessionStatus(sessionID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		switch status {
+		case "running", "stuck", "spawning":
+			continue
+		}
+		cook, processable, err := l.buildAdoptedCook(targetID, sessionID, status)
+		if err != nil {
+			return err
+		}
+		if !processable {
+			l.dropAdoptedTarget(targetID, sessionID)
+			continue
+		}
+		if err := l.handleCompletion(ctx, cook); err != nil {
+			return err
+		}
+		l.dropAdoptedTarget(targetID, sessionID)
+	}
+	return nil
+}
+
+func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
+	metaPath := filepath.Join(l.runtimeDir, "sessions", sessionID, "meta.json")
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	var payload struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return "", false, err
+	}
+	return strings.ToLower(strings.TrimSpace(payload.Status)), true, nil
+}
+
+func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*activeCook, bool, error) {
+	item, found, err := l.lookupQueueItem(targetID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !found {
+		return nil, false, nil
+	}
+	reviewEnabled := l.config.Review.Enabled
+	if item.Review != nil {
+		reviewEnabled = *item.Review
+	}
+	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, targetID)
+	return &activeCook{
+		queueItem: item,
+		session: &adoptedSession{
+			id:     sessionID,
+			status: status,
+		},
+		worktreeName:  worktreeName,
+		worktreePath:  worktreePath,
+		attempt:       recover.RecoveryChainLength(worktreeName),
+		reviewEnabled: reviewEnabled,
+	}, true, nil
+}
+
+func (l *Loop) lookupQueueItem(targetID string) (QueueItem, bool, error) {
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return QueueItem{}, false, err
+	}
+	for _, item := range queue.Items {
+		if item.ID == targetID {
+			return item, true, nil
+		}
+	}
+	return QueueItem{}, false, nil
+}
+
+func (l *Loop) readAdoptedWorktree(sessionID string, targetID string) (string, string) {
+	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
+	worktreePath := ""
+	data, err := os.ReadFile(path)
+	if err == nil {
+		var payload struct {
+			WorktreePath string `json:"worktree_path"`
+		}
+		if jsonErr := json.Unmarshal(data, &payload); jsonErr == nil {
+			worktreePath = strings.TrimSpace(payload.WorktreePath)
+		}
+	}
+	if worktreePath == "" {
+		name := sanitizeName(targetID)
+		return name, filepath.Join(l.projectDir, ".worktrees", name)
+	}
+	name := filepath.Base(worktreePath)
+	if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
+		name = sanitizeName(targetID)
+		worktreePath = filepath.Join(l.projectDir, ".worktrees", name)
+	}
+	return name, worktreePath
+}
+
+func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
+	delete(l.adoptedTargets, targetID)
+	filtered := l.adoptedSessions[:0]
+	for _, id := range l.adoptedSessions {
+		if id == sessionID {
+			continue
+		}
+		filtered = append(filtered, id)
+	}
+	l.adoptedSessions = filtered
 }
 
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
@@ -570,25 +695,6 @@ func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }
 
-func (l *Loop) trimQueueForAdoptedTargets() error {
-	if len(l.adoptedTargets) == 0 {
-		return nil
-	}
-	queue, err := readQueue(l.deps.QueueFile)
-	if err != nil {
-		return err
-	}
-	filtered := make([]QueueItem, 0, len(queue.Items))
-	for _, item := range queue.Items {
-		if _, adopted := l.adoptedTargets[item.ID]; adopted {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	queue.Items = filtered
-	return writeQueueAtomic(l.deps.QueueFile, queue)
-}
-
 var promptItemRegexp = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
 
 func readSessionTarget(promptPath string) string {
@@ -634,6 +740,39 @@ func (l *Loop) refreshAdoptedTargets() {
 
 func tmuxSessionName(sessionID string) string {
 	return "noodle-" + sanitizeSessionToken(sessionID, "cook")
+}
+
+type adoptedSession struct {
+	id     string
+	status string
+}
+
+func (s *adoptedSession) ID() string {
+	return s.id
+}
+
+func (s *adoptedSession) Status() string {
+	return s.status
+}
+
+func (s *adoptedSession) Events() <-chan spawner.SessionEvent {
+	ch := make(chan spawner.SessionEvent)
+	close(ch)
+	return ch
+}
+
+func (s *adoptedSession) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
+func (s *adoptedSession) TotalCost() float64 {
+	return 0
+}
+
+func (s *adoptedSession) Kill() error {
+	return nil
 }
 
 func sanitizeSessionToken(value string, fallback string) string {

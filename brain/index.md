@@ -36,6 +36,7 @@
 - [[delegation/specify-verification-boundary]]
 
 ## Codebase
+- [[codebase/adopted-session-reconciliation]]
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]

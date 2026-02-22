@@ -166,6 +166,13 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
 		t.Fatalf("backlog done calls = %#v", ar.doneCalls)
 	}
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue after completion: %v", err)
+	}
+	if len(updated.Items) != 0 {
+		t.Fatalf("expected completed queue item to be removed, got %#v", updated.Items)
+	}
 }
 
 func TestProcessControlCommandsPauseAndAck(t *testing.T) {
@@ -391,5 +398,77 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	}
 	if len(l.adoptedTargets) != 0 {
 		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
+	}
+}
+
+func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	sessionID := "adopted-session"
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", sessionID), 0o755); err != nil {
+		t.Fatalf("mkdir session: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(runtimeDir, "sessions", sessionID, "meta.json"),
+		[]byte(`{"status":"completed"}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write meta: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(runtimeDir, "sessions", sessionID, "prompt.txt"),
+		[]byte("Work backlog item 42\n"),
+		0o644,
+	); err != nil {
+		t.Fatalf("write prompt: %v", err)
+	}
+	worktreePath := filepath.Join(projectDir, ".worktrees", "42")
+	if err := os.WriteFile(
+		filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json"),
+		[]byte(`{"worktree_path":"`+worktreePath+`"}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
+	}
+
+	review := false
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	wt := &fakeWorktree{}
+	ar := &fakeAdapterRunner{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   &fakeSpawner{},
+		Worktree:  wt,
+		Adapter:   ar,
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	l.adoptedTargets = map[string]string{"42": sessionID}
+	l.adoptedSessions = []string{sessionID}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(wt.merged) != 1 || wt.merged[0] != "42" {
+		t.Fatalf("unexpected merged worktrees: %#v", wt.merged)
+	}
+	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
+		t.Fatalf("unexpected done calls: %#v", ar.doneCalls)
+	}
+	if len(l.adoptedTargets) != 0 {
+		t.Fatalf("expected adopted targets to be cleared, got %#v", l.adoptedTargets)
+	}
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue after adopted completion: %v", err)
+	}
+	if len(updated.Items) != 0 {
+		t.Fatalf("expected queue to be empty after adopted completion, got %#v", updated.Items)
 	}
 }
