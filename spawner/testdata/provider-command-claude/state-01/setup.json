@@ -1,0 +1,15 @@
+{
+  "request": {
+    "name": "cook-a",
+    "prompt": "Say ok",
+    "provider": "claude",
+    "model": "claude-sonnet-4-6",
+    "reasoninglevel": "medium",
+    "maxturns": 5,
+    "budgetcap": 2.5,
+    "worktreepath": ".worktrees/phase-06-spawner"
+  },
+  "prompt_file": "/tmp/prompt.txt",
+  "agent_binary": "claude",
+  "system_prompt": "skill-system"
+}

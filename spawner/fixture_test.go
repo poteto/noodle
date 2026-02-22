@@ -2,11 +2,11 @@ package spawner
 
 import (
 	"encoding/json"
-	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/poteto/noodle/internal/testutil/fixturemd"
+	"github.com/poteto/noodle/internal/testutil/fixturedir"
 )
 
 type providerCommandFixtureSetup struct {
@@ -21,16 +21,17 @@ type providerCommandFixtureExpected struct {
 	Omits    []string `json:"omits"`
 }
 
-func TestBuildProviderCommandMarkdownFixtures(t *testing.T) {
-	paths := fixturemd.Paths(t, "testdata")
-	for _, fixturePath := range paths {
-		if !strings.HasPrefix(filepath.Base(fixturePath), "provider-command-") {
+func TestBuildProviderCommandDirectoryFixtures(t *testing.T) {
+	fixturedir.AssertValidFixtureRoot(t, "testdata")
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	for _, fixtureCase := range inventory.Cases {
+		if !strings.HasPrefix(fixtureCase.Name, "provider-command-") {
 			continue
 		}
-		fixturePath := fixturePath
-		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
-			setup := parseProviderCommandFixtureSetup(t, fixturePath)
-			expected := parseProviderCommandFixtureExpected(t, fixturePath)
+		fixtureCase := fixtureCase
+		t.Run(fixtureCase.Name, func(t *testing.T) {
+			setup := parseProviderCommandFixtureSetup(t, fixtureCase)
+			expected := parseProviderCommandFixtureExpected(t, fixtureCase)
 
 			command := buildProviderCommand(
 				setup.Request,
@@ -53,22 +54,33 @@ func TestBuildProviderCommandMarkdownFixtures(t *testing.T) {
 	}
 }
 
-func parseProviderCommandFixtureSetup(t *testing.T, fixturePath string) providerCommandFixtureSetup {
+func TestProviderCommandFixtureInventoryParity(t *testing.T) {
+	expected := []string{
+		"provider-command-claude",
+		"provider-command-codex",
+	}
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	if !reflect.DeepEqual(inventory.Names(), expected) {
+		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
+	}
+}
+
+func parseProviderCommandFixtureSetup(t *testing.T, fixtureCase fixturedir.FixtureCase) providerCommandFixtureSetup {
 	t.Helper()
-	raw := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Setup"), "\n")
+	raw := string(fixtureCase.States[0].MustReadFile(t, "setup.json"))
 	var setup providerCommandFixtureSetup
 	if err := json.Unmarshal([]byte(raw), &setup); err != nil {
-		t.Fatalf("parse setup fixture %s: %v", fixturePath, err)
+		t.Fatalf("parse setup fixture %s: %v", fixtureCase.Name, err)
 	}
 	return setup
 }
 
-func parseProviderCommandFixtureExpected(t *testing.T, fixturePath string) providerCommandFixtureExpected {
+func parseProviderCommandFixtureExpected(t *testing.T, fixtureCase fixturedir.FixtureCase) providerCommandFixtureExpected {
 	t.Helper()
-	raw := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected"), "\n")
+	raw := fixturedir.MustSection(t, fixtureCase, "Expected")
 	var expected providerCommandFixtureExpected
 	if err := json.Unmarshal([]byte(raw), &expected); err != nil {
-		t.Fatalf("parse expected fixture %s: %v", fixturePath, err)
+		t.Fatalf("parse expected fixture %s: %v", fixtureCase.Name, err)
 	}
 	return expected
 }

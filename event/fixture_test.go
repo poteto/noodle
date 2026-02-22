@@ -3,51 +3,40 @@ package event
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/poteto/noodle/internal/testutil/fixturedir"
 )
 
-func TestTicketMaterializerMarkdownFixtures(t *testing.T) {
-	paths, err := filepath.Glob(filepath.Join("testdata", "*.fixture.md"))
-	if err != nil {
-		t.Fatalf("glob fixtures: %v", err)
-	}
-	if len(paths) == 0 {
-		t.Fatal("no fixture files found")
-	}
-	sort.Strings(paths)
-
-	for _, path := range paths {
-		path := path
-		t.Run(filepath.Base(path), func(t *testing.T) {
-			runTicketFixture(t, path)
+func TestTicketMaterializerDirectoryFixtures(t *testing.T) {
+	fixturedir.AssertValidFixtureRoot(t, "testdata")
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	for _, fixtureCase := range inventory.Cases {
+		fixtureCase := fixtureCase
+		t.Run(fixtureCase.Name, func(t *testing.T) {
+			runTicketFixture(t, fixtureCase)
 		})
 	}
 }
 
-func runTicketFixture(t *testing.T, path string) {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
+func TestTicketFixtureInventoryParity(t *testing.T) {
+	expected := []string{"tickets"}
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	if !reflect.DeepEqual(inventory.Names(), expected) {
+		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
 	}
-	content := string(data)
+}
 
-	sessionsBlock := extractFencedBlockForSection(content, "Sessions")
-	optionsBlock := extractFencedBlockForSection(content, "Options")
-	expectedBlock := extractFencedBlockForSection(content, "Expected Tickets")
-	if sessionsBlock == "" || optionsBlock == "" || expectedBlock == "" {
-		t.Fatalf("fixture %s is missing required sections", path)
-	}
+func runTicketFixture(t *testing.T, fixtureCase fixturedir.FixtureCase) {
+	t.Helper()
+	state := fixtureCase.States[0]
 
 	var sessions map[string][]Event
-	if err := json.Unmarshal([]byte(sessionsBlock), &sessions); err != nil {
-		t.Fatalf("decode sessions block: %v", err)
+	if err := json.Unmarshal(state.MustReadFile(t, "sessions.json"), &sessions); err != nil {
+		t.Fatalf("decode sessions fixture: %v", err)
 	}
 
 	var options struct {
@@ -55,16 +44,17 @@ func runTicketFixture(t *testing.T, path string) {
 		Timeout        string    `json:"timeout"`
 		ActiveSessions []string  `json:"active_sessions"`
 	}
-	if err := json.Unmarshal([]byte(optionsBlock), &options); err != nil {
-		t.Fatalf("decode options block: %v", err)
+	if err := json.Unmarshal(state.MustReadFile(t, "options.json"), &options); err != nil {
+		t.Fatalf("decode options fixture: %v", err)
 	}
 	timeout, err := time.ParseDuration(options.Timeout)
 	if err != nil {
 		t.Fatalf("parse timeout %q: %v", options.Timeout, err)
 	}
 
+	expectedRaw := fixturedir.MustSection(t, fixtureCase, "Expected Tickets")
 	var expected []Ticket
-	if err := json.Unmarshal([]byte(expectedBlock), &expected); err != nil {
+	if err := json.Unmarshal([]byte(expectedRaw), &expected); err != nil {
 		t.Fatalf("decode expected tickets: %v", err)
 	}
 
@@ -96,29 +86,4 @@ func runTicketFixture(t *testing.T, path string) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("fixture mismatch\nactual:   %#v\nexpected: %#v", actual, expected)
 	}
-}
-
-func extractFencedBlockForSection(content, section string) string {
-	needle := "## " + section
-	idx := strings.Index(content, needle)
-	if idx < 0 {
-		return ""
-	}
-	return extractFencedBlock(content[idx:])
-}
-
-func extractFencedBlock(content string) string {
-	start := strings.Index(content, "```")
-	if start < 0 {
-		return ""
-	}
-	rest := content[start+3:]
-	if newline := strings.Index(rest, "\n"); newline >= 0 {
-		rest = rest[newline+1:]
-	}
-	end := strings.Index(rest, "```")
-	if end < 0 {
-		return ""
-	}
-	return strings.TrimSpace(rest[:end])
 }
