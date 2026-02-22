@@ -1,4 +1,4 @@
-# Loop Fixture: Runtime Repair Exits Before Completion
+# Loop Fixture: Runtime Repair Spawn Fatal (Error-Named Fixture)
 
 ## Setup
 ```json
@@ -6,27 +6,16 @@
   "queue_items": [],
   "mise_results": [
     {
-      "warnings": [
-        "backlog sync script missing; returning empty backlog"
-      ]
+      "error": "plans sync failed"
     }
   ],
-  "cycle_inputs": [
-    {
-      "runtime_repair_session_status": "exited"
-    }
-  ]
+  "spawner_error": "agent unavailable"
 }
 ```
 
 ## Expected
 ```json
 {
-  "step_errors": [
-    {
-      "contains": "exited before completion"
-    }
-  ],
   "actions": {
     "repair_task_scheduled": true,
     "normal_task_scheduled": false
@@ -36,7 +25,6 @@
     "paused": true
   },
   "transitions": [
-    "paused",
     "paused"
   ],
   "counts": {
@@ -44,6 +32,9 @@
     "runtime_repair_spawn_calls": { "eq": 1 },
     "normal_spawn_calls": { "eq": 0 },
     "created_worktrees": { "eq": 1 }
+  },
+  "routing": {
+    "runtime_repair_name": { "prefix": "repair-runtime-" }
   }
 }
 ```
@@ -52,6 +43,6 @@
 
 ```json
 {
-  "absent": true
+  "contains": "runtime repair unavailable"
 }
 ```

@@ -2,8 +2,8 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,14 +14,24 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/testutil/fixturemd"
 	"github.com/poteto/noodle/mise"
+	"github.com/poteto/noodle/spawner"
 )
 
 type loopFixtureSetup struct {
-	QueueItems                             []QueueItem          `json:"queue_items"`
-	MiseResults                            []loopFixtureMiseRun `json:"mise_results"`
-	SpawnerError                           string               `json:"spawner_error"`
-	RunningRuntimeRepairSessionID          string               `json:"running_runtime_repair_session_id"`
-	CompleteRuntimeRepairSessionWithStatus string               `json:"complete_runtime_repair_session_with_status"`
+	QueueItems                    []QueueItem             `json:"queue_items"`
+	MiseResults                   []loopFixtureMiseRun    `json:"mise_results"`
+	SpawnerError                  string                  `json:"spawner_error"`
+	ExtraCycles                   int                     `json:"extra_cycles"`
+	CycleInputs                   []loopFixtureCycleInput `json:"cycle_inputs"`
+	Phases                        map[string]string       `json:"phases"`
+	RoutingProvider               string                  `json:"routing_provider"`
+	RoutingModel                  string                  `json:"routing_model"`
+	RunningRuntimeRepairSessionID string                  `json:"running_runtime_repair_session_id"`
+}
+
+type loopFixtureCycleInput struct {
+	RuntimeRepairSessionStatus string `json:"runtime_repair_session_status"`
+	RuntimeRepairSessionIndex  *int   `json:"runtime_repair_session_index"`
 }
 
 type loopFixtureMiseRun struct {
@@ -31,13 +41,14 @@ type loopFixtureMiseRun struct {
 }
 
 type loopFixtureExpected struct {
-	SpawnCalls               int    `json:"spawn_calls"`
-	FirstSpawnName           string `json:"first_spawn_name"`
-	FirstSpawnNamePrefix     string `json:"first_spawn_name_prefix"`
-	CreatedWorktrees         int    `json:"created_worktrees"`
-	RuntimeRepairInFlight    *bool  `json:"runtime_repair_in_flight"`
-	FirstCycleErrorContains  string `json:"first_cycle_error_contains"`
-	SecondCycleErrorContains string `json:"second_cycle_error_contains"`
+	StepErrors  []fixturemd.ErrorExpectation           `json:"step_errors"`
+	Actions     map[string]bool                        `json:"actions"`
+	State       map[string]bool                        `json:"state"`
+	Transitions []string                               `json:"transitions"`
+	Counts      map[string]fixturemd.CountExpectation  `json:"counts"`
+	Absence     map[string]bool                        `json:"absence"`
+	Routing     map[string]fixturemd.StringExpectation `json:"routing"`
+	Idempotence map[string]bool                        `json:"idempotence"`
 }
 
 func TestLoopMarkdownFixtures(t *testing.T) {
@@ -46,9 +57,8 @@ func TestLoopMarkdownFixtures(t *testing.T) {
 	for _, fixturePath := range paths {
 		fixturePath := fixturePath
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
-			expectErrorFixture := fixturemd.IsErrorFixture(fixturePath)
-			setup := parseLoopFixtureSetup(t, fixturePath)
-			expected := parseLoopFixtureExpected(t, fixturePath)
+			setup := fixturemd.ParseSectionJSON[loopFixtureSetup](t, fixturePath, "Setup")
+			expected := fixturemd.ParseSectionJSON[loopFixtureExpected](t, fixturePath, "Expected")
 
 			projectDir := t.TempDir()
 			runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -92,6 +102,19 @@ func TestLoopMarkdownFixtures(t *testing.T) {
 			}
 
 			wt := &fakeWorktree{}
+			cfg := config.DefaultConfig()
+			if len(setup.Phases) > 0 {
+				for key, value := range setup.Phases {
+					cfg.Phases[strings.TrimSpace(key)] = value
+				}
+			}
+			if value := strings.TrimSpace(setup.RoutingProvider); value != "" {
+				cfg.Routing.Defaults.Provider = value
+			}
+			if value := strings.TrimSpace(setup.RoutingModel); value != "" {
+				cfg.Routing.Defaults.Model = value
+			}
+
 			l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 				Spawner:   sp,
 				Worktree:  wt,
@@ -101,94 +124,142 @@ func TestLoopMarkdownFixtures(t *testing.T) {
 				Now:       time.Now,
 				QueueFile: queuePath,
 			})
+			l.config = cfg
+
+			stateTransitions := make([]string, 0, 1+len(setup.CycleInputs)+setup.ExtraCycles)
 
 			firstErr := l.Cycle(context.Background())
-			if expectErrorFixture && strings.TrimSpace(expected.FirstCycleErrorContains) == "" {
-				if firstErr == nil {
-					t.Fatalf("first cycle expected an error for fixture %s", filepath.Base(fixturePath))
-				}
-			} else {
-				assertLoopFixtureError(t, "first cycle", firstErr, expected.FirstCycleErrorContains)
-			}
+			stateTransitions = append(stateTransitions, strings.ToLower(string(l.state)))
+			fixturemd.AssertError(t, "first cycle", firstErr, fixturemd.ExpectedError(t, fixturePath))
 
-			runSecondCycle := strings.TrimSpace(setup.CompleteRuntimeRepairSessionWithStatus) != "" ||
-				strings.TrimSpace(expected.SecondCycleErrorContains) != ""
-			if runSecondCycle {
-				if len(sp.sessions) == 0 {
-					t.Fatal("fixture expected a spawned runtime repair session before second cycle")
+			for index, input := range setup.CycleInputs {
+				sessionIndex := index
+				if input.RuntimeRepairSessionIndex != nil {
+					sessionIndex = *input.RuntimeRepairSessionIndex
 				}
-				status := strings.TrimSpace(setup.CompleteRuntimeRepairSessionWithStatus)
-				if status == "" {
-					status = "completed"
+				status := strings.TrimSpace(input.RuntimeRepairSessionStatus)
+				if status != "" {
+					if sessionIndex >= len(sp.sessions) {
+						t.Fatalf("missing runtime repair session at index %d for status %q", sessionIndex, status)
+					}
+					sp.sessions[sessionIndex].status = status
+					select {
+					case <-sp.sessions[sessionIndex].done:
+					default:
+						close(sp.sessions[sessionIndex].done)
+					}
 				}
-				sp.sessions[0].status = status
-				select {
-				case <-sp.sessions[0].done:
-				default:
-					close(sp.sessions[0].done)
-				}
-				secondErr := l.Cycle(context.Background())
-				assertLoopFixtureError(t, "second cycle", secondErr, expected.SecondCycleErrorContains)
-			}
 
-			if len(sp.calls) != expected.SpawnCalls {
-				t.Fatalf("spawn calls = %d, want %d", len(sp.calls), expected.SpawnCalls)
-			}
-			if len(wt.created) != expected.CreatedWorktrees {
-				t.Fatalf("created worktrees = %d, want %d", len(wt.created), expected.CreatedWorktrees)
-			}
-			if expected.SpawnCalls > 0 {
-				firstName := sp.calls[0].Name
-				if expected.FirstSpawnName != "" && firstName != expected.FirstSpawnName {
-					t.Fatalf("first spawn name = %q, want %q", firstName, expected.FirstSpawnName)
-				}
-				if expected.FirstSpawnNamePrefix != "" && !strings.HasPrefix(firstName, expected.FirstSpawnNamePrefix) {
-					t.Fatalf("first spawn name = %q, want prefix %q", firstName, expected.FirstSpawnNamePrefix)
-				}
-			}
-			if expected.RuntimeRepairInFlight != nil {
-				got := l.runtimeRepairInFlight != nil
-				if got != *expected.RuntimeRepairInFlight {
-					t.Fatalf("runtimeRepairInFlight = %v, want %v", got, *expected.RuntimeRepairInFlight)
+				err := l.Cycle(context.Background())
+				stateTransitions = append(stateTransitions, strings.ToLower(string(l.state)))
+				if index < len(expected.StepErrors) {
+					stepExpectation := expected.StepErrors[index]
+					fixturemd.AssertError(t, fmt.Sprintf("step cycle %d", index+2), err, &stepExpectation)
+				} else {
+					fixturemd.AssertError(t, fmt.Sprintf("step cycle %d", index+2), err, nil)
 				}
 			}
 
+			spawnsBeforeExtra := len(sp.calls)
+			repairsBeforeExtra := len(runtimeRepairCalls(sp.calls))
+			for i := 0; i < setup.ExtraCycles; i++ {
+				err := l.Cycle(context.Background())
+				fixturemd.AssertError(t, fmt.Sprintf("extra cycle %d", i+1), err, nil)
+				stateTransitions = append(stateTransitions, strings.ToLower(string(l.state)))
+			}
+
+			repairCalls := runtimeRepairCalls(sp.calls)
+			normalCalls := normalSpawnCalls(sp.calls)
+			firstSpawn := spawner.SpawnRequest{}
+			if len(sp.calls) > 0 {
+				firstSpawn = sp.calls[0]
+			}
+			firstRepair := spawner.SpawnRequest{}
+			if len(repairCalls) > 0 {
+				firstRepair = repairCalls[0]
+			}
+
+			if len(expected.Transitions) > 0 {
+				fixturemd.AssertSequence(t, "transitions", stateTransitions, expected.Transitions)
+			}
+			if len(expected.Actions) > 0 {
+				fixturemd.AssertBools(t, "actions", map[string]bool{
+					"repair_task_scheduled": len(repairCalls) > 0,
+					"oops_task_scheduled":   hasSkill(repairCalls, "oops"),
+					"normal_task_scheduled": len(normalCalls) > 0,
+				}, expected.Actions)
+			}
+			if len(expected.State) > 0 {
+				fixturemd.AssertBools(t, "state", map[string]bool{
+					"runtime_repair_in_flight": l.runtimeRepairInFlight != nil,
+					"running":                  l.state == StateRunning,
+					"paused":                   l.state == StatePaused,
+					"draining":                 l.state == StateDraining,
+				}, expected.State)
+			}
+			if len(expected.Counts) > 0 {
+				fixturemd.AssertCounts(t, "counts", map[string]int{
+					"spawn_calls":                len(sp.calls),
+					"runtime_repair_spawn_calls": len(repairCalls),
+					"normal_spawn_calls":         len(normalCalls),
+					"created_worktrees":          len(wt.created),
+				}, expected.Counts)
+			}
+			if len(expected.Absence) > 0 {
+				fixturemd.AssertBools(t, "absence", map[string]bool{
+					"repair_task_scheduled": len(repairCalls) == 0,
+					"oops_task_scheduled":   !hasSkill(repairCalls, "oops"),
+					"normal_task_scheduled": len(normalCalls) == 0,
+				}, expected.Absence)
+			}
+			if len(expected.Routing) > 0 {
+				fixturemd.AssertStrings(t, "routing", map[string]string{
+					"first_spawn_name":        firstSpawn.Name,
+					"first_spawn_skill":       firstSpawn.Skill,
+					"first_spawn_provider":    firstSpawn.Provider,
+					"first_spawn_model":       firstSpawn.Model,
+					"runtime_repair_name":     firstRepair.Name,
+					"runtime_repair_skill":    firstRepair.Skill,
+					"runtime_repair_provider": firstRepair.Provider,
+					"runtime_repair_model":    firstRepair.Model,
+					"runtime_repair_prompt":   firstRepair.Prompt,
+				}, expected.Routing)
+			}
+			if len(expected.Idempotence) > 0 {
+				fixturemd.AssertBools(t, "idempotence", map[string]bool{
+					"no_new_spawns_on_extra_cycles":                len(sp.calls) == spawnsBeforeExtra,
+					"no_duplicate_runtime_repairs_on_extra_cycles": len(repairCalls) == repairsBeforeExtra,
+				}, expected.Idempotence)
+			}
 		})
 	}
 }
 
-func parseLoopFixtureSetup(t *testing.T, fixturePath string) loopFixtureSetup {
-	t.Helper()
-	raw := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Setup"), "\n")
-	var setup loopFixtureSetup
-	if err := json.Unmarshal([]byte(raw), &setup); err != nil {
-		t.Fatalf("parse setup fixture %s: %v", fixturePath, err)
-	}
-	return setup
-}
-
-func parseLoopFixtureExpected(t *testing.T, fixturePath string) loopFixtureExpected {
-	t.Helper()
-	raw := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected"), "\n")
-	var expected loopFixtureExpected
-	if err := json.Unmarshal([]byte(raw), &expected); err != nil {
-		t.Fatalf("parse expected fixture %s: %v", fixturePath, err)
-	}
-	return expected
-}
-
-func assertLoopFixtureError(t *testing.T, phase string, err error, wantContains string) {
-	t.Helper()
-	if strings.TrimSpace(wantContains) == "" {
-		if err != nil {
-			t.Fatalf("%s error: %v", phase, err)
+func runtimeRepairCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
+	out := make([]spawner.SpawnRequest, 0, len(calls))
+	for _, call := range calls {
+		if strings.HasPrefix(call.Name, "repair-runtime-") {
+			out = append(out, call)
 		}
-		return
 	}
-	if err == nil {
-		t.Fatalf("%s expected error containing %q", phase, wantContains)
+	return out
+}
+
+func normalSpawnCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
+	out := make([]spawner.SpawnRequest, 0, len(calls))
+	for _, call := range calls {
+		if !strings.HasPrefix(call.Name, "repair-runtime-") {
+			out = append(out, call)
+		}
 	}
-	if !strings.Contains(err.Error(), wantContains) {
-		t.Fatalf("%s error = %q, want contains %q", phase, err.Error(), wantContains)
+	return out
+}
+
+func hasSkill(calls []spawner.SpawnRequest, skill string) bool {
+	for _, call := range calls {
+		if strings.EqualFold(strings.TrimSpace(call.Skill), strings.TrimSpace(skill)) {
+			return true
+		}
 	}
+	return false
 }

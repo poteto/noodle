@@ -16,8 +16,30 @@
 ## Expected
 ```json
 {
-  "spawn_calls": 0,
-  "created_worktrees": 0,
-  "runtime_repair_in_flight": true
+  "actions": {
+    "repair_task_scheduled": false,
+    "normal_task_scheduled": false
+  },
+  "state": {
+    "runtime_repair_in_flight": true,
+    "paused": true
+  },
+  "transitions": [
+    "paused"
+  ],
+  "counts": {
+    "spawn_calls": { "eq": 0 },
+    "runtime_repair_spawn_calls": { "eq": 0 },
+    "normal_spawn_calls": { "eq": 0 },
+    "created_worktrees": { "eq": 0 }
+  }
+}
+```
+
+## Expected Error
+
+```json
+{
+  "absent": true
 }
 ```

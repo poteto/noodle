@@ -11,3 +11,8 @@
 ```ndjson
 {"type":"error","message":"Provider internal error","timestamp":"2026-02-22T19:00:00Z"}
 ```
+
+## Expected Error
+
+```json
+```

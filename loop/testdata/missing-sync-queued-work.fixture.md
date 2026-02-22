@@ -23,9 +23,35 @@
 ## Expected
 ```json
 {
-  "spawn_calls": 1,
-  "first_spawn_name": "42",
-  "created_worktrees": 1,
-  "runtime_repair_in_flight": false
+  "actions": {
+    "repair_task_scheduled": false,
+    "normal_task_scheduled": true
+  },
+  "state": {
+    "runtime_repair_in_flight": false,
+    "running": true
+  },
+  "transitions": [
+    "running"
+  ],
+  "counts": {
+    "spawn_calls": { "eq": 1 },
+    "runtime_repair_spawn_calls": { "eq": 0 },
+    "normal_spawn_calls": { "eq": 1 },
+    "created_worktrees": { "eq": 1 }
+  },
+  "routing": {
+    "first_spawn_name": { "equals": "42" },
+    "first_spawn_provider": { "equals": "claude" },
+    "first_spawn_model": { "equals": "claude-sonnet-4-6" }
+  }
+}
+```
+
+## Expected Error
+
+```json
+{
+  "absent": true
 }
 ```

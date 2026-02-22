@@ -1,4 +1,4 @@
-# Loop Fixture: Runtime Repair Exits Before Completion
+# Loop Fixture: Missing Sync + Empty Queue Uses Oops Fallback
 
 ## Setup
 ```json
@@ -11,32 +11,26 @@
       ]
     }
   ],
-  "cycle_inputs": [
-    {
-      "runtime_repair_session_status": "exited"
-    }
-  ]
+  "phases": {
+    "debugging": "",
+    "oops": "oops"
+  }
 }
 ```
 
 ## Expected
 ```json
 {
-  "step_errors": [
-    {
-      "contains": "exited before completion"
-    }
-  ],
   "actions": {
     "repair_task_scheduled": true,
+    "oops_task_scheduled": true,
     "normal_task_scheduled": false
   },
   "state": {
-    "runtime_repair_in_flight": false,
+    "runtime_repair_in_flight": true,
     "paused": true
   },
   "transitions": [
-    "paused",
     "paused"
   ],
   "counts": {
@@ -44,6 +38,11 @@
     "runtime_repair_spawn_calls": { "eq": 1 },
     "normal_spawn_calls": { "eq": 0 },
     "created_worktrees": { "eq": 1 }
+  },
+  "routing": {
+    "runtime_repair_skill": { "equals": "oops" },
+    "runtime_repair_name": { "prefix": "repair-runtime-" },
+    "runtime_repair_prompt": { "contains": "Scope: mise.sync" }
   }
 }
 ```

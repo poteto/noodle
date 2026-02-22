@@ -16,10 +16,33 @@
 ## Expected
 ```json
 {
-  "spawn_calls": 1,
-  "first_spawn_name_prefix": "repair-runtime-",
-  "created_worktrees": 1,
-  "runtime_repair_in_flight": false,
-  "first_cycle_error_contains": "runtime repair unavailable"
+  "actions": {
+    "repair_task_scheduled": true,
+    "normal_task_scheduled": false
+  },
+  "state": {
+    "runtime_repair_in_flight": false,
+    "paused": true
+  },
+  "transitions": [
+    "paused"
+  ],
+  "counts": {
+    "spawn_calls": { "eq": 1 },
+    "runtime_repair_spawn_calls": { "eq": 1 },
+    "normal_spawn_calls": { "eq": 0 },
+    "created_worktrees": { "eq": 1 }
+  },
+  "routing": {
+    "runtime_repair_name": { "prefix": "repair-runtime-" }
+  }
+}
+```
+
+## Expected Error
+
+```json
+{
+  "contains": "runtime repair unavailable"
 }
 ```

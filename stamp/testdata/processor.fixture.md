@@ -20,3 +20,8 @@
 {"provider":"claude","type":"action","message":"$ go test ./...","timestamp":"2026-02-22T18:20:00Z"}
 {"provider":"codex","type":"complete","message":"done","timestamp":"2026-02-22T18:20:00Z","cost_usd":0.42,"tokens_in":90,"tokens_out":20}
 ```
+
+## Expected Error
+
+```json
+```

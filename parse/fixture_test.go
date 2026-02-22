@@ -20,10 +20,10 @@ func TestMarkdownFixtures(t *testing.T) {
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
 			adapter := adapterForFixture(t, fixturePath)
 			inputLines := fixturemd.ReadSectionLines(t, fixturePath, "Input")
-			expectError := fixturemd.IsErrorFixture(fixturePath)
+			errorExpectation := fixturemd.ExpectedError(t, fixturePath)
 
 			expectedEvents := make([]CanonicalEvent, 0)
-			if !expectError {
+			if errorExpectation == nil {
 				expectedEvents = parseCanonicalEvents(
 					t,
 					fixturemd.ReadSectionLines(t, fixturePath, "Expected Events"),
@@ -41,14 +41,9 @@ func TestMarkdownFixtures(t *testing.T) {
 				actualEvents = append(actualEvents, events...)
 			}
 
-			if expectError {
-				if parseErr == nil {
-					t.Fatalf("expected parse error for fixture %s", filepath.Base(fixturePath))
-				}
+			fixturemd.AssertError(t, "parse fixture", parseErr, errorExpectation)
+			if errorExpectation != nil {
 				return
-			}
-			if parseErr != nil {
-				t.Fatalf("parse fixture failed: %v", parseErr)
 			}
 			if !reflect.DeepEqual(actualEvents, expectedEvents) {
 				t.Fatalf("fixture mismatch\nactual:   %#v\nexpected: %#v", actualEvents, expectedEvents)
@@ -60,7 +55,8 @@ func TestMarkdownFixtures(t *testing.T) {
 func adapterForFixture(t *testing.T, fixturePath string) LogAdapter {
 	t.Helper()
 
-	name := filepath.Base(fixturePath)
+	name := strings.ToLower(filepath.Base(fixturePath))
+	name = strings.TrimPrefix(name, "error-")
 	switch {
 	case strings.HasPrefix(name, "claude"):
 		return ClaudeAdapter{}

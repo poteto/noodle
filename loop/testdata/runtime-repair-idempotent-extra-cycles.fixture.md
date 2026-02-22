@@ -1,4 +1,4 @@
-# Loop Fixture: Missing Sync + Empty Queue
+# Loop Fixture: Runtime Repair Is Idempotent Across Extra Cycles
 
 ## Setup
 ```json
@@ -10,29 +10,38 @@
         "backlog sync script missing; returning empty backlog"
       ]
     }
-  ]
+  ],
+  "extra_cycles": 2
 }
 ```
 
 ## Expected
 ```json
 {
+  "counts": {
+    "runtime_repair_spawn_calls": { "eq": 1 },
+    "spawn_calls": { "eq": 1 },
+    "normal_spawn_calls": { "eq": 0 }
+  },
   "actions": {
     "repair_task_scheduled": true,
     "normal_task_scheduled": false
+  },
+  "absence": {
+    "normal_task_scheduled": true
   },
   "state": {
     "runtime_repair_in_flight": true,
     "paused": true
   },
   "transitions": [
+    "paused",
+    "paused",
     "paused"
   ],
-  "counts": {
-    "spawn_calls": { "eq": 1 },
-    "runtime_repair_spawn_calls": { "eq": 1 },
-    "normal_spawn_calls": { "eq": 0 },
-    "created_worktrees": { "eq": 1 }
+  "idempotence": {
+    "no_new_spawns_on_extra_cycles": true,
+    "no_duplicate_runtime_repairs_on_extra_cycles": true
   },
   "routing": {
     "runtime_repair_skill": { "equals": "debugging" },

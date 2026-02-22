@@ -17,22 +17,18 @@ func TestMarkdownFixtures(t *testing.T) {
 		fixturePath := fixturePath
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
 			input := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Input"), "\n")
-			expectError := fixturemd.IsErrorFixture(fixturePath)
+			errorExpectation := fixturemd.ExpectedError(t, fixturePath)
+			fixtureName := strings.TrimPrefix(strings.ToLower(filepath.Base(fixturePath)), "error-")
 			expectedRaw := ""
-			if !expectError {
+			if errorExpectation == nil {
 				expectedRaw = strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected"), "\n")
 			}
 
-			if strings.HasPrefix(filepath.Base(fixturePath), "backlog") {
+			if strings.HasPrefix(fixtureName, "backlog") {
 				actual, err := ParseBacklogItems(input)
-				if expectError {
-					if err == nil {
-						t.Fatalf("expected backlog parse error for fixture %s", filepath.Base(fixturePath))
-					}
+				fixturemd.AssertError(t, "parse backlog fixture", err, errorExpectation)
+				if errorExpectation != nil {
 					return
-				}
-				if err != nil {
-					t.Fatalf("parse backlog fixture: %v", err)
 				}
 				var expected []BacklogItem
 				if err := json.Unmarshal([]byte(expectedRaw), &expected); err != nil {
@@ -45,14 +41,9 @@ func TestMarkdownFixtures(t *testing.T) {
 			}
 
 			actual, err := ParsePlanItems(input)
-			if expectError {
-				if err == nil {
-					t.Fatalf("expected plans parse error for fixture %s", filepath.Base(fixturePath))
-				}
+			fixturemd.AssertError(t, "parse plans fixture", err, errorExpectation)
+			if errorExpectation != nil {
 				return
-			}
-			if err != nil {
-				t.Fatalf("parse plans fixture: %v", err)
 			}
 			var expected []PlanItem
 			if err := json.Unmarshal([]byte(expectedRaw), &expected); err != nil {

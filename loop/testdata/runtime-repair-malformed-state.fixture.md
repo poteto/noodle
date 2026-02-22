@@ -1,4 +1,4 @@
-# Loop Fixture: Runtime Repair Exits Before Completion
+# Loop Fixture: Malformed Runtime State Schedules Repair
 
 ## Setup
 ```json
@@ -6,14 +6,7 @@
   "queue_items": [],
   "mise_results": [
     {
-      "warnings": [
-        "backlog sync script missing; returning empty backlog"
-      ]
-    }
-  ],
-  "cycle_inputs": [
-    {
-      "runtime_repair_session_status": "exited"
+      "error": "queue state malformed: invalid character '}' at byte 12"
     }
   ]
 }
@@ -22,21 +15,16 @@
 ## Expected
 ```json
 {
-  "step_errors": [
-    {
-      "contains": "exited before completion"
-    }
-  ],
   "actions": {
     "repair_task_scheduled": true,
+    "oops_task_scheduled": false,
     "normal_task_scheduled": false
   },
   "state": {
-    "runtime_repair_in_flight": false,
+    "runtime_repair_in_flight": true,
     "paused": true
   },
   "transitions": [
-    "paused",
     "paused"
   ],
   "counts": {
@@ -44,6 +32,11 @@
     "runtime_repair_spawn_calls": { "eq": 1 },
     "normal_spawn_calls": { "eq": 0 },
     "created_worktrees": { "eq": 1 }
+  },
+  "routing": {
+    "runtime_repair_skill": { "equals": "debugging" },
+    "runtime_repair_name": { "prefix": "repair-runtime-" },
+    "runtime_repair_prompt": { "contains": "Scope: mise.build" }
   }
 }
 ```

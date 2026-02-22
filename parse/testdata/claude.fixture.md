@@ -19,3 +19,8 @@
 {"type":"result","message":"turn complete","timestamp":"2026-02-22T18:00:03Z","cost_usd":1.23,"tokens_in":120,"tokens_out":34}
 {"type":"error","message":"Bash: Exit code 1: test failed","timestamp":"2026-02-22T18:00:04Z"}
 ```
+
+## Expected Error
+
+```json
+```

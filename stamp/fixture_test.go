@@ -21,7 +21,7 @@ func TestProcessorMarkdownFixtures(t *testing.T) {
 	for _, fixturePath := range paths {
 		fixturePath := fixturePath
 		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
-			expectError := fixturemd.IsErrorFixture(fixturePath)
+			errorExpectation := fixturemd.ExpectedError(t, fixturePath)
 			processor := NewProcessor()
 			processor.Now = func() time.Time {
 				return time.Date(2026, 2, 22, 18, 20, 0, 0, time.UTC)
@@ -31,14 +31,9 @@ func TestProcessorMarkdownFixtures(t *testing.T) {
 			var stampedOut bytes.Buffer
 			var eventsOut bytes.Buffer
 			err := processor.Process(context.Background(), bytes.NewReader(input), &stampedOut, &eventsOut)
-			if expectError {
-				if err == nil {
-					t.Fatalf("expected processor error for fixture %s", filepath.Base(fixturePath))
-				}
+			fixturemd.AssertError(t, "stamp fixture", err, errorExpectation)
+			if errorExpectation != nil {
 				return
-			}
-			if err != nil {
-				t.Fatalf("process fixture input: %v", err)
 			}
 
 			actualStamped := readJSONObjects(t, stampedOut.Bytes())

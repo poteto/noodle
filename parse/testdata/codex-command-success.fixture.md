@@ -11,3 +11,8 @@
 ```ndjson
 {"type":"action","message":"$ npm run lint","timestamp":"2026-02-22T19:20:00Z"}
 ```
+
+## Expected Error
+
+```json
+```

@@ -20,3 +20,8 @@
 {"provider":"claude","type":"error","message":"Provider internal error","timestamp":"2026-02-22T18:20:00Z"}
 {"provider":"codex","type":"action","message":"$ pnpm typecheck","timestamp":"2026-02-22T18:20:00Z"}
 ```
+
+## Expected Error
+
+```json
+```
