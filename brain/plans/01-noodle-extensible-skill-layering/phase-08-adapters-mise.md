@@ -6,7 +6,7 @@ Back to [[plans/01-noodle-extensible-skill-layering/overview]]
 
 Implement the adapter pattern and mise construction. Adapters are the bridge between the user's task/plan system and Noodle's runtime. Each adapter declares a set of scripts — one per action (sync, add, done, edit) — that the Go binary calls mechanically. Scripts are commands, not files — they can be shell scripts, Python scripts, compiled binaries, or inline commands like `gh issue close`. The user's agent is responsible for creating adapter scripts that transform their system into Noodle's required format.
 
-The mise ("mise en place") gathers all state into a structured brief for the sous chef.
+The mise ("mise en place") gathers all state into a structured brief for the sous chef. Worktree creation remains automatic runtime behavior in the loop/spawner path — operators should not manually prepare worktrees for each item.
 
 ## Implementation Notes
 
@@ -322,7 +322,7 @@ The sous chef sees `tags: ["auth", "urgent"]` and `routing.tags.auth` is not con
 
 **5. Loop reads queue, spawns cook:**
 
-The loop validates constraints (no active ticket on item 1, concurrency under limit), creates a worktree, and spawns a Claude Opus cook with the `plans` skill loaded and the backlog item context.
+The loop validates constraints (no active ticket on item 1, concurrency under limit), automatically creates a dedicated worktree for the cook, and spawns a Claude Opus cook with the `plans` skill loaded and the backlog item context.
 
 ## Data Structures
 
@@ -350,3 +350,4 @@ The loop validates constraints (no active ticket on item 1, concurrency under li
 - Adapter contract test with GitHub Issues-shaped data: sync script outputs `BacklogItem` NDJSON with string IDs, labels as tags, milestone as section — validates against schema
 - Mise with no plans adapter configured: `plans` array is empty, sous chef receives valid brief
 - Mise with missing sync script: logs warning, produces empty array for that adapter (not an error)
+- Mise-to-queue handoff does not require manual worktree setup; the downstream loop provisions the cook worktree automatically at spawn time

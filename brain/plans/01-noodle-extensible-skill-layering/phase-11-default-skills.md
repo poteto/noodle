@@ -30,6 +30,7 @@ This phase will be implemented by Codex. Keep it simple:
 
 - **`sous-chef`** — Reads the mise brief, applies scheduling judgment, outputs a prioritized JSON queue with routing annotations. The skill teaches the agent what the queue format is, how to reason about dependencies and parallelism, and what constraints to respect.
 - **`taster`** — Quality reviewer. Checks a cook's work before it's considered done. Reviews diffs, test results, and verification output. Outputs accept/reject with rationale.
+- **`commit`** — Commit and merge workflow guidance for autonomous shipping. Teaches cooks to create logical commits with meaningful bodies, then merge verified worktree changes back to `main`.
 - **`backlog`** — Teaches agents how to read and write the user's backlog system. The default teaches `brain/todos.md` format. Users with Linear/GitHub Issues/etc. override this with their own backlog skill.
 - **`plans`** — Teaches agents how to read and write the user's plan system. The default teaches `brain/plans/` format.
 - **`noodle`** — Meta-skill that teaches agents how to operate and configure Noodle. This is the skill loaded by repair sessions and is critical for self-healing. It covers:
@@ -216,4 +217,5 @@ No Go types. Skills are SKILL.md documents. Adapter scripts conform to the input
 - `plan-create` with `{title, slug}` scaffolds directory, overview with frontmatter, updates index
 - `plan-phase-add` creates zero-padded phase file with back-link and template sections
 - `plan-done` toggles plan's checkbox to `[x]` in index, marks linked todo as `[x]`
+- `noodle skills list` includes `commit` in default installed skills
 - A project-level skill with the same name as a default one overrides it in `noodle skills list`

@@ -146,7 +146,9 @@ The queue and mise are plain JSON files in `.noodle/`, readable by humans and ag
 
 1. **Mise** (Go) — gathers state into `.noodle/mise.json`. Pure data collection, no scoring.
 2. **Sous Chef** (LLM agent) — reads `.noodle/mise.json`, applies scheduling judgment, writes `.noodle/queue.json` with prioritized items and routing annotations.
-3. **Go loop** — watches `.noodle/queue.json` via fsnotify. Enforces hard constraints (concurrency limits, exclusivity, tickets). Spawns cooks.
+3. **Go loop** — watches `.noodle/queue.json` via fsnotify. Enforces hard constraints (concurrency limits, exclusivity, tickets). Spawns cooks, always in dedicated worktrees.
+
+**Autonomous ship contract (MVP):** Every cook runs in an auto-created worktree. Once work is verified and accepted by the taster (or review is skipped), the system merges that worktree directly into `main`. Preferred path: the cook uses the `commit` skill to commit and merge. Fallback path: if the cook finishes without merging, the loop detects verified completion and merges the worktree to `main` before marking the item done.
 
 The sous chef doesn't need special binary commands for scheduling — it just reads one file and writes another. The human can inspect both files at any time.
 
@@ -167,6 +169,7 @@ The sous chef doesn't need special binary commands for scheduling — it just re
 - `bootstrap` — the entry point for new users (see below)
 - `sous-chef` — scheduling and prioritization
 - `taster` — quality review
+- `commit` — commit + merge workflow guidance for autonomous shipping (worktree to `main`)
 - `backlog` — teaches agents to read/write the user's backlog system
 - `plans` — teaches agents to read/write the user's plan system
 - `noodle` — meta-skill: how to configure Noodle, create adapter skills, write sync scripts
@@ -206,12 +209,14 @@ In scope:
 - Default skills and adapters for out-of-box experience
 - Bootstrap skill as the entry point for new users
 - Self-healing (repair cooks for fixable issues, actionable errors for fatal ones)
+- Opinionated worktree lifecycle for cooks (auto-create, verify, merge-to-`main`)
 - TUI, CLI, monitoring, debate system
 
 Out of scope:
 - Standalone installable package (relative path for now)
 - Remote skill registry or marketplace
 - Cloud spawner implementation
+- Automated pull request creation/management flow
 - Web UI
 
 ## Reference Codebase
