@@ -23,7 +23,7 @@ help:
 	@echo "  make commands    List available commands"
 	@echo "  make fixtures    Regenerate fixture expected.md files"
 	@echo "  make fixtures-check Check fixture generated files are in sync"
-	@echo "  make bugs        List fixture expected.src.md files with bug=true"
+	@echo "  make bugs        List fixture expected.md files with bug=true"
 	@echo "  make worktree    Show worktree help"
 	@echo "  make watch       Rebuild on changes with Air (silent mode)"
 	@echo "  make watch-verbose Rebuild on changes with Air (debug file events)"
@@ -62,8 +62,12 @@ fixtures-check:
 	$(NOODLE) fixtures check
 
 bugs:
-	@rg --files -g '**/expected.src.md' | sort | while IFS= read -r f; do \
-		if awk -F': ' '/^bug:/{print $$2; exit}' "$$f" | grep -qi '^true$$'; then \
+	@rg --files -g '**/expected.md' | sort | while IFS= read -r f; do \
+		if awk 'BEGIN{in_frontmatter=0; found=0} \
+			/^---[[:space:]]*$$/ { in_frontmatter = !in_frontmatter; next } \
+			in_frontmatter && /^bug:[[:space:]]*true[[:space:]]*$$/ { found=1; exit } \
+			in_frontmatter && /^bug:[[:space:]]*/ { exit } \
+			END { exit !found }' "$$f"; then \
 			echo "$$f"; \
 		fi; \
 	done

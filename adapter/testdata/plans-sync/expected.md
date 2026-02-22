@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: plans-sync
-source_hash: 879ec348854b9d02e01fb18f131554df9c6a37fcfcb34c02da453bec8d2ed9d3
+source_hash: 1df968c04c370206ce814898c82d3d2890f1d2d2ffbc4fe2ec53c2d0c7c1ca4c
 ---
 
 ## Expected

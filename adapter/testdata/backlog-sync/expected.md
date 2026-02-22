@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: backlog-sync
-source_hash: 34b851dc6a32d55a2450dc0f757d711f5c1ecf5cef33bc47b2473bda0e7cad0d
+source_hash: 826e097261005efa5154390f881701c8589e34fffa8850d631cf216e5709f738
 ---
 
 ## Expected

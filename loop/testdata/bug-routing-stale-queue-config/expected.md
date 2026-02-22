@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: bug-routing-stale-queue-config
-source_hash: 34db33b5ffe3ec77ec53809052d08524d2bd3f0de5ba219d7acf4ab7ab1e16f3
+source_hash: 361d46fb18cbfedf87bbf59fc3ccdd1a371557cd1db3c9c3a0f6a5d3fdddc3ec
 ---
 
 ## Expected

@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: runtime-repair-idempotent-extra-cycles
-source_hash: a9e65e1e592b5821f986e44bf0ecf769bd2164ec9827682402c31ceb4a6942e0
+source_hash: cb2415591cd231c25693985e11d4a16642e66354f49ca44e65f869a5bea686bd
 ---
 
 ## Expected

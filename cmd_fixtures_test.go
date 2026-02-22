@@ -24,6 +24,9 @@ func TestRunFixturesCommandSync(t *testing.T) {
 	if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
 		t.Fatalf("mkdir fixture dir: %v", err)
 	}
+	if err := os.MkdirAll(filepath.Join(fixtureDir, "state-01"), 0o755); err != nil {
+		t.Fatalf("mkdir state dir: %v", err)
+	}
 
 	source := strings.Join([]string{
 		"---",
@@ -31,6 +34,7 @@ func TestRunFixturesCommandSync(t *testing.T) {
 		"expected_failure: false",
 		"bug: false",
 		"regression: sample",
+		"source_hash: pending",
 		"---",
 		"",
 		"## Expected",
@@ -40,15 +44,11 @@ func TestRunFixturesCommandSync(t *testing.T) {
 		"```",
 		"",
 	}, "\n")
-	if err := os.WriteFile(filepath.Join(fixtureDir, "expected.src.md"), []byte(source), 0o644); err != nil {
-		t.Fatalf("write expected.src.md: %v", err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(fixtureDir, "expected.md"),
-		[]byte(strings.Replace(source, "true", "false", 1)),
-		0o644,
-	); err != nil {
+	if err := os.WriteFile(filepath.Join(fixtureDir, "expected.md"), []byte(source), 0o644); err != nil {
 		t.Fatalf("write expected.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDir, "state-01", "input.ndjson"), []byte("a\n"), 0o644); err != nil {
+		t.Fatalf("write state input: %v", err)
 	}
 
 	output := captureStdout(t, func() {
@@ -79,6 +79,9 @@ func TestRunFixturesCommandCheck(t *testing.T) {
 	if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
 		t.Fatalf("mkdir fixture dir: %v", err)
 	}
+	if err := os.MkdirAll(filepath.Join(fixtureDir, "state-01"), 0o755); err != nil {
+		t.Fatalf("mkdir state dir: %v", err)
+	}
 
 	source := strings.Join([]string{
 		"---",
@@ -86,6 +89,7 @@ func TestRunFixturesCommandCheck(t *testing.T) {
 		"expected_failure: false",
 		"bug: false",
 		"regression: sample",
+		"source_hash: pending",
 		"---",
 		"",
 		"## Expected",
@@ -95,15 +99,17 @@ func TestRunFixturesCommandCheck(t *testing.T) {
 		"```",
 		"",
 	}, "\n")
-	if err := os.WriteFile(filepath.Join(fixtureDir, "expected.src.md"), []byte(source), 0o644); err != nil {
-		t.Fatalf("write expected.src.md: %v", err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(fixtureDir, "expected.md"),
-		[]byte(strings.Replace(source, "true", "false", 1)),
-		0o644,
-	); err != nil {
+	if err := os.WriteFile(filepath.Join(fixtureDir, "expected.md"), []byte(source), 0o644); err != nil {
 		t.Fatalf("write expected.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDir, "state-01", "input.ndjson"), []byte("a\n"), 0o644); err != nil {
+		t.Fatalf("write state input: %v", err)
+	}
+	if err := runFixturesCommand(context.Background(), nil, nil, []string{"sync", "--root", root}); err != nil {
+		t.Fatalf("seed fixture sync: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDir, "state-01", "input.ndjson"), []byte("b\n"), 0o644); err != nil {
+		t.Fatalf("rewrite state input: %v", err)
 	}
 
 	err := runFixturesCommand(context.Background(), nil, nil, []string{"check", "--root", root})

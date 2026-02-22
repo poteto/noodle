@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: codex-tool-output-error
-source_hash: a1afac719e5ed683225e14ad03694452d2f487fd6bfb7cc8223352a9b2bc28d7
+source_hash: 3c8b194ed8486a67ddc17b62ddd4d02c02ee4120826c6129ea20a034c661c8af
 ---
 
 ## Expected Events

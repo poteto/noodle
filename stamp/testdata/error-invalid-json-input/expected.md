@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: true
 bug: false
 regression: error-invalid-json-input
-source_hash: 5b13d6aa0b3e0bab956b0de8caeed338e2facbbf66d29a26861aab63afea0b44
+source_hash: 74e561c5951bfea0d3aac45cee0c857d92e8d4e5d330cbb3cc434ba48dd4052b
 ---
 
 ## Expected Error

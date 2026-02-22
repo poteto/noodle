@@ -3,7 +3,6 @@ package fixturedir
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -16,6 +15,7 @@ func TestSyncExpectedMarkdownUpdatesStaleFixtures(t *testing.T) {
 		"expected_failure: false",
 		"bug: false",
 		"regression: sample",
+		"source_hash: pending",
 		"---",
 		"",
 		"## Expected",
@@ -24,8 +24,8 @@ func TestSyncExpectedMarkdownUpdatesStaleFixtures(t *testing.T) {
 		`{"ok":true}`,
 		"```",
 	)
-	writeFile(t, filepath.Join(fixtureDir, "expected.src.md"), source)
-	writeFile(t, filepath.Join(fixtureDir, "expected.md"), strings.Replace(source, "true", "false", 1))
+	writeFile(t, filepath.Join(fixtureDir, "expected.md"), source)
+	writeFile(t, filepath.Join(fixtureDir, "state-01", "input.ndjson"), "a\n")
 
 	updated, err := SyncExpectedMarkdown(root, false)
 	if err != nil {
@@ -38,10 +38,7 @@ func TestSyncExpectedMarkdownUpdatesStaleFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read expected.md: %v", err)
 	}
-	if err := assertExpectedMarkdownSynced(
-		filepath.Join(fixtureDir, "expected.src.md"),
-		filepath.Join(fixtureDir, "expected.md"),
-	); err != nil {
+	if err := assertExpectedMarkdownSynced(fixtureDir, filepath.Join(fixtureDir, "expected.md")); err != nil {
 		t.Fatalf("expected.md not synced: %v\nactual:\n%s", err, string(after))
 	}
 }
@@ -55,6 +52,7 @@ func TestSyncExpectedMarkdownCheckMode(t *testing.T) {
 		"expected_failure: false",
 		"bug: false",
 		"regression: sample",
+		"source_hash: pending",
 		"---",
 		"",
 		"## Expected",
@@ -63,8 +61,12 @@ func TestSyncExpectedMarkdownCheckMode(t *testing.T) {
 		`{"ok":true}`,
 		"```",
 	)
-	writeFile(t, filepath.Join(fixtureDir, "expected.src.md"), source)
-	writeFile(t, filepath.Join(fixtureDir, "expected.md"), strings.Replace(source, "true", "false", 1))
+	writeFile(t, filepath.Join(fixtureDir, "expected.md"), source)
+	writeFile(t, filepath.Join(fixtureDir, "state-01", "input.ndjson"), "a\n")
+	if _, err := SyncExpectedMarkdown(root, false); err != nil {
+		t.Fatalf("seed sync fixtures: %v", err)
+	}
+	writeFile(t, filepath.Join(fixtureDir, "state-01", "input.ndjson"), "b\n")
 
 	stale, err := SyncExpectedMarkdown(root, true)
 	if err == nil {

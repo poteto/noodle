@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: provider-command-claude
-source_hash: d0b8d61613a88f6af69bade1e731a53b28ffe10392df89829718cb9d5ae898d8
+source_hash: 4b48a345a0e70843dfe04d8c1585d61cdf2f32aaba996cee822a0e006ee678ab
 ---
 
 ## Expected

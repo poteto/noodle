@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: claude-numeric-timestamp
-source_hash: 3b169838182f97f4477f470ce92ae18772b54db6c020c0541fd03dbe924b51b4
+source_hash: 4558c9dda767e068bbc0025a541ab63a979ffa0b8b825b26a0e15736dd055f53
 ---
 
 ## Expected Events

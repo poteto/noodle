@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: bug-no-active-on-worktree-create-failure
-source_hash: 16bc25e50cd1c5aea2d62304f34eef84d7186f66fa763e1b4fd71ee1f50a24c3
+source_hash: cd3cac533b6fc0ed78e38ba81aeefb3faee03c5ad82f930a353bf58546b0cf47
 ---
 
 ## Expected

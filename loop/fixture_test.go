@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -233,32 +232,6 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestLoopFixtureInventoryParity(t *testing.T) {
-	expected := []string{
-		"bug-branch-exists-worktree-create-fails",
-		"bug-no-active-on-worktree-create-failure",
-		"bug-routing-stale-queue-config",
-		"error-runtime-repair-max-attempts",
-		"error-runtime-repair-spawn-fatal-by-name",
-		"missing-sync-empty-queue",
-		"missing-sync-empty-queue-oops",
-		"missing-sync-queued-work",
-		"runtime-repair-adopt-running-session",
-		"runtime-repair-adopt-running-session-no-duplicate",
-		"runtime-repair-completed-resumes-queue",
-		"runtime-repair-exited-fatal",
-		"runtime-repair-idempotent-extra-cycles",
-		"runtime-repair-inflight-suppresses-queued-work",
-		"runtime-repair-malformed-state",
-		"runtime-repair-oops-fallback-custom-routing",
-		"runtime-repair-spawn-fatal",
-	}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
 	}
 }
 

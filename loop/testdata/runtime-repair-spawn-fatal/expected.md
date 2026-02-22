@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: true
 bug: false
 regression: runtime-repair-spawn-fatal
-source_hash: c8e4a8e5f5bf202b906de3f2cc932127819ad0960533e64e6e7b39424702e52c
+source_hash: 3035d54c29ff47d0ecef94eed5646a7501986484edc63e9a80bc300cb801685d
 ---
 
 ## Expected

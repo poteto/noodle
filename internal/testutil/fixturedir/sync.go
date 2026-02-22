@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,7 +18,7 @@ func SyncExpectedMarkdown(root string, checkOnly bool) ([]string, error) {
 	}
 	root = filepath.Clean(root)
 
-	sourcePaths := make([]string, 0)
+	expectedPaths := make([]string, 0)
 	walkErr := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -29,46 +30,44 @@ func SyncExpectedMarkdown(root string, checkOnly bool) ([]string, error) {
 			}
 			return nil
 		}
-		if strings.EqualFold(strings.TrimSpace(d.Name()), "expected.src.md") {
-			sourcePaths = append(sourcePaths, path)
+		if strings.EqualFold(strings.TrimSpace(d.Name()), "expected.md") {
+			expectedPaths = append(expectedPaths, path)
 		}
 		return nil
 	})
 	if walkErr != nil {
 		return nil, fmt.Errorf("walk fixture root: %w", walkErr)
 	}
-	sort.Strings(sourcePaths)
+	sort.Strings(expectedPaths)
 
 	changed := make([]string, 0)
 	stale := make([]string, 0)
-	for _, sourcePath := range sourcePaths {
-		destinationPath := filepath.Join(filepath.Dir(sourcePath), "expected.md")
-
-		sourceData, err := os.ReadFile(sourcePath)
+	for _, expectedPath := range expectedPaths {
+		fixtureRoot := filepath.Dir(expectedPath)
+		expectedData, err := os.ReadFile(expectedPath)
 		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", sourcePath, err)
-		}
-		renderedExpected, err := renderExpectedMarkdownFromSource(string(sourceData))
-		if err != nil {
-			return nil, fmt.Errorf("render %s: %w", sourcePath, err)
+			return nil, fmt.Errorf("read %s: %w", expectedPath, err)
 		}
 
-		destinationData, err := os.ReadFile(destinationPath)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("read %s: %w", destinationPath, err)
+		sourceHash, err := computeFixtureInputHash(fixtureRoot)
+		if err != nil {
+			return nil, err
 		}
-		normalizedDestination := normalizeFixtureMarkdown(string(destinationData))
-		if renderedExpected == normalizedDestination {
+		renderedExpected, err := renderExpectedMarkdownWithSourceHash(string(expectedData), sourceHash)
+		if err != nil {
+			return nil, fmt.Errorf("render %s: %w", expectedPath, err)
+		}
+		if renderedExpected == normalizeFixtureMarkdown(string(expectedData)) {
 			continue
 		}
 		if checkOnly {
-			stale = append(stale, destinationPath)
+			stale = append(stale, expectedPath)
 			continue
 		}
-		if err := os.WriteFile(destinationPath, []byte(renderedExpected), 0o644); err != nil {
-			return nil, fmt.Errorf("write %s: %w", destinationPath, err)
+		if err := os.WriteFile(expectedPath, []byte(renderedExpected), 0o644); err != nil {
+			return nil, fmt.Errorf("write %s: %w", expectedPath, err)
 		}
-		changed = append(changed, destinationPath)
+		changed = append(changed, expectedPath)
 	}
 
 	if checkOnly && len(stale) > 0 {
@@ -86,33 +85,85 @@ func normalizeFixtureMarkdown(content string) string {
 	return content + "\n"
 }
 
-func renderExpectedMarkdownFromSource(source string) (string, error) {
-	normalizedSource := normalizeFixtureMarkdown(source)
-	sourceMetadata, _, _, err := parseExpectedDocument([]byte(normalizedSource))
+func renderExpectedMarkdownWithSourceHash(expected string, sourceHash string) (string, error) {
+	normalizedExpected := normalizeFixtureMarkdown(expected)
+	metadata, _, _, err := parseExpectedDocument([]byte(normalizedExpected))
 	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(sourceMetadata.SourceHash) != "" {
-		return "", fmt.Errorf("expected.src.md must not declare source_hash")
+	if strings.TrimSpace(sourceHash) == "" {
+		return "", fmt.Errorf("source_hash cannot be empty")
 	}
-	_, body, err := splitFrontmatter(normalizedSource)
+	_, body, err := splitFrontmatter(normalizedExpected)
 	if err != nil {
 		return "", err
 	}
 	body = strings.TrimLeft(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
-	hash := sha256.Sum256([]byte(normalizedSource))
 
 	var out strings.Builder
 	out.WriteString("---\n")
-	out.WriteString(fmt.Sprintf("schema_version: %d\n", sourceMetadata.SchemaVersion))
-	out.WriteString(fmt.Sprintf("expected_failure: %t\n", sourceMetadata.ExpectedFailure))
-	out.WriteString(fmt.Sprintf("bug: %t\n", sourceMetadata.Bug))
-	out.WriteString(fmt.Sprintf("regression: %s\n", sourceMetadata.Regression))
-	out.WriteString(fmt.Sprintf("source_hash: %s\n", hex.EncodeToString(hash[:]))) // hash of expected.src.md contents
+	out.WriteString(fmt.Sprintf("schema_version: %d\n", metadata.SchemaVersion))
+	out.WriteString(fmt.Sprintf("expected_failure: %t\n", metadata.ExpectedFailure))
+	out.WriteString(fmt.Sprintf("bug: %t\n", metadata.Bug))
+	out.WriteString(fmt.Sprintf("regression: %s\n", metadata.Regression))
+	out.WriteString(fmt.Sprintf("source_hash: %s\n", sourceHash))
 	out.WriteString("---\n")
 	if strings.TrimSpace(body) != "" {
 		out.WriteString("\n")
 		out.WriteString(body)
 	}
 	return normalizeFixtureMarkdown(out.String()), nil
+}
+
+func computeFixtureInputHash(fixtureRoot string) (string, error) {
+	fixtureRoot = filepath.Clean(strings.TrimSpace(fixtureRoot))
+	if fixtureRoot == "" {
+		return "", fmt.Errorf("fixture root is required")
+	}
+
+	paths := make([]string, 0)
+	err := filepath.WalkDir(fixtureRoot, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := strings.TrimSpace(d.Name())
+		if strings.EqualFold(name, "expected.md") || strings.EqualFold(name, "expected.src.md") {
+			return nil
+		}
+		paths = append(paths, path)
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("walk fixture inputs %s: %w", fixtureRoot, err)
+	}
+	sort.Strings(paths)
+
+	hash := sha256.New()
+	for _, path := range paths {
+		relPath, err := filepath.Rel(fixtureRoot, path)
+		if err != nil {
+			return "", fmt.Errorf("relative path for %s: %w", path, err)
+		}
+		normalized := filepath.ToSlash(filepath.Clean(relPath))
+		if _, err := io.WriteString(hash, normalized); err != nil {
+			return "", fmt.Errorf("hash path %s: %w", normalized, err)
+		}
+		if _, err := hash.Write([]byte{0}); err != nil {
+			return "", fmt.Errorf("hash path separator: %w", err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read fixture input %s: %w", path, err)
+		}
+		if _, err := hash.Write(data); err != nil {
+			return "", fmt.Errorf("hash file %s: %w", normalized, err)
+		}
+		if _, err := hash.Write([]byte{0}); err != nil {
+			return "", fmt.Errorf("hash file separator: %w", err)
+		}
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }

@@ -3,7 +3,7 @@ schema_version: 1
 expected_failure: false
 bug: false
 regression: claude-error-object
-source_hash: 908f8b165ae7f735dc3c005a807548825fd6ba08c436244979fb78a77c76690a
+source_hash: 1b2d155178e9b412181380c58e6e473b08db764af4eabd23f3f7ed5c1eb7a343
 ---
 
 ## Expected Events

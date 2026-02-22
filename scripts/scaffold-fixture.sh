@@ -34,12 +34,22 @@ if [ -e "$fixture_root" ]; then
 fi
 
 mkdir -p "$fixture_root"
-cat > "$fixture_root/expected.src.md" <<EOF_EXPECTED
+index=1
+while [ "$index" -le "$state_count" ]; do
+  state_id=$(printf 'state-%02d' "$index")
+  state_dir=$fixture_root/$state_id
+  mkdir -p "$state_dir"
+  : > "$state_dir/input.ndjson"
+  index=$((index + 1))
+done
+
+cat > "$fixture_root/expected.md" <<EOF_EXPECTED
 ---
 schema_version: 1
 expected_failure: false
 bug: false
 regression: $fixture_name
+source_hash: pending
 ---
 
 ## Expected
@@ -49,14 +59,5 @@ regression: $fixture_name
 \`\`\`
 EOF_EXPECTED
 go run . fixtures sync --root "$fixture_root"
-
-index=1
-while [ "$index" -le "$state_count" ]; do
-  state_id=$(printf 'state-%02d' "$index")
-  state_dir=$fixture_root/$state_id
-  mkdir -p "$state_dir"
-  : > "$state_dir/input.ndjson"
-  index=$((index + 1))
-done
 
 echo "Created fixture: $fixture_root"

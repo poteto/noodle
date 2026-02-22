@@ -17,11 +17,10 @@ const FixtureSchemaVersion = 1
 var stateDirPattern = regexp.MustCompile(`^state-(\d{2})$`)
 
 type FixtureLayout struct {
-	RootPath           string
-	ExpectedPath       string
-	ExpectedSourcePath string
-	BaseConfigPath     string
-	States             []FixtureStateDir
+	RootPath       string
+	ExpectedPath   string
+	BaseConfigPath string
+	States         []FixtureStateDir
 }
 
 type FixtureStateDir struct {
@@ -156,7 +155,7 @@ func ValidateFixtureRoot(root string) ([]FixtureValidationIssue, error) {
 				Message:  parseErr.Error(),
 			})
 		}
-		if syncErr := assertExpectedMarkdownSynced(layout.ExpectedSourcePath, layout.ExpectedPath); syncErr != nil {
+		if syncErr := assertExpectedMarkdownSynced(layout.RootPath, layout.ExpectedPath); syncErr != nil {
 			issues = append(issues, FixtureValidationIssue{
 				Path:     filepath.ToSlash(layout.ExpectedPath),
 				Severity: "error",
@@ -179,7 +178,7 @@ func loadFixtureCase(name, fixturePath string) (FixtureCase, error) {
 	if len(issues) > 0 {
 		return FixtureCase{}, fmt.Errorf("invalid fixture %s: %s", fixturePath, formatIssues(issues))
 	}
-	if err := assertExpectedMarkdownSynced(layout.ExpectedSourcePath, layout.ExpectedPath); err != nil {
+	if err := assertExpectedMarkdownSynced(layout.RootPath, layout.ExpectedPath); err != nil {
 		return FixtureCase{}, fmt.Errorf("invalid fixture %s: %w", fixturePath, err)
 	}
 
@@ -298,15 +297,13 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 		switch name {
 		case "expected.md":
 			layout.ExpectedPath = path
-		case "expected.src.md":
-			layout.ExpectedSourcePath = path
 		case "noodle.toml":
 			layout.BaseConfigPath = path
 		default:
 			issues = append(issues, FixtureValidationIssue{
 				Path:     filepath.ToSlash(path),
 				Severity: "error",
-				Message:  "unexpected file; allowed files are expected.md, expected.src.md, and optional noodle.toml",
+				Message:  "unexpected file; allowed files are expected.md and optional noodle.toml",
 			})
 		}
 	}
@@ -318,14 +315,6 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 			Message:  "missing required expected.md",
 		})
 	}
-	if strings.TrimSpace(layout.ExpectedSourcePath) == "" {
-		issues = append(issues, FixtureValidationIssue{
-			Path:     filepath.ToSlash(fixturePath),
-			Severity: "error",
-			Message:  "missing required expected.src.md",
-		})
-	}
-
 	if len(states) == 0 {
 		issues = append(issues, FixtureValidationIssue{
 			Path:     filepath.ToSlash(fixturePath),
@@ -480,8 +469,14 @@ func parseMetadata(frontmatter string) (FixtureMetadata, error) {
 			return FixtureMetadata{}, fmt.Errorf("missing required frontmatter key %q", key)
 		}
 	}
+	if !seen["source_hash"] {
+		return FixtureMetadata{}, fmt.Errorf("missing required frontmatter key %q", "source_hash")
+	}
 	if strings.TrimSpace(metadata.Regression) == "" {
 		return FixtureMetadata{}, fmt.Errorf("regression must be non-empty")
+	}
+	if strings.TrimSpace(metadata.SourceHash) == "" {
+		return FixtureMetadata{}, fmt.Errorf("source_hash must be non-empty")
 	}
 	if metadata.Bug && !metadata.ExpectedFailure {
 		return FixtureMetadata{}, fmt.Errorf("bug=true requires expected_failure=true")
@@ -603,25 +598,25 @@ func formatIssues(issues []FixtureValidationIssue) string {
 	return strings.Join(parts, "; ")
 }
 
-func assertExpectedMarkdownSynced(sourcePath, expectedPath string) error {
-	sourcePath = strings.TrimSpace(sourcePath)
+func assertExpectedMarkdownSynced(fixturePath, expectedPath string) error {
+	fixturePath = strings.TrimSpace(fixturePath)
 	expectedPath = strings.TrimSpace(expectedPath)
-	if sourcePath == "" || expectedPath == "" {
+	if fixturePath == "" || expectedPath == "" {
 		return fmt.Errorf("expected fixture paths are missing")
-	}
-	sourceData, err := os.ReadFile(sourcePath)
-	if err != nil {
-		return fmt.Errorf("read expected source: %w", err)
-	}
-	renderedExpected, err := renderExpectedMarkdownFromSource(string(sourceData))
-	if err != nil {
-		return fmt.Errorf("render expected source: %w", err)
 	}
 	expectedData, err := os.ReadFile(expectedPath)
 	if err != nil {
 		return fmt.Errorf("read expected markdown: %w", err)
 	}
-	if renderedExpected != normalizeFixtureMarkdown(string(expectedData)) {
+	metadata, _, _, err := parseExpectedDocument(expectedData)
+	if err != nil {
+		return fmt.Errorf("parse expected markdown: %w", err)
+	}
+	sourceHash, err := computeFixtureInputHash(fixturePath)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(strings.TrimSpace(metadata.SourceHash), strings.TrimSpace(sourceHash)) {
 		return fmt.Errorf("expected.md is out of date; run `noodle fixtures sync`")
 	}
 	return nil
