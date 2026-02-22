@@ -101,8 +101,11 @@ func TestModelTransitionsBetweenSurfaces(t *testing.T) {
 	if m.surface != surfaceSteer {
 		t.Fatalf("surface after s = %q, want %q", m.surface, surfaceSteer)
 	}
-	if m.steerInput != "@cook-a " {
-		t.Fatalf("steer input = %q, want %q", m.steerInput, "@cook-a ")
+	if m.steerTarget != "cook-a" {
+		t.Fatalf("steer target = %q, want %q", m.steerTarget, "cook-a")
+	}
+	if m.steerForm == nil {
+		t.Fatal("expected steer form to be initialized")
 	}
 
 	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
@@ -131,9 +134,13 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 	})
 	m.surface = surfaceSteer
 	m.overlay = surfaceDashboard
-	m.steerInput = "@cook-a focus on tests first"
+	m.steerTarget = "cook-a"
+	m.steerPrompt = "focus on tests first"
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cmd, ok := m.submitSteer()
+	if !ok {
+		t.Fatal("expected steer submit to succeed")
+	}
 	if cmd == nil {
 		t.Fatal("expected steer command")
 	}
@@ -146,7 +153,6 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		t.Fatalf("control command failed: %v", result.err)
 	}
 
-	m = updated.(Model)
 	if m.surface != surfaceDashboard {
 		t.Fatalf("surface after submit = %q, want %q", m.surface, surfaceDashboard)
 	}

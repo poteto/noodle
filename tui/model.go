@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
 )
@@ -67,8 +68,10 @@ type Model struct {
 	traceFollow bool
 	traceOffset int
 
-	steerInput string
-	statusLine string
+	steerForm   *huh.Form
+	steerTarget string
+	steerPrompt string
+	statusLine  string
 }
 
 type Snapshot struct {
@@ -376,33 +379,21 @@ func (m Model) handleQueueKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEnter:
-		target, prompt, ok := parseSteerInput(m.steerInput)
-		if !ok {
-			m.statusLine = "steer format: @target instruction"
-			return m, nil
-		}
-		m.closeSteer()
-		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-			Action: "steer",
-			Target: target,
-			Prompt: prompt,
-		})
-	case tea.KeyBackspace:
-		if len(m.steerInput) > 0 {
-			m.steerInput = m.steerInput[:len(m.steerInput)-1]
-		}
-		return m, nil
-	case tea.KeySpace:
-		m.steerInput += " "
-		return m, nil
-	case tea.KeyRunes:
-		m.steerInput += string(msg.Runes)
-		return m, nil
-	default:
+	if m.steerForm == nil {
 		return m, nil
 	}
+	updated, cmd := m.steerForm.Update(msg)
+	if form, ok := updated.(*huh.Form); ok {
+		m.steerForm = form
+	}
+	if m.steerForm != nil && m.steerForm.State == huh.StateCompleted {
+		sendCmd, ok := m.submitSteer()
+		if !ok {
+			return m, nil
+		}
+		return m, sendCmd
+	}
+	return m, cmd
 }
 
 func (m Model) renderSurface(surface Surface) string {
@@ -642,7 +633,10 @@ func renderHelp() string {
 }
 
 func (m Model) renderSteer() string {
-	return "steer> " + m.steerInput + "\nenter send | esc cancel"
+	if m.steerForm == nil {
+		return "steer unavailable"
+	}
+	return "Steer\n-----\n" + m.steerForm.View()
 }
 
 func (m *Model) clampSelection() {
@@ -686,9 +680,12 @@ func (m Model) sessionByID(id string) (Session, bool) {
 
 func (m Model) defaultSteerInput() string {
 	if m.baseSurface() == surfaceSession && m.sessionID != "" {
-		return "@" + m.sessionID + " "
+		return m.sessionID
 	}
-	return "@"
+	if len(m.snapshot.Active) > 0 {
+		return m.snapshot.Active[0].ID
+	}
+	return "sous-chef"
 }
 
 func (m *Model) baseSurface() Surface {
@@ -719,17 +716,96 @@ func (m *Model) closeHelp() {
 func (m *Model) openSteer() tea.Cmd {
 	m.overlay = m.baseSurface()
 	m.surface = surfaceSteer
-	m.steerInput = m.defaultSteerInput()
-	return nil
+	m.steerTarget = m.defaultSteerInput()
+	m.steerPrompt = ""
+	targets := m.steerTargets()
+	if !containsString(targets, m.steerTarget) {
+		m.steerTarget = targets[0]
+	}
+
+	options := make([]huh.Option[string], 0, len(targets))
+	for _, target := range targets {
+		options = append(options, huh.NewOption("@"+target, target))
+	}
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Target").
+				Description("Pick cook or sous-chef (press / to filter)").
+				Options(options...).
+				Filtering(true).
+				Value(&m.steerTarget),
+			huh.NewInput().
+				Title("Instruction").
+				Placeholder("focus on tests, keep commits small").
+				Value(&m.steerPrompt).
+				Validate(huh.ValidateNotEmpty()),
+		),
+	).WithShowErrors(true).WithShowHelp(true)
+	if m.width > 0 {
+		width := m.width - 4
+		if width > 100 {
+			width = 100
+		}
+		if width > 20 {
+			form = form.WithWidth(width)
+		}
+	}
+	m.steerForm = form
+	return m.steerForm.Init()
 }
 
 func (m *Model) closeSteer() {
-	m.steerInput = ""
+	m.steerForm = nil
+	m.steerPrompt = ""
+	m.steerTarget = ""
 	if m.overlay == "" {
 		m.surface = surfaceDashboard
 		return
 	}
 	m.surface = m.overlay
+}
+
+func (m *Model) submitSteer() (tea.Cmd, bool) {
+	target := strings.TrimSpace(m.steerTarget)
+	prompt := strings.TrimSpace(m.steerPrompt)
+	if target == "" || prompt == "" {
+		m.statusLine = "steer requires target and instruction"
+		return nil, false
+	}
+	m.closeSteer()
+	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+		Action: "steer",
+		Target: target,
+		Prompt: prompt,
+	}), true
+}
+
+func (m Model) steerTargets() []string {
+	targets := []string{"sous-chef"}
+	seen := map[string]struct{}{"sous-chef": {}}
+	for _, session := range m.snapshot.Active {
+		id := strings.TrimSpace(session.ID)
+		if id == "" {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		targets = append(targets, id)
+	}
+	sort.Strings(targets[1:])
+	return targets
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func (m Model) filteredTraceLines() []EventLine {
@@ -768,27 +844,6 @@ func nextTraceFilter(filter TraceFilter) TraceFilter {
 	default:
 		return traceFilterAll
 	}
-}
-
-func parseSteerInput(input string) (target string, prompt string, ok bool) {
-	value := strings.TrimSpace(input)
-	if !strings.HasPrefix(value, "@") {
-		return "", "", false
-	}
-	parts := strings.Fields(value)
-	if len(parts) < 2 {
-		return "", "", false
-	}
-	target = strings.TrimPrefix(parts[0], "@")
-	target = strings.TrimSpace(target)
-	if target == "" {
-		return "", "", false
-	}
-	prompt = strings.TrimSpace(strings.TrimPrefix(value, "@"+target))
-	if prompt == "" {
-		return "", "", false
-	}
-	return target, prompt, true
 }
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {
