@@ -592,14 +592,29 @@ func (m Model) renderSession() string {
 		if start < 0 {
 			start = 0
 		}
+		const eventPrefixWidth = 29 // "  HH:MM:SS  " + 14-char label + " | "
+		eventBodyWidth := bodyWidth - eventPrefixWidth
+		if eventBodyWidth < 12 {
+			eventBodyWidth = 12
+		}
 		for _, line := range lines[start:] {
-			fmt.Fprintf(
-				&b,
-				"  %s  %-14s | %s\n",
-				line.At.Format("15:04:05"),
-				eventLabel(line.Label),
-				trimTo(line.Body, 70),
-			)
+			label := strings.TrimSpace(line.Label)
+			if label == "" {
+				label = "-"
+			}
+			labelCell := padRight(label, 14)
+			prefix := fmt.Sprintf("  %s  %s | ", line.At.Format("15:04:05"), eventLabel(labelCell))
+			continuationPrefix := "  " + strings.Repeat(" ", 8) + "  " + strings.Repeat(" ", 14) + " | "
+			wrapped := wrapPlainText(line.Body, eventBodyWidth)
+			for i, segment := range wrapped {
+				if i == 0 {
+					b.WriteString(prefix)
+				} else {
+					b.WriteString(continuationPrefix)
+				}
+				b.WriteString(segment)
+				b.WriteString("\n")
+			}
 		}
 	}
 
@@ -1607,6 +1622,93 @@ func trimTo(value string, width int) string {
 		return value[:width]
 	}
 	return value[:width-1] + "..."
+}
+
+func padRight(value string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) >= width {
+		return string(runes[:width])
+	}
+	return value + strings.Repeat(" ", width-len(runes))
+}
+
+func wrapPlainText(value string, width int) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return []string{""}
+	}
+	if width <= 1 {
+		return []string{value}
+	}
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	value = strings.ReplaceAll(value, "\r", "\n")
+	paragraphs := strings.Split(value, "\n")
+	out := make([]string, 0, len(paragraphs))
+	for _, paragraph := range paragraphs {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			out = append(out, "")
+			continue
+		}
+		out = append(out, wrapParagraph(paragraph, width)...)
+	}
+	if len(out) == 0 {
+		return []string{""}
+	}
+	return out
+}
+
+func wrapParagraph(paragraph string, width int) []string {
+	words := strings.Fields(paragraph)
+	if len(words) == 0 {
+		return []string{""}
+	}
+	lines := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		for runeLen(word) > width {
+			if current != "" {
+				lines = append(lines, current)
+				current = ""
+			}
+			head, tail := splitAtRuneWidth(word, width)
+			lines = append(lines, head)
+			word = tail
+		}
+		if current == "" {
+			current = word
+			continue
+		}
+		candidate := current + " " + word
+		if runeLen(candidate) <= width {
+			current = candidate
+			continue
+		}
+		lines = append(lines, current)
+		current = word
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func runeLen(value string) int {
+	return len([]rune(value))
+}
+
+func splitAtRuneWidth(value string, width int) (head string, tail string) {
+	if width <= 0 {
+		return "", value
+	}
+	runes := []rune(value)
+	if len(runes) <= width {
+		return value, ""
+	}
+	return string(runes[:width]), string(runes[width:])
 }
 
 func firstNonEmpty(values ...string) string {

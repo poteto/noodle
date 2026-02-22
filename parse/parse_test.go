@@ -149,3 +149,56 @@ func TestCodexAdapterParsesFunctionCallAndComplete(t *testing.T) {
 		t.Fatalf("token mismatch: got in=%d out=%d", events[0].TokensIn, events[0].TokensOut)
 	}
 }
+
+func TestCodexAdapterParsesAgentMessagesFromEventAndItem(t *testing.T) {
+	adapter := CodexAdapter{}
+
+	eventLine := `{"type":"event_msg","timestamp":"2026-02-22T16:44:00Z","payload":{"type":"agent_message","message":"Investigating parser now."}}`
+	events, err := adapter.Parse([]byte(eventLine))
+	if err != nil {
+		t.Fatalf("parse event_msg agent_message line: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventAction {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventAction)
+	}
+	if events[0].Message != "text:Investigating parser now." {
+		t.Fatalf("event message: got %q want %q", events[0].Message, "text:Investigating parser now.")
+	}
+
+	itemLine := `{"type":"item.completed","_ts":"2026-02-22T16:44:01Z","item":{"type":"agent_message","text":"Parser fallback works."}}`
+	events, err = adapter.Parse([]byte(itemLine))
+	if err != nil {
+		t.Fatalf("parse item.completed agent_message line: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventAction {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventAction)
+	}
+	if events[0].Message != "text:Parser fallback works." {
+		t.Fatalf("event message: got %q want %q", events[0].Message, "text:Parser fallback works.")
+	}
+}
+
+func TestCodexAdapterParsesItemStartedCommandExecution(t *testing.T) {
+	adapter := CodexAdapter{}
+
+	line := `{"type":"item.started","timestamp":"2026-02-22T16:45:00Z","item":{"type":"command_execution","command":"/bin/zsh -lc \"go test ./...\"","status":"in_progress"}}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse item.started command_execution line: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventAction {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventAction)
+	}
+	if events[0].Message != "$ go test ./..." {
+		t.Fatalf("event message: got %q want %q", events[0].Message, "$ go test ./...")
+	}
+}
