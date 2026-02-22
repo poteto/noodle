@@ -43,14 +43,22 @@ func TestCookJSONRoundTrip(t *testing.T) {
 }
 
 func TestCookStatusValues(t *testing.T) {
-	want := []CookStatus{
-		CookStatusSpawning,
-		CookStatusRunning,
-		CookStatusCompleted,
-		CookStatusFailed,
-		CookStatusKilled,
+	tests := []struct {
+		name string
+		got  CookStatus
+		want string
+	}{
+		{name: "spawning", got: CookStatusSpawning, want: "spawning"},
+		{name: "running", got: CookStatusRunning, want: "running"},
+		{name: "completed", got: CookStatusCompleted, want: "completed"},
+		{name: "failed", got: CookStatusFailed, want: "failed"},
+		{name: "killed", got: CookStatusKilled, want: "killed"},
 	}
-	if len(want) != 5 {
-		t.Fatalf("unexpected status count: got %d", len(want))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if string(tt.got) != tt.want {
+				t.Fatalf("status value = %q, want %q", tt.got, tt.want)
+			}
+		})
 	}
 }
