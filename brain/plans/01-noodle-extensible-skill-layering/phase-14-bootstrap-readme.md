@@ -90,6 +90,10 @@ The README is the project's front door. It should be concise and get a user runn
 
 Direct, practical, no marketing language. Show, don't tell. The README assumes the reader is a developer who wants to understand what Noodle does and start using it, not be sold on it.
 
+- **End-of-phase Claude review (required).** After implementing this phase, run a non-interactive Claude review of your changes and capture NDJSON output, for example: `claude -p --output-format stream-json --verbose --include-partial-messages "Review the changes for this phase. Report risks, regressions, and missing tests." | tee .noodle/reviews/<phase-id>-review.ndjson`.
+- **Observe NDJSON liveness while it runs.** Watch the review log (`tail -f .noodle/reviews/<phase-id>-review.ndjson`). Any appended NDJSON line (`stream_event`, `assistant`, `user`, `system`, `result`) means Claude is still working.
+- **Stall criteria + completion gate.** Treat the review as stalled only when no new NDJSON lines appear for more than 180s *and* the Claude process is still alive. Do not mark the phase complete until a terminal `result` event is present in the review log and blocking findings are addressed.
+
 ## Changes
 
 - **`bootstrap` skill** — `SKILL.md` + `references/` with config schema reference, adapter script templates, platform detection guidance.
