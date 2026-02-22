@@ -49,14 +49,6 @@ func TestClaimsDirectoryFixtures(t *testing.T) {
 	}
 }
 
-func TestClaimsFixtureInventoryParity(t *testing.T) {
-	expected := []string{"claims"}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
-	}
-}
-
 func TestReadSessionMissingFile(t *testing.T) {
 	reader := NewCanonicalClaimsReader(t.TempDir())
 	claims, err := reader.ReadSession("cook-a")

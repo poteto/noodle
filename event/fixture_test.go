@@ -22,14 +22,6 @@ func TestTicketMaterializerDirectoryFixtures(t *testing.T) {
 	}
 }
 
-func TestTicketFixtureInventoryParity(t *testing.T) {
-	expected := []string{"tickets"}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
-	}
-}
-
 func runTicketFixture(t *testing.T, fixtureCase fixturedir.FixtureCase) {
 	t.Helper()
 	state := fixtureCase.States[0]

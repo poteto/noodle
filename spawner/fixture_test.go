@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"encoding/json"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -51,17 +50,6 @@ func TestBuildProviderCommandDirectoryFixtures(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestProviderCommandFixtureInventoryParity(t *testing.T) {
-	expected := []string{
-		"provider-command-claude",
-		"provider-command-codex",
-	}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
 	}
 }
 

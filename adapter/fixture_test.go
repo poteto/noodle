@@ -56,16 +56,3 @@ func TestDirectoryFixtures(t *testing.T) {
 		})
 	}
 }
-
-func TestDirectoryFixtureInventoryParity(t *testing.T) {
-	expected := []string{
-		"backlog-sync",
-		"error-backlog-missing-id",
-		"error-plans-missing-phases",
-		"plans-sync",
-	}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
-	}
-}

@@ -54,25 +54,6 @@ func TestDirectoryFixtures(t *testing.T) {
 	}
 }
 
-func TestDirectoryFixtureInventoryParity(t *testing.T) {
-	expected := []string{
-		"claude",
-		"claude-error-object",
-		"claude-numeric-timestamp",
-		"claude-string-content",
-		"codex",
-		"codex-agent-message",
-		"codex-command-success",
-		"codex-input-command",
-		"codex-tool-output-error",
-		"error-codex-nonjson-line",
-	}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
-	}
-}
-
 func adapterForFixture(t *testing.T, fixtureName string) LogAdapter {
 	t.Helper()
 

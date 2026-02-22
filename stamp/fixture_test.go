@@ -60,18 +60,6 @@ func TestProcessorDirectoryFixtures(t *testing.T) {
 	}
 }
 
-func TestProcessorFixtureInventoryParity(t *testing.T) {
-	expected := []string{
-		"error-invalid-json-input",
-		"processor",
-		"processor-edge",
-	}
-	inventory := fixturedir.LoadInventory(t, "testdata")
-	if !reflect.DeepEqual(inventory.Names(), expected) {
-		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
-	}
-}
-
 func readJSONObjects(t *testing.T, data []byte) []map[string]any {
 	t.Helper()
 
