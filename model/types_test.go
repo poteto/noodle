@@ -8,11 +8,9 @@ import (
 func TestCookJSONRoundTrip(t *testing.T) {
 	parent := AgentID("cook-parent")
 	input := Cook{
-		ID:       AgentID("cook-42"),
-		Provider: ProviderClaude,
-		Model:    "claude-sonnet-4-6",
-		Status:   CookStatusRunning,
-		Parent:   &parent,
+		ID:     AgentID("cook-42"),
+		Status: CookStatusRunning,
+		Parent: &parent,
 		Policy: ModelPolicy{
 			Provider:       ProviderClaude,
 			Model:          "claude-sonnet-4-6",
@@ -32,12 +30,6 @@ func TestCookJSONRoundTrip(t *testing.T) {
 
 	if got.ID != input.ID {
 		t.Fatalf("id mismatch: got %q want %q", got.ID, input.ID)
-	}
-	if got.Provider != input.Provider {
-		t.Fatalf("provider mismatch: got %q want %q", got.Provider, input.Provider)
-	}
-	if got.Model != input.Model {
-		t.Fatalf("model mismatch: got %q want %q", got.Model, input.Model)
 	}
 	if got.Status != input.Status {
 		t.Fatalf("status mismatch: got %q want %q", got.Status, input.Status)
