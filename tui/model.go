@@ -11,7 +11,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
 )
@@ -210,10 +209,19 @@ func (m Model) View() string {
 	}
 	if m.err != nil {
 		b.WriteString("\n\n")
-		b.WriteString("error: ")
+		b.WriteString(errorStyle.Render("error: "))
 		b.WriteString(m.err.Error())
 	}
-	return b.String()
+
+	content := b.String()
+	if m.width > 0 {
+		target := m.width - 2
+		if target < 40 {
+			target = 40
+		}
+		return frameStyle.Width(target).Render(content)
+	}
+	return frameStyle.Render(content)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -411,34 +419,43 @@ func (m Model) renderSurface(surface Surface) string {
 }
 
 func (m Model) renderDashboard() string {
+	bodyWidth := m.contentWidth()
 	var b strings.Builder
-	fmt.Fprintf(
-		&b,
-		"noodle | %s | active %d | queue %d | total $%.2f",
-		nonEmpty(m.snapshot.LoopState, "running"),
+	b.WriteString(titleStyle.Render("noodle"))
+	b.WriteString(dimStyle.Render(" | "))
+	b.WriteString(accentStyle.Render("cooking"))
+	b.WriteString("\n")
+	fmt.Fprintf(&b, "%s %s | %s %d | %s %d | %s %s",
+		labelStyle.Render("status"),
+		loopStateLabel(m.snapshot.LoopState),
+		labelStyle.Render("active"),
 		len(m.snapshot.Active),
+		labelStyle.Render("queue"),
 		len(m.snapshot.Queue),
-		m.snapshot.TotalCostUSD,
+		labelStyle.Render("total"),
+		costStyle.Render(fmt.Sprintf("$%.2f", m.snapshot.TotalCostUSD)),
 	)
 	if !m.snapshot.UpdatedAt.IsZero() {
-		fmt.Fprintf(&b, " | updated %s ago", ageLabel(m.now(), m.snapshot.UpdatedAt))
+		fmt.Fprintf(&b, " | updated %s ago", mutedStyle.Render(ageLabel(m.now(), m.snapshot.UpdatedAt)))
 	}
 	b.WriteString("\n")
-	b.WriteString(strings.Repeat("-", 72))
+	b.WriteString(dimStyle.Render(strings.Repeat("─", max(36, bodyWidth))))
 	b.WriteString("\n")
-	b.WriteString("Active Cooks\n")
+	b.WriteString(sectionLine("Active Cooks", bodyWidth))
+	b.WriteString("\n")
 	if len(m.snapshot.Active) == 0 {
-		b.WriteString("  (none)\n")
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("(none)"))
+		b.WriteString("\n")
 	} else {
 		for i, session := range m.snapshot.Active {
 			cursor := " "
 			if i == m.selectedActive {
-				cursor = ">"
+				cursor = accentStyle.Render(">")
 			}
 			action := nonEmpty(session.CurrentAction, "(idle)")
-			fmt.Fprintf(
-				&b,
-				"%s %s %-18s %-14s %-22s %6s ago\n",
+			line := fmt.Sprintf(
+				"%s %s %-22s %-20s %-26s %6s ago\n",
 				cursor,
 				healthDot(session.Health),
 				session.ID,
@@ -446,12 +463,23 @@ func (m Model) renderDashboard() string {
 				trimTo(action, 22),
 				ageLabel(m.now(), session.LastActivity),
 			)
+			if i == m.selectedActive {
+				line = selectedRowStyle.Render(trimTo(strings.TrimSuffix(line, "\n"), bodyWidth))
+				b.WriteString(line)
+				b.WriteString("\n")
+				continue
+			}
+			b.WriteString(line)
 		}
 	}
 
 	b.WriteString("\nRecent\n")
+	b.WriteString(sectionLine("Recent", bodyWidth))
+	b.WriteString("\n")
 	if len(m.snapshot.Recent) == 0 {
-		b.WriteString("  (none)\n")
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("(none)"))
+		b.WriteString("\n")
 	} else {
 		limit := 6
 		if len(m.snapshot.Recent) < limit {
@@ -461,19 +489,23 @@ func (m Model) renderDashboard() string {
 			s := m.snapshot.Recent[i]
 			fmt.Fprintf(
 				&b,
-				"  %s %-18s %-14s %7s $%.2f\n",
-				statusIcon(s.Status),
+				"  %s %-22s %-20s %8s %s\n",
+				statusIcon(s.Status)+" "+statusLabel(s.Status),
 				s.ID,
 				modelLabel(s),
 				durationLabel(s.DurationSeconds),
-				s.TotalCostUSD,
+				costStyle.Render(fmt.Sprintf("$%.2f", s.TotalCostUSD)),
 			)
 		}
 	}
 
-	b.WriteString("\nUp Next\n")
+	b.WriteString("\n")
+	b.WriteString(sectionLine("Up Next", bodyWidth))
+	b.WriteString("\n")
 	if len(m.snapshot.Queue) == 0 {
-		b.WriteString("  (empty)\n")
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("(empty)"))
+		b.WriteString("\n")
 	} else {
 		limit := 6
 		if len(m.snapshot.Queue) < limit {
@@ -483,42 +515,48 @@ func (m Model) renderDashboard() string {
 			item := m.snapshot.Queue[i]
 			fmt.Fprintf(
 				&b,
-				"  %d. %-22s %-14s %-14s\n",
+				"  %d. %-22s %-12s %-20s\n",
 				i+1,
 				item.ID,
-				nonEmpty(item.Provider, "claude"),
+				infoStyle.Render(nonEmpty(item.Provider, "claude")),
 				nonEmpty(item.Model, "(default)"),
 			)
 		}
 	}
 
-	b.WriteString("\nenter inspect | q queue | s steer | p pause/resume | d drain | ? help | ctrl+c quit")
+	b.WriteString("\n")
+	b.WriteString(keybarStyle.Render("enter inspect | q queue | s steer | p pause/resume | d drain | ? help | ctrl+c quit"))
 	return b.String()
 }
 
 func (m Model) renderSession() string {
+	bodyWidth := m.contentWidth()
 	session, ok := m.sessionByID(m.sessionID)
 	if !ok {
-		return "session not found\n\nesc back"
+		return errorStyle.Render("session not found") + "\n\n" + keybarStyle.Render("esc back")
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "Session Detail | %s\n", session.ID)
-	b.WriteString(strings.Repeat("-", 72))
+	fmt.Fprintf(&b, "%s | %s\n", titleStyle.Render("Session Detail"), accentStyle.Render(session.ID))
+	b.WriteString(dimStyle.Render(strings.Repeat("─", max(36, bodyWidth))))
 	b.WriteString("\n")
 
-	fmt.Fprintf(&b, "Status: %s %s\n", session.Status, healthDot(session.Health))
-	fmt.Fprintf(&b, "Provider: %s\n", nonEmpty(session.Provider, "-"))
-	fmt.Fprintf(&b, "Model: %s\n", nonEmpty(session.Model, "-"))
-	fmt.Fprintf(&b, "Duration: %s\n", durationLabel(session.DurationSeconds))
-	fmt.Fprintf(&b, "Cost: $%.2f\n", session.TotalCostUSD)
-	fmt.Fprintf(&b, "Retries: %d\n", session.RetryCount)
-	fmt.Fprintf(&b, "Worktree: .worktrees/%s\n", session.ID)
+	fmt.Fprintf(&b, "%s %s %s\n", labelStyle.Render("Status:"), statusLabel(session.Status), healthDot(session.Health))
+	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Provider:"), nonEmpty(session.Provider, "-"))
+	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Model:"), nonEmpty(session.Model, "-"))
+	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Duration:"), durationLabel(session.DurationSeconds))
+	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Cost:"), costStyle.Render(fmt.Sprintf("$%.2f", session.TotalCostUSD)))
+	fmt.Fprintf(&b, "%s %d\n", labelStyle.Render("Retries:"), session.RetryCount)
+	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Worktree:"), mutedStyle.Render(".worktrees/"+session.ID))
 
 	lines := m.snapshot.EventsBySession[session.ID]
-	b.WriteString("\nRecent Events\n")
+	b.WriteString("\n")
+	b.WriteString(sectionLine("Recent Events", bodyWidth))
+	b.WriteString("\n")
 	if len(lines) == 0 {
-		b.WriteString("  (none)\n")
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("(none)"))
+		b.WriteString("\n")
 	} else {
 		start := len(lines) - 8
 		if start < 0 {
@@ -527,22 +565,24 @@ func (m Model) renderSession() string {
 		for _, line := range lines[start:] {
 			fmt.Fprintf(
 				&b,
-				"  %s  %-6s | %s\n",
+				"  %s  %-14s | %s\n",
 				line.At.Format("15:04:05"),
-				line.Label,
+				eventLabel(line.Label),
 				trimTo(line.Body, 70),
 			)
 		}
 	}
 
-	b.WriteString("\nt trace | k kill | s steer | esc back | ? help")
+	b.WriteString("\n")
+	b.WriteString(keybarStyle.Render("t trace | k kill | s steer | esc back | ? help"))
 	return b.String()
 }
 
 func (m Model) renderTrace() string {
+	bodyWidth := m.contentWidth()
 	session, ok := m.sessionByID(m.sessionID)
 	if !ok {
-		return "trace unavailable: session not found\n\nesc back"
+		return errorStyle.Render("trace unavailable: session not found") + "\n\n" + keybarStyle.Render("esc back")
 	}
 	lines := m.filteredTraceLines()
 	height := m.traceHeight()
@@ -567,35 +607,43 @@ func (m Model) renderTrace() string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "Trace | %s | filter: %s\n", session.ID, m.traceFilter)
-	b.WriteString(strings.Repeat("-", 72))
+	fmt.Fprintf(&b, "%s | %s | %s %s\n",
+		titleStyle.Render("Trace"),
+		accentStyle.Render(session.ID),
+		mutedStyle.Render("filter:"),
+		infoStyle.Render(string(m.traceFilter)),
+	)
+	b.WriteString(dimStyle.Render(strings.Repeat("─", max(36, bodyWidth))))
 	b.WriteString("\n")
 	if len(lines) == 0 {
-		b.WriteString("(no events)\n")
+		b.WriteString(dimStyle.Render("(no events)\n"))
 	} else {
 		for _, line := range lines[start:end] {
-			fmt.Fprintf(&b, "%s  %-6s | %s\n", line.At.Format("15:04:05"), line.Label, line.Body)
+			fmt.Fprintf(&b, "%s  %-14s | %s\n", line.At.Format("15:04:05"), eventLabel(line.Label), line.Body)
 		}
 	}
 	if m.traceFollow {
-		b.WriteString("\n[auto-scroll]")
+		b.WriteString("\n")
+		b.WriteString(infoStyle.Render("[auto-scroll]"))
 	}
-	b.WriteString("\nf filter | G bottom | esc back | ? help")
+	b.WriteString("\n")
+	b.WriteString(keybarStyle.Render("f filter | G bottom | esc back | ? help"))
 	return b.String()
 }
 
 func (m Model) renderQueue() string {
+	bodyWidth := m.contentWidth()
 	var b strings.Builder
-	b.WriteString("Queue\n")
-	b.WriteString(strings.Repeat("-", 72))
+	b.WriteString(titleStyle.Render("Queue\n"))
+	b.WriteString(dimStyle.Render(strings.Repeat("─", max(36, bodyWidth))))
 	b.WriteString("\n")
 	if len(m.snapshot.Queue) == 0 {
-		b.WriteString("(empty)\n")
+		b.WriteString(dimStyle.Render("(empty)\n"))
 	} else {
 		for i, item := range m.snapshot.Queue {
 			cursor := " "
 			if i == m.selectedQueue {
-				cursor = ">"
+				cursor = accentStyle.Render(">")
 			}
 			review := "default"
 			if item.Review != nil {
@@ -605,39 +653,61 @@ func (m Model) renderQueue() string {
 					review = "no-review"
 				}
 			}
-			fmt.Fprintf(
-				&b,
-				"%s %2d. %-24s %-10s %-16s %s\n",
+			line := fmt.Sprintf(
+				"%s %2d. %-24s %-12s %-18s %s\n",
 				cursor,
 				i+1,
 				item.ID,
-				nonEmpty(item.Provider, "-"),
+				infoStyle.Render(nonEmpty(item.Provider, "-")),
 				nonEmpty(item.Model, "-"),
 				review,
 			)
+			if i == m.selectedQueue {
+				line = selectedRowStyle.Render(trimTo(strings.TrimSuffix(line, "\n"), bodyWidth))
+				b.WriteString(line)
+				b.WriteString("\n")
+				continue
+			}
+			b.WriteString(line)
 		}
 	}
-	b.WriteString("\nesc back | s steer | ? help")
+	b.WriteString("\n")
+	b.WriteString(keybarStyle.Render("esc back | s steer | ? help"))
 	return b.String()
 }
 
 func renderHelp() string {
-	return strings.Join([]string{
-		"Keys",
-		"----",
-		"Global: s steer | p pause/resume | d drain | ? help | ctrl+c quit",
-		"Dashboard: enter inspect | q queue | up/down move",
-		"Session: t trace | k kill | esc back",
-		"Trace: f filter | G bottom | up/down scroll | esc back",
-		"Steer: select target, write instruction, enter submit, esc cancel",
-	}, "\n")
+	var b strings.Builder
+	b.WriteString(sectionStyle.Render("Keys"))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render(strings.Repeat("─", 24)))
+	b.WriteString("\n")
+	b.WriteString("Global: s steer | p pause/resume | d drain | ? help | ctrl+c quit\n")
+	b.WriteString("Dashboard: enter inspect | q queue | up/down move\n")
+	b.WriteString("Session: t trace | k kill | esc back\n")
+	b.WriteString("Trace: f filter | G bottom | up/down scroll | esc back\n")
+	b.WriteString("Steer: select target, write instruction, enter submit, esc cancel")
+	return b.String()
 }
 
 func (m Model) renderSteer() string {
 	if m.steerForm == nil {
-		return "steer unavailable"
+		return errorStyle.Render("steer unavailable")
 	}
-	return "Steer\n-----\n" + m.steerForm.View()
+	return titleStyle.Render("Steer") + "\n" +
+		dimStyle.Render(strings.Repeat("─", 24)) + "\n" +
+		m.steerForm.View()
+}
+
+func (m Model) contentWidth() int {
+	if m.width <= 0 {
+		return 96
+	}
+	width := m.width - 6
+	if width < 40 {
+		return 40
+	}
+	return width
 }
 
 func (m *Model) clampSelection() {
@@ -1233,22 +1303,22 @@ func healthDot(health string) string {
 	dot := "●"
 	switch strings.ToLower(strings.TrimSpace(health)) {
 	case "red":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(dot)
+		return errorStyle.Render(dot)
 	case "yellow":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(dot)
+		return warnStyle.Render(dot)
 	default:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render(dot)
+		return successStyle.Render(dot)
 	}
 }
 
 func statusIcon(status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "failed":
-		return "x"
+		return errorStyle.Render("x")
 	case "completed", "exited":
-		return "ok"
+		return successStyle.Render("ok")
 	default:
-		return "~"
+		return dimStyle.Render("~")
 	}
 }
 
