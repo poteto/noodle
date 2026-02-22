@@ -103,12 +103,11 @@ Default script templates and scaffolds: [Adapter Script Templates](skills/bootst
 | `noodle start` | Run scheduling loop |
 | `noodle start --once` | Run one cycle and exit |
 | `noodle status` | Show compact runtime status |
+| `noodle debug` | Dump canonical runtime debug state |
 | `noodle skills list` | List resolved skills with precedence |
 | `noodle commands` | List commands |
 | `noodle commands --json` | List commands as JSON |
 | `noodle worktree <subcommand>` | Worktree operations (`create`, `merge`, `cleanup`, `list`, `prune`, `hook`) |
-| `noodle fixtures sync` | Regenerate fixture `expected.md` files (dev) |
-| `noodle fixtures check` | Fail if generated fixture files are stale (dev) |
 | `noodle mise` | Build and print current mise brief (internal) |
 | `noodle spawn` | Spawn cook session in tmux (internal) |
 | `noodle stamp` | Stamp NDJSON logs (internal) |

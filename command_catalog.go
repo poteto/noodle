@@ -46,6 +46,12 @@ func CommandCatalog() []Command {
 			Run:         runStatusCommand,
 		},
 		{
+			Name:        "debug",
+			Description: "Dump canonical runtime debug state",
+			Category:    "core",
+			Run:         runDebugCommand,
+		},
+		{
 			Name:        "tui",
 			Description: "Open the terminal dashboard",
 			Category:    "core",
@@ -74,12 +80,6 @@ func CommandCatalog() []Command {
 			Description: "Build and print the current mise brief",
 			Category:    "internal",
 			Run:         runMiseCommand,
-		},
-		{
-			Name:        "fixtures",
-			Description: "Sync generated fixture expected.md files",
-			Category:    "internal",
-			Run:         runFixturesCommand,
 		},
 	}
 }
