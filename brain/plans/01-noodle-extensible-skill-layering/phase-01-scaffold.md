@@ -22,6 +22,7 @@ This phase will be implemented by Codex. Keep it simple:
 - **`command_catalog.go`** — Central registry of all commands. Start with a single command (`commands`) that lists available commands as JSON. Each command is a struct with name, description, category, and run function. New phases register commands here.
 - **`model/`** — Core types for the kitchen brigade model. This is the foundational data layer — get these right and downstream code follows naturally.
 - **`worktree/`** — Move from `src/worktree/` to repo root. Update imports.
+- **`.claude/settings.json`** — Update the worktree hook command to the repo-root binary path (`go run -C $CLAUDE_PROJECT_DIR . worktree hook`) so hooks keep working after the move.
 
 ## Data Structures
 
@@ -42,3 +43,4 @@ This phase will be implemented by Codex. Keep it simple:
 ### Runtime
 - `go run . commands --json` outputs valid JSON listing the `commands` command itself
 - Model types can be instantiated and serialized to JSON
+- `.claude/settings.json` PreToolUse Bash hook points to `go run -C $CLAUDE_PROJECT_DIR . worktree hook` (no `old_noodle` path)

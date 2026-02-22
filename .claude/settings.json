@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree hook"
+            "command": "go run -C $CLAUDE_PROJECT_DIR . worktree hook"
           }
         ]
       }
