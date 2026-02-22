@@ -1,0 +1,28 @@
+[routing.defaults]
+provider = "claude"
+model = "claude-opus-4-6"
+
+[skills]
+paths = [".agents/skills", "skills"]
+
+[agents]
+claude_dir = "/Users/lauren/code/noodle/.claude"
+codex_dir = "/Users/lauren/code/noodle/.codex"
+
+[adapters.backlog]
+skill = "todo"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+add = ".noodle/adapters/backlog-add"
+done = ".noodle/adapters/backlog-done"
+edit = ".noodle/adapters/backlog-edit"
+
+[adapters.plans]
+skill = "plan"
+
+[adapters.plans.scripts]
+sync = ".noodle/adapters/plans-sync"
+create = ".noodle/adapters/plan-create"
+done = ".noodle/adapters/plan-done"
+phase-add = ".noodle/adapters/plan-phase-add"
