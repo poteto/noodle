@@ -1,6 +1,6 @@
 [routing.defaults]
-provider = "claude"
-model = "claude-opus-4-6"
+provider = "codex"
+model = "gpt-5.3-codex"
 
 [skills]
 paths = [".agents/skills", "skills"]
