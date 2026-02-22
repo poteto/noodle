@@ -101,11 +101,8 @@ func TestModelTransitionsBetweenSurfaces(t *testing.T) {
 	if m.surface != surfaceSteer {
 		t.Fatalf("surface after s = %q, want %q", m.surface, surfaceSteer)
 	}
-	if m.steerTarget != "cook-a" {
-		t.Fatalf("steer target = %q, want %q", m.steerTarget, "cook-a")
-	}
-	if m.steerForm == nil {
-		t.Fatal("expected steer form to be initialized")
+	if m.steerInput != "" {
+		t.Fatalf("expected empty steer input, got %q", m.steerInput)
 	}
 
 	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
@@ -132,10 +129,10 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		RefreshInterval: time.Hour,
 		Now:             func() time.Time { return fixed },
 	})
+	m.snapshot.Active = []Session{{ID: "cook-a"}}
 	m.surface = surfaceSteer
 	m.overlay = surfaceDashboard
-	m.steerTarget = "cook-a"
-	m.steerPrompt = "focus on tests first"
+	m.steerInput = "@cook-a focus on tests first"
 
 	cmd, ok := m.submitSteer()
 	if !ok {
@@ -173,6 +170,81 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 	}
 	if wrote.Prompt != "focus on tests first" {
 		t.Fatalf("prompt = %q", wrote.Prompt)
+	}
+}
+
+func TestParseSteerInputEveryoneExpandsTargets(t *testing.T) {
+	targets, prompt, err := parseSteerInput(
+		"@everyone focus on tests first",
+		[]string{"sous-chef", "cook-a", "cook-b"},
+	)
+	if err != nil {
+		t.Fatalf("parseSteerInput returned error: %v", err)
+	}
+	if len(targets) != 3 {
+		t.Fatalf("targets len = %d, want 3", len(targets))
+	}
+	if prompt != "focus on tests first" {
+		t.Fatalf("prompt = %q", prompt)
+	}
+}
+
+func TestSteerEscClosesMentionsBeforeModal(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.surface = surfaceSteer
+	m.overlay = surfaceDashboard
+	m.steerInput = "@"
+	m.snapshot.Active = []Session{{ID: "cook-a"}}
+	m.refreshSteerMentions()
+	if !m.steerMentionOpen {
+		t.Fatal("expected mention dropdown to be open")
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.surface != surfaceSteer {
+		t.Fatalf("surface after first esc = %q, want %q", m.surface, surfaceSteer)
+	}
+	if m.steerMentionOpen {
+		t.Fatal("expected mention dropdown to close on first esc")
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.surface != surfaceDashboard {
+		t.Fatalf("surface after second esc = %q, want %q", m.surface, surfaceDashboard)
+	}
+}
+
+func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.surface = surfaceSteer
+	m.snapshot.Active = []Session{{ID: "cook-a"}}
+
+	m = pressRune(t, m, '@')
+	if !m.steerMentionOpen {
+		t.Fatal("expected mention dropdown after typing @")
+	}
+	if len(m.steerMentionItems) == 0 {
+		t.Fatal("expected mention candidates")
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyDown})
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.steerMentionOpen {
+		t.Fatal("expected mention dropdown to close after selection")
+	}
+	if m.steerInput == "@" {
+		t.Fatalf("expected selected mention in input, got %q", m.steerInput)
+	}
+	if m.steerInput == "" {
+		t.Fatal("expected steer input to contain selected mention")
 	}
 }
 

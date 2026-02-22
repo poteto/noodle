@@ -10,7 +10,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
 )
@@ -68,10 +67,12 @@ type Model struct {
 	traceFollow bool
 	traceOffset int
 
-	steerForm   *huh.Form
-	steerTarget string
-	steerPrompt string
-	statusLine  string
+	steerInput        string
+	steerMentionOpen  bool
+	steerMentionItems []string
+	steerMentionIndex int
+	steerMentionStart int
+	statusLine        string
 }
 
 type Snapshot struct {
@@ -230,6 +231,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case tea.KeyEsc:
 		if m.surface == surfaceSteer {
+			if m.steerMentionOpen {
+				m.closeSteerMentions()
+				return m, nil
+			}
 			m.closeSteer()
 			return m, nil
 		}
@@ -388,21 +393,46 @@ func (m Model) handleQueueKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.steerForm == nil {
+	switch msg.Type {
+	case tea.KeyEsc:
+		if m.steerMentionOpen {
+			m.closeSteerMentions()
+			return m, nil
+		}
+		m.closeSteer()
 		return m, nil
-	}
-	updated, cmd := m.steerForm.Update(msg)
-	if form, ok := updated.(*huh.Form); ok {
-		m.steerForm = form
-	}
-	if m.steerForm != nil && m.steerForm.State == huh.StateCompleted {
+	case tea.KeyEnter:
+		if m.steerMentionOpen && len(m.steerMentionItems) > 0 {
+			selection := m.steerMentionItems[m.steerMentionIndex]
+			m.applySteerMention(selection)
+			return m, nil
+		}
 		sendCmd, ok := m.submitSteer()
 		if !ok {
 			return m, nil
 		}
 		return m, sendCmd
+	case tea.KeyUp:
+		if m.steerMentionOpen && len(m.steerMentionItems) > 0 && m.steerMentionIndex > 0 {
+			m.steerMentionIndex--
+		}
+		return m, nil
+	case tea.KeyDown:
+		if m.steerMentionOpen && m.steerMentionIndex < len(m.steerMentionItems)-1 {
+			m.steerMentionIndex++
+		}
+		return m, nil
+	case tea.KeyBackspace, tea.KeyCtrlH:
+		m.steerInput = dropLastRune(m.steerInput)
+		m.refreshSteerMentions()
+		return m, nil
+	case tea.KeyRunes:
+		m.steerInput += string(msg.Runes)
+		m.refreshSteerMentions()
+		return m, nil
+	default:
+		return m, nil
 	}
-	return m, cmd
 }
 
 func (m Model) renderSurface(surface Surface) string {
@@ -686,17 +716,43 @@ func renderHelp() string {
 	b.WriteString("Dashboard: enter inspect | q queue | up/down move\n")
 	b.WriteString("Session: t trace | k kill | esc back\n")
 	b.WriteString("Trace: f filter | G bottom | up/down scroll | esc back\n")
-	b.WriteString("Steer: select target, write instruction, enter submit, esc cancel")
+	b.WriteString("Steer: type @target + instruction; @everyone for broadcast")
 	return b.String()
 }
 
 func (m Model) renderSteer() string {
-	if m.steerForm == nil {
-		return errorStyle.Render("steer unavailable")
+	bodyWidth := m.contentWidth()
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("Steer"))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render(strings.Repeat("─", max(36, bodyWidth))))
+	b.WriteString("\n\n")
+	b.WriteString(sectionStyle.Render("Instruction"))
+	b.WriteString("\n")
+	if strings.TrimSpace(m.steerInput) == "" {
+		b.WriteString(dimStyle.Render("> @cook-a focus on tests, keep commits small"))
+	} else {
+		b.WriteString("> ")
+		b.WriteString(m.steerInput)
 	}
-	return titleStyle.Render("Steer") + "\n" +
-		dimStyle.Render(strings.Repeat("─", 24)) + "\n" +
-		m.steerForm.View()
+
+	if m.steerMentionOpen && len(m.steerMentionItems) > 0 {
+		b.WriteString("\n\n")
+		b.WriteString(sectionLine("Mentions", bodyWidth))
+		b.WriteString("\n")
+		for i, mention := range m.steerMentionItems {
+			row := "  " + mention
+			if i == m.steerMentionIndex {
+				row = selectedRowStyle.Render(trimTo(strings.TrimSpace(row), bodyWidth))
+			}
+			b.WriteString(row)
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("Type @ to mention cooks. Enter submits. Esc closes mentions, then closes steer."))
+	return b.String()
 }
 
 func (m Model) contentWidth() int {
@@ -749,16 +805,6 @@ func (m Model) sessionByID(id string) (Session, bool) {
 	return Session{}, false
 }
 
-func (m Model) defaultSteerInput() string {
-	if m.baseSurface() == surfaceSession && m.sessionID != "" {
-		return m.sessionID
-	}
-	if len(m.snapshot.Active) > 0 {
-		return m.snapshot.Active[0].ID
-	}
-	return "sous-chef"
-}
-
 func (m *Model) baseSurface() Surface {
 	switch m.surface {
 	case surfaceHelp, surfaceSteer:
@@ -787,49 +833,17 @@ func (m *Model) closeHelp() {
 func (m *Model) openSteer() tea.Cmd {
 	m.overlay = m.baseSurface()
 	m.surface = surfaceSteer
-	m.steerTarget = m.defaultSteerInput()
-	m.steerPrompt = ""
-	targets := m.steerTargets()
-	if !containsString(targets, m.steerTarget) {
-		m.steerTarget = targets[0]
-	}
-
-	options := make([]huh.Option[string], 0, len(targets))
-	for _, target := range targets {
-		options = append(options, huh.NewOption("@"+target, target))
-	}
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Target").
-				Description("Pick cook or sous-chef (press / to filter)").
-				Options(options...).
-				Filtering(true).
-				Value(&m.steerTarget),
-			huh.NewInput().
-				Title("Instruction").
-				Placeholder("focus on tests, keep commits small").
-				Value(&m.steerPrompt).
-				Validate(huh.ValidateNotEmpty()),
-		),
-	).WithShowErrors(true).WithShowHelp(true)
-	if m.width > 0 {
-		width := m.width - 4
-		if width > 100 {
-			width = 100
-		}
-		if width > 20 {
-			form = form.WithWidth(width)
-		}
-	}
-	m.steerForm = form
-	return m.steerForm.Init()
+	m.steerInput = ""
+	m.steerMentionOpen = false
+	m.steerMentionItems = nil
+	m.steerMentionIndex = 0
+	m.steerMentionStart = -1
+	return nil
 }
 
 func (m *Model) closeSteer() {
-	m.steerForm = nil
-	m.steerPrompt = ""
-	m.steerTarget = ""
+	m.steerInput = ""
+	m.closeSteerMentions()
 	if m.overlay == "" {
 		m.surface = surfaceDashboard
 		return
@@ -838,18 +852,24 @@ func (m *Model) closeSteer() {
 }
 
 func (m *Model) submitSteer() (tea.Cmd, bool) {
-	target := strings.TrimSpace(m.steerTarget)
-	prompt := strings.TrimSpace(m.steerPrompt)
-	if target == "" || prompt == "" {
-		m.statusLine = "steer requires target and instruction"
+	targets, prompt, err := parseSteerInput(m.steerInput, m.steerTargets())
+	if err != nil {
+		m.statusLine = "steer failed: " + err.Error()
 		return nil, false
 	}
 	m.closeSteer()
-	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-		Action: "steer",
-		Target: target,
-		Prompt: prompt,
-	}), true
+	cmds := make([]tea.Cmd, 0, len(targets))
+	for _, target := range targets {
+		cmds = append(cmds, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+			Action: "steer",
+			Target: target,
+			Prompt: prompt,
+		}))
+	}
+	if len(cmds) == 1 {
+		return cmds[0], true
+	}
+	return tea.Batch(cmds...), true
 }
 
 func (m Model) steerTargets() []string {
@@ -870,13 +890,167 @@ func (m Model) steerTargets() []string {
 	return targets
 }
 
-func containsString(values []string, target string) bool {
+func parseSteerInput(raw string, validTargets []string) ([]string, string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, "", fmt.Errorf("type @target and an instruction")
+	}
+
+	valid := map[string]string{}
+	for _, target := range validTargets {
+		key := strings.ToLower(strings.TrimSpace(target))
+		if key == "" {
+			continue
+		}
+		valid[key] = target
+	}
+
+	mentions := make([]string, 0, 2)
+	words := make([]string, 0, 8)
+	for _, token := range strings.Fields(raw) {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
+		}
+		if !strings.HasPrefix(token, "@") {
+			words = append(words, token)
+			continue
+		}
+		mention := strings.TrimPrefix(token, "@")
+		mention = strings.TrimSpace(strings.TrimRight(mention, ",.;:"))
+		if mention == "" {
+			continue
+		}
+		mentions = append(mentions, mention)
+	}
+	if len(mentions) == 0 {
+		return nil, "", fmt.Errorf("missing @target mention")
+	}
+
+	prompt := strings.TrimSpace(strings.Join(words, " "))
+	if prompt == "" {
+		return nil, "", fmt.Errorf("instruction text is required")
+	}
+
+	resolved := make([]string, 0, len(validTargets))
+	for _, mention := range mentions {
+		mentionKey := strings.ToLower(mention)
+		if mentionKey == "everyone" {
+			resolved = append(resolved, validTargets...)
+			continue
+		}
+		canonical, ok := valid[mentionKey]
+		if !ok {
+			return nil, "", fmt.Errorf("unknown target @%s", mention)
+		}
+		resolved = append(resolved, canonical)
+	}
+	resolved = uniqueStrings(resolved)
+	if len(resolved) == 0 {
+		return nil, "", fmt.Errorf("no valid targets selected")
+	}
+	return resolved, prompt, nil
+}
+
+func uniqueStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
-		if value == target {
-			return true
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func (m *Model) refreshSteerMentions() {
+	start, query, ok := mentionQuery(m.steerInput)
+	if !ok {
+		m.closeSteerMentions()
+		return
+	}
+	candidates := mentionCandidates(query, m.steerTargets())
+	if len(candidates) == 0 {
+		m.closeSteerMentions()
+		return
+	}
+	m.steerMentionOpen = true
+	m.steerMentionStart = start
+	m.steerMentionItems = candidates
+	if m.steerMentionIndex >= len(candidates) {
+		m.steerMentionIndex = len(candidates) - 1
+	}
+	if m.steerMentionIndex < 0 {
+		m.steerMentionIndex = 0
+	}
+}
+
+func mentionQuery(input string) (int, string, bool) {
+	if input == "" {
+		return 0, "", false
+	}
+	start := len(input) - 1
+	for start >= 0 && input[start] != ' ' && input[start] != '\t' && input[start] != '\n' {
+		start--
+	}
+	start++
+	if start >= len(input) || input[start] != '@' {
+		return 0, "", false
+	}
+	return start, strings.ToLower(strings.TrimSpace(input[start+1:])), true
+}
+
+func mentionCandidates(query string, targets []string) []string {
+	all := []string{"@everyone"}
+	for _, target := range targets {
+		all = append(all, "@"+target)
+	}
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" {
+		return all
+	}
+	out := make([]string, 0, len(all))
+	for _, candidate := range all {
+		if strings.HasPrefix(strings.ToLower(strings.TrimPrefix(candidate, "@")), query) {
+			out = append(out, candidate)
 		}
 	}
-	return false
+	return out
+}
+
+func (m *Model) applySteerMention(selection string) {
+	if m.steerMentionStart < 0 || m.steerMentionStart > len(m.steerInput) {
+		m.steerInput = strings.TrimSpace(m.steerInput + " " + selection + " ")
+		m.closeSteerMentions()
+		return
+	}
+	prefix := m.steerInput[:m.steerMentionStart]
+	m.steerInput = prefix + selection + " "
+	m.closeSteerMentions()
+}
+
+func (m *Model) closeSteerMentions() {
+	m.steerMentionOpen = false
+	m.steerMentionItems = nil
+	m.steerMentionIndex = 0
+	m.steerMentionStart = -1
+}
+
+func dropLastRune(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= 1 {
+		return ""
+	}
+	return string(runes[:len(runes)-1])
 }
 
 func (m Model) filteredTraceLines() []EventLine {
