@@ -1,0 +1,26 @@
+# Build
+bin/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Claude
+*.skill
+.claude/settings.local.json
+.codex-output/
+
+# Git worktrees
+.worktrees/
+
+# Obsidian
+brain/.obsidian/

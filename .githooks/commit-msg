@@ -1,0 +1,41 @@
+#!/bin/sh
+# Enforce conventional commits + repository commit-message quality rules.
+# Usage: commit-msg <path-to-temporary-commit-message-file>
+
+set -eu
+
+msg_file="$1"
+subject="$(sed -n '1p' "$msg_file")"
+
+fail() {
+  echo "commit-msg: $1" >&2
+  exit 1
+}
+
+# 1) Header required and must be conventional commit format.
+printf '%s' "$subject" | grep -Eq '^(build|chore|ci|deps|docs|feat|fix|merge|perf|refactor|revert|style|test)(\([^)]+\))?(!)?: .+' \
+  || fail "header must match <type>(<scope>): <subject>"
+
+# 2) Subject length <= 70.
+[ "${#subject}" -le 70 ] || fail "subject must be <= 70 characters"
+
+# 3) Subject first letter after ": " must be capitalized.
+subject_text="$(printf '%s' "$subject" | sed 's/^[^:]*: //')"
+first_char="$(printf '%s' "$subject_text" | cut -c1)"
+printf '%s' "$first_char" | grep -Eq '[A-Z]' || fail "subject must start with a capital letter"
+
+# 4) Subject must not end with period.
+printf '%s' "$subject_text" | grep -Eq '\.$' && fail "subject must not end with a period"
+
+# 5) All non-comment lines <= 100 characters.
+# Ignore template/comment lines that Git strips from final commit messages.
+awk '($0 !~ /^[[:space:]]*#/ && length($0) > 100) { printf("commit-msg: line %d exceeds 100 chars\n", NR) > "/dev/stderr"; exit 1 }' "$msg_file" \
+  || exit 1
+
+# 6) Non-empty body required (line 3+ contains non-whitespace, non-comment text).
+# Conventional layout expects blank line 2, then body starts at line 3.
+# We only require at least one non-empty line after the header block.
+tail -n +3 "$msg_file" | grep -Ev '^[[:space:]]*(#.*)?$' | grep -q '.' \
+  || fail "commit body is required (title-only commits are not allowed)"
+
+exit 0

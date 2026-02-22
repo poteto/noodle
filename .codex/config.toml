@@ -1,0 +1,23 @@
+# Noodle — Codex project configuration
+# Mirrors Claude Code setup. See CLAUDE.md for detailed project instructions.
+
+model = "gpt-5.3-codex"
+model_reasoning_effort = "high"
+
+# Fully autonomous — no approval prompts
+sandbox_mode = "read-only"
+approval_policy = "never"
+
+# Read CLAUDE.md when AGENTS.md is absent (shared instructions with Claude Code)
+project_doc_fallback_filenames = ["CLAUDE.md"]
+
+# Go toolchain writes to system cache dirs (~/Library/Caches/go-build, ~/go/pkg/mod)
+# which are outside the workspace sandbox. Redirect to /tmp/ (writable by default in
+# workspace-write) so `go test` and `go build` work without --add-dir hacks.
+[shell_environment_policy.set]
+GOCACHE = "/tmp/codex-go-cache"
+GOMODCACHE = "/tmp/codex-go-mod"
+
+# Apply local edits, run tests, download dependencies
+[profiles.edit]
+sandbox_mode = "danger-full-access"
