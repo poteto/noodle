@@ -1,0 +1,52 @@
+#!/bin/sh
+set -eu
+
+PLANS_DIR="${NOODLE_PLANS_DIR:-brain/plans}"
+INDEX_FILE="$PLANS_DIR/index.md"
+mkdir -p "$PLANS_DIR"
+[ -f "$INDEX_FILE" ] || printf '# Plans\n\n' > "$INDEX_FILE"
+
+payload=$(cat)
+title=$(printf '%s' "$payload" | sed -n 's/.*"title"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+slug=$(printf '%s' "$payload" | sed -n 's/.*"slug"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+[ -n "$title" ] || { echo "title required" >&2; exit 1; }
+if [ -z "$slug" ]; then
+  slug=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')
+fi
+
+max_id=$(find "$PLANS_DIR" -maxdepth 1 -type d -name '[0-9][0-9]-*' | sed 's#.*/##' | cut -c1-2 | sort -n | tail -n1)
+[ -n "$max_id" ] || max_id=0
+id=$(printf '%02d' $((10#$max_id + 1)))
+dir="$PLANS_DIR/$id-$slug"
+mkdir -p "$dir"
+
+cat > "$dir/overview.md" <<OV
+---
+id: $((10#$id))
+created: $(date +%F)
+updated: $(date +%F)
+status: active
+---
+
+# $title
+
+## Phases
+
+- [ ] [[plans/$id-$slug/phase-01-scaffold]] — Scaffold
+OV
+
+cat > "$dir/phase-01-scaffold.md" <<OV
+Back to [[plans/$id-$slug/overview]]
+
+# Phase 1 — Scaffold
+
+## Goal
+## Changes
+## Data Structures
+## Verification
+### Static
+### Runtime
+OV
+
+printf -- '- [ ] [[plans/%s-%s/overview]]\n' "$id" "$slug" >> "$INDEX_FILE"
+echo "$id"

@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+TODOS_FILE="${NOODLE_TODOS_FILE:-brain/todos.md}"
+mkdir -p "$(dirname "$TODOS_FILE")"
+[ -f "$TODOS_FILE" ] || {
+  cat > "$TODOS_FILE" <<'INIT'
+# Todos
+
+<!-- next-id: 1 -->
+
+## Inbox
+INIT
+}
+
+payload=$(cat)
+title=$(printf '%s' "$payload" | sed -n 's/.*"title"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+section=$(printf '%s' "$payload" | sed -n 's/.*"section"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+[ -n "$title" ] || { echo "title required" >&2; exit 1; }
+[ -n "$section" ] || section="Inbox"
+
+next_id=$(sed -n 's/.*next-id:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$TODOS_FILE" | head -n1)
+if [ -z "$next_id" ]; then
+  max_id=$(sed -n 's/^\([0-9][0-9]*\)\..*/\1/p' "$TODOS_FILE" | sort -n | tail -n1)
+  [ -n "$max_id" ] || max_id=0
+  next_id=$((max_id + 1))
+fi
+
+if ! grep -q "^##[[:space:]]\+$section$" "$TODOS_FILE"; then
+  printf '\n## %s\n' "$section" >> "$TODOS_FILE"
+fi
+printf '%s. [ ] %s\n' "$next_id" "$title" >> "$TODOS_FILE"
+
+next_next=$((next_id + 1))
+if grep -q 'next-id:' "$TODOS_FILE"; then
+  tmp="$TODOS_FILE.tmp"
+  sed "s/next-id:[[:space:]]*[0-9][0-9]*/next-id: $next_next/" "$TODOS_FILE" > "$tmp"
+  mv "$tmp" "$TODOS_FILE"
+else
+  tmp="$TODOS_FILE.tmp"
+  awk -v n="$next_next" 'NR==2{print ""; print "<!-- next-id: " n " -->"} {print}' "$TODOS_FILE" > "$tmp"
+  mv "$tmp" "$TODOS_FILE"
+fi
+
+echo "$next_id"
