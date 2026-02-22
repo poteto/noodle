@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -245,6 +246,62 @@ func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
 	}
 	if m.steerInput == "" {
 		t.Fatal("expected steer input to contain selected mention")
+	}
+}
+
+func TestRenderSessionWrapsLongEventMessages(t *testing.T) {
+	now := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return now },
+	})
+	m.width = 80
+	m.surface = surfaceSession
+	m.sessionID = "cook-a"
+	m.snapshot = Snapshot{
+		Sessions: []Session{
+			{
+				ID:              "cook-a",
+				Status:          "running",
+				Health:          "green",
+				Provider:        "codex",
+				Model:           "gpt-5.3-codex",
+				DurationSeconds: 29,
+			},
+		},
+		EventsBySession: map[string][]EventLine{
+			"cook-a": {
+				{
+					At:    now,
+					Label: "Think",
+					Body:  "this is a deliberately long event message that should wrap across multiple lines instead of being cut off with ellipsis in the session detail view",
+				},
+			},
+		},
+	}
+
+	view := m.renderSession()
+	if strings.Contains(view, "...") {
+		t.Fatalf("expected wrapped event body without truncation ellipsis, got:\n%s", view)
+	}
+	if !strings.Contains(view, "this is a deliberately long event message") {
+		t.Fatalf("expected first wrapped segment in view, got:\n%s", view)
+	}
+	if !strings.Contains(view, "instead of being cut off with ellipsis") {
+		t.Fatalf("expected continuation segment in view, got:\n%s", view)
+	}
+}
+
+func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
+	segments := wrapPlainText("supercalifragilisticexpialidocious", 8)
+	if len(segments) < 2 {
+		t.Fatalf("expected long token to split across segments, got %#v", segments)
+	}
+	for _, segment := range segments {
+		if len([]rune(segment)) > 8 {
+			t.Fatalf("segment exceeds width: %q", segment)
+		}
 	}
 }
 
