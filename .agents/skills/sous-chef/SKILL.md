@@ -58,6 +58,18 @@ When no blocking Chef review is pending:
 5. Schedule one `Meditate` item after roughly every 3 completed/scheduled
    `Reflect` items (use `recent_history` plus planned queue context).
 
+## Model Routing Policy
+
+Set `provider` and `model` per queue item using these defaults:
+
+1. Front-end tasks and judgment-heavy tasks (for example planning and backlog
+   grooming): `provider: "claude"`, `model: "claude-opus-4-6"`.
+2. Coding execution tasks and tasks that require strong implementation focus:
+   `provider: "codex"`, `model: "gpt-5.3-codex"`.
+
+When uncertain, prefer Codex for direct implementation work and Opus for
+strategic prioritization or nuanced product judgment work.
+
 ## Output Contract
 
 Write valid JSON with this shape:
