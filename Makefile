@@ -1,9 +1,10 @@
-.PHONY: help build test test-short vet run start status tui skills commands worktree watch clean
+.PHONY: help build test test-short vet run start status tui skills commands worktree watch watch-quiet clean
 
 GO ?= go
 BIN ?= ./bin/noodle
 NOODLE ?= $(GO) run .
 AIR ?= air
+AIR_FLAGS ?= -d
 
 .DEFAULT_GOAL := help
 
@@ -21,7 +22,8 @@ help:
 	@echo "  make skills      List resolved skills"
 	@echo "  make commands    List available commands"
 	@echo "  make worktree    Show worktree help"
-	@echo "  make watch       Rebuild on changes with Air"
+	@echo "  make watch       Rebuild on changes with Air (debug file events)"
+	@echo "  make watch-quiet Rebuild on changes with Air (quieter output)"
 	@echo "  make clean       Remove built binary"
 
 build:
@@ -57,12 +59,17 @@ worktree:
 	$(NOODLE) worktree --help
 
 watch:
-	@if command -v $(AIR) >/dev/null 2>&1; then \
-		$(AIR) -c .air.toml; \
+	@if $(GO) tool -n air >/dev/null 2>&1; then \
+		$(GO) tool air $(AIR_FLAGS) -c .air.toml; \
+	elif command -v $(AIR) >/dev/null 2>&1; then \
+		$(AIR) $(AIR_FLAGS) -c .air.toml; \
 	else \
-		echo "air not found; running via 'go run github.com/air-verse/air@latest'"; \
-		$(GO) run github.com/air-verse/air@latest -c .air.toml; \
+		echo "air not found. Install with: go install github.com/air-verse/air@latest"; \
+		exit 1; \
 	fi
+
+watch-quiet: AIR_FLAGS =
+watch-quiet: watch
 
 clean:
 	rm -f $(BIN)
