@@ -16,6 +16,7 @@
 - [[principles/migrate-callers-then-delete-legacy-apis]]
 - [[principles/never-block-on-the-human]]
 - [[principles/observe-directly]]
+- [[principles/outcome-oriented-execution]]
 - [[principles/redesign-from-first-principles]]
 - [[principles/scaffold-first]]
 - [[principles/subtract-before-you-add]]

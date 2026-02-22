@@ -6,6 +6,7 @@
 - [[principles/scaffold-first]]
 - [[principles/redesign-from-first-principles]]
 - [[principles/subtract-before-you-add]]
+- [[principles/outcome-oriented-execution]]
 - [[principles/experience-first]]
 - [[principles/exhaust-the-design-space]]
 
