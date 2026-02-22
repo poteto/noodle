@@ -5,9 +5,9 @@ description: Audit the brain Obsidian vault, CLAUDE.md, and auto-memory files fo
 
 # Meditate
 
-## Cook Mode
+## Autonomous Session Mode
 
-When the cook mode marker is present in the prompt:
+When this skill runs in a non-interactive Noodle execution session (for example `Cook`, `Oops`, or `Repair`):
 
 - **Step 7**: Apply all high-confidence changes autonomously. For ambiguous or risky changes (deletions of brain files, major principle rewrites), file a todo instead of applying.
 - Do not wait for human feedback on the diff.

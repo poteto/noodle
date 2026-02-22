@@ -12,9 +12,9 @@ description: >
 
 Thorough, interactive review grounded in project principles. **Do NOT make changes — the review is the deliverable.**
 
-## Cook Mode
+## Autonomous Session Mode
 
-When the cook mode marker is present in the prompt:
+When this skill runs in a non-interactive Noodle execution session (for example `Cook`, `Oops`, or `Repair`):
 
 - **Do not use AskUserQuestion.** For each issue found, state the recommended action directly instead of presenting options.
 - **Write findings to a report file** at `brain/audits/review-<date>-<subject>.md` in addition to session output.

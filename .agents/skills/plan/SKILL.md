@@ -14,9 +14,9 @@ description: >
 
 Produce implementation plans grounded in project principles. Write plans to `brain/plans/`. **Do NOT implement anything — the plan is the deliverable.**
 
-## Cook Mode
+## Autonomous Session Mode
 
-When the prompt preamble includes the cook mode marker (injected at session creation):
+When this skill runs in a non-interactive Noodle execution session (for example `Cook`, `Oops`, or `Repair`):
 
 - **Skip Step 2** (AskUserQuestion) — the scope is fully defined in the initial prompt.
 - **Skip Step 8's pause** — write the plan, commit it, and end the session. Do not wait for human review.
