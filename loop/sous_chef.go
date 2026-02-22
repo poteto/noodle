@@ -12,6 +12,88 @@ import (
 
 const sousChefQueueID = "sous-chef"
 
+const queueSchemaPrompt = `queue.json schema (JSON):
+{
+  "generated_at": "RFC3339 timestamp",
+  "items": [
+    {
+      "id": "string",
+      "title": "string (optional)",
+      "provider": "string",
+      "model": "string",
+      "skill": "string (optional)",
+      "review": "boolean (optional)",
+      "rationale": "string (optional)"
+    }
+  ]
+}`
+
+const miseSchemaPrompt = `mise.json schema (JSON):
+{
+  "generated_at": "RFC3339 timestamp",
+  "backlog": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string (optional)",
+      "section": "string (optional)",
+      "status": "open|in_progress|done",
+      "tags": ["string"],
+      "plan": "string (optional)",
+      "plan_phase": "string (optional)",
+      "estimate": "small|medium|large (optional)"
+    }
+  ],
+  "plans": [
+    {
+      "id": "string",
+      "title": "string",
+      "status": "draft|active|done",
+      "phases": [{"name": "string", "status": "pending|active|done|skipped"}],
+      "tags": ["string"]
+    }
+  ],
+  "active_cooks": [
+    {
+      "id": "string",
+      "target": "string (optional)",
+      "provider": "string (optional)",
+      "model": "string (optional)",
+      "status": "string",
+      "cost": "number",
+      "duration_s": "integer"
+    }
+  ],
+  "tickets": [
+    {
+      "target": "string",
+      "target_type": "backlog_item|file|plan_phase",
+      "cook_id": "string",
+      "files": ["string"],
+      "claimed_at": "RFC3339 timestamp",
+      "last_progress": "RFC3339 timestamp",
+      "status": "active|blocked|stale",
+      "blocked_by": "string (optional)",
+      "reason": "string (optional)"
+    }
+  ],
+  "resources": {"max_cooks": "integer", "active": "integer", "available": "integer"},
+  "recent_history": [
+    {
+      "target": "string (optional)",
+      "cook_id": "string",
+      "outcome": "string",
+      "cost": "number",
+      "duration_s": "integer"
+    }
+  ],
+  "routing": {
+    "defaults": {"provider": "string", "model": "string"},
+    "tags": {"<tag>": {"provider": "string", "model": "string"}}
+  },
+  "warnings": ["string"]
+}`
+
 func isSousChefItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), sousChefQueueID)
 }
@@ -78,6 +160,8 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) string {
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
+		queueSchemaPrompt,
+		miseSchemaPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)

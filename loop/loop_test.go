@@ -414,6 +414,15 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if sp.calls[0].Skill != "priority-chef" {
 		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
 	}
+	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(priority-chef) to refresh .noodle/queue.json from .noodle/mise.json.") {
+		t.Fatalf("spawn prompt missing configured skill invocation: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
+		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "mise.json schema (JSON):") {
+		t.Fatalf("spawn prompt missing mise schema: %q", sp.calls[0].Prompt)
+	}
 	if !sp.calls[0].AllowPrimaryCheckout {
 		t.Fatal("expected sous-chef spawn to allow primary checkout")
 	}
