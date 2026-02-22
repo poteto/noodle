@@ -420,11 +420,23 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
 	}
+	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule (classification labels, not a queue.json field):") {
+		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "- plan: planning and decomposition work") {
+		t.Fatalf("spawn prompt missing plan task type guidance: %q", sp.calls[0].Prompt)
+	}
 	if !strings.Contains(sp.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {
 		t.Fatalf("spawn prompt missing autonomous mode note: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(
+		sp.calls[0].Prompt,
+		"You may synthesize new queue items that are not present in mise.json when enforcing stage transitions",
+	) {
+		t.Fatalf("spawn prompt missing synthesized-item guidance: %q", sp.calls[0].Prompt)
 	}
 	if strings.Contains(sp.calls[0].Prompt, "mise.json schema (JSON):") {
 		t.Fatalf("spawn prompt must not include mise schema: %q", sp.calls[0].Prompt)

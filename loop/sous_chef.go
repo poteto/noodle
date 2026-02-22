@@ -28,6 +28,15 @@ const queueSchemaPrompt = `queue.json schema (JSON):
   ]
 }`
 
+const queueTaskTypesPrompt = `Task types you may schedule (classification labels, not a queue.json field):
+- plan: planning and decomposition work
+- review: chef-review or approval gate work
+- execute: implementation/coding work
+- verify: validation/testing/check work
+- reflect: summarize lessons/follow-ups
+- meditate: periodic meta-review after several reflects
+- other execution tasks are allowed when they do not fit the labels above`
+
 func isSousChefItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), sousChefQueueID)
 }
@@ -96,7 +105,9 @@ func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) 
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
+		"You may synthesize new queue items that are not present in mise.json when enforcing stage transitions (for example, Plan -> Review, Execute -> Verify, Verify -> Reflect).",
 		queueSchemaPrompt,
+		queueTaskTypesPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)
