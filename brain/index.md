@@ -37,6 +37,7 @@
 
 ## Codebase
 - [[codebase/claude-code-ndjson-protocol]]
+- [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
