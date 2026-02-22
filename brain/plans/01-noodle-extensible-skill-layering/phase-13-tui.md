@@ -17,6 +17,7 @@ This phase will be implemented by Codex. Keep it simple:
 - **No extreme concurrency patterns.** Use straightforward goroutines and mutexes where needed. No complex channel orchestration or worker pools unless the phase explicitly calls for them.
 - **Tests should increase confidence, not coverage.** Test the critical flows (model updates, view transitions, health dot derivation). Skip testing trivial rendering details. Ask: "does this test help us iterate faster?"
 - **Prefer markdown fixture tests for parser/protocol flows.** Keep input and expected output in the same anonymized `*.fixture.md` file under `testdata/`, and use this pattern wherever practical.
+- **Runtime verification in a fake project is required.** After static checks pass, run Noodle in a fresh temporary git repo under `/tmp` and verify the phase behavior there before closing.
 
 
 - **Overview + phase completeness check (required).** Before closing the phase, review your changes against both the plan overview and this phase document. Verify every detail in Goal, Changes, Data Structures, and Verification is satisfied; track and resolve any mismatch before considering the phase done.
