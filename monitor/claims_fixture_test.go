@@ -118,3 +118,62 @@ func TestReadSessionMissingFile(t *testing.T) {
 		t.Fatal("event timestamps should be zero for missing file")
 	}
 }
+
+func TestReadSessionUsesSpawnMetadataForModel(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	canonical := `{"provider":"claude","type":"init","message":"started","timestamp":"2026-02-22T15:00:00Z"}`
+	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical+"\n"), 0o644); err != nil {
+		t.Fatalf("write canonical events: %v", err)
+	}
+	spawn := `{"provider":"claude","model":"claude-opus-4-6"}`
+	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(spawn), 0o644); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
+	}
+
+	reader := NewCanonicalClaimsReader(runtimeDir)
+	claims, err := reader.ReadSession(sessionID)
+	if err != nil {
+		t.Fatalf("read session claims: %v", err)
+	}
+	if claims.Provider != "claude" {
+		t.Fatalf("provider = %q", claims.Provider)
+	}
+	if claims.Model != "claude-opus-4-6" {
+		t.Fatalf("model = %q", claims.Model)
+	}
+}
+
+func TestReadSessionIgnoresMalformedSpawnMetadata(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	canonical := `{"provider":"codex","type":"action","message":"run tests","timestamp":"2026-02-22T15:00:00Z"}`
+	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical+"\n"), 0o644); err != nil {
+		t.Fatalf("write canonical events: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte("{bad-json"), 0o644); err != nil {
+		t.Fatalf("write malformed spawn metadata: %v", err)
+	}
+
+	reader := NewCanonicalClaimsReader(runtimeDir)
+	claims, err := reader.ReadSession(sessionID)
+	if err != nil {
+		t.Fatalf("read session claims: %v", err)
+	}
+	if claims.Provider != "codex" {
+		t.Fatalf("provider = %q", claims.Provider)
+	}
+	if claims.Model != "" {
+		t.Fatalf("model = %q", claims.Model)
+	}
+}
