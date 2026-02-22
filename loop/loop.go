@@ -59,17 +59,18 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 
 	return &Loop{
-		projectDir:      projectDir,
-		runtimeDir:      runtimeDir,
-		config:          cfg,
-		deps:            deps,
-		state:           StateRunning,
-		activeByTarget:  map[string]*activeCook{},
-		activeByID:      map[string]*activeCook{},
-		adoptedTargets:  map[string]string{},
-		adoptedSessions: []string{},
-		failedTargets:   map[string]string{},
-		processedIDs:    map[string]struct{}{},
+		projectDir:            projectDir,
+		runtimeDir:            runtimeDir,
+		config:                cfg,
+		deps:                  deps,
+		state:                 StateRunning,
+		activeByTarget:        map[string]*activeCook{},
+		activeByID:            map[string]*activeCook{},
+		adoptedTargets:        map[string]string{},
+		adoptedSessions:       []string{},
+		failedTargets:         map[string]string{},
+		processedIDs:          map[string]struct{}{},
+		runtimeRepairAttempts: map[string]int{},
 	}
 }
 
@@ -132,18 +133,24 @@ func (l *Loop) Run(ctx context.Context) error {
 
 func (l *Loop) Cycle(ctx context.Context) error {
 	if err := l.processControlCommands(); err != nil {
-		return err
+		return l.handleRuntimeIssue(ctx, "loop.control", err, nil)
 	}
 	if err := l.collectCompleted(ctx); err != nil {
-		return err
+		return l.handleRuntimeIssue(ctx, "loop.collect", err, nil)
 	}
 	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
+		return l.handleRuntimeIssue(ctx, "loop.monitor", err, nil)
+	}
+	if err := l.advanceRuntimeRepair(ctx); err != nil {
 		return err
 	}
+	if l.runtimeRepairInFlight != nil {
+		return nil
+	}
 	l.refreshAdoptedTargets()
-	brief, _, err := l.deps.Mise.Build(ctx)
+	brief, warnings, err := l.deps.Mise.Build(ctx)
 	if err != nil {
-		return err
+		return l.handleRuntimeIssue(ctx, "mise.build", err, warnings)
 	}
 	if l.state != StateRunning {
 		return nil
@@ -160,6 +167,11 @@ func (l *Loop) Cycle(ctx context.Context) error {
 				return err
 			}
 		}
+	}
+	if shouldRecoverMissingSyncScripts(warnings, queue) &&
+		len(l.activeByID) == 0 &&
+		len(l.adoptedTargets) == 0 {
+		return l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
 	}
 
 	limit := l.config.Concurrency.MaxCooks
@@ -187,6 +199,22 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
+	if len(queue.Items) > 0 {
+		return false
+	}
+	for _, warning := range warnings {
+		warning = strings.ToLower(strings.TrimSpace(warning))
+		if warning == "" {
+			continue
+		}
+		if strings.Contains(warning, "sync script missing") {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {

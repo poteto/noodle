@@ -78,11 +78,30 @@ func (f *fakeAdapterRunner) Run(_ context.Context, adapterName, action string, o
 }
 
 type fakeMise struct {
-	brief mise.Brief
+	brief    mise.Brief
+	warnings []string
+	err      error
+	results  []fakeMiseResult
+	calls    int
 }
 
 func (f *fakeMise) Build(_ context.Context) (mise.Brief, []string, error) {
-	return f.brief, nil, nil
+	f.calls++
+	if len(f.results) > 0 {
+		index := f.calls - 1
+		if index >= len(f.results) {
+			index = len(f.results) - 1
+		}
+		current := f.results[index]
+		return current.brief, current.warnings, current.err
+	}
+	return f.brief, f.warnings, f.err
+}
+
+type fakeMiseResult struct {
+	brief    mise.Brief
+	warnings []string
+	err      error
 }
 
 type fakeMonitor struct{}
@@ -659,5 +678,97 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	}
 	if len(updated.Items) != 0 {
 		t.Fatalf("expected queue to be empty after adopted completion, got %#v", updated.Items)
+	}
+}
+
+func TestCycleSchedulesRuntimeRepairForMiseErrors(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	sp := &fakeSpawner{}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{err: errors.New("plans sync failed")},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("repair spawn calls = %d", len(sp.calls))
+	}
+	if sp.calls[0].Skill != "debugging" {
+		t.Fatalf("repair skill = %q", sp.calls[0].Skill)
+	}
+	if !strings.HasPrefix(sp.calls[0].Name, "repair-runtime-") {
+		t.Fatalf("unexpected repair name: %q", sp.calls[0].Name)
+	}
+	if l.runtimeRepairInFlight == nil {
+		t.Fatal("expected runtime repair to be in-flight")
+	}
+	if len(wt.created) != 1 {
+		t.Fatalf("repair worktree create calls = %d", len(wt.created))
+	}
+}
+
+func TestCycleResumesSchedulingAfterRepairCompletion(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	review := false
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	sp := &fakeSpawner{}
+	miseBuilder := &fakeMise{
+		results: []fakeMiseResult{
+			{err: errors.New("backlog sync failed")},
+			{brief: mise.Brief{}},
+		},
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      miseBuilder,
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("first cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions after repair spawn = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("second cycle: %v", err)
+	}
+	if len(sp.calls) != 2 {
+		t.Fatalf("expected repair + cook spawns, got %d", len(sp.calls))
+	}
+	if sp.calls[1].Name != "42" {
+		t.Fatalf("expected cook spawn after repair, got %q", sp.calls[1].Name)
+	}
+	if l.runtimeRepairInFlight != nil {
+		t.Fatal("expected runtime repair to be cleared")
 	}
 }

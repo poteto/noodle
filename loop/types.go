@@ -107,4 +107,23 @@ type Loop struct {
 	adoptedSessions []string
 	failedTargets   map[string]string
 	processedIDs    map[string]struct{}
+
+	runtimeRepairAttempts map[string]int
+	runtimeRepairInFlight *runtimeRepairState
+}
+
+type runtimeIssue struct {
+	Scope    string
+	Message  string
+	Warnings []string
+	Stack    string
+}
+
+type runtimeRepairState struct {
+	Fingerprint string
+	Issue       runtimeIssue
+	Attempt     int
+	SessionID   string
+	Session     spawner.Session
+	StateBefore State
 }

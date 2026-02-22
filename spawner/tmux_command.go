@@ -46,7 +46,7 @@ func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt 
 	if strings.TrimSpace(systemPrompt) != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
-	return shellCommandWithInput(args, promptFile)
+	return shellCommandWithInput(args, promptFile, true)
 }
 
 func buildCodexCommand(req SpawnRequest, promptFile, agentBinary string) string {
@@ -61,7 +61,9 @@ func buildCodexCommand(req SpawnRequest, promptFile, agentBinary string) string 
 	if strings.TrimSpace(req.Model) != "" {
 		args = append(args, "--model", req.Model)
 	}
-	return shellCommandWithInput(args, promptFile)
+	// Codex writes non-JSON progress banners to stderr even with --json.
+	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
+	return shellCommandWithInput(args, promptFile, false)
 }
 
 func buildPipelineCommand(providerCmd, noodleBin, stampedPath, canonicalPath string) string {
@@ -74,7 +76,7 @@ func buildPipelineCommand(providerCmd, noodleBin, stampedPath, canonicalPath str
 	)
 }
 
-func shellCommandWithInput(args []string, inputPath string) string {
+func shellCommandWithInput(args []string, inputPath string, includeStderr bool) string {
 	var builder strings.Builder
 	for i, arg := range args {
 		if i > 0 {
@@ -84,7 +86,9 @@ func shellCommandWithInput(args []string, inputPath string) string {
 	}
 	builder.WriteString(" < ")
 	builder.WriteString(shellQuote(inputPath))
-	builder.WriteString(" 2>&1")
+	if includeStderr {
+		builder.WriteString(" 2>&1")
+	}
 	return builder.String()
 }
 

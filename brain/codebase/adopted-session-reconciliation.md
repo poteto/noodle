@@ -5,3 +5,5 @@
 - Completed queue items must be removed from `.noodle/queue.json` after successful merge to prevent accidental respawn from stale queue entries.
 - Stale adopted entries with no matching queue item should be dropped, not processed through review.
 - When tests hang around scheduling completion, check whether review/taster is waiting on a `Done()` channel that is never closed.
+- Runtime self-healing sessions (`repair-runtime-*`) need the same startup adoption behavior; otherwise each restart can spawn duplicate repair cooks for the same issue.
+- Embedded runtime worktree operations should run in quiet mode so CLI/provisioning logs never bleed into the Bubble Tea frame.
