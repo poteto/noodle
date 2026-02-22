@@ -46,7 +46,7 @@ This phase will be implemented by Codex. Keep it simple:
 - All canonical event types serialize/deserialize correctly
 
 ### Runtime
-- Pipe sample Claude NDJSON through `noodle stamp` and verify:
+- Pipe sample Claude/Codex (~/.claude, ~/.codex) NDJSON through `noodle stamp` and verify:
   - Every line has a `_ts` field
   - Canonical events are extracted correctly
   - Output file is valid NDJSON
