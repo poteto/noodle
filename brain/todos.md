@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 22 -->
+<!-- next-id: 23 -->
 
 ## Tooling
 
@@ -34,3 +34,4 @@
 19. [ ] Update `DefaultConfig()` and config defaults test — after fixing #16 and #17, update `config/config.go:DefaultConfig()` and `config/config_test.go` to match the new defaults. Also update the plan overview's default config table.
 20. [ ] Clarify skills.paths default for Noodle's own repo vs user projects — in the Noodle repo, `skills/` contains Noodle's default skills (backlog, sous-chef, etc.) while the developer's project skills are in `.agents/skills/` (todo, plan, etc.). For user projects, `skills/` would be the project's own skills. The bootstrap skill and config-schema need to distinguish between these two cases: bootstrapping the Noodle repo itself vs bootstrapping a user's project. The default `skills.paths` should reflect where the user's actual skills live, not assume `skills/` is always right.
 21. [ ] Redesign fixture framework to directory-based state fixtures with metadata assertions [[plans/21-fixture-directory-redesign/overview]]
+22. [ ] Make planning opinionated and first-class: always use brain/plans with Noodle-owned format (not user-provided plan adapters), and add an interactive planning session in the TUI where the chef chats with the sous-chef instead of one-shot steering.
