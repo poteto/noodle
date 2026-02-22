@@ -2,11 +2,14 @@ package loop
 
 import (
 	"context"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/recover"
+	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/spawner"
 )
 
@@ -27,15 +30,6 @@ const queueSchemaPrompt = `queue.json schema (JSON):
     }
   ]
 }`
-
-const queueTaskTypesPrompt = `Task types you may schedule (classification labels, not a queue.json field):
-- plan: planning and decomposition work
-- review: chef-review or approval gate work
-- execute: implementation/coding work
-- verify: validation/testing/check work
-- reflect: summarize lessons/follow-ups
-- meditate: periodic meta-review after several reflects
-- other execution tasks are allowed when they do not fit the labels above`
 
 func isSousChefItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), sousChefQueueID)
@@ -74,9 +68,12 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	}
 
 	skillName := nonEmpty(item.Skill, sousChefSkill(l.config))
+	taskTypesPrompt := buildQueueTaskTypesPrompt(
+		resolvedTaskTypesFromSkills(l.projectDir, l.config.Skills.Paths),
+	)
 	req := spawner.SpawnRequest{
 		Name:                 name,
-		Prompt:               buildSousChefPrompt(skillName, item, resumePrompt),
+		Prompt:               buildSousChefPrompt(skillName, taskTypesPrompt, item, resumePrompt),
 		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -100,14 +97,14 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	return nil
 }
 
-func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) string {
+func buildSousChefPrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize new queue items that are not present in mise.json when enforcing stage transitions (for example, Plan -> Review, Execute -> Verify, Verify -> Reflect).",
 		queueSchemaPrompt,
-		queueTaskTypesPrompt,
+		taskTypesPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)
@@ -116,6 +113,57 @@ func buildSousChefPrompt(skillName string, item QueueItem, resumePrompt string) 
 		parts = append(parts, resume)
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+func buildQueueTaskTypesPrompt(taskTypes []string) string {
+	var b strings.Builder
+	b.WriteString("Task types you may schedule (resolved from skills.paths):")
+	if len(taskTypes) == 0 {
+		b.WriteString("\n- (none resolved)")
+		return b.String()
+	}
+	for _, taskType := range taskTypes {
+		b.WriteString("\n- ")
+		b.WriteString(taskType)
+	}
+	return b.String()
+}
+
+func resolvedTaskTypesFromSkills(projectDir string, searchPaths []string) []string {
+	resolver := skill.Resolver{
+		SearchPaths: resolveSkillSearchPaths(projectDir, searchPaths),
+	}
+	skills, err := resolver.List()
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(skills))
+	for _, info := range skills {
+		name := strings.TrimSpace(info.Name)
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func resolveSkillSearchPaths(projectDir string, paths []string) []string {
+	base := strings.TrimSpace(projectDir)
+	out := make([]string, 0, len(paths))
+	for _, raw := range paths {
+		path := strings.TrimSpace(raw)
+		if path == "" {
+			continue
+		}
+		if strings.HasPrefix(path, "~") || filepath.IsAbs(path) || base == "" {
+			out = append(out, path)
+			continue
+		}
+		out = append(out, filepath.Join(base, path))
+	}
+	return out
 }
 
 func sousChefSkill(cfg config.Config) string {
