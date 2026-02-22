@@ -2,31 +2,33 @@ package parse
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/poteto/noodle/internal/testutil/fixturemd"
+	"github.com/poteto/noodle/internal/testutil/fixturedir"
 )
 
-func TestMarkdownFixtures(t *testing.T) {
+func TestDirectoryFixtures(t *testing.T) {
 	t.Helper()
 
-	paths := fixturemd.Paths(t, "testdata")
+	fixturedir.AssertValidFixtureRoot(t, "testdata")
+	inventory := fixturedir.LoadInventory(t, "testdata")
 
-	for _, fixturePath := range paths {
-		fixturePath := fixturePath
-		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
-			adapter := adapterForFixture(t, fixturePath)
-			inputLines := fixturemd.ReadSectionLines(t, fixturePath, "Input")
-			errorExpectation := fixturemd.ExpectedError(t, fixturePath)
+	for _, fixtureCase := range inventory.Cases {
+		fixtureCase := fixtureCase
+		t.Run(fixtureCase.Name, func(t *testing.T) {
+			adapter := adapterForFixture(t, fixtureCase.Name)
+			state := fixtureCase.States[0]
+			inputLines := fixturedir.NonEmptyLines(t, state.MustReadFile(t, "input.ndjson"), "input.ndjson")
+			errorExpectation := fixtureCase.ExpectedError
 
 			expectedEvents := make([]CanonicalEvent, 0)
 			if errorExpectation == nil {
+				rawExpected := fixturedir.MustSection(t, fixtureCase, "Expected Events")
 				expectedEvents = parseCanonicalEvents(
 					t,
-					fixturemd.ReadSectionLines(t, fixturePath, "Expected Events"),
+					fixturedir.NonEmptyLines(t, []byte(rawExpected), "Expected Events"),
 				)
 			}
 
@@ -41,7 +43,7 @@ func TestMarkdownFixtures(t *testing.T) {
 				actualEvents = append(actualEvents, events...)
 			}
 
-			fixturemd.AssertError(t, "parse fixture", parseErr, errorExpectation)
+			fixturedir.AssertError(t, "parse fixture", parseErr, errorExpectation)
 			if errorExpectation != nil {
 				return
 			}
@@ -52,10 +54,29 @@ func TestMarkdownFixtures(t *testing.T) {
 	}
 }
 
-func adapterForFixture(t *testing.T, fixturePath string) LogAdapter {
+func TestDirectoryFixtureInventoryParity(t *testing.T) {
+	expected := []string{
+		"claude",
+		"claude-error-object",
+		"claude-numeric-timestamp",
+		"claude-string-content",
+		"codex",
+		"codex-agent-message",
+		"codex-command-success",
+		"codex-input-command",
+		"codex-tool-output-error",
+		"error-codex-nonjson-line",
+	}
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	if !reflect.DeepEqual(inventory.Names(), expected) {
+		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
+	}
+}
+
+func adapterForFixture(t *testing.T, fixtureName string) LogAdapter {
 	t.Helper()
 
-	name := strings.ToLower(filepath.Base(fixturePath))
+	name := strings.ToLower(strings.TrimSpace(fixtureName))
 	name = strings.TrimPrefix(name, "error-")
 	switch {
 	case strings.HasPrefix(name, "claude"):
@@ -63,7 +84,7 @@ func adapterForFixture(t *testing.T, fixturePath string) LogAdapter {
 	case strings.HasPrefix(name, "codex"):
 		return CodexAdapter{}
 	default:
-		t.Fatalf("fixture %s must start with claude or codex", fixturePath)
+		t.Fatalf("fixture %s must start with claude or codex", fixtureName)
 		return nil
 	}
 }

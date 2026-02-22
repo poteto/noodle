@@ -1,0 +1,2 @@
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}
+{"type":"event_msg","timestamp":"2026-02-22T18:20:01Z","payload":{"type":"task_complete","message":"done","cost":0.42,"tokens_in":90,"tokens_out":20}}

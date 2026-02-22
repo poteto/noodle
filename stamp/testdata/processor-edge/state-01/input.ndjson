@@ -1,0 +1,2 @@
+{"type":"result","subtype":"success","is_error":true,"error":{"message":"Provider internal error","type":"api_error"},"timestamp":1730000000}
+{"type":"response_item","payload":{"type":"function_call","name":"exec_command","input":{"command":"pnpm typecheck"}}}

@@ -1,0 +1,2 @@
+{"type":"event_msg","timestamp":"2026-02-22T19:30:00Z","payload":{"type":"agent_message","message":"Running parser checks"}}
+{"type":"item.completed","_ts":"2026-02-22T19:30:01Z","item":{"type":"agent_message","text":"Parser fallback works."}}

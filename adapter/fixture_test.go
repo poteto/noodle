@@ -2,31 +2,32 @@ package adapter
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/poteto/noodle/internal/testutil/fixturemd"
+	"github.com/poteto/noodle/internal/testutil/fixturedir"
 )
 
-func TestMarkdownFixtures(t *testing.T) {
-	paths := fixturemd.Paths(t, "testdata")
+func TestDirectoryFixtures(t *testing.T) {
+	fixturedir.AssertValidFixtureRoot(t, "testdata")
+	inventory := fixturedir.LoadInventory(t, "testdata")
 
-	for _, fixturePath := range paths {
-		fixturePath := fixturePath
-		t.Run(filepath.Base(fixturePath), func(t *testing.T) {
-			input := strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Input"), "\n")
-			errorExpectation := fixturemd.ExpectedError(t, fixturePath)
-			fixtureName := strings.TrimPrefix(strings.ToLower(filepath.Base(fixturePath)), "error-")
+	for _, fixtureCase := range inventory.Cases {
+		fixtureCase := fixtureCase
+		t.Run(fixtureCase.Name, func(t *testing.T) {
+			state := fixtureCase.States[0]
+			input := strings.Join(fixturedir.NonEmptyLines(t, state.MustReadFile(t, "input.ndjson"), "input.ndjson"), "\n")
+			errorExpectation := fixtureCase.ExpectedError
+			fixtureName := strings.TrimPrefix(strings.ToLower(fixtureCase.Name), "error-")
 			expectedRaw := ""
 			if errorExpectation == nil {
-				expectedRaw = strings.Join(fixturemd.ReadSectionLines(t, fixturePath, "Expected"), "\n")
+				expectedRaw = fixturedir.MustSection(t, fixtureCase, "Expected")
 			}
 
 			if strings.HasPrefix(fixtureName, "backlog") {
 				actual, err := ParseBacklogItems(input)
-				fixturemd.AssertError(t, "parse backlog fixture", err, errorExpectation)
+				fixturedir.AssertError(t, "parse backlog fixture", err, errorExpectation)
 				if errorExpectation != nil {
 					return
 				}
@@ -41,7 +42,7 @@ func TestMarkdownFixtures(t *testing.T) {
 			}
 
 			actual, err := ParsePlanItems(input)
-			fixturemd.AssertError(t, "parse plans fixture", err, errorExpectation)
+			fixturedir.AssertError(t, "parse plans fixture", err, errorExpectation)
 			if errorExpectation != nil {
 				return
 			}
@@ -53,5 +54,18 @@ func TestMarkdownFixtures(t *testing.T) {
 				t.Fatalf("fixture mismatch\nactual:   %#v\nexpected: %#v", actual, expected)
 			}
 		})
+	}
+}
+
+func TestDirectoryFixtureInventoryParity(t *testing.T) {
+	expected := []string{
+		"backlog-sync",
+		"error-backlog-missing-id",
+		"error-plans-missing-phases",
+		"plans-sync",
+	}
+	inventory := fixturedir.LoadInventory(t, "testdata")
+	if !reflect.DeepEqual(inventory.Names(), expected) {
+		t.Fatalf("fixture inventory mismatch\\nactual:   %v\\nexpected: %v", inventory.Names(), expected)
 	}
 }
