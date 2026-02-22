@@ -21,6 +21,9 @@ import (
 
 type loopFixtureSetup struct {
 	SpawnerError                  string            `json:"spawner_error"`
+	WorktreeCreateError           string            `json:"worktree_create_error"`
+	WorktreeCreateErrorNames      []string          `json:"worktree_create_error_names"`
+	FailedTargets                 map[string]string `json:"failed_targets"`
 	Phases                        map[string]string `json:"phases"`
 	RunningRuntimeRepairSessionID string            `json:"running_runtime_repair_session_id"`
 }
@@ -101,6 +104,21 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				sp.spawnErr = errors.New(strings.TrimSpace(setup.SpawnerError))
 			}
 			wt := &fakeWorktree{}
+			if strings.TrimSpace(setup.WorktreeCreateError) != "" {
+				createErr := errors.New(strings.TrimSpace(setup.WorktreeCreateError))
+				if len(setup.WorktreeCreateErrorNames) == 0 {
+					wt.createErr = createErr
+				} else {
+					wt.createErrByName = make(map[string]error, len(setup.WorktreeCreateErrorNames))
+					for _, name := range setup.WorktreeCreateErrorNames {
+						name = strings.TrimSpace(name)
+						if name == "" {
+							continue
+						}
+						wt.createErrByName[name] = createErr
+					}
+				}
+			}
 			baseCfg := config.DefaultConfig()
 			applySetupConfig(&baseCfg, setup)
 			if path := strings.TrimSpace(fixtureCase.Layout.BaseConfigPath); path != "" {
@@ -116,6 +134,16 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				Now:       time.Now,
 				QueueFile: queuePath,
 			})
+			if len(setup.FailedTargets) > 0 {
+				l.failedTargets = make(map[string]string, len(setup.FailedTargets))
+				for id, reason := range setup.FailedTargets {
+					id = strings.TrimSpace(id)
+					if id == "" {
+						continue
+					}
+					l.failedTargets[id] = strings.TrimSpace(reason)
+				}
+			}
 
 			prevCounts := loopObservedCounts{}
 			for index, state := range fixtureCase.States {
@@ -210,6 +238,9 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 
 func TestLoopFixtureInventoryParity(t *testing.T) {
 	expected := []string{
+		"bug-branch-exists-worktree-create-fails",
+		"bug-no-active-on-worktree-create-failure",
+		"bug-routing-stale-queue-config",
 		"error-runtime-repair-max-attempts",
 		"error-runtime-repair-spawn-fatal-by-name",
 		"missing-sync-empty-queue",

@@ -1,9 +1,9 @@
 ---
 schema_version: 1
 expected_failure: true
-bug: false
-regression: error-runtime-repair-spawn-fatal-by-name
-source_hash: 598442f4a9df5940a86a3bae8efee756c742ca8637ba156777aa088b31ba6b1a
+bug: true
+regression: bug-no-active-on-worktree-create-failure
+source_hash: 96baebab448312c2db9155680fd031ef4840425c1a426ef1b4ba790ef287d9c2
 ---
 
 ## Expected
@@ -13,7 +13,7 @@ source_hash: 598442f4a9df5940a86a3bae8efee756c742ca8637ba156777aa088b31ba6b1a
   "states": {
     "state-01": {
       "error": {
-        "contains": "runtime repair unavailable"
+        "absent": true
       },
       "transition": "paused",
       "actions": {
@@ -22,12 +22,9 @@ source_hash: 598442f4a9df5940a86a3bae8efee756c742ca8637ba156777aa088b31ba6b1a
       },
       "state": {
         "paused": true,
-        "runtime_repair_in_flight": false
+        "runtime_repair_in_flight": true
       },
       "counts": {
-        "created_worktrees": {
-          "eq": 1
-        },
         "normal_spawn_calls": {
           "eq": 0
         },
@@ -41,6 +38,12 @@ source_hash: 598442f4a9df5940a86a3bae8efee756c742ca8637ba156777aa088b31ba6b1a
       "routing": {
         "runtime_repair_name": {
           "prefix": "repair-runtime-"
+        },
+        "runtime_repair_provider": {
+          "equals": "codex"
+        },
+        "runtime_repair_model": {
+          "equals": "gpt-5.3-codex"
         }
       }
     }

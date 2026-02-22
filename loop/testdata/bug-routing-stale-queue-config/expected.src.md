@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 expected_failure: true
-bug: false
-regression: error-runtime-repair-spawn-fatal-by-name
+bug: true
+regression: bug-routing-stale-queue-config
 ---
 
 ## Expected
@@ -12,38 +12,40 @@ regression: error-runtime-repair-spawn-fatal-by-name
   "states": {
     "state-01": {
       "error": {
-        "contains": "runtime repair unavailable"
+        "absent": true
       },
-      "transition": "paused",
+      "transition": "running",
       "actions": {
-        "normal_task_scheduled": false,
-        "repair_task_scheduled": true
+        "normal_task_scheduled": true,
+        "repair_task_scheduled": false
       },
       "state": {
-        "paused": true,
+        "running": true,
         "runtime_repair_in_flight": false
       },
       "counts": {
-        "created_worktrees": {
-          "eq": 1
-        },
         "normal_spawn_calls": {
-          "eq": 0
+          "eq": 1
         },
         "runtime_repair_spawn_calls": {
-          "eq": 1
+          "eq": 0
         },
         "spawn_calls": {
           "eq": 1
         }
       },
       "routing": {
-        "runtime_repair_name": {
-          "prefix": "repair-runtime-"
+        "first_spawn_name": {
+          "equals": "10"
+        },
+        "first_spawn_provider": {
+          "equals": "codex"
+        },
+        "first_spawn_model": {
+          "equals": "gpt-5.3-codex"
         }
       }
     }
   }
 }
 ```
-

@@ -1,0 +1,9 @@
+{
+  "worktree_create_error": "failed to create worktree: exit status 255",
+  "worktree_create_error_names": [
+    "11"
+  ],
+  "failed_targets": {
+    "10": "retry exhausted"
+  }
+}

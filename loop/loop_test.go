@@ -47,14 +47,20 @@ func (f *fakeSpawner) Spawn(_ context.Context, req spawner.SpawnRequest) (spawne
 }
 
 type fakeWorktree struct {
-	created   []string
-	merged    []string
-	cleaned   []string
-	createErr error
+	created         []string
+	merged          []string
+	cleaned         []string
+	createErr       error
+	createErrByName map[string]error
 }
 
 func (f *fakeWorktree) Create(name string) error {
 	f.created = append(f.created, name)
+	if f.createErrByName != nil {
+		if err, ok := f.createErrByName[name]; ok {
+			return err
+		}
+	}
 	return f.createErr
 }
 func (f *fakeWorktree) Merge(name string) error {

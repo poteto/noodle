@@ -1,0 +1,6 @@
+{
+  "worktree_create_error": "fatal: a branch named '11' already exists",
+  "worktree_create_error_names": [
+    "11"
+  ]
+}

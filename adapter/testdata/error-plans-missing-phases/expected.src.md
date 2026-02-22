@@ -1,7 +1,7 @@
 ---
 schema_version: 1
 expected_failure: true
-bug: true
+bug: false
 regression: error-plans-missing-phases
 ---
 
