@@ -30,7 +30,6 @@ func TestDefaultBacklogSyncParsesTodos(t *testing.T) {
 
 	script := filepath.Join("defaults", "adapters", "backlog-sync")
 	cmd := exec.Command(script)
-	cmd.Dir = "/Users/lauren/code/noodle/.worktrees/phase-09-scheduling-loop"
 	cmd.Env = append(os.Environ(), "NOODLE_TODOS_FILE="+todos)
 	out, err := cmd.Output()
 	if err != nil {
@@ -64,7 +63,6 @@ func TestDefaultBacklogAddDoneEditRoundTrip(t *testing.T) {
 		t.Helper()
 		script := filepath.Join("defaults", "adapters", name)
 		cmd := exec.Command(script, args...)
-		cmd.Dir = "/Users/lauren/code/noodle/.worktrees/phase-09-scheduling-loop"
 		cmd.Env = append(os.Environ(), "NOODLE_TODOS_FILE="+todos)
 		if strings.Contains(name, "add") || strings.Contains(name, "edit") {
 			if strings.Contains(name, "add") {
@@ -106,7 +104,6 @@ func TestDefaultPlansCreateSyncAndPhaseAdd(t *testing.T) {
 		t.Helper()
 		script := filepath.Join("defaults", "adapters", name)
 		cmd := exec.Command(script, args...)
-		cmd.Dir = "/Users/lauren/code/noodle/.worktrees/phase-09-scheduling-loop"
 		cmd.Env = append(os.Environ(), "NOODLE_PLANS_DIR="+plansDir)
 		if stdin != "" {
 			cmd.Stdin = strings.NewReader(stdin)
