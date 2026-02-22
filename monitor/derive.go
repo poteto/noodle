@@ -1,0 +1,105 @@
+package monitor
+
+import (
+	"math"
+	"strings"
+	"time"
+)
+
+func DeriveSessionMeta(
+	sessionID string,
+	observation Observation,
+	claims SessionClaims,
+	previous SessionMeta,
+	now time.Time,
+	stuckThreshold time.Duration,
+) SessionMeta {
+	now = now.UTC()
+	lastActivity := claims.LastEventAt
+	if observation.LogMTime.After(lastActivity) {
+		lastActivity = observation.LogMTime
+	}
+	idleSeconds := int64(0)
+	if !lastActivity.IsZero() && now.After(lastActivity) {
+		idleSeconds = int64(now.Sub(lastActivity).Seconds())
+	}
+
+	stuck := observation.Alive &&
+		stuckThreshold > 0 &&
+		!lastActivity.IsZero() &&
+		now.Sub(lastActivity) > stuckThreshold
+
+	status := SessionStatusExited
+	switch {
+	case stuck:
+		status = SessionStatusStuck
+	case observation.Alive:
+		status = SessionStatusRunning
+	case claims.Failed:
+		status = SessionStatusFailed
+	case claims.HasEvents:
+		status = SessionStatusExited
+	}
+
+	contextUsagePct := 0.0
+	tokens := claims.TokensIn + claims.TokensOut
+	if tokens > 0 {
+		contextUsagePct = math.Min(100, (float64(tokens)/contextTokenBudget)*100)
+	}
+
+	health := HealthGreen
+	switch status {
+	case SessionStatusFailed, SessionStatusStuck:
+		health = HealthRed
+	case SessionStatusRunning:
+		if contextUsagePct >= 80 {
+			health = HealthYellow
+		}
+		if stuckThreshold > 0 &&
+			!lastActivity.IsZero() &&
+			now.Sub(lastActivity) > stuckThreshold/2 {
+			health = HealthYellow
+		}
+	default:
+		health = HealthYellow
+	}
+
+	durationSeconds := int64(0)
+	if !claims.FirstEventAt.IsZero() && now.After(claims.FirstEventAt) {
+		durationSeconds = int64(now.Sub(claims.FirstEventAt).Seconds())
+	}
+
+	provider := strings.TrimSpace(claims.Provider)
+	if provider == "" {
+		provider = strings.TrimSpace(previous.Provider)
+	}
+	model := strings.TrimSpace(claims.Model)
+	if model == "" {
+		model = strings.TrimSpace(previous.Model)
+	}
+	currentAction := strings.TrimSpace(claims.LastAction)
+	if currentAction == "" {
+		currentAction = strings.TrimSpace(previous.CurrentAction)
+	}
+
+	return SessionMeta{
+		SessionID:               sessionID,
+		Status:                  status,
+		Provider:                provider,
+		Model:                   model,
+		TotalCostUSD:            claims.TotalCostUSD,
+		DurationSeconds:         durationSeconds,
+		LastActivity:            lastActivity,
+		CurrentAction:           currentAction,
+		Health:                  health,
+		ContextWindowUsagePct:   contextUsagePct,
+		RetryCount:              previous.RetryCount,
+		Alive:                   observation.Alive,
+		Stuck:                   stuck,
+		LogSize:                 observation.LogSize,
+		UpdatedAt:               now,
+		IdleSeconds:             idleSeconds,
+		StuckThresholdSeconds:   int64(stuckThreshold.Seconds()),
+		LastObservedProviderRaw: claims.Provider,
+	}
+}
