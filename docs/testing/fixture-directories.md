@@ -23,9 +23,8 @@ Rules:
 - Fixture names are directory names under `testdata/`.
 - State directories must be contiguous and ordered: `state-01`, `state-02`, `state-03`, ...
 - `expected.md` is required.
-- `schema_version`, `expected_failure`, `bug`, `regression`, and `source_hash` frontmatter keys are required.
+- `schema_version`, `expected_failure`, `bug`, and `source_hash` frontmatter keys are required.
 - `bug` is a boolean intent flag (`true` means this expected failure is a known bug tracked for future fix; `false` means it is not a tracked bug).
-- `regression` is the stable string label for the fixture/regression case.
 - `expected.md` frontmatter `schema_version` must match `fixturedir.FixtureSchemaVersion`.
 - `source_hash` is derived from fixture input files (all files under the fixture except `expected.md`).
 - Use make-driven tooling for fixture maintenance; fixture dev commands are not exposed in `noodle` CLI.

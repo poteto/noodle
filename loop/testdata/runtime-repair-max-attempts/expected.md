@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: runtime-repair-max-attempts
 source_hash: a3d444fe72ad845d65cba9b8b989aaf9831700f2eeb13b526c42417fc740416c
 ---
 

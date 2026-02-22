@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: runtime-repair-adopt-running-session-no-duplicate
 source_hash: 097e29effa7f3cb7b71d07c95abe8570794ec8fcf7e98e067226943d4d943e0a
 ---
 

@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: backlog-sync
 source_hash: 826e097261005efa5154390f881701c8589e34fffa8850d631cf216e5709f738
 ---
 

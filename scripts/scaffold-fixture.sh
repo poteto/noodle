@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   echo "Usage: $0 <package-dir> <fixture-name> [state-count]" >&2
-  echo "Example: $0 loop runtime-repair-regression 2" >&2
+  echo "Example: $0 loop runtime-repair-sample 2" >&2
   exit 1
 }
 
@@ -48,7 +48,6 @@ cat > "$fixture_root/expected.md" <<EOF_EXPECTED
 schema_version: 1
 expected_failure: false
 bug: false
-regression: $fixture_name
 source_hash: pending
 ---
 

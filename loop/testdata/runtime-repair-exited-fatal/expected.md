@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: runtime-repair-exited-fatal
 source_hash: 25b2d0fef4066efd7ce30bbb2345a819b6e60359286b7a6e1e5b183fdac18698
 ---
 

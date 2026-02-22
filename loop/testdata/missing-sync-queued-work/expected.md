@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: missing-sync-queued-work
 source_hash: d265bfb10878b1efc9e2511e3eec4c72f983f68b9f42d46d504287c8f12a79bd
 ---
 

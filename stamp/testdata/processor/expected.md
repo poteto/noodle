@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: processor
 source_hash: b8cae8a1e1ea05ec7318c88a365c7c1266fc7604ebc58811c500774713d78ef6
 ---
 

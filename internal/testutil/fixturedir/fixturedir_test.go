@@ -14,7 +14,6 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: false",
 		"bug: false",
-		"regression: alpha-happy-path",
 		"source_hash: pending",
 		"---",
 		"",
@@ -40,7 +39,6 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: true",
 		"bug: true",
-		"regression: beta-failure",
 		"source_hash: pending",
 		"---",
 		"",
@@ -75,9 +73,6 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	if alpha.Metadata.Bug {
 		t.Fatal("alpha bug should be false")
 	}
-	if alpha.Metadata.Regression != "alpha-happy-path" {
-		t.Fatalf("regression = %q", alpha.Metadata.Regression)
-	}
 	if len(alpha.States) != 2 {
 		t.Fatalf("state count = %d", len(alpha.States))
 	}
@@ -104,9 +99,6 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	if !beta.Metadata.Bug {
 		t.Fatal("beta bug should be true")
 	}
-	if beta.Metadata.Regression != "beta-failure" {
-		t.Fatalf("beta regression = %q", beta.Metadata.Regression)
-	}
 	if beta.ExpectedError == nil || !beta.ExpectedError.Any {
 		t.Fatalf("beta expected error = %#v", beta.ExpectedError)
 	}
@@ -119,7 +111,6 @@ func TestDiscoverRejectsUnsupportedFrontmatterKey(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: false",
 		"bug: false",
-		"regression: bad-fixture",
 		"source_hash: pending",
 		"owner: tooling",
 		"---",
@@ -146,7 +137,6 @@ func TestDiscoverRejectsSchemaVersionMismatch(t *testing.T) {
 		"schema_version: 9",
 		"expected_failure: false",
 		"bug: false",
-		"regression: mismatch",
 		"source_hash: pending",
 		"---",
 		"",
@@ -172,7 +162,6 @@ func TestDiscoverRejectsBugWithoutExpectedFailure(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: false",
 		"bug: true",
-		"regression: mismatch",
 		"source_hash: pending",
 		"---",
 		"",
@@ -199,7 +188,6 @@ func TestValidateFixtureRootDetectsLayoutIssues(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: false",
 		"bug: false",
-		"regression: gap",
 		"source_hash: pending",
 		"---",
 	))
@@ -234,7 +222,6 @@ func TestDiscoverRejectsUnknownExpectedErrorKeys(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: true",
 		"bug: true",
-		"regression: bad-error-expectation",
 		"source_hash: pending",
 		"---",
 		"",
@@ -266,7 +253,6 @@ func TestDiscoverRejectsOutOfDateExpectedMarkdown(t *testing.T) {
 		"schema_version: 1",
 		"expected_failure: false",
 		"bug: false",
-		"regression: stale",
 		"source_hash: pending",
 		"---",
 		"",

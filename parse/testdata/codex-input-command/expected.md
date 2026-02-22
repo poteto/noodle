@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: codex-input-command
 source_hash: f91f429575c178ffe936f91dd73e6ebc629394d2ff23c24b36f487fd746e2a0a
 ---
 

@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: provider-command-codex
 source_hash: 3a1381cbd39342abbaf179758c446d86fd06a914aaebfa80be39404b5baf4833
 ---
 

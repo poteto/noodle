@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: claude
 source_hash: dd302068a6657060a6828b060f19674f6ab1ff9acb47f28fcfd14db0149025e5
 ---
 

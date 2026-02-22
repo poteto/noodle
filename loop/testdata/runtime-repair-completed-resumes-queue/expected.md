@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: runtime-repair-completed-resumes-queue
 source_hash: dace5849d5aaf595f23e15d27fcbe463526263a439cd3fdc18ceaf3168e7e26e
 ---
 

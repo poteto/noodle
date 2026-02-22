@@ -105,7 +105,6 @@ func renderExpectedMarkdownWithSourceHash(expected string, sourceHash string) (s
 	out.WriteString(fmt.Sprintf("schema_version: %d\n", metadata.SchemaVersion))
 	out.WriteString(fmt.Sprintf("expected_failure: %t\n", metadata.ExpectedFailure))
 	out.WriteString(fmt.Sprintf("bug: %t\n", metadata.Bug))
-	out.WriteString(fmt.Sprintf("regression: %s\n", metadata.Regression))
 	out.WriteString(fmt.Sprintf("source_hash: %s\n", sourceHash))
 	out.WriteString("---\n")
 	if strings.TrimSpace(body) != "" {
@@ -130,7 +129,7 @@ func computeFixtureInputHash(fixtureRoot string) (string, error) {
 			return nil
 		}
 		name := strings.TrimSpace(d.Name())
-		if strings.EqualFold(name, "expected.md") || strings.EqualFold(name, "expected.src.md") {
+		if strings.EqualFold(name, "expected.md") {
 			return nil
 		}
 		paths = append(paths, path)

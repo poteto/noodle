@@ -2,7 +2,6 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: processor-edge
 source_hash: 769878f4ff03b35dbc16673663798ef95f20c400f69354cd282a45ef1fa530a0
 ---
 

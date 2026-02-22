@@ -38,7 +38,6 @@ type FixtureConfigScope struct {
 type FixtureMetadata struct {
 	ExpectedFailure bool
 	Bug             bool
-	Regression      string
 	SchemaVersion   int
 	SourceHash      string
 }
@@ -414,7 +413,6 @@ func parseMetadata(frontmatter string) (FixtureMetadata, error) {
 		"schema_version":   {},
 		"expected_failure": {},
 		"bug":              {},
-		"regression":       {},
 		"source_hash":      {},
 	}
 
@@ -457,23 +455,18 @@ func parseMetadata(frontmatter string) (FixtureMetadata, error) {
 				return FixtureMetadata{}, fmt.Errorf("bug must be true or false")
 			}
 			metadata.Bug = parsed
-		case "regression":
-			metadata.Regression = trimQuotes(value)
 		case "source_hash":
 			metadata.SourceHash = trimQuotes(value)
 		}
 	}
 
-	for _, key := range []string{"schema_version", "expected_failure", "bug", "regression"} {
+	for _, key := range []string{"schema_version", "expected_failure", "bug"} {
 		if !seen[key] {
 			return FixtureMetadata{}, fmt.Errorf("missing required frontmatter key %q", key)
 		}
 	}
 	if !seen["source_hash"] {
 		return FixtureMetadata{}, fmt.Errorf("missing required frontmatter key %q", "source_hash")
-	}
-	if strings.TrimSpace(metadata.Regression) == "" {
-		return FixtureMetadata{}, fmt.Errorf("regression must be non-empty")
 	}
 	if strings.TrimSpace(metadata.SourceHash) == "" {
 		return FixtureMetadata{}, fmt.Errorf("source_hash must be non-empty")
