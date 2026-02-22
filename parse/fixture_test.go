@@ -58,7 +58,6 @@ func adapterForFixture(t *testing.T, fixtureName string) LogAdapter {
 	t.Helper()
 
 	name := strings.ToLower(strings.TrimSpace(fixtureName))
-	name = strings.TrimPrefix(name, "error-")
 	switch {
 	case strings.HasPrefix(name, "claude"):
 		return ClaudeAdapter{}

@@ -19,7 +19,7 @@ func TestDirectoryFixtures(t *testing.T) {
 			state := fixtureCase.States[0]
 			input := strings.Join(fixturedir.NonEmptyLines(t, state.MustReadFile(t, "input.ndjson"), "input.ndjson"), "\n")
 			errorExpectation := fixtureCase.ExpectedError
-			fixtureName := strings.TrimPrefix(strings.ToLower(fixtureCase.Name), "error-")
+			fixtureName := strings.ToLower(fixtureCase.Name)
 			expectedRaw := ""
 			if errorExpectation == nil {
 				expectedRaw = fixturedir.MustSection(t, fixtureCase, "Expected")

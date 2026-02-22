@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: true
 bug: false
-regression: error-plans-missing-phases
+regression: plans-missing-phases
 source_hash: 7d69c590e8c5fc2d172719c361ef28bd1b96f460e1af1a9bd2b8d75bc68242d3
 ---
 

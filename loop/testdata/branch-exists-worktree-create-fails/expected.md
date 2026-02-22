@@ -2,8 +2,8 @@
 schema_version: 1
 expected_failure: false
 bug: false
-regression: bug-no-active-on-worktree-create-failure
-source_hash: cd3cac533b6fc0ed78e38ba81aeefb3faee03c5ad82f930a353bf58546b0cf47
+regression: branch-exists-worktree-create-fails
+source_hash: 00120439dae410850aebf79df651b47ce425cd5c1e359e502d9b8bbdabf141a1
 ---
 
 ## Runtime Dump
