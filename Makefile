@@ -46,7 +46,7 @@ vet:
 lintarch:
 	./scripts/lint-arch.sh
 
-ci: test vet fixtures-loop fixtures-hash
+ci: test vet lintarch fixtures-loop fixtures-hash
 
 run: start
 
