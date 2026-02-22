@@ -22,6 +22,12 @@ type Command struct {
 func CommandCatalog() []Command {
 	return []Command{
 		{
+			Name:        "start",
+			Description: "Run the scheduling loop",
+			Category:    "core",
+			Run:         runStartCommand,
+		},
+		{
 			Name:        "commands",
 			Description: "List available commands",
 			Category:    "core",
