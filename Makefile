@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet lintarch ci run start status skills commands fixtures-loop fixtures-hash bugs watch watch-verbose clean
+.PHONY: help build test test-short vet lintarch ci reset run start status skills commands fixtures-loop fixtures-hash bugs watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -18,6 +18,7 @@ help:
 	@printf "  %-40s %s\n" "make vet" "Run go vet"
 	@printf "  %-40s %s\n" "make lintarch" "Run architecture lint checks"
 	@printf "  %-40s %s\n" "make ci" "Run full local CI checks"
+	@printf "  %-40s %s\n" "make reset" "Delete runtime state files for debugging"
 	@printf "  %-40s %s\n" "make run" "Alias for start"
 	@printf "  %-40s %s\n" "make start" "Run scheduling loop"
 	@printf "  %-40s %s\n" "make status" "Show runtime status"
@@ -46,6 +47,13 @@ lintarch:
 	./scripts/lint-arch.sh
 
 ci: test vet lintarch fixtures-loop fixtures-hash
+
+reset:
+	@for runtime in .noodle .noodles; do \
+		rm -f "$$runtime/mise.json" "$$runtime/queue.json" "$$runtime/ticket.json" "$$runtime/tickets.json"; \
+		rm -rf "$$runtime/sessions"; \
+	done; \
+	echo "runtime state reset (.noodle/.noodles)"
 
 run: start
 
