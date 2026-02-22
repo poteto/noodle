@@ -2,7 +2,7 @@
 id: 1
 created: 2026-02-20
 updated: 2026-02-22
-status: active
+status: done
 ---
 
 # Noodle Open-Source Architecture
