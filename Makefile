@@ -57,11 +57,12 @@ worktree:
 	$(NOODLE) worktree --help
 
 watch:
-	@if ! command -v $(AIR) >/dev/null 2>&1; then \
-		echo "air not found. Install with: go install github.com/air-verse/air@latest"; \
-		exit 1; \
+	@if command -v $(AIR) >/dev/null 2>&1; then \
+		$(AIR) -c .air.toml; \
+	else \
+		echo "air not found; running via 'go run github.com/air-verse/air@latest'"; \
+		$(GO) run github.com/air-verse/air@latest -c .air.toml; \
 	fi
-	$(AIR) -c .air.toml
 
 clean:
 	rm -f $(BIN)
