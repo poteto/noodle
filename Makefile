@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet lintarch ci run start status skills commands fixtures-loop fixtures-hash bugs worktree watch watch-verbose clean
+.PHONY: help build test test-short vet lintarch ci run start status skills commands fixtures-loop fixtures-hash bugs watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -26,7 +26,6 @@ help:
 	@printf "  %-40s %s\n" "make fixtures-loop MODE=check|record" "Verify or regenerate loop runtime dump fixtures"
 	@printf "  %-40s %s\n" "make fixtures-hash MODE=check|sync" "Verify or sync fixture source hashes"
 	@printf "  %-40s %s\n" "make bugs" "List fixture expected.md files with bug=true"
-	@printf "  %-40s %s\n" "make worktree" "Show worktree help"
 	@printf "  %-40s %s\n" "make watch" "Rebuild on changes with Air (silent mode)"
 	@printf "  %-40s %s\n" "make watch-verbose" "Rebuild on changes with Air (debug file events)"
 	@printf "  %-40s %s\n" "make clean" "Remove built binary"
@@ -106,9 +105,6 @@ bugs:
 			echo "$$f"; \
 		fi; \
 	done
-
-worktree:
-	$(NOODLE) worktree --help
 
 watch:
 	@if $(GO) tool -n air >/dev/null 2>&1; then \
