@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+id=${1:-}
+[ -n "$id" ] || { echo "id required" >&2; exit 1; }
+id2=$(printf '%02d' "$id")
+PLANS_DIR="${NOODLE_PLANS_DIR:-brain/plans}"
+plan_dir=$(find "$PLANS_DIR" -maxdepth 1 -type d -name "$id2-*" | head -n1)
+[ -n "$plan_dir" ] || { echo "plan not found" >&2; exit 1; }
+
+payload=$(cat)
+name=$(printf '%s' "$payload" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+[ -n "$name" ] || { echo "name required" >&2; exit 1; }
+
+slug=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')
+count=$(find "$plan_dir" -maxdepth 1 -type f -name 'phase-*.md' | wc -l | tr -d ' ')
+num=$(printf '%02d' $((count + 1)))
+base=$(basename "$plan_dir")
+phase_file="$plan_dir/phase-$num-$slug.md"
+
+cat > "$phase_file" <<OV
+Back to [[plans/$base/overview]]
+
+# Phase $((10#$num)) — $name
+
+## Goal
+## Changes
+## Data Structures
+## Verification
+### Static
+### Runtime
+OV
+
+overview="$plan_dir/overview.md"
+printf -- '- [ ] [[plans/%s/phase-%s-%s]] — %s\n' "$base" "$num" "$slug" "$name" >> "$overview"

@@ -1,0 +1,70 @@
+#!/bin/sh
+set -eu
+
+TODOS_FILE="${NOODLE_TODOS_FILE:-brain/todos.md}"
+[ -f "$TODOS_FILE" ] || exit 0
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+trim() {
+  printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+section=""
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    '## '*)
+      section=$(trim "${line#'## '}")
+      continue
+      ;;
+  esac
+
+  if printf '%s\n' "$line" | grep -Eq '^[0-9]+\. \[[ xX]\] '; then
+    id=$(printf '%s\n' "$line" | sed -E 's/^([0-9]+)\..*/\1/')
+    mark=$(printf '%s\n' "$line" | sed -E 's/^[0-9]+\. \[([ xX])\].*/\1/')
+    raw=$(printf '%s\n' "$line" | sed -E 's/^[0-9]+\. \[[ xX]\] //')
+
+    status="open"
+    [ "$mark" = "x" ] || [ "$mark" = "X" ] && status="done"
+
+    tags=$(printf '%s\n' "$raw" | grep -oE '#[A-Za-z0-9_-]+' 2>/dev/null | sed 's/^#//' | tr '\n' ',' | sed 's/,$//' || true)
+    estimate=$(printf '%s\n' "$raw" | sed -nE 's/.*~(small|medium|large).*/\1/p' | head -n1)
+    plan=$(printf '%s\n' "$raw" | sed -nE 's/.*\[\[plans\/([0-9]+)-[^]]*\/overview\]\].*/\1/p' | head -n1)
+
+    title=$(printf '%s\n' "$raw" \
+      | sed -E 's/#[A-Za-z0-9_-]+//g; s/~(small|medium|large)//g; s/\[\[plans\/[^]]+\]\]//g; s/[[:space:]]+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')
+
+    printf '{"id":"%s","title":"%s","status":"%s"' \
+      "$(json_escape "$id")" "$(json_escape "$title")" "$status"
+
+    if [ -n "$section" ]; then
+      printf ',"section":"%s"' "$(json_escape "$section")"
+    fi
+
+    printf ',"tags":['
+    if [ -n "$tags" ]; then
+      first=1
+      OLDIFS=$IFS
+      IFS=,
+      for tag in $tags; do
+        [ -n "$tag" ] || continue
+        if [ $first -eq 0 ]; then printf ','; fi
+        first=0
+        printf '"%s"' "$(json_escape "$tag")"
+      done
+      IFS=$OLDIFS
+    fi
+    printf ']'
+
+    if [ -n "$plan" ]; then
+      printf ',"plan":"%s"' "$(json_escape "$plan")"
+    fi
+    if [ -n "$estimate" ]; then
+      printf ',"estimate":"%s"' "$(json_escape "$estimate")"
+    fi
+
+    printf '}\n'
+  fi
+done < "$TODOS_FILE"

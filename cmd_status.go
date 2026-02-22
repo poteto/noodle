@@ -1,0 +1,185 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+type statusSummary struct {
+	ActiveCooks int
+	QueueDepth  int
+	TotalCost   float64
+	LoopState   string
+}
+
+func runStatusCommand(_ context.Context, _ *App, _ []Command, args []string) error {
+	flags := flag.NewFlagSet("status", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("status does not accept arguments")
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get current directory: %w", err)
+	}
+	summary, err := readStatusSummary(filepath.Join(cwd, ".noodle"))
+	if err != nil {
+		return err
+	}
+
+	if summary.ActiveCooks == 0 {
+		fmt.Fprintf(
+			os.Stdout,
+			"no active cooks | queue=%d | cost=$%.2f | loop=%s\n",
+			summary.QueueDepth,
+			summary.TotalCost,
+			summary.LoopState,
+		)
+		return nil
+	}
+
+	fmt.Fprintf(
+		os.Stdout,
+		"active cooks=%d | queue=%d | cost=$%.2f | loop=%s\n",
+		summary.ActiveCooks,
+		summary.QueueDepth,
+		summary.TotalCost,
+		summary.LoopState,
+	)
+	return nil
+}
+
+func readStatusSummary(runtimeDir string) (statusSummary, error) {
+	active, cost, loopState, err := readSessionSummary(filepath.Join(runtimeDir, "sessions"))
+	if err != nil {
+		return statusSummary{}, err
+	}
+	queueDepth, err := readQueueDepth(filepath.Join(runtimeDir, "queue.json"))
+	if err != nil {
+		return statusSummary{}, err
+	}
+	return statusSummary{
+		ActiveCooks: active,
+		QueueDepth:  queueDepth,
+		TotalCost:   cost,
+		LoopState:   loopState,
+	}, nil
+}
+
+func readSessionSummary(sessionsDir string) (active int, totalCost float64, loopState string, _ error) {
+	entries, err := os.ReadDir(sessionsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, "running", nil
+		}
+		return 0, 0, "", fmt.Errorf("read sessions directory: %w", err)
+	}
+
+	loopState = "running"
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(sessionsDir, entry.Name(), "meta.json"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return 0, 0, "", fmt.Errorf("read session meta %s: %w", entry.Name(), err)
+		}
+
+		var meta struct {
+			Status       string  `json:"status"`
+			TotalCostUSD float64 `json:"total_cost_usd"`
+			LoopState    string  `json:"loop_state"`
+		}
+		if err := json.Unmarshal(data, &meta); err != nil {
+			return 0, 0, "", fmt.Errorf("parse session meta %s: %w", entry.Name(), err)
+		}
+
+		totalCost += meta.TotalCostUSD
+
+		status := strings.ToLower(strings.TrimSpace(meta.Status))
+		switch status {
+		case "running", "stuck", "spawning":
+			active++
+		}
+
+		loopState = pickLoopState(loopState, meta.LoopState)
+		loopState = pickLoopState(loopState, status)
+	}
+
+	return active, totalCost, loopState, nil
+}
+
+func pickLoopState(current, candidate string) string {
+	current = normalizeLoopState(current)
+	candidate = normalizeLoopState(candidate)
+	if candidate == "" {
+		return current
+	}
+	if loopStateRank(candidate) > loopStateRank(current) {
+		return candidate
+	}
+	return current
+}
+
+func normalizeLoopState(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "running":
+		return "running"
+	case "paused":
+		return "paused"
+	case "draining":
+		return "draining"
+	default:
+		return ""
+	}
+}
+
+func loopStateRank(state string) int {
+	switch state {
+	case "draining":
+		return 3
+	case "paused":
+		return 2
+	case "running":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func readQueueDepth(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("read queue.json: %w", err)
+	}
+
+	var wrapper struct {
+		Items []json.RawMessage `json:"items"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err == nil {
+		return len(wrapper.Items), nil
+	}
+
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err == nil {
+		return len(items), nil
+	}
+
+	return 0, fmt.Errorf("parse queue.json")
+}

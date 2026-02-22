@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+id=${1:-}
+[ -n "$id" ] || { echo "id required" >&2; exit 1; }
+TODOS_FILE="${NOODLE_TODOS_FILE:-brain/todos.md}"
+[ -f "$TODOS_FILE" ] || { echo "todos file not found" >&2; exit 1; }
+
+payload=$(cat)
+title=$(printf '%s' "$payload" | sed -n 's/.*"title"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+[ -n "$title" ] || { echo "title required" >&2; exit 1; }
+
+tmp="$TODOS_FILE.tmp"
+sed -E "s/^(${id}\. \[[ xX]\] ).*/\\1${title}/" "$TODOS_FILE" > "$tmp"
+mv "$tmp" "$TODOS_FILE"
