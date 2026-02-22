@@ -31,10 +31,8 @@ type ModelPolicy struct {
 
 // Cook is the core runtime actor record used across the kitchen brigade.
 type Cook struct {
-	ID       AgentID     `json:"id"`
-	Provider Provider    `json:"provider"`
-	Model    string      `json:"model"`
-	Status   CookStatus  `json:"status"`
-	Parent   *AgentID    `json:"parent,omitempty"`
-	Policy   ModelPolicy `json:"policy"`
+	ID     AgentID     `json:"id"`
+	Status CookStatus  `json:"status"`
+	Parent *AgentID    `json:"parent,omitempty"`
+	Policy ModelPolicy `json:"policy"`
 }

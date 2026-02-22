@@ -10,6 +10,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
 )
@@ -26,6 +28,8 @@ const (
 	surfaceSession   Surface = "session"
 	surfaceTrace     Surface = "trace"
 	surfaceQueue     Surface = "queue"
+	surfaceSteer     Surface = "steer"
+	surfaceHelp      Surface = "help"
 )
 
 type TraceFilter string
@@ -52,6 +56,7 @@ type Model struct {
 	height int
 
 	surface Surface
+	overlay Surface
 
 	snapshot Snapshot
 	err      error
@@ -64,10 +69,10 @@ type Model struct {
 	traceFollow bool
 	traceOffset int
 
-	steering   bool
-	steerInput string
-	showHelp   bool
-	statusLine string
+	steerForm   *huh.Form
+	steerTarget string
+	steerPrompt string
+	statusLine  string
 }
 
 type Snapshot struct {
@@ -188,12 +193,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	var b strings.Builder
-	b.WriteString(m.renderMain())
-	if m.showHelp {
+	base := m.baseSurface()
+	b.WriteString(m.renderSurface(base))
+	switch m.surface {
+	case surfaceHelp:
 		b.WriteString("\n\n")
 		b.WriteString(renderHelp())
-	}
-	if m.steering {
+	case surfaceSteer:
 		b.WriteString("\n\n")
 		b.WriteString(m.renderSteer())
 	}
@@ -215,13 +221,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 	case tea.KeyEsc:
-		if m.steering {
-			m.steering = false
-			m.steerInput = ""
+		if m.surface == surfaceSteer {
+			m.closeSteer()
 			return m, nil
 		}
-		if m.showHelp {
-			m.showHelp = false
+		if m.surface == surfaceHelp {
+			m.closeHelp()
 			return m, nil
 		}
 		if m.surface == surfaceTrace {
@@ -237,19 +242,23 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.steering {
+	if m.surface == surfaceSteer {
 		return m.handleSteerKey(msg)
+	}
+	if m.surface == surfaceHelp {
+		if strings.ToLower(msg.String()) == "?" {
+			m.closeHelp()
+		}
+		return m, nil
 	}
 
 	key := strings.ToLower(msg.String())
 	switch key {
 	case "?":
-		m.showHelp = !m.showHelp
+		m.openHelp()
 		return m, nil
 	case "s":
-		m.steering = true
-		m.steerInput = m.defaultSteerInput()
-		return m, nil
+		return m, m.openSteer()
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
@@ -371,38 +380,25 @@ func (m Model) handleQueueKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEnter:
-		target, prompt, ok := parseSteerInput(m.steerInput)
-		if !ok {
-			m.statusLine = "steer format: @target instruction"
-			return m, nil
-		}
-		m.steering = false
-		m.steerInput = ""
-		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-			Action: "steer",
-			Target: target,
-			Prompt: prompt,
-		})
-	case tea.KeyBackspace:
-		if len(m.steerInput) > 0 {
-			m.steerInput = m.steerInput[:len(m.steerInput)-1]
-		}
-		return m, nil
-	case tea.KeySpace:
-		m.steerInput += " "
-		return m, nil
-	case tea.KeyRunes:
-		m.steerInput += string(msg.Runes)
-		return m, nil
-	default:
+	if m.steerForm == nil {
 		return m, nil
 	}
+	updated, cmd := m.steerForm.Update(msg)
+	if form, ok := updated.(*huh.Form); ok {
+		m.steerForm = form
+	}
+	if m.steerForm != nil && m.steerForm.State == huh.StateCompleted {
+		sendCmd, ok := m.submitSteer()
+		if !ok {
+			return m, nil
+		}
+		return m, sendCmd
+	}
+	return m, cmd
 }
 
-func (m Model) renderMain() string {
-	switch m.surface {
+func (m Model) renderSurface(surface Surface) string {
+	switch surface {
 	case surfaceSession:
 		return m.renderSession()
 	case surfaceTrace:
@@ -633,12 +629,15 @@ func renderHelp() string {
 		"Dashboard: enter inspect | q queue | up/down move",
 		"Session: t trace | k kill | esc back",
 		"Trace: f filter | G bottom | up/down scroll | esc back",
-		"Steer: @target instructions, enter send, esc cancel",
+		"Steer: select target, write instruction, enter submit, esc cancel",
 	}, "\n")
 }
 
 func (m Model) renderSteer() string {
-	return "steer> " + m.steerInput + "\nenter send | esc cancel"
+	if m.steerForm == nil {
+		return "steer unavailable"
+	}
+	return "Steer\n-----\n" + m.steerForm.View()
 }
 
 func (m *Model) clampSelection() {
@@ -681,10 +680,133 @@ func (m Model) sessionByID(id string) (Session, bool) {
 }
 
 func (m Model) defaultSteerInput() string {
-	if m.surface == surfaceSession && m.sessionID != "" {
-		return "@" + m.sessionID + " "
+	if m.baseSurface() == surfaceSession && m.sessionID != "" {
+		return m.sessionID
 	}
-	return "@"
+	if len(m.snapshot.Active) > 0 {
+		return m.snapshot.Active[0].ID
+	}
+	return "sous-chef"
+}
+
+func (m *Model) baseSurface() Surface {
+	switch m.surface {
+	case surfaceHelp, surfaceSteer:
+		if m.overlay == "" {
+			return surfaceDashboard
+		}
+		return m.overlay
+	default:
+		return m.surface
+	}
+}
+
+func (m *Model) openHelp() {
+	m.overlay = m.baseSurface()
+	m.surface = surfaceHelp
+}
+
+func (m *Model) closeHelp() {
+	if m.overlay == "" {
+		m.surface = surfaceDashboard
+		return
+	}
+	m.surface = m.overlay
+}
+
+func (m *Model) openSteer() tea.Cmd {
+	m.overlay = m.baseSurface()
+	m.surface = surfaceSteer
+	m.steerTarget = m.defaultSteerInput()
+	m.steerPrompt = ""
+	targets := m.steerTargets()
+	if !containsString(targets, m.steerTarget) {
+		m.steerTarget = targets[0]
+	}
+
+	options := make([]huh.Option[string], 0, len(targets))
+	for _, target := range targets {
+		options = append(options, huh.NewOption("@"+target, target))
+	}
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Target").
+				Description("Pick cook or sous-chef (press / to filter)").
+				Options(options...).
+				Filtering(true).
+				Value(&m.steerTarget),
+			huh.NewInput().
+				Title("Instruction").
+				Placeholder("focus on tests, keep commits small").
+				Value(&m.steerPrompt).
+				Validate(huh.ValidateNotEmpty()),
+		),
+	).WithShowErrors(true).WithShowHelp(true)
+	if m.width > 0 {
+		width := m.width - 4
+		if width > 100 {
+			width = 100
+		}
+		if width > 20 {
+			form = form.WithWidth(width)
+		}
+	}
+	m.steerForm = form
+	return m.steerForm.Init()
+}
+
+func (m *Model) closeSteer() {
+	m.steerForm = nil
+	m.steerPrompt = ""
+	m.steerTarget = ""
+	if m.overlay == "" {
+		m.surface = surfaceDashboard
+		return
+	}
+	m.surface = m.overlay
+}
+
+func (m *Model) submitSteer() (tea.Cmd, bool) {
+	target := strings.TrimSpace(m.steerTarget)
+	prompt := strings.TrimSpace(m.steerPrompt)
+	if target == "" || prompt == "" {
+		m.statusLine = "steer requires target and instruction"
+		return nil, false
+	}
+	m.closeSteer()
+	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+		Action: "steer",
+		Target: target,
+		Prompt: prompt,
+	}), true
+}
+
+func (m Model) steerTargets() []string {
+	targets := []string{"sous-chef"}
+	seen := map[string]struct{}{"sous-chef": {}}
+	for _, session := range m.snapshot.Active {
+		id := strings.TrimSpace(session.ID)
+		if id == "" {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		targets = append(targets, id)
+	}
+	sort.Strings(targets[1:])
+	return targets
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func (m Model) filteredTraceLines() []EventLine {
@@ -723,27 +845,6 @@ func nextTraceFilter(filter TraceFilter) TraceFilter {
 	default:
 		return traceFilterAll
 	}
-}
-
-func parseSteerInput(input string) (target string, prompt string, ok bool) {
-	value := strings.TrimSpace(input)
-	if !strings.HasPrefix(value, "@") {
-		return "", "", false
-	}
-	parts := strings.Fields(value)
-	if len(parts) < 2 {
-		return "", "", false
-	}
-	target = strings.TrimPrefix(parts[0], "@")
-	target = strings.TrimSpace(target)
-	if target == "" {
-		return "", "", false
-	}
-	prompt = strings.TrimSpace(strings.TrimPrefix(value, "@"+target))
-	if prompt == "" {
-		return "", "", false
-	}
-	return target, prompt, true
 }
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {
@@ -1129,13 +1230,14 @@ func deriveHealth(status, explicit string, contextUsage float64, idleSeconds, st
 }
 
 func healthDot(health string) string {
+	dot := "●"
 	switch strings.ToLower(strings.TrimSpace(health)) {
 	case "red":
-		return "\x1b[31m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(dot)
 	case "yellow":
-		return "\x1b[33m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(dot)
 	default:
-		return "\x1b[32m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render(dot)
 	}
 }
 

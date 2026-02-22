@@ -8,11 +8,9 @@ import (
 func TestCookJSONRoundTrip(t *testing.T) {
 	parent := AgentID("cook-parent")
 	input := Cook{
-		ID:       AgentID("cook-42"),
-		Provider: ProviderClaude,
-		Model:    "claude-sonnet-4-6",
-		Status:   CookStatusRunning,
-		Parent:   &parent,
+		ID:     AgentID("cook-42"),
+		Status: CookStatusRunning,
+		Parent: &parent,
 		Policy: ModelPolicy{
 			Provider:       ProviderClaude,
 			Model:          "claude-sonnet-4-6",
@@ -33,12 +31,6 @@ func TestCookJSONRoundTrip(t *testing.T) {
 	if got.ID != input.ID {
 		t.Fatalf("id mismatch: got %q want %q", got.ID, input.ID)
 	}
-	if got.Provider != input.Provider {
-		t.Fatalf("provider mismatch: got %q want %q", got.Provider, input.Provider)
-	}
-	if got.Model != input.Model {
-		t.Fatalf("model mismatch: got %q want %q", got.Model, input.Model)
-	}
 	if got.Status != input.Status {
 		t.Fatalf("status mismatch: got %q want %q", got.Status, input.Status)
 	}
@@ -51,14 +43,22 @@ func TestCookJSONRoundTrip(t *testing.T) {
 }
 
 func TestCookStatusValues(t *testing.T) {
-	want := []CookStatus{
-		CookStatusSpawning,
-		CookStatusRunning,
-		CookStatusCompleted,
-		CookStatusFailed,
-		CookStatusKilled,
+	tests := []struct {
+		name string
+		got  CookStatus
+		want string
+	}{
+		{name: "spawning", got: CookStatusSpawning, want: "spawning"},
+		{name: "running", got: CookStatusRunning, want: "running"},
+		{name: "completed", got: CookStatusCompleted, want: "completed"},
+		{name: "failed", got: CookStatusFailed, want: "failed"},
+		{name: "killed", got: CookStatusKilled, want: "killed"},
 	}
-	if len(want) != 5 {
-		t.Fatalf("unexpected status count: got %d", len(want))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if string(tt.got) != tt.want {
+				t.Fatalf("status value = %q, want %q", tt.got, tt.want)
+			}
+		})
 	}
 }

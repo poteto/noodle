@@ -2,9 +2,27 @@
 
 package loop
 
-// Windows implementation intentionally no-ops for now. The lock file is still
-// used as a coordination marker, and this keeps cross-platform compilation
-// working while preserving behavior on Unix runtimes where noodle currently runs.
-func acquireFileLock(_ uintptr) error { return nil }
+import "golang.org/x/sys/windows"
 
-func releaseFileLock(_ uintptr) error { return nil }
+func acquireFileLock(fd uintptr) error {
+	var overlapped windows.Overlapped
+	return windows.LockFileEx(
+		windows.Handle(fd),
+		windows.LOCKFILE_EXCLUSIVE_LOCK,
+		0,
+		^uint32(0),
+		^uint32(0),
+		&overlapped,
+	)
+}
+
+func releaseFileLock(fd uintptr) error {
+	var overlapped windows.Overlapped
+	return windows.UnlockFileEx(
+		windows.Handle(fd),
+		0,
+		^uint32(0),
+		^uint32(0),
+		&overlapped,
+	)
+}

@@ -98,11 +98,28 @@ func TestModelTransitionsBetweenSurfaces(t *testing.T) {
 	m.surface = surfaceSession
 	m.sessionID = "cook-a"
 	m = pressRune(t, m, 's')
-	if !m.steering {
-		t.Fatal("steering should be open after s")
+	if m.surface != surfaceSteer {
+		t.Fatalf("surface after s = %q, want %q", m.surface, surfaceSteer)
 	}
-	if m.steerInput != "@cook-a " {
-		t.Fatalf("steerInput = %q, want %q", m.steerInput, "@cook-a ")
+	if m.steerTarget != "cook-a" {
+		t.Fatalf("steer target = %q, want %q", m.steerTarget, "cook-a")
+	}
+	if m.steerForm == nil {
+		t.Fatal("expected steer form to be initialized")
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.surface != surfaceSession {
+		t.Fatalf("surface after esc from steer = %q, want %q", m.surface, surfaceSession)
+	}
+
+	m = pressRune(t, m, '?')
+	if m.surface != surfaceHelp {
+		t.Fatalf("surface after ? = %q, want %q", m.surface, surfaceHelp)
+	}
+	m = pressRune(t, m, '?')
+	if m.surface != surfaceSession {
+		t.Fatalf("surface after ? toggle = %q, want %q", m.surface, surfaceSession)
 	}
 }
 
@@ -115,12 +132,17 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		RefreshInterval: time.Hour,
 		Now:             func() time.Time { return fixed },
 	})
-	m.steering = true
-	m.steerInput = "@cook-a focus on tests first"
+	m.surface = surfaceSteer
+	m.overlay = surfaceDashboard
+	m.steerTarget = "cook-a"
+	m.steerPrompt = "focus on tests first"
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cmd, ok := m.submitSteer()
+	if !ok {
+		t.Fatal("expected steer submit to succeed")
+	}
 	if cmd == nil {
-		t.Fatal("expected steer submit command")
+		t.Fatal("expected steer command")
 	}
 	msg := cmd()
 	result, ok := msg.(controlResultMsg)
@@ -131,9 +153,8 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		t.Fatalf("control command failed: %v", result.err)
 	}
 
-	m2 := updated.(Model)
-	if m2.steering {
-		t.Fatal("steering should close after submit")
+	if m.surface != surfaceDashboard {
+		t.Fatalf("surface after submit = %q, want %q", m.surface, surfaceDashboard)
 	}
 
 	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
