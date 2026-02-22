@@ -11,6 +11,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
 )
@@ -1229,13 +1230,14 @@ func deriveHealth(status, explicit string, contextUsage float64, idleSeconds, st
 }
 
 func healthDot(health string) string {
+	dot := "●"
 	switch strings.ToLower(strings.TrimSpace(health)) {
 	case "red":
-		return "\x1b[31m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(dot)
 	case "yellow":
-		return "\x1b[33m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(dot)
 	default:
-		return "\x1b[32m●\x1b[0m"
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render(dot)
 	}
 }
 
