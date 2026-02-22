@@ -26,3 +26,6 @@ sync = "go run .noodle/adapters/main.go plans-sync"
 create = "go run .noodle/adapters/main.go plan-create"
 done = "go run .noodle/adapters/main.go plan-done"
 phase-add = "go run .noodle/adapters/main.go plan-phase-add"
+
+[concurrency]
+max_cooks = 1
