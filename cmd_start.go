@@ -2,14 +2,28 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
+	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
 )
+
+type startRuntimeLoop interface {
+	Cycle(ctx context.Context) error
+	Run(ctx context.Context) error
+}
+
+var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) startRuntimeLoop {
+	return loop.New(projectDir, noodleBin, cfg, loop.Dependencies{})
+}
+
+var runStartTUI = runTUI
 
 func runStartCommand(ctx context.Context, app *App, _ []Command, args []string) error {
 	flags := flag.NewFlagSet("start", flag.ContinueOnError)
@@ -27,13 +41,41 @@ func runStartCommand(ctx context.Context, app *App, _ []Command, args []string) 
 	if err != nil {
 		return fmt.Errorf("resolve executable path: %w", err)
 	}
+	runtimeDir := filepath.Join(cwd, ".noodle")
 
-	runtimeLoop := loop.New(cwd, noodleBin, app.Config, loop.Dependencies{})
+	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config)
 	if *once {
 		return runtimeLoop.Cycle(ctx)
 	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if isInteractiveTerminal() {
+		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir)
+	}
 	return runtimeLoop.Run(ctx)
+}
+
+func runStartWithTUI(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	runtimeLoop startRuntimeLoop,
+	runtimeDir string,
+) error {
+	loopErrCh := make(chan error, 1)
+	go func() {
+		loopErrCh <- runtimeLoop.Run(ctx)
+	}()
+
+	tuiErr := runStartTUI(runtimeDir)
+	cancel()
+	loopErr := <-loopErrCh
+
+	if tuiErr != nil {
+		return tuiErr
+	}
+	if loopErr != nil && !errors.Is(loopErr, context.Canceled) {
+		return loopErr
+	}
+	return nil
 }

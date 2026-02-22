@@ -305,8 +305,31 @@ func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
 	if len(queue.Items) != 1 {
 		t.Fatalf("queue items = %d", len(queue.Items))
 	}
+	if queue.Items[0].Title != "Fix" {
+		t.Fatalf("unexpected title: %q", queue.Items[0].Title)
+	}
 	if queue.Items[0].Rationale != "Chef steer: prioritize security tasks" {
 		t.Fatalf("unexpected rationale: %q", queue.Items[0].Rationale)
+	}
+}
+
+func TestCookBaseNameIncludesIDAndShortTitle(t *testing.T) {
+	name := cookBaseName(QueueItem{
+		ID:    "42",
+		Title: "Refactor queue generation for reliability and clarity",
+	})
+	if !strings.HasPrefix(name, "42-refactor-queue-generation") {
+		t.Fatalf("unexpected cook name: %q", name)
+	}
+	if len(name) > 64 {
+		t.Fatalf("cook name too long: %d", len(name))
+	}
+}
+
+func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
+	name := cookBaseName(QueueItem{ID: "42", Title: ""})
+	if name != "42" {
+		t.Fatalf("cook name = %q", name)
 	}
 }
 

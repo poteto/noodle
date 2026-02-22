@@ -190,7 +190,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 }
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	baseName := sanitizeName(item.ID)
+	baseName := cookBaseName(item)
 	name := baseName
 	if attempt > 0 {
 		var err error
@@ -339,7 +339,7 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 	if item.Review != nil {
 		reviewEnabled = *item.Review
 	}
-	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, targetID)
+	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, item)
 	return &activeCook{
 		queueItem: item,
 		session: &adoptedSession{
@@ -366,7 +366,7 @@ func (l *Loop) lookupQueueItem(targetID string) (QueueItem, bool, error) {
 	return QueueItem{}, false, nil
 }
 
-func (l *Loop) readAdoptedWorktree(sessionID string, targetID string) (string, string) {
+func (l *Loop) readAdoptedWorktree(sessionID string, item QueueItem) (string, string) {
 	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
 	worktreePath := ""
 	data, err := os.ReadFile(path)
@@ -379,12 +379,12 @@ func (l *Loop) readAdoptedWorktree(sessionID string, targetID string) (string, s
 		}
 	}
 	if worktreePath == "" {
-		name := sanitizeName(targetID)
+		name := cookBaseName(item)
 		return name, filepath.Join(l.projectDir, ".worktrees", name)
 	}
 	name := filepath.Base(worktreePath)
 	if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
-		name = sanitizeName(targetID)
+		name = cookBaseName(item)
 		worktreePath = filepath.Join(l.projectDir, ".worktrees", name)
 	}
 	return name, worktreePath
@@ -600,9 +600,17 @@ func nonEmpty(value, fallback string) string {
 }
 
 func sanitizeName(value string) string {
+	name := sanitizeToken(value)
+	if name == "" {
+		return "cook"
+	}
+	return name
+}
+
+func sanitizeToken(value string) string {
 	value = strings.TrimSpace(strings.ToLower(value))
 	if value == "" {
-		return "cook"
+		return ""
 	}
 	builder := strings.Builder{}
 	lastHyphen := false
@@ -619,10 +627,55 @@ func sanitizeName(value string) string {
 		}
 	}
 	name := strings.Trim(builder.String(), "-")
-	if name == "" {
-		return "cook"
-	}
 	return name
+}
+
+func cookBaseName(item QueueItem) string {
+	idToken := sanitizeToken(item.ID)
+	if idToken == "" {
+		idToken = "cook"
+	}
+
+	titleToken := sanitizeToken(item.Title)
+	if titleToken == "" {
+		return idToken
+	}
+
+	titleToken = truncateToken(titleToken, 32)
+	if titleToken == "" {
+		return idToken
+	}
+
+	const maxNameLen = 64
+	base := idToken + "-" + titleToken
+	if len(base) <= maxNameLen {
+		return base
+	}
+
+	maxTitleLen := maxNameLen - len(idToken) - 1
+	if maxTitleLen <= 0 {
+		return idToken
+	}
+	titleToken = truncateToken(titleToken, maxTitleLen)
+	if titleToken == "" {
+		return idToken
+	}
+	return idToken + "-" + titleToken
+}
+
+func truncateToken(token string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	token = strings.Trim(token, "-")
+	if token == "" {
+		return ""
+	}
+	if len(token) <= maxLen {
+		return token
+	}
+	token = token[:maxLen]
+	return strings.Trim(token, "-")
 }
 
 func (l *Loop) skipQueueItem(id string) error {

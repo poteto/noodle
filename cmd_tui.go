@@ -12,6 +12,17 @@ import (
 	"github.com/poteto/noodle/tui"
 )
 
+func runTUI(runtimeDir string) error {
+	model := tui.NewModel(tui.Options{
+		RuntimeDir: runtimeDir,
+	})
+	program := tea.NewProgram(model, tea.WithAltScreen())
+	if _, err := program.Run(); err != nil {
+		return fmt.Errorf("run tui: %w", err)
+	}
+	return nil
+}
+
 func runTuiCommand(_ context.Context, _ *App, _ []Command, args []string) error {
 	flags := flag.NewFlagSet("tui", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
@@ -32,12 +43,5 @@ func runTuiCommand(_ context.Context, _ *App, _ []Command, args []string) error 
 		*runtimeDir = filepath.Join(cwd, ".noodle")
 	}
 
-	model := tui.NewModel(tui.Options{
-		RuntimeDir: *runtimeDir,
-	})
-	program := tea.NewProgram(model, tea.WithAltScreen())
-	if _, err := program.Run(); err != nil {
-		return fmt.Errorf("run tui: %w", err)
-	}
-	return nil
+	return runTUI(*runtimeDir)
 }
