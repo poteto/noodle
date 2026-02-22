@@ -45,6 +45,12 @@ func CommandCatalog() []Command {
 			Category:    "internal",
 			Run:         runSpawnCommand,
 		},
+		{
+			Name:        "mise",
+			Description: "Build and print the current mise brief",
+			Category:    "internal",
+			Run:         runMiseCommand,
+		},
 	}
 }
 
