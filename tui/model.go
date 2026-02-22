@@ -106,6 +106,7 @@ type Session struct {
 
 type QueueItem struct {
 	ID       string `json:"id"`
+	Title    string `json:"title,omitempty"`
 	Provider string `json:"provider"`
 	Model    string `json:"model"`
 	Skill    string `json:"skill,omitempty"`
@@ -542,13 +543,18 @@ func (m Model) renderDashboard() string {
 		}
 		for i := 0; i < limit; i++ {
 			item := m.snapshot.Queue[i]
+			titleWidth := bodyWidth - 58
+			if titleWidth < 20 {
+				titleWidth = 20
+			}
 			fmt.Fprintf(
 				&b,
-				"  %d. %-22s %-12s %-20s\n",
+				"  %d. %-16s %-12s %-20s %s\n",
 				i+1,
-				item.ID,
+				trimTo(item.ID, 16),
 				infoStyle.Render(nonEmpty(item.Provider, "claude")),
-				nonEmpty(item.Model, "(default)"),
+				trimTo(nonEmpty(item.Model, "(default)"), 20),
+				trimTo(nonEmpty(strings.TrimSpace(item.Title), "(untitled)"), titleWidth),
 			)
 		}
 	}
@@ -697,14 +703,19 @@ func (m Model) renderQueue() string {
 					review = "no-review"
 				}
 			}
+			titleWidth := bodyWidth - 70
+			if titleWidth < 20 {
+				titleWidth = 20
+			}
 			line := fmt.Sprintf(
-				"%s %2d. %-24s %-12s %-18s %s\n",
+				"%s %2d. %-20s %-12s %-18s %-9s %s\n",
 				cursor,
 				i+1,
-				item.ID,
+				trimTo(item.ID, 20),
 				infoStyle.Render(nonEmpty(item.Provider, "-")),
-				nonEmpty(item.Model, "-"),
+				trimTo(nonEmpty(item.Model, "-"), 18),
 				review,
+				trimTo(nonEmpty(strings.TrimSpace(item.Title), "(untitled)"), titleWidth),
 			)
 			if i == m.selectedQueue {
 				line = selectedRowStyle.Render(trimTo(strings.TrimSuffix(line, "\n"), bodyWidth))

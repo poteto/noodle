@@ -305,6 +305,55 @@ func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 	}
 }
 
+func TestRenderDashboardShowsUpNextTitle(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.width = 120
+	m.snapshot = Snapshot{
+		Queue: []QueueItem{
+			{
+				ID:       "22",
+				Title:    "Make planning opinionated and first-class",
+				Provider: "codex",
+				Model:    "gpt-5.3-codex",
+			},
+		},
+	}
+
+	view := m.renderDashboard()
+	if !strings.Contains(view, "Make planning opinionated and first-class") {
+		t.Fatalf("expected queue title in dashboard up next view, got:\n%s", view)
+	}
+}
+
+func TestRenderQueueShowsTitle(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.width = 120
+	m.surface = surfaceQueue
+	m.snapshot = Snapshot{
+		Queue: []QueueItem{
+			{
+				ID:       "14",
+				Title:    "Implement fixture hash validation",
+				Provider: "claude",
+				Model:    "claude-opus-4-6",
+			},
+		},
+	}
+
+	view := m.renderQueue()
+	if !strings.Contains(view, "Implement fixture hash validation") {
+		t.Fatalf("expected queue title in queue view, got:\n%s", view)
+	}
+}
+
 func pressRune(t *testing.T, m Model, r rune) Model {
 	t.Helper()
 	return pressKey(t, m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
