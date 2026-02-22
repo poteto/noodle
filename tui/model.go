@@ -26,6 +26,8 @@ const (
 	surfaceSession   Surface = "session"
 	surfaceTrace     Surface = "trace"
 	surfaceQueue     Surface = "queue"
+	surfaceSteer     Surface = "steer"
+	surfaceHelp      Surface = "help"
 )
 
 type TraceFilter string
@@ -52,6 +54,7 @@ type Model struct {
 	height int
 
 	surface Surface
+	overlay Surface
 
 	snapshot Snapshot
 	err      error
@@ -64,9 +67,7 @@ type Model struct {
 	traceFollow bool
 	traceOffset int
 
-	steering   bool
 	steerInput string
-	showHelp   bool
 	statusLine string
 }
 
@@ -188,12 +189,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	var b strings.Builder
-	b.WriteString(m.renderMain())
-	if m.showHelp {
+	base := m.baseSurface()
+	b.WriteString(m.renderSurface(base))
+	switch m.surface {
+	case surfaceHelp:
 		b.WriteString("\n\n")
 		b.WriteString(renderHelp())
-	}
-	if m.steering {
+	case surfaceSteer:
 		b.WriteString("\n\n")
 		b.WriteString(m.renderSteer())
 	}
@@ -215,13 +217,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 	case tea.KeyEsc:
-		if m.steering {
-			m.steering = false
-			m.steerInput = ""
+		if m.surface == surfaceSteer {
+			m.closeSteer()
 			return m, nil
 		}
-		if m.showHelp {
-			m.showHelp = false
+		if m.surface == surfaceHelp {
+			m.closeHelp()
 			return m, nil
 		}
 		if m.surface == surfaceTrace {
@@ -237,19 +238,23 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.steering {
+	if m.surface == surfaceSteer {
 		return m.handleSteerKey(msg)
+	}
+	if m.surface == surfaceHelp {
+		if strings.ToLower(msg.String()) == "?" {
+			m.closeHelp()
+		}
+		return m, nil
 	}
 
 	key := strings.ToLower(msg.String())
 	switch key {
 	case "?":
-		m.showHelp = !m.showHelp
+		m.openHelp()
 		return m, nil
 	case "s":
-		m.steering = true
-		m.steerInput = m.defaultSteerInput()
-		return m, nil
+		return m, m.openSteer()
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
@@ -378,8 +383,7 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusLine = "steer format: @target instruction"
 			return m, nil
 		}
-		m.steering = false
-		m.steerInput = ""
+		m.closeSteer()
 		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
 			Action: "steer",
 			Target: target,
@@ -401,8 +405,8 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m Model) renderMain() string {
-	switch m.surface {
+func (m Model) renderSurface(surface Surface) string {
+	switch surface {
 	case surfaceSession:
 		return m.renderSession()
 	case surfaceTrace:
@@ -633,7 +637,7 @@ func renderHelp() string {
 		"Dashboard: enter inspect | q queue | up/down move",
 		"Session: t trace | k kill | esc back",
 		"Trace: f filter | G bottom | up/down scroll | esc back",
-		"Steer: @target instructions, enter send, esc cancel",
+		"Steer: select target, write instruction, enter submit, esc cancel",
 	}, "\n")
 }
 
@@ -681,10 +685,51 @@ func (m Model) sessionByID(id string) (Session, bool) {
 }
 
 func (m Model) defaultSteerInput() string {
-	if m.surface == surfaceSession && m.sessionID != "" {
+	if m.baseSurface() == surfaceSession && m.sessionID != "" {
 		return "@" + m.sessionID + " "
 	}
 	return "@"
+}
+
+func (m *Model) baseSurface() Surface {
+	switch m.surface {
+	case surfaceHelp, surfaceSteer:
+		if m.overlay == "" {
+			return surfaceDashboard
+		}
+		return m.overlay
+	default:
+		return m.surface
+	}
+}
+
+func (m *Model) openHelp() {
+	m.overlay = m.baseSurface()
+	m.surface = surfaceHelp
+}
+
+func (m *Model) closeHelp() {
+	if m.overlay == "" {
+		m.surface = surfaceDashboard
+		return
+	}
+	m.surface = m.overlay
+}
+
+func (m *Model) openSteer() tea.Cmd {
+	m.overlay = m.baseSurface()
+	m.surface = surfaceSteer
+	m.steerInput = m.defaultSteerInput()
+	return nil
+}
+
+func (m *Model) closeSteer() {
+	m.steerInput = ""
+	if m.overlay == "" {
+		m.surface = surfaceDashboard
+		return
+	}
+	m.surface = m.overlay
 }
 
 func (m Model) filteredTraceLines() []EventLine {
