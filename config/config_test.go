@@ -37,6 +37,9 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Recovery.MaxRetries != 3 {
 		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
 	}
+	if config.Recovery.RetrySuffixPattern != "-recover-%d" {
+		t.Fatalf("recovery.retry_suffix_pattern default = %q", config.Recovery.RetrySuffixPattern)
+	}
 	if config.Monitor.StuckThreshold != "120s" {
 		t.Fatalf("monitor.stuck_threshold default = %q", config.Monitor.StuckThreshold)
 	}
@@ -111,6 +114,7 @@ enabled = false
 
 [recovery]
 max_retries = 5
+retry_suffix_pattern = "-retry-%d"
 
 [monitor]
 stuck_threshold = "30s"
@@ -153,6 +157,9 @@ edit = "gh issue edit"
 	if config.Recovery.MaxRetries != 5 {
 		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
 	}
+	if config.Recovery.RetrySuffixPattern != "-retry-%d" {
+		t.Fatalf("recovery.retry_suffix_pattern = %q", config.Recovery.RetrySuffixPattern)
+	}
 	if config.Concurrency.MaxCooks != 2 {
 		t.Fatalf("concurrency.max_cooks = %d", config.Concurrency.MaxCooks)
 	}
@@ -173,6 +180,9 @@ model = "claude-sonnet-4-6"
 	}
 	if config.Review.Enabled != true {
 		t.Fatalf("expected default review.enabled=true, got %v", config.Review.Enabled)
+	}
+	if config.Recovery.RetrySuffixPattern != "-recover-%d" {
+		t.Fatalf("expected default recovery.retry_suffix_pattern, got %q", config.Recovery.RetrySuffixPattern)
 	}
 	if config.Adapters != nil {
 		t.Fatal("adapters should remain unset when omitted from an existing config file")
@@ -242,6 +252,18 @@ provider = "bad"
 model = "y"
 `,
 			wantErr: "routing.tags.frontend.provider",
+		},
+		{
+			name: "invalid retry suffix pattern",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[recovery]
+retry_suffix_pattern = "-recover"
+`,
+			wantErr: "recovery.retry_suffix_pattern",
 		},
 	}
 
