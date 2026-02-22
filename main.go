@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"strings"
+
+	"github.com/poteto/noodle/config"
 )
 
 func main() {
@@ -25,5 +29,42 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("unknown command %q", commandName)
 	}
 
-	return command.Run(ctx, catalog, args[1:])
+	loadedConfig, validation, err := config.Load(config.DefaultConfigPath)
+	if err != nil {
+		return err
+	}
+	app := &App{
+		Config:     loadedConfig,
+		Validation: validation,
+	}
+	if err := reportConfigDiagnostics(os.Stderr, commandName, validation); err != nil {
+		return err
+	}
+
+	return command.Run(ctx, app, catalog, args[1:])
+}
+
+func reportConfigDiagnostics(w io.Writer, commandName string, validation config.ValidationResult) error {
+	if len(validation.Diagnostics) == 0 {
+		return nil
+	}
+
+	for _, diagnostic := range validation.Diagnostics {
+		line := fmt.Sprintf(
+			"config %s: %s: %s",
+			strings.ToLower(string(diagnostic.Severity)),
+			diagnostic.FieldPath,
+			diagnostic.Message,
+		)
+		if diagnostic.Fix != "" {
+			line += " Fix: " + diagnostic.Fix
+		}
+		fmt.Fprintln(w, line)
+	}
+
+	if commandName == "start" && len(validation.Fatals()) > 0 {
+		return fmt.Errorf("fatal config diagnostics prevent start")
+	}
+
+	return nil
 }

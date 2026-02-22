@@ -1,0 +1,430 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestDefaultConfigValues(t *testing.T) {
+	config := DefaultConfig()
+
+	if config.Phases["oops"] != "oops" {
+		t.Fatalf("phases.oops default = %q", config.Phases["oops"])
+	}
+	if config.Phases["debugging"] != "debugging" {
+		t.Fatalf("phases.debugging default = %q", config.Phases["debugging"])
+	}
+	if got := strings.Join(config.Skills.Paths, ","); got != "skills,~/.noodle/skills" {
+		t.Fatalf("skills.paths default = %q", got)
+	}
+	if config.SousChef.Run != "after-each" {
+		t.Fatalf("sous-chef.run default = %q", config.SousChef.Run)
+	}
+	if config.SousChef.Model != "claude-sonnet" {
+		t.Fatalf("sous-chef.model default = %q", config.SousChef.Model)
+	}
+	if config.Routing.Defaults.Provider != "claude" {
+		t.Fatalf("routing.defaults.provider default = %q", config.Routing.Defaults.Provider)
+	}
+	if config.Routing.Defaults.Model != "claude-sonnet-4-6" {
+		t.Fatalf("routing.defaults.model default = %q", config.Routing.Defaults.Model)
+	}
+	if !config.Review.Enabled {
+		t.Fatal("review.enabled default should be true")
+	}
+	if config.Recovery.MaxRetries != 3 {
+		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
+	}
+	if config.Monitor.StuckThreshold != "120s" {
+		t.Fatalf("monitor.stuck_threshold default = %q", config.Monitor.StuckThreshold)
+	}
+	if config.Monitor.TicketStale != "30m" {
+		t.Fatalf("monitor.ticket_stale default = %q", config.Monitor.TicketStale)
+	}
+	if config.Monitor.PollInterval != "5s" {
+		t.Fatalf("monitor.poll_interval default = %q", config.Monitor.PollInterval)
+	}
+	if config.Concurrency.MaxCooks != 4 {
+		t.Fatalf("concurrency.max_cooks default = %d", config.Concurrency.MaxCooks)
+	}
+	if config.Agents.ClaudeDir != "" || config.Agents.CodexDir != "" {
+		t.Fatalf("agent dir defaults should be empty: %#v", config.Agents)
+	}
+
+	backlog, ok := config.Adapters["backlog"]
+	if !ok {
+		t.Fatal("default backlog adapter missing")
+	}
+	if backlog.Scripts["sync"] != ".noodle/adapters/backlog-sync" {
+		t.Fatalf("backlog sync default = %q", backlog.Scripts["sync"])
+	}
+
+	plans, ok := config.Adapters["plans"]
+	if !ok {
+		t.Fatal("default plans adapter missing")
+	}
+	if plans.Scripts["phase-add"] != ".noodle/adapters/plan-phase-add" {
+		t.Fatalf("plans phase-add default = %q", plans.Scripts["phase-add"])
+	}
+}
+
+func TestLoadMissingFileUsesDefaults(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "noodle.toml")
+
+	config, _, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load missing config: %v", err)
+	}
+	if config.SousChef.Run != "after-each" {
+		t.Fatalf("expected default sous-chef run, got %q", config.SousChef.Run)
+	}
+	if _, ok := config.Adapters["backlog"]; !ok {
+		t.Fatal("expected default backlog adapter when config file is missing")
+	}
+}
+
+func TestParseConfigRoundTrip(t *testing.T) {
+	tomlPayload := `
+[phases]
+oops = "custom-oops"
+debugging = "custom-debug"
+
+[sous-chef]
+run = "manual"
+model = "claude-sonnet"
+
+[routing.defaults]
+provider = "codex"
+model = "gpt-5.3-codex"
+
+[routing.tags.frontend]
+provider = "claude"
+model = "opus"
+
+[skills]
+paths = ["skills", "~/.noodle/skills"]
+
+[review]
+enabled = false
+
+[recovery]
+max_retries = 5
+
+[monitor]
+stuck_threshold = "30s"
+ticket_stale = "10m"
+poll_interval = "3s"
+
+[concurrency]
+max_cooks = 2
+
+[adapters.backlog]
+skill = "my-backlog"
+
+[adapters.backlog.scripts]
+sync = "gh issue list"
+add = "gh issue create"
+done = "gh issue close"
+edit = "gh issue edit"
+`
+
+	config, err := Parse([]byte(tomlPayload))
+	if err != nil {
+		t.Fatalf("Parse config: %v", err)
+	}
+
+	if config.Phases["oops"] != "custom-oops" {
+		t.Fatalf("oops phase = %q", config.Phases["oops"])
+	}
+	if config.SousChef.Run != "manual" {
+		t.Fatalf("sous-chef.run = %q", config.SousChef.Run)
+	}
+	if config.Routing.Defaults.Provider != "codex" {
+		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
+	}
+	if config.Routing.Tags["frontend"].Model != "opus" {
+		t.Fatalf("routing.tags.frontend.model = %q", config.Routing.Tags["frontend"].Model)
+	}
+	if config.Review.Enabled {
+		t.Fatal("review.enabled should remain false from config")
+	}
+	if config.Recovery.MaxRetries != 5 {
+		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
+	}
+	if config.Concurrency.MaxCooks != 2 {
+		t.Fatalf("concurrency.max_cooks = %d", config.Concurrency.MaxCooks)
+	}
+}
+
+func TestParseMissingOptionalUsesDefaults(t *testing.T) {
+	config, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+`))
+	if err != nil {
+		t.Fatalf("Parse minimal config: %v", err)
+	}
+
+	if config.SousChef.Run != "after-each" {
+		t.Fatalf("expected default sous-chef.run, got %q", config.SousChef.Run)
+	}
+	if config.Review.Enabled != true {
+		t.Fatalf("expected default review.enabled=true, got %v", config.Review.Enabled)
+	}
+	if config.Adapters != nil {
+		t.Fatal("adapters should remain unset when omitted from an existing config file")
+	}
+}
+
+func TestParseInvalidValues(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+		wantErr string
+	}{
+		{
+			name: "unknown provider",
+			payload: `
+[routing.defaults]
+provider = "bad"
+model = "x"
+`,
+			wantErr: "routing.defaults.provider",
+		},
+		{
+			name: "invalid run frequency",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[sous-chef]
+run = "sometimes"
+`,
+			wantErr: "sous-chef.run",
+		},
+		{
+			name: "invalid duration",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[monitor]
+stuck_threshold = "not-a-duration"
+`,
+			wantErr: "monitor.stuck_threshold",
+		},
+		{
+			name: "invalid max cooks",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[concurrency]
+max_cooks = 0
+`,
+			wantErr: "concurrency.max_cooks",
+		},
+		{
+			name: "invalid tag provider",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[routing.tags.frontend]
+provider = "bad"
+model = "y"
+`,
+			wantErr: "routing.tags.frontend.provider",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := Parse([]byte(test.payload))
+			if err == nil {
+				t.Fatal("expected parse error")
+			}
+			if !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("error %q missing %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidationClassification(t *testing.T) {
+	oldLookPath := lookPath
+	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
+	oldStatPath := statPath
+	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+	t.Cleanup(func() { lookPath = oldLookPath })
+	t.Cleanup(func() { statPath = oldStatPath })
+
+	config := DefaultConfig()
+	config.Adapters["backlog"] = AdapterConfig{
+		Skill: "backlog",
+		Scripts: map[string]string{
+			"sync": "/definitely/missing/backlog-sync",
+		},
+	}
+	config.Agents.ClaudeDir = "/definitely/missing/claude"
+
+	result := Validate(config)
+	if result.CanSpawn() {
+		t.Fatal("CanSpawn should be false with fatal diagnostics")
+	}
+	if len(result.Repairables()) == 0 {
+		t.Fatal("expected at least one repairable diagnostic")
+	}
+	if len(result.Fatals()) == 0 {
+		t.Fatal("expected at least one fatal diagnostic")
+	}
+
+	foundRepairable := false
+	for _, diagnostic := range result.Repairables() {
+		if diagnostic.FieldPath == "adapters.backlog.scripts.sync" {
+			foundRepairable = true
+			break
+		}
+	}
+	if !foundRepairable {
+		t.Fatal("missing expected repairable script diagnostic")
+	}
+
+	foundFatal := false
+	for _, diagnostic := range result.Fatals() {
+		if diagnostic.FieldPath == "agents.claude_dir" {
+			foundFatal = true
+			if diagnostic.Fix == "" {
+				t.Fatal("fatal diagnostic should include fix instructions")
+			}
+			if diagnostic.Message == "" {
+				t.Fatal("fatal diagnostic should include a message")
+			}
+		}
+	}
+	if !foundFatal {
+		t.Fatal("missing expected fatal agents.claude_dir diagnostic")
+	}
+}
+
+func TestValidationRepairablesOnlyCanSpawn(t *testing.T) {
+	oldLookPath := lookPath
+	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
+	oldStatPath := statPath
+	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+	t.Cleanup(func() { lookPath = oldLookPath })
+	t.Cleanup(func() { statPath = oldStatPath })
+
+	config := DefaultConfig()
+	config.Agents.ClaudeDir = ""
+	config.Agents.CodexDir = ""
+
+	result := Validate(config)
+	if !result.CanSpawn() {
+		t.Fatal("CanSpawn should be true when only repairable diagnostics are present")
+	}
+	if len(result.Repairables()) == 0 {
+		t.Fatal("expected repairable diagnostics from missing adapter scripts")
+	}
+	if len(result.Fatals()) != 0 {
+		t.Fatalf("expected no fatal diagnostics, got %d", len(result.Fatals()))
+	}
+}
+
+func TestParseAdapterDefaultsForPartialAdapter(t *testing.T) {
+	config, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[adapters.backlog]
+skill = "custom-backlog"
+`))
+	if err != nil {
+		t.Fatalf("Parse config: %v", err)
+	}
+
+	backlog, ok := config.Adapters["backlog"]
+	if !ok {
+		t.Fatal("expected backlog adapter to exist")
+	}
+	if backlog.Skill != "custom-backlog" {
+		t.Fatalf("backlog skill = %q", backlog.Skill)
+	}
+	if backlog.Scripts["sync"] != ".noodle/adapters/backlog-sync" {
+		t.Fatalf("backlog sync default = %q", backlog.Scripts["sync"])
+	}
+	if backlog.Scripts["edit"] != ".noodle/adapters/backlog-edit" {
+		t.Fatalf("backlog edit default = %q", backlog.Scripts["edit"])
+	}
+}
+
+func TestValidateAdapterScriptCommandVsPathChecks(t *testing.T) {
+	oldLookPath := lookPath
+	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
+	oldStatPath := statPath
+	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+	t.Cleanup(func() { lookPath = oldLookPath })
+	t.Cleanup(func() { statPath = oldStatPath })
+
+	config := DefaultConfig()
+	config.Adapters = map[string]AdapterConfig{
+		"backlog": {
+			Skill: "backlog",
+			Scripts: map[string]string{
+				"sync": "gh issue list --json number,title",
+				"done": "./missing-script",
+			},
+		},
+	}
+
+	result := Validate(config)
+	if len(result.Fatals()) != 0 {
+		t.Fatalf("expected no fatal diagnostics, got %d", len(result.Fatals()))
+	}
+
+	foundPathDiagnostic := false
+	foundCommandDiagnostic := false
+	for _, diagnostic := range result.Repairables() {
+		if diagnostic.FieldPath == "adapters.backlog.scripts.done" {
+			foundPathDiagnostic = true
+		}
+		if diagnostic.FieldPath == "adapters.backlog.scripts.sync" {
+			foundCommandDiagnostic = true
+		}
+	}
+
+	if !foundPathDiagnostic {
+		t.Fatal("expected missing path diagnostic for adapters.backlog.scripts.done")
+	}
+	if foundCommandDiagnostic {
+		t.Fatal("did not expect diagnostic for non-path command in adapters.backlog.scripts.sync")
+	}
+}
+
+func TestLoadParsesFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "noodle.toml")
+	if err := os.WriteFile(path, []byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	config, _, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+	if config.Routing.Defaults.Provider != "claude" {
+		t.Fatalf("provider = %q", config.Routing.Defaults.Provider)
+	}
+}

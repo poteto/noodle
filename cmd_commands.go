@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func runCommandsCommand(_ context.Context, catalog []Command, args []string) error {
+func runCommandsCommand(_ context.Context, _ *App, catalog []Command, args []string) error {
 	flags := flag.NewFlagSet("commands", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	asJSON := flags.Bool("json", false, "Output as JSON")
