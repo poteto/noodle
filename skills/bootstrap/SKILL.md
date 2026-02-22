@@ -16,8 +16,9 @@ Read these references before writing files:
 
 1. Install user-level Noodle runtime (`~/.noodle/`).
 2. Create or repair project-level setup (`noodle.toml`, `.noodle/adapters/`, `.gitignore`).
-3. Adapt to existing project state instead of overwriting.
-4. Verify setup with real commands.
+3. Ensure required skills are available in agent skill directories.
+4. Adapt to existing project state instead of overwriting.
+5. Verify setup with real commands.
 
 ## Workflow
 
@@ -33,14 +34,23 @@ Read these references before writing files:
    - Create `~/.noodle/`, `~/.noodle/bin/`, and `~/.noodle/skills/`.
    - Copy default skills from repository `skills/` into `~/.noodle/skills/` (do not delete unrelated custom skills).
    - Build Noodle binary into `~/.noodle/bin/noodle`.
-4. Create or repair project setup:
+4. Handle missing skills:
+   - If Noodle reports a missing skill, install that skill from `https://github.com/poteto/noodle`.
+   - Use an ephemeral temp clone (no cache): clone to a temp directory, copy required `skills/<name>` directories, then delete the temp clone.
+   - Install target policy:
+     - If `~/.agents` exists, install to `~/.agents/skills/`.
+     - If `~/.claude` exists, install to `~/.claude/skills/`.
+     - If both exist, install to both.
+     - If neither exists, create `~/.agents/skills/` and install there.
+   - Never overwrite unrelated existing custom skills.
+5. Create or repair project setup:
    - Ensure `noodle.toml` exists and contains valid defaults from `references/config-schema.md`.
    - Detect agent directories using `references/platform-detection.md` and set:
      - `agents.claude_dir`
      - `agents.codex_dir`
    - Ensure `.noodle/adapters/` scripts exist and are executable, using templates from `references/adapter-script-templates.md`.
    - Ensure `.noodle/` is listed in `.gitignore` once.
-5. Adapter decision:
+6. Adapter decision:
    - Interactive:
      - Ask where tasks are tracked.
      - Ask whether a plans system is used.
@@ -50,7 +60,7 @@ Read these references before writing files:
      - Do not configure plans adapter.
      - Print this note in the final summary:
        - `Backlog adapter defaults to brain/todos.md. Run bootstrap interactively or edit noodle.toml to configure a different task system.`
-6. Verify:
+7. Verify:
    - `~/.noodle/bin/noodle commands`
    - `~/.noodle/bin/noodle skills list`
    - `~/.noodle/bin/noodle status`
@@ -86,4 +96,3 @@ At the end, report:
 1. What was created or repaired.
 2. Which adapter choices were applied.
 3. Exact commands for the user to run next.
-
