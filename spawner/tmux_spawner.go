@@ -65,11 +65,21 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		return nil, err
 	}
 
-	validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
-	if err != nil {
-		return nil, fmt.Errorf("worktree enforcement: %w", err)
+	if req.AllowPrimaryCheckout {
+		req.WorktreePath = strings.TrimSpace(req.WorktreePath)
+		if req.WorktreePath == "" {
+			req.WorktreePath = s.projectDir
+		}
+		if strings.TrimSpace(req.WorktreePath) == "" {
+			return nil, fmt.Errorf("project directory is required")
+		}
+	} else {
+		validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
+		if err != nil {
+			return nil, fmt.Errorf("worktree enforcement: %w", err)
+		}
+		req.WorktreePath = validWorktree
 	}
-	req.WorktreePath = validWorktree
 
 	if s.runtimeDir == "" {
 		return nil, fmt.Errorf("runtime directory is required")

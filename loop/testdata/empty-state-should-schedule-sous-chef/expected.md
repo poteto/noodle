@@ -1,7 +1,7 @@
 ---
 schema_version: 1
-expected_failure: true
-bug: true
+expected_failure: false
+bug: false
 source_hash: 7c9f50281fb9c584febcd263884f7c0035f259ce237f31086231e8624c24cd99
 ---
 
@@ -19,7 +19,7 @@ source_hash: 7c9f50281fb9c584febcd263884f7c0035f259ce237f31086231e8624c24cd99
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 0,
       "normal_spawn_calls": 1,
-      "created_worktrees": 1,
+      "created_worktrees": 0,
       "first_spawn": {
         "name": "sous-chef",
         "skill": "sous-chef",

@@ -36,6 +36,7 @@ type AdapterConfig struct {
 }
 
 type SousChefConfig struct {
+	Skill string `toml:"skill"`
 	Run   string `toml:"run"`
 	Model string `toml:"model"`
 }
@@ -127,6 +128,7 @@ func DefaultConfig() Config {
 		},
 		Adapters: defaultAdapters(),
 		SousChef: SousChefConfig{
+			Skill: "sous-chef",
 			Run:   "after-each",
 			Model: "claude-sonnet",
 		},
@@ -236,6 +238,9 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	if !metadata.IsDefined("sous-chef", "run") {
 		config.SousChef.Run = "after-each"
 	}
+	if !metadata.IsDefined("sous-chef", "skill") {
+		config.SousChef.Skill = "sous-chef"
+	}
 	if !metadata.IsDefined("sous-chef", "model") {
 		config.SousChef.Model = "claude-sonnet"
 	}
@@ -326,6 +331,9 @@ func validateParsedValues(config Config) error {
 			"sous-chef.run: unsupported value %q (expected after-each, after-n, manual)",
 			config.SousChef.Run,
 		)
+	}
+	if strings.TrimSpace(config.SousChef.Skill) == "" {
+		return fmt.Errorf("sous-chef.skill: skill is required")
 	}
 
 	if config.Recovery.MaxRetries < 0 {

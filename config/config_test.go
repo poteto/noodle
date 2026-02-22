@@ -22,6 +22,9 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.SousChef.Run != "after-each" {
 		t.Fatalf("sous-chef.run default = %q", config.SousChef.Run)
 	}
+	if config.SousChef.Skill != "sous-chef" {
+		t.Fatalf("sous-chef.skill default = %q", config.SousChef.Skill)
+	}
 	if config.SousChef.Model != "claude-sonnet" {
 		t.Fatalf("sous-chef.model default = %q", config.SousChef.Model)
 	}
@@ -83,6 +86,9 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 	if config.SousChef.Run != "after-each" {
 		t.Fatalf("expected default sous-chef run, got %q", config.SousChef.Run)
 	}
+	if config.SousChef.Skill != "sous-chef" {
+		t.Fatalf("expected default sous-chef skill, got %q", config.SousChef.Skill)
+	}
 	if _, ok := config.Adapters["backlog"]; !ok {
 		t.Fatal("expected default backlog adapter when config file is missing")
 	}
@@ -95,6 +101,7 @@ oops = "custom-oops"
 debugging = "custom-debug"
 
 [sous-chef]
+skill = "priority-chef"
 run = "manual"
 model = "claude-sonnet"
 
@@ -145,6 +152,9 @@ edit = "gh issue edit"
 	if config.SousChef.Run != "manual" {
 		t.Fatalf("sous-chef.run = %q", config.SousChef.Run)
 	}
+	if config.SousChef.Skill != "priority-chef" {
+		t.Fatalf("sous-chef.skill = %q", config.SousChef.Skill)
+	}
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
 	}
@@ -177,6 +187,9 @@ model = "claude-sonnet-4-6"
 
 	if config.SousChef.Run != "after-each" {
 		t.Fatalf("expected default sous-chef.run, got %q", config.SousChef.Run)
+	}
+	if config.SousChef.Skill != "sous-chef" {
+		t.Fatalf("expected default sous-chef.skill, got %q", config.SousChef.Skill)
 	}
 	if config.Review.Enabled != true {
 		t.Fatalf("expected default review.enabled=true, got %v", config.Review.Enabled)
@@ -215,6 +228,18 @@ model = "x"
 run = "sometimes"
 `,
 			wantErr: "sous-chef.run",
+		},
+		{
+			name: "empty sous-chef skill",
+			payload: `
+[routing.defaults]
+provider = "claude"
+model = "x"
+
+[sous-chef]
+skill = ""
+`,
+			wantErr: "sous-chef.skill",
 		},
 		{
 			name: "invalid duration",

@@ -9,16 +9,17 @@ import (
 
 // SpawnRequest defines one session launch.
 type SpawnRequest struct {
-	Name           string
-	Prompt         string
-	Provider       string
-	Model          string
-	Skill          string
-	ReasoningLevel string
-	WorktreePath   string
-	MaxTurns       int
-	EnvVars        map[string]string
-	BudgetCap      float64
+	Name                 string
+	Prompt               string
+	Provider             string
+	Model                string
+	Skill                string
+	ReasoningLevel       string
+	WorktreePath         string
+	MaxTurns             int
+	EnvVars              map[string]string
+	BudgetCap            float64
+	AllowPrimaryCheckout bool
 }
 
 // Validate ensures required request fields are set at the boundary.

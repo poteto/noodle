@@ -67,6 +67,7 @@ done = ".noodle/adapters/plan-done"
 phase-add = ".noodle/adapters/plan-phase-add"
 
 [sous-chef]
+skill = "sous-chef"
 run = "after-each"
 model = "claude-sonnet"
 
@@ -105,4 +106,3 @@ codex_dir = ""
 - Add missing required fields.
 - Remove plans adapter only when explicitly asked or in non-interactive fallback mode.
 - Never write secrets.
-

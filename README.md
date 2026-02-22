@@ -67,6 +67,9 @@ Minimal baseline:
 provider = "claude"
 model = "claude-sonnet-4-6"
 
+[sous-chef]
+skill = "sous-chef"
+
 [skills]
 paths = ["skills", "~/.noodle/skills"]
 

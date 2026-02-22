@@ -160,12 +160,17 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(queue.Items) == 0 {
-		queue = queueFromBacklog(brief.Backlog, l.config)
-		if len(queue.Items) > 0 {
-			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-				return err
-			}
+	if shouldRecoverMissingSyncScripts(warnings, queue) &&
+		len(l.activeByID) == 0 &&
+		len(l.adoptedTargets) == 0 {
+		return l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
+	}
+	if len(queue.Items) == 0 &&
+		len(l.activeByID) == 0 &&
+		len(l.adoptedTargets) == 0 {
+		queue = bootstrapSousChefQueue(l.config, "", l.deps.Now().UTC())
+		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+			return err
 		}
 	}
 	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.config); changed {
@@ -173,11 +178,6 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 			return err
 		}
-	}
-	if shouldRecoverMissingSyncScripts(warnings, queue) &&
-		len(l.activeByID) == 0 &&
-		len(l.adoptedTargets) == 0 {
-		return l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
 	}
 
 	limit := l.config.Concurrency.MaxCooks
@@ -224,6 +224,10 @@ func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
 }
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
+	if isSousChefItem(item) {
+		return l.spawnSousChef(ctx, item, attempt, resumePrompt)
+	}
+
 	baseName := cookBaseName(item)
 	name := baseName
 	if attempt > 0 {
@@ -302,6 +306,9 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 		}
 	}
 	if success {
+		if isSousChefItem(cook.queueItem) {
+			return l.skipQueueItem(cook.queueItem.ID)
+		}
 		if err := l.deps.Worktree.Merge(cook.worktreeName); err != nil {
 			return l.retryCook(ctx, cook, "merge failed: "+err.Error())
 		}
@@ -469,11 +476,16 @@ func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
 	nextAttempt := cook.attempt + 1
 	if nextAttempt > l.config.Recovery.MaxRetries {
+		if isSousChefItem(cook.queueItem) {
+			return fmt.Errorf("sous-chef failed after retries: %s", strings.TrimSpace(reason))
+		}
 		if err := l.markFailed(cook.queueItem.ID, reason); err != nil {
 			return err
 		}
 		_ = l.skipQueueItem(cook.queueItem.ID)
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+		if strings.TrimSpace(cook.worktreeName) != "" {
+			_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+		}
 		return nil
 	}
 	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
@@ -484,7 +496,9 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		info.ExitReason = reason
 	}
 	resume := recover.BuildResumeContext(info, nextAttempt, l.config.Recovery.MaxRetries)
-	_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+	if strings.TrimSpace(cook.worktreeName) != "" {
+		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+	}
 	return l.spawnCook(ctx, cook.queueItem, nextAttempt, resume.Summary)
 }
 
@@ -803,21 +817,6 @@ func (l *Loop) steer(target string, prompt string) error {
 		return l.spawnCook(context.Background(), cook.queueItem, cook.attempt, strings.TrimSpace(prompt))
 	}
 	return errors.New("session not found")
-}
-
-func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
-	brief, _, err := l.deps.Mise.Build(context.Background())
-	if err != nil {
-		return err
-	}
-	queue := queueFromBacklog(brief.Backlog, l.config)
-	prompt = strings.TrimSpace(prompt)
-	for i := range queue.Items {
-		if prompt != "" {
-			queue.Items[i].Rationale = "Chef steer: " + prompt
-		}
-	}
-	return writeQueueAtomic(l.deps.QueueFile, queue)
 }
 
 var promptItemRegexp = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)

@@ -377,8 +377,62 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after completion: %v", err)
 	}
-	if len(updated.Items) != 0 {
-		t.Fatalf("expected completed queue item to be removed, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+		t.Fatalf("expected sous-chef bootstrap item after completion, got %#v", updated.Items)
+	}
+}
+
+func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	cfg := config.DefaultConfig()
+	cfg.SousChef.Skill = "priority-chef"
+
+	sp := &fakeSpawner{}
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Spawner:   sp,
+		Worktree:  wt,
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if len(sp.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(sp.calls))
+	}
+	if sp.calls[0].Skill != "priority-chef" {
+		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
+	}
+	if !sp.calls[0].AllowPrimaryCheckout {
+		t.Fatal("expected sous-chef spawn to allow primary checkout")
+	}
+	if sp.calls[0].WorktreePath != projectDir {
+		t.Fatalf("worktree path = %q, want %q", sp.calls[0].WorktreePath, projectDir)
+	}
+	if len(wt.created) != 0 {
+		t.Fatalf("unexpected worktree creates: %#v", wt.created)
+	}
+
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+		t.Fatalf("expected sous-chef queue bootstrap item, got %#v", updated.Items)
+	}
+	if updated.Items[0].Skill != "priority-chef" {
+		t.Fatalf("queue skill = %q", updated.Items[0].Skill)
 	}
 }
 
@@ -463,8 +517,10 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("failure cycle: %v", err)
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("expected no respawn, spawn calls = %d", len(sp.calls))
+	for _, call := range sp.calls[1:] {
+		if call.Name == "42" {
+			t.Fatalf("expected no respawn for failed item 42, calls = %#v", sp.calls)
+		}
 	}
 	if _, ok := l.failedTargets["42"]; !ok {
 		t.Fatal("expected target to be marked failed")
@@ -477,8 +533,8 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(parsed.Items) != 0 {
-		t.Fatalf("queue should be trimmed after max retries: %#v", parsed.Items)
+	if len(parsed.Items) != 1 || parsed.Items[0].ID != "sous-chef" {
+		t.Fatalf("expected sous-chef bootstrap item after max retries, got %#v", parsed.Items)
 	}
 }
 
@@ -490,7 +546,10 @@ func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.SousChef.Skill = "priority-chef"
+
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Spawner:  &fakeSpawner{},
 		Worktree: &fakeWorktree{},
 		Adapter:  &fakeAdapterRunner{},
@@ -512,8 +571,14 @@ func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
 	if len(queue.Items) != 1 {
 		t.Fatalf("queue items = %d", len(queue.Items))
 	}
-	if queue.Items[0].Title != "Fix" {
-		t.Fatalf("unexpected title: %q", queue.Items[0].Title)
+	if queue.Items[0].ID != "sous-chef" {
+		t.Fatalf("unexpected id: %q", queue.Items[0].ID)
+	}
+	if queue.Items[0].Skill != "priority-chef" {
+		t.Fatalf("unexpected skill: %q", queue.Items[0].Skill)
+	}
+	if queue.Items[0].Title == "Fix" {
+		t.Fatalf("expected sous-chef bootstrap item, got backlog item title %q", queue.Items[0].Title)
 	}
 	if queue.Items[0].Rationale != "Chef steer: prioritize security tasks" {
 		t.Fatalf("unexpected rationale: %q", queue.Items[0].Rationale)
@@ -698,8 +763,8 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after adopted completion: %v", err)
 	}
-	if len(updated.Items) != 0 {
-		t.Fatalf("expected queue to be empty after adopted completion, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+		t.Fatalf("expected sous-chef bootstrap item after adopted completion, got %#v", updated.Items)
 	}
 }
 
