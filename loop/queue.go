@@ -59,6 +59,7 @@ func queueFromBacklog(items []adapter.BacklogItem, cfg config.Config) Queue {
 		}
 		queue.Items = append(queue.Items, QueueItem{
 			ID:       item.ID,
+			Title:    item.Title,
 			Provider: cfg.Routing.Defaults.Provider,
 			Model:    cfg.Routing.Defaults.Model,
 		})

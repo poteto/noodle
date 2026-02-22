@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet run start status tui skills commands worktree watch watch-verbose clean
+.PHONY: help build test test-short vet run start status skills commands worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -19,7 +19,6 @@ help:
 	@echo "  make run         Alias for start"
 	@echo "  make start       Run scheduling loop"
 	@echo "  make status      Show runtime status"
-	@echo "  make tui         Open TUI dashboard"
 	@echo "  make skills      List resolved skills"
 	@echo "  make commands    List available commands"
 	@echo "  make worktree    Show worktree help"
@@ -46,9 +45,6 @@ start:
 
 status:
 	$(NOODLE) status
-
-tui:
-	$(NOODLE) tui
 
 skills:
 	$(NOODLE) skills
