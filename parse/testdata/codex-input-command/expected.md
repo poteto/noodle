@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: codex-input-command
+bug: false
+regression: codex-input-command
+source_hash: aa4ef1eb401869a50b431936cf31f23b0ee61eaa5c2c224096b3664cb27653a2
 ---
 
 ## Expected Events
@@ -15,4 +17,3 @@ bug: codex-input-command
 ```json
 
 ```
-

@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: processor-edge
+bug: false
+regression: processor-edge
+source_hash: 7c5f7f70183b8e4fa1564ff6336fe103cf71fdb476987a3d49081a5801cb7d08
 ---
 
 ## Expected Stamped
@@ -23,4 +25,3 @@ bug: processor-edge
 ```json
 
 ```
-

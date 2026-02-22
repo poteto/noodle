@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: true
-bug: error-runtime-repair-spawn-fatal-by-name
+bug: true
+regression: error-runtime-repair-spawn-fatal-by-name
+source_hash: 96629cce17fdc965fef5980f31c852547e903e662b6f615f0fe0610757fda2d6
 ---
 
 ## Expected
@@ -45,4 +47,3 @@ bug: error-runtime-repair-spawn-fatal-by-name
   }
 }
 ```
-

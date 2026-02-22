@@ -75,6 +75,12 @@ func CommandCatalog() []Command {
 			Category:    "internal",
 			Run:         runMiseCommand,
 		},
+		{
+			Name:        "fixtures",
+			Description: "Sync generated fixture expected.md files",
+			Category:    "internal",
+			Run:         runFixturesCommand,
+		},
 	}
 }
 

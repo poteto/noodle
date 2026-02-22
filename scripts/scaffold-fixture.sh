@@ -34,11 +34,12 @@ if [ -e "$fixture_root" ]; then
 fi
 
 mkdir -p "$fixture_root"
-cat > "$fixture_root/expected.md" <<EOF_EXPECTED
+cat > "$fixture_root/expected.src.md" <<EOF_EXPECTED
 ---
 schema_version: 1
 expected_failure: false
-bug: $fixture_name
+bug: false
+regression: $fixture_name
 ---
 
 ## Expected
@@ -47,6 +48,7 @@ bug: $fixture_name
 {}
 \`\`\`
 EOF_EXPECTED
+go run . fixtures sync --root "$fixture_root"
 
 index=1
 while [ "$index" -le "$state_count" ]; do

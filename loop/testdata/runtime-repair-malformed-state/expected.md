@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: runtime-repair-malformed-state
+bug: false
+regression: runtime-repair-malformed-state
+source_hash: 82821bd83e914b26620ef2b2952f2b906f62eef149c14b0f76cec54d6ed3e579
 ---
 
 ## Expected
@@ -52,4 +54,3 @@ bug: runtime-repair-malformed-state
   }
 }
 ```
-

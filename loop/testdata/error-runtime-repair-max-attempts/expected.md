@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: error-runtime-repair-max-attempts
+bug: false
+regression: error-runtime-repair-max-attempts
+source_hash: 72f602b043f9aaaa70d22e3e2b9f8bcd2cdc1417a04199d30727048716ebe7cb
 ---
 
 ## Expected
@@ -58,4 +60,3 @@ bug: error-runtime-repair-max-attempts
   }
 }
 ```
-

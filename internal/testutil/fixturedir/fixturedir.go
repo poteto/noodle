@@ -17,10 +17,11 @@ const FixtureSchemaVersion = 1
 var stateDirPattern = regexp.MustCompile(`^state-(\d{2})$`)
 
 type FixtureLayout struct {
-	RootPath       string
-	ExpectedPath   string
-	BaseConfigPath string
-	States         []FixtureStateDir
+	RootPath           string
+	ExpectedPath       string
+	ExpectedSourcePath string
+	BaseConfigPath     string
+	States             []FixtureStateDir
 }
 
 type FixtureStateDir struct {
@@ -37,8 +38,10 @@ type FixtureConfigScope struct {
 
 type FixtureMetadata struct {
 	ExpectedFailure bool
-	Bug             string
+	Bug             bool
+	Regression      string
 	SchemaVersion   int
+	SourceHash      string
 }
 
 type FixtureCase struct {
@@ -153,6 +156,13 @@ func ValidateFixtureRoot(root string) ([]FixtureValidationIssue, error) {
 				Message:  parseErr.Error(),
 			})
 		}
+		if syncErr := assertExpectedMarkdownSynced(layout.ExpectedSourcePath, layout.ExpectedPath); syncErr != nil {
+			issues = append(issues, FixtureValidationIssue{
+				Path:     filepath.ToSlash(layout.ExpectedPath),
+				Severity: "error",
+				Message:  syncErr.Error(),
+			})
+		}
 	}
 
 	sort.SliceStable(issues, func(i, j int) bool {
@@ -168,6 +178,9 @@ func loadFixtureCase(name, fixturePath string) (FixtureCase, error) {
 	layout, issues := resolveLayout(fixturePath)
 	if len(issues) > 0 {
 		return FixtureCase{}, fmt.Errorf("invalid fixture %s: %s", fixturePath, formatIssues(issues))
+	}
+	if err := assertExpectedMarkdownSynced(layout.ExpectedSourcePath, layout.ExpectedPath); err != nil {
+		return FixtureCase{}, fmt.Errorf("invalid fixture %s: %w", fixturePath, err)
 	}
 
 	expectedData, err := os.ReadFile(layout.ExpectedPath)
@@ -285,13 +298,15 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 		switch name {
 		case "expected.md":
 			layout.ExpectedPath = path
+		case "expected.src.md":
+			layout.ExpectedSourcePath = path
 		case "noodle.toml":
 			layout.BaseConfigPath = path
 		default:
 			issues = append(issues, FixtureValidationIssue{
 				Path:     filepath.ToSlash(path),
 				Severity: "error",
-				Message:  "unexpected file; allowed files are expected.md and optional noodle.toml",
+				Message:  "unexpected file; allowed files are expected.md, expected.src.md, and optional noodle.toml",
 			})
 		}
 	}
@@ -301,6 +316,13 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 			Path:     filepath.ToSlash(fixturePath),
 			Severity: "error",
 			Message:  "missing required expected.md",
+		})
+	}
+	if strings.TrimSpace(layout.ExpectedSourcePath) == "" {
+		issues = append(issues, FixtureValidationIssue{
+			Path:     filepath.ToSlash(fixturePath),
+			Severity: "error",
+			Message:  "missing required expected.src.md",
 		})
 	}
 
@@ -403,6 +425,8 @@ func parseMetadata(frontmatter string) (FixtureMetadata, error) {
 		"schema_version":   {},
 		"expected_failure": {},
 		"bug":              {},
+		"regression":       {},
+		"source_hash":      {},
 	}
 
 	lines := strings.Split(frontmatter, "\n")
@@ -439,14 +463,28 @@ func parseMetadata(frontmatter string) (FixtureMetadata, error) {
 			}
 			metadata.ExpectedFailure = parsed
 		case "bug":
-			metadata.Bug = trimQuotes(value)
+			parsed, err := strconv.ParseBool(strings.ToLower(value))
+			if err != nil {
+				return FixtureMetadata{}, fmt.Errorf("bug must be true or false")
+			}
+			metadata.Bug = parsed
+		case "regression":
+			metadata.Regression = trimQuotes(value)
+		case "source_hash":
+			metadata.SourceHash = trimQuotes(value)
 		}
 	}
 
-	for key := range allowed {
+	for _, key := range []string{"schema_version", "expected_failure", "bug", "regression"} {
 		if !seen[key] {
 			return FixtureMetadata{}, fmt.Errorf("missing required frontmatter key %q", key)
 		}
+	}
+	if strings.TrimSpace(metadata.Regression) == "" {
+		return FixtureMetadata{}, fmt.Errorf("regression must be non-empty")
+	}
+	if metadata.Bug && !metadata.ExpectedFailure {
+		return FixtureMetadata{}, fmt.Errorf("bug=true requires expected_failure=true")
 	}
 	if metadata.SchemaVersion != FixtureSchemaVersion {
 		return FixtureMetadata{}, fmt.Errorf(
@@ -563,6 +601,30 @@ func formatIssues(issues []FixtureValidationIssue) string {
 		parts = append(parts, fmt.Sprintf("%s (%s)", issue.Message, issue.Path))
 	}
 	return strings.Join(parts, "; ")
+}
+
+func assertExpectedMarkdownSynced(sourcePath, expectedPath string) error {
+	sourcePath = strings.TrimSpace(sourcePath)
+	expectedPath = strings.TrimSpace(expectedPath)
+	if sourcePath == "" || expectedPath == "" {
+		return fmt.Errorf("expected fixture paths are missing")
+	}
+	sourceData, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return fmt.Errorf("read expected source: %w", err)
+	}
+	renderedExpected, err := renderExpectedMarkdownFromSource(string(sourceData))
+	if err != nil {
+		return fmt.Errorf("render expected source: %w", err)
+	}
+	expectedData, err := os.ReadFile(expectedPath)
+	if err != nil {
+		return fmt.Errorf("read expected markdown: %w", err)
+	}
+	if renderedExpected != normalizeFixtureMarkdown(string(expectedData)) {
+		return fmt.Errorf("expected.md is out of date; run `noodle fixtures sync`")
+	}
+	return nil
 }
 
 func (inventory FixtureInventory) Names() []string {

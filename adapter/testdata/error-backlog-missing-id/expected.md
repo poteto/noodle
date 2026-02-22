@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: true
-bug: error-backlog-missing-id
+bug: true
+regression: error-backlog-missing-id
+source_hash: 93d3c68647a32186a1d8c17cc510042ca5aa53d5cf9f41c6fa27278335f8a2f5
 ---
 
 ## Expected Error
@@ -11,4 +13,3 @@ bug: error-backlog-missing-id
   "contains": "missing required field id"
 }
 ```
-

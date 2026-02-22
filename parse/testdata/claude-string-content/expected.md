@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: claude-string-content
+bug: false
+regression: claude-string-content
+source_hash: 0084003fde8d95c858310295d58bdb9b5ac8488abbd3e870da2dec9b004aa7dc
 ---
 
 ## Expected Events
@@ -15,4 +17,3 @@ bug: claude-string-content
 ```json
 
 ```
-

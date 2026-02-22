@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: runtime-repair-oops-fallback-custom-routing
+bug: false
+regression: runtime-repair-oops-fallback-custom-routing
+source_hash: d25a521b69b9da2e29dbd6a59aa4cb0384a49de41f18af7b5be341ee5b8de179
 ---
 
 ## Expected
@@ -55,4 +57,3 @@ bug: runtime-repair-oops-fallback-custom-routing
   }
 }
 ```
-

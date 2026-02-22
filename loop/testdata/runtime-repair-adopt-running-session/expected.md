@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: runtime-repair-adopt-running-session
+bug: false
+regression: runtime-repair-adopt-running-session
+source_hash: 1c51c4fe17350120ac39b9fe2e75c61b3f0165e84cabe9741ef6387ebb199dd2
 ---
 
 ## Expected
@@ -40,4 +42,3 @@ bug: runtime-repair-adopt-running-session
   }
 }
 ```
-

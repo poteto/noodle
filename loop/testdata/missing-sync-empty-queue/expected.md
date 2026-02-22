@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: missing-sync-empty-queue
+bug: false
+regression: missing-sync-empty-queue
+source_hash: d0bf29187304edb2fc566170bd6e5bcf1d390e25914f1628b6c9c00aa749e994
 ---
 
 ## Expected
@@ -51,4 +53,3 @@ bug: missing-sync-empty-queue
   }
 }
 ```
-

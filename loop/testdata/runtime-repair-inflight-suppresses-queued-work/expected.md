@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: runtime-repair-inflight-suppresses-queued-work
+bug: false
+regression: runtime-repair-inflight-suppresses-queued-work
+source_hash: e36ff7d2133914b9b9769cf01352fefb84962f4c3e7f32a83ae141a7d59a45ed
 ---
 
 ## Expected
@@ -50,4 +52,3 @@ bug: runtime-repair-inflight-suppresses-queued-work
   }
 }
 ```
-

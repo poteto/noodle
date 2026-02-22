@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: claude-error-object
+bug: false
+regression: claude-error-object
+source_hash: 908f8b165ae7f735dc3c005a807548825fd6ba08c436244979fb78a77c76690a
 ---
 
 ## Expected Events
@@ -15,4 +17,3 @@ bug: claude-error-object
 ```json
 
 ```
-

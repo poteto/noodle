@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: runtime-repair-exited-fatal
+bug: false
+regression: runtime-repair-exited-fatal
+source_hash: 28e460a81fa66762f44ec53baba1e9d34c3c2a752bed9cc892cdcd3e0f50b3d8
 ---
 
 ## Expected
@@ -46,4 +48,3 @@ bug: runtime-repair-exited-fatal
   }
 }
 ```
-

@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: codex
+bug: false
+regression: codex
+source_hash: bb84588276b148094ed40bc1b04280738284a2449ceaa65bcf51bd02c5cccc04
 ---
 
 ## Expected Events
@@ -19,4 +21,3 @@ bug: codex
 ```json
 
 ```
-

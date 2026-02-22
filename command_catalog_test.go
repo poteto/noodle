@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func TestCommandCatalogRegistersStatusTuiAndWorktree(t *testing.T) {
+func TestCommandCatalogRegistersStatusTuiWorktreeAndFixtures(t *testing.T) {
 	catalog := CommandCatalog()
 
 	start, ok := FindCommand(catalog, "start")
@@ -35,5 +35,13 @@ func TestCommandCatalogRegistersStatusTuiAndWorktree(t *testing.T) {
 	}
 	if worktree.Category != "core" {
 		t.Fatalf("worktree category = %q", worktree.Category)
+	}
+
+	fixtures, ok := FindCommand(catalog, "fixtures")
+	if !ok {
+		t.Fatal("fixtures command not registered")
+	}
+	if fixtures.Category != "internal" {
+		t.Fatalf("fixtures category = %q", fixtures.Category)
 	}
 }

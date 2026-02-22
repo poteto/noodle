@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet run start status skills commands worktree watch watch-verbose clean
+.PHONY: help build test test-short vet run start status skills commands fixtures fixtures-check bugs worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -21,6 +21,9 @@ help:
 	@echo "  make status      Show runtime status"
 	@echo "  make skills      List resolved skills"
 	@echo "  make commands    List available commands"
+	@echo "  make fixtures    Regenerate fixture expected.md files"
+	@echo "  make fixtures-check Check fixture generated files are in sync"
+	@echo "  make bugs        List fixture expected.src.md files with bug=true"
 	@echo "  make worktree    Show worktree help"
 	@echo "  make watch       Rebuild on changes with Air (silent mode)"
 	@echo "  make watch-verbose Rebuild on changes with Air (debug file events)"
@@ -51,6 +54,19 @@ skills:
 
 commands:
 	$(NOODLE) commands --json
+
+fixtures:
+	$(NOODLE) fixtures sync
+
+fixtures-check:
+	$(NOODLE) fixtures check
+
+bugs:
+	@rg --files -g '**/expected.src.md' | sort | while IFS= read -r f; do \
+		if awk -F': ' '/^bug:/{print $$2; exit}' "$$f" | grep -qi '^true$$'; then \
+			echo "$$f"; \
+		fi; \
+	done
 
 worktree:
 	$(NOODLE) worktree --help

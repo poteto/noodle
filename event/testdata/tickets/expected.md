@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: tickets
+bug: false
+regression: tickets
+source_hash: 2cf13197536f53fb27a9450bb6c0c7267129d9d14bd04c8b360d5f360d17d696
 ---
 
 ## Expected Tickets
@@ -37,4 +39,3 @@ bug: tickets
   }
 ]
 ```
-

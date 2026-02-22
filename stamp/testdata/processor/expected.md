@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: processor
+bug: false
+regression: processor
+source_hash: 2f30d0af025d188011a8082058d4c3958328e34cab189ebd561b1447e835c1d5
 ---
 
 ## Expected Stamped
@@ -23,4 +25,3 @@ bug: processor
 ```json
 
 ```
-

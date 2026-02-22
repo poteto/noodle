@@ -9,11 +9,12 @@ import (
 
 func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "alpha", "expected.md"), md(
+	alphaExpected := md(
 		"---",
 		"schema_version: 1",
 		"expected_failure: false",
-		"bug: alpha-happy-path",
+		"bug: false",
+		"regression: alpha-happy-path",
 		"---",
 		"",
 		"## Expected",
@@ -26,17 +27,19 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 		"",
 		"```json",
 		"```",
-	))
+	)
+	writeExpectedPair(t, filepath.Join(root, "alpha"), alphaExpected)
 	writeFile(t, filepath.Join(root, "alpha", "noodle.toml"), "[routing.defaults]\nprovider = \"claude\"\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-01", "input.ndjson"), "line-1\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-02", "noodle.toml"), "[routing.defaults]\nprovider = \"codex\"\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle", "queue.json"), "{}\n")
 
-	writeFile(t, filepath.Join(root, "beta", "expected.md"), md(
+	betaExpected := md(
 		"---",
 		"schema_version: 1",
 		"expected_failure: true",
-		"bug: beta-failure",
+		"bug: true",
+		"regression: beta-failure",
 		"---",
 		"",
 		"## Expected",
@@ -44,7 +47,8 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 		"```json",
 		`{"ok":false}`,
 		"```",
-	))
+	)
+	writeExpectedPair(t, filepath.Join(root, "beta"), betaExpected)
 	writeFile(t, filepath.Join(root, "beta", "state-01", "input.ndjson"), "bad\n")
 
 	inventory, err := Discover(root)
@@ -65,8 +69,11 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	if alpha.Metadata.ExpectedFailure {
 		t.Fatal("alpha expected_failure should be false")
 	}
-	if alpha.Metadata.Bug != "alpha-happy-path" {
-		t.Fatalf("bug = %q", alpha.Metadata.Bug)
+	if alpha.Metadata.Bug {
+		t.Fatal("alpha bug should be false")
+	}
+	if alpha.Metadata.Regression != "alpha-happy-path" {
+		t.Fatalf("regression = %q", alpha.Metadata.Regression)
 	}
 	if len(alpha.States) != 2 {
 		t.Fatalf("state count = %d", len(alpha.States))
@@ -91,6 +98,12 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	if !beta.Metadata.ExpectedFailure {
 		t.Fatal("beta expected_failure should be true")
 	}
+	if !beta.Metadata.Bug {
+		t.Fatal("beta bug should be true")
+	}
+	if beta.Metadata.Regression != "beta-failure" {
+		t.Fatalf("beta regression = %q", beta.Metadata.Regression)
+	}
 	if beta.ExpectedError == nil || !beta.ExpectedError.Any {
 		t.Fatalf("beta expected error = %#v", beta.ExpectedError)
 	}
@@ -98,11 +111,12 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 
 func TestDiscoverRejectsUnsupportedFrontmatterKey(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "bad-frontmatter", "expected.md"), md(
+	content := md(
 		"---",
 		"schema_version: 1",
 		"expected_failure: false",
-		"bug: bad-fixture",
+		"bug: false",
+		"regression: bad-fixture",
 		"owner: tooling",
 		"---",
 		"",
@@ -111,7 +125,9 @@ func TestDiscoverRejectsUnsupportedFrontmatterKey(t *testing.T) {
 		"```json",
 		"{}",
 		"```",
-	))
+	)
+	writeFile(t, filepath.Join(root, "bad-frontmatter", "expected.src.md"), content)
+	writeFile(t, filepath.Join(root, "bad-frontmatter", "expected.md"), content)
 	writeFile(t, filepath.Join(root, "bad-frontmatter", "state-01", "input.ndjson"), "ok\n")
 
 	_, err := Discover(root)
@@ -122,11 +138,12 @@ func TestDiscoverRejectsUnsupportedFrontmatterKey(t *testing.T) {
 
 func TestDiscoverRejectsSchemaVersionMismatch(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "schema-mismatch", "expected.md"), md(
+	content := md(
 		"---",
 		"schema_version: 9",
 		"expected_failure: false",
-		"bug: mismatch",
+		"bug: false",
+		"regression: mismatch",
 		"---",
 		"",
 		"## Expected",
@@ -134,7 +151,9 @@ func TestDiscoverRejectsSchemaVersionMismatch(t *testing.T) {
 		"```json",
 		"{}",
 		"```",
-	))
+	)
+	writeFile(t, filepath.Join(root, "schema-mismatch", "expected.src.md"), content)
+	writeFile(t, filepath.Join(root, "schema-mismatch", "expected.md"), content)
 	writeFile(t, filepath.Join(root, "schema-mismatch", "state-01", "input.ndjson"), "ok\n")
 
 	_, err := Discover(root)
@@ -143,14 +162,41 @@ func TestDiscoverRejectsSchemaVersionMismatch(t *testing.T) {
 	}
 }
 
-func TestValidateFixtureRootDetectsLayoutIssues(t *testing.T) {
+func TestDiscoverRejectsBugWithoutExpectedFailure(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "missing-expected", "state-01", "input.ndjson"), "x\n")
-	writeFile(t, filepath.Join(root, "gap-states", "expected.md"), md(
+	content := md(
 		"---",
 		"schema_version: 1",
 		"expected_failure: false",
-		"bug: gap",
+		"bug: true",
+		"regression: mismatch",
+		"---",
+		"",
+		"## Expected",
+		"",
+		"```json",
+		"{}",
+		"```",
+	)
+	writeFile(t, filepath.Join(root, "bad-bug-flag", "expected.src.md"), content)
+	writeFile(t, filepath.Join(root, "bad-bug-flag", "expected.md"), content)
+	writeFile(t, filepath.Join(root, "bad-bug-flag", "state-01", "input.ndjson"), "ok\n")
+
+	_, err := Discover(root)
+	if err == nil || !strings.Contains(err.Error(), "bug=true requires expected_failure=true") {
+		t.Fatalf("discover err = %v", err)
+	}
+}
+
+func TestValidateFixtureRootDetectsLayoutIssues(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "missing-expected", "state-01", "input.ndjson"), "x\n")
+	writeExpectedPair(t, filepath.Join(root, "gap-states"), md(
+		"---",
+		"schema_version: 1",
+		"expected_failure: false",
+		"bug: false",
+		"regression: gap",
 		"---",
 	))
 	writeFile(t, filepath.Join(root, "gap-states", "state-01", "input.ndjson"), "x\n")
@@ -172,6 +218,9 @@ func TestValidateFixtureRootDetectsLayoutIssues(t *testing.T) {
 	if !strings.Contains(joined, "missing required expected.md") {
 		t.Fatalf("issues = %s", joined)
 	}
+	if !strings.Contains(joined, "missing required expected.src.md") {
+		t.Fatalf("issues = %s", joined)
+	}
 	if !strings.Contains(joined, "state ordering gap") {
 		t.Fatalf("issues = %s", joined)
 	}
@@ -179,11 +228,12 @@ func TestValidateFixtureRootDetectsLayoutIssues(t *testing.T) {
 
 func TestDiscoverRejectsUnknownExpectedErrorKeys(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "bad-error", "expected.md"), md(
+	writeExpectedPair(t, filepath.Join(root, "bad-error"), md(
 		"---",
 		"schema_version: 1",
 		"expected_failure: true",
-		"bug: bad-error-expectation",
+		"bug: true",
+		"regression: bad-error-expectation",
 		"---",
 		"",
 		"## Expected",
@@ -206,6 +256,44 @@ func TestDiscoverRejectsUnknownExpectedErrorKeys(t *testing.T) {
 	}
 }
 
+func TestDiscoverRejectsOutOfDateExpectedMarkdown(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "stale", "expected.src.md"), md(
+		"---",
+		"schema_version: 1",
+		"expected_failure: false",
+		"bug: false",
+		"regression: stale",
+		"---",
+		"",
+		"## Expected",
+		"",
+		"```json",
+		`{"ok":true}`,
+		"```",
+	))
+	writeFile(t, filepath.Join(root, "stale", "expected.md"), md(
+		"---",
+		"schema_version: 1",
+		"expected_failure: false",
+		"bug: false",
+		"regression: stale",
+		"---",
+		"",
+		"## Expected",
+		"",
+		"```json",
+		`{"ok":false}`,
+		"```",
+	))
+	writeFile(t, filepath.Join(root, "stale", "state-01", "input.ndjson"), "x\n")
+
+	_, err := Discover(root)
+	if err == nil || !strings.Contains(err.Error(), "expected.md is out of date") {
+		t.Fatalf("discover err = %v", err)
+	}
+}
+
 func md(lines ...string) string {
 	return strings.Join(lines, "\n") + "\n"
 }
@@ -218,4 +306,14 @@ func writeFile(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func writeExpectedPair(t *testing.T, fixtureDir, content string) {
+	t.Helper()
+	writeFile(t, filepath.Join(fixtureDir, "expected.src.md"), content)
+	rendered, err := renderExpectedMarkdownFromSource(content)
+	if err != nil {
+		t.Fatalf("render expected.md from source: %v", err)
+	}
+	writeFile(t, filepath.Join(fixtureDir, "expected.md"), rendered)
 }

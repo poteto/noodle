@@ -1,7 +1,9 @@
 ---
 schema_version: 1
 expected_failure: false
-bug: missing-sync-queued-work
+bug: false
+regression: missing-sync-queued-work
+source_hash: 18759701fe51f95b4572fc9fd823410850e002e6c53b345043a2fa1dcfefeaa2
 ---
 
 ## Expected
@@ -51,4 +53,3 @@ bug: missing-sync-queued-work
   }
 }
 ```
-
