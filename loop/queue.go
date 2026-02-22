@@ -78,11 +78,11 @@ func applyQueueRoutingDefaults(queue Queue, cfg config.Config) (Queue, bool) {
 	copy(items, queue.Items)
 	changed := false
 	for i := range items {
-		if provider != "" && strings.TrimSpace(items[i].Provider) != provider {
+		if provider != "" && strings.TrimSpace(items[i].Provider) == "" {
 			items[i].Provider = provider
 			changed = true
 		}
-		if model != "" && strings.TrimSpace(items[i].Model) != model {
+		if model != "" && strings.TrimSpace(items[i].Model) == "" {
 			items[i].Model = model
 			changed = true
 		}
