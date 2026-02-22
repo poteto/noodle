@@ -25,7 +25,7 @@ kill_delay = "500ms"
 delay = 300
 
 [log]
-silent = true
+silent = false
 time = true
 
 [misc]

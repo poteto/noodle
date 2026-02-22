@@ -1,10 +1,11 @@
-.PHONY: help build test test-short vet run start status tui skills commands worktree watch watch-quiet clean
+.PHONY: help build test test-short vet run start status tui skills commands worktree watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
 NOODLE ?= $(GO) run .
 AIR ?= air
-AIR_FLAGS ?= -d
+AIR_FLAGS ?=
+AIR_CONFIG ?= .air.toml
 
 .DEFAULT_GOAL := help
 
@@ -22,8 +23,8 @@ help:
 	@echo "  make skills      List resolved skills"
 	@echo "  make commands    List available commands"
 	@echo "  make worktree    Show worktree help"
-	@echo "  make watch       Rebuild on changes with Air (debug file events)"
-	@echo "  make watch-quiet Rebuild on changes with Air (quieter output)"
+	@echo "  make watch       Rebuild on changes with Air (silent mode)"
+	@echo "  make watch-verbose Rebuild on changes with Air (debug file events)"
 	@echo "  make clean       Remove built binary"
 
 build:
@@ -60,16 +61,17 @@ worktree:
 
 watch:
 	@if $(GO) tool -n air >/dev/null 2>&1; then \
-		$(GO) tool air $(AIR_FLAGS) -c .air.toml; \
+		$(GO) tool air $(AIR_FLAGS) -c $(AIR_CONFIG); \
 	elif command -v $(AIR) >/dev/null 2>&1; then \
-		$(AIR) $(AIR_FLAGS) -c .air.toml; \
+		$(AIR) $(AIR_FLAGS) -c $(AIR_CONFIG); \
 	else \
 		echo "air not found. Install with: go install github.com/air-verse/air@latest"; \
 		exit 1; \
 	fi
 
-watch-quiet: AIR_FLAGS =
-watch-quiet: watch
+watch-verbose: AIR_FLAGS = -d
+watch-verbose: AIR_CONFIG = .air.verbose.toml
+watch-verbose: watch
 
 clean:
 	rm -f $(BIN)
