@@ -17,7 +17,7 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 
 	var b strings.Builder
 	if len(snap.Active) > 0 {
-		b.WriteString(renderShimmerTitle("noodle cooking", shimmerIndex))
+		b.WriteString(sectionStyle.Render("noodle") + " " + renderShimmerTitle("cooking", shimmerIndex))
 	} else {
 		b.WriteString(sectionStyle.Render("noodle"))
 	}
@@ -59,7 +59,7 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		b.WriteString(warnStyle.Render(fmt.Sprintf("%d pending review", snap.PendingReviewCount)))
 		b.WriteString("\n")
 	}
-	b.WriteString(costStyle.Render(fmt.Sprintf("$%.2f", snap.TotalCostUSD)))
+	b.WriteString(loopStateLabel(snap.LoopState))
 	b.WriteString("\n")
 
 	content := b.String()
@@ -88,8 +88,6 @@ func renderCompactRail(snap Snapshot, height int) string {
 	b.WriteString(dimStyle.Render("─"))
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("%d", len(snap.Active)))
-	b.WriteString("\n")
-	b.WriteString(costStyle.Render(fmt.Sprintf("$%.0f", snap.TotalCostUSD)))
 	b.WriteString("\n")
 
 	content := b.String()
