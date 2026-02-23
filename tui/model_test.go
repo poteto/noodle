@@ -161,6 +161,46 @@ func TestTraceScrollUsesWrappedDisplayLines(t *testing.T) {
 	}
 }
 
+func TestSessionScrollUsesWrappedDisplayLines(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC) },
+	})
+	m.width = 80
+	m.height = 14
+	m.surface = surfaceSession
+	m.sessionID = "cook-a"
+	m.sessionEventsFollow = true
+	m.snapshot = Snapshot{
+		Sessions: []Session{
+			{ID: "cook-a", Status: "running", Health: "green"},
+		},
+		EventsBySession: map[string][]EventLine{
+			"cook-a": {
+				{
+					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
+					Label:    "Prompt",
+					Body:     strings.Repeat("Use Skill(sous-chef) to refresh queue. ", 40),
+					Category: traceFilterThink,
+				},
+			},
+		},
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyUp})
+	if m.sessionEventsFollow {
+		t.Fatal("expected session event follow to disable on manual up scroll")
+	}
+	if m.sessionEventsOffset <= 0 {
+		t.Fatalf("expected positive session events offset, got %d", m.sessionEventsOffset)
+	}
+	view := m.renderSession()
+	if !strings.Contains(view, "Skill(sous-chef)") {
+		t.Fatalf("session view missing wrapped prompt body: %q", view)
+	}
+}
+
 func TestSteerSubmitWritesControlCommand(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
@@ -297,6 +337,7 @@ func TestRenderSessionWrapsLongEventMessages(t *testing.T) {
 		Now:             func() time.Time { return now },
 	})
 	m.width = 80
+	m.height = 24
 	m.surface = surfaceSession
 	m.sessionID = "cook-a"
 	m.snapshot = Snapshot{
@@ -328,7 +369,7 @@ func TestRenderSessionWrapsLongEventMessages(t *testing.T) {
 	if !strings.Contains(view, "this is a deliberately long event message") {
 		t.Fatalf("expected first wrapped segment in view, got:\n%s", view)
 	}
-	if !strings.Contains(view, "instead of being cut off with ellipsis") {
+	if !strings.Contains(view, "detail view") {
 		t.Fatalf("expected continuation segment in view, got:\n%s", view)
 	}
 }

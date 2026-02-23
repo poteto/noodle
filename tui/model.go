@@ -66,6 +66,9 @@ type Model struct {
 	traceFollow bool
 	traceOffset int
 
+	sessionEventsFollow bool
+	sessionEventsOffset int
+
 	steerInput        string
 	steerMentionOpen  bool
 	steerMentionItems []string
@@ -152,12 +155,13 @@ func NewModel(opts Options) Model {
 		now = time.Now
 	}
 	return Model{
-		runtimeDir:      runtimeDir,
-		refreshInterval: interval,
-		now:             now,
-		surface:         surfaceDashboard,
-		traceFilter:     traceFilterAll,
-		traceFollow:     true,
+		runtimeDir:          runtimeDir,
+		refreshInterval:     interval,
+		now:                 now,
+		surface:             surfaceDashboard,
+		traceFilter:         traceFilterAll,
+		traceFollow:         true,
+		sessionEventsFollow: true,
 	}
 }
 
@@ -322,16 +326,44 @@ func (m Model) handleDashboardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.Type == tea.KeyEnter && len(m.snapshot.Active) > 0 {
 		m.sessionID = m.snapshot.Active[m.selectedActive].ID
 		m.surface = surfaceSession
+		m.sessionEventsFollow = true
+		m.sessionEventsOffset = 0
 	}
 	return m, nil
 }
 
 func (m Model) handleSessionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	lines := m.traceDisplayLines(m.snapshot.EventsBySession[m.sessionID])
+	maxStart := 0
+	if h := m.sessionEventsHeight(); len(lines) > h {
+		maxStart = len(lines) - h
+	}
+
 	switch strings.ToLower(msg.String()) {
 	case "t":
 		m.surface = surfaceTrace
 		m.traceFollow = true
 		m.traceOffset = 0
+		return m, nil
+	case "up":
+		if m.sessionEventsFollow {
+			m.sessionEventsFollow = false
+			m.sessionEventsOffset = maxStart
+		}
+		if m.sessionEventsOffset > 0 {
+			m.sessionEventsOffset--
+		}
+		return m, nil
+	case "down":
+		if m.sessionEventsFollow {
+			return m, nil
+		}
+		if m.sessionEventsOffset < maxStart {
+			m.sessionEventsOffset++
+		} else {
+			m.sessionEventsFollow = true
+			m.sessionEventsOffset = 0
+		}
 		return m, nil
 	case "k":
 		if m.sessionID == "" {
@@ -590,7 +622,28 @@ func (m Model) renderSession() string {
 	fmt.Fprintf(&b, "%s %d\n", labelStyle.Render("Retries:"), session.RetryCount)
 	fmt.Fprintf(&b, "%s %s\n", labelStyle.Render("Worktree:"), mutedStyle.Render(".worktrees/"+session.ID))
 
-	lines := m.snapshot.EventsBySession[session.ID]
+	lines := m.traceDisplayLines(m.snapshot.EventsBySession[session.ID])
+	height := m.sessionEventsHeight()
+	start := 0
+	if len(lines) > height {
+		if m.sessionEventsFollow {
+			start = len(lines) - height
+		} else {
+			start = m.sessionEventsOffset
+			maxStart := len(lines) - height
+			if start < 0 {
+				start = 0
+			}
+			if start > maxStart {
+				start = maxStart
+			}
+		}
+	}
+	end := start + height
+	if end > len(lines) {
+		end = len(lines)
+	}
+
 	b.WriteString("\n")
 	b.WriteString(sectionLine("Recent Events", bodyWidth))
 	b.WriteString("\n")
@@ -599,38 +652,22 @@ func (m Model) renderSession() string {
 		b.WriteString(dimStyle.Render("(none)"))
 		b.WriteString("\n")
 	} else {
-		start := len(lines) - 8
-		if start < 0 {
-			start = 0
-		}
-		const eventPrefixWidth = 29 // "  HH:MM:SS  " + 14-char label + " | "
-		eventBodyWidth := bodyWidth - eventPrefixWidth
-		if eventBodyWidth < 12 {
-			eventBodyWidth = 12
-		}
-		for _, line := range lines[start:] {
-			label := strings.TrimSpace(line.Label)
-			if label == "" {
-				label = "-"
+		for _, line := range lines[start:end] {
+			atCell := padRight(strings.TrimSpace(line.At), 8)
+			labelCell := padRight(strings.TrimSpace(line.Label), 14)
+			if strings.TrimSpace(labelCell) == "" {
+				fmt.Fprintf(&b, "  %s  %s | %s\n", atCell, labelCell, line.Body)
+				continue
 			}
-			labelCell := padRight(label, 14)
-			prefix := fmt.Sprintf("  %s  %s | ", line.At.Format("15:04:05"), eventLabel(labelCell))
-			continuationPrefix := "  " + strings.Repeat(" ", 8) + "  " + strings.Repeat(" ", 14) + " | "
-			wrapped := wrapPlainText(line.Body, eventBodyWidth)
-			for i, segment := range wrapped {
-				if i == 0 {
-					b.WriteString(prefix)
-				} else {
-					b.WriteString(continuationPrefix)
-				}
-				b.WriteString(segment)
-				b.WriteString("\n")
-			}
+			fmt.Fprintf(&b, "  %s  %s | %s\n", atCell, eventLabel(labelCell), line.Body)
 		}
 	}
 
 	b.WriteString("\n")
-	b.WriteString(keybarStyle.Render("t trace | k kill | s steer | esc back | ? help"))
+	if m.sessionEventsFollow {
+		b.WriteString(infoStyle.Render("[events auto-scroll]\n"))
+	}
+	b.WriteString(keybarStyle.Render("t trace | up/down events | k kill | s steer | esc back | ? help"))
 	return b.String()
 }
 
@@ -751,7 +788,7 @@ func renderHelp() string {
 	b.WriteString("\n")
 	b.WriteString("Global: s steer | p pause/resume | d drain | ? help | ctrl+c quit\n")
 	b.WriteString("Dashboard: enter inspect | q queue | up/down move\n")
-	b.WriteString("Session: t trace | k kill | esc back\n")
+	b.WriteString("Session: t trace | up/down scroll events | k kill | esc back\n")
 	b.WriteString("Trace: f filter | G bottom | up/down scroll | esc back\n")
 	b.WriteString("Steer: type @target + instruction; @everyone for broadcast")
 	return b.String()
@@ -978,6 +1015,17 @@ func (m Model) traceHeight() int {
 		return 16
 	}
 	h := m.height - 8
+	if h < 4 {
+		return 4
+	}
+	return h
+}
+
+func (m Model) sessionEventsHeight() int {
+	if m.height <= 0 {
+		return 12
+	}
+	h := m.height - 20
 	if h < 4 {
 		return 4
 	}
