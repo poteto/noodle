@@ -70,13 +70,14 @@ func (r *Runner) Run(ctx context.Context, adapterName, action string, options Ru
 		if stderrText == "" {
 			stderrText = "no stderr"
 		}
-		return "", fmt.Errorf(
-			"run adapter %s.%s: %s: %w",
-			adapterName,
-			action,
-			stderrText,
-			err,
-		)
+			return "", fmt.Errorf(
+				"run adapter %s.%s command %q: %s: %w",
+				adapterName,
+				action,
+				fullCommand,
+				stderrText,
+				err,
+			)
 	}
 
 	return stdout.String(), nil

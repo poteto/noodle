@@ -46,6 +46,9 @@ func TestRunnerRunCapturesStderrOnFailure(t *testing.T) {
 	if !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("expected stderr in error, got: %v", err)
 	}
+	if !strings.Contains(err.Error(), "echo 'boom' 1>&2; exit 7") {
+		t.Fatalf("expected command in error, got: %v", err)
+	}
 }
 
 func TestParseBacklogItemsValidation(t *testing.T) {
@@ -70,4 +73,3 @@ func TestParseBacklogItemsOptionalDefaults(t *testing.T) {
 		t.Fatalf("tags should default to empty array: %#v", items[0].Tags)
 	}
 }
-
