@@ -19,7 +19,7 @@ const (
 	taskKeyMeditate   = taskreg.TaskKeyMeditate
 	taskKeyCook       = taskreg.TaskKeyCook
 	taskKeyPrioritize = taskreg.TaskKeyPrioritize
-	taskKeyTaster     = taskreg.TaskKeyTaster
+	taskKeyQuality    = taskreg.TaskKeyQuality
 	taskKeyOops       = taskreg.TaskKeyOops
 	taskKeyRepair     = taskreg.TaskKeyRepair
 	taskKeyDebate     = taskreg.TaskKeyDebate
@@ -59,8 +59,8 @@ func prioritizeTaskSkill(cfg config.Config) string {
 	return configuredTaskSkill(cfg, taskKeyPrioritize, taskKeyPrioritize)
 }
 
-func tasterTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeyTaster, taskKeyTaster)
+func qualityTaskSkill(cfg config.Config) string {
+	return configuredTaskSkill(cfg, taskKeyQuality, taskKeyQuality)
 }
 
 func oopsTaskSkill(cfg config.Config) string {

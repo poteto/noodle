@@ -341,7 +341,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
 	success := status == "completed"
 	if success && cook.reviewEnabled {
-		accepted, feedback := l.runTaster(ctx, cook)
+		accepted, feedback := l.runQuality(ctx, cook)
 		if !accepted {
 			return l.retryCook(ctx, cook, feedback)
 		}
@@ -545,18 +545,18 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 	return l.spawnCook(ctx, cook.queueItem, nextAttempt, resume.Summary)
 }
 
-func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
+func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) {
 	reviewReq := spawner.SpawnRequest{
-		Name:         cook.worktreeName + "-taster",
+		Name:         cook.worktreeName + "-quality",
 		Prompt:       "Review completed cook work for item " + cook.queueItem.ID,
 		Provider:     l.config.Routing.Defaults.Provider,
 		Model:        l.config.Routing.Defaults.Model,
-		Skill:        tasterTaskSkill(l.config),
+		Skill:        qualityTaskSkill(l.config),
 		WorktreePath: cook.worktreePath,
 	}
 	session, err := l.deps.Spawner.Spawn(ctx, reviewReq)
 	if err != nil {
-		return false, "unable to spawn taster: " + err.Error()
+		return false, "unable to spawn quality review: " + err.Error()
 	}
 	select {
 	case <-ctx.Done():
@@ -565,7 +565,7 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 	case <-session.Done():
 	}
 
-	verdict, found, err := readTasterVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson"))
+	verdict, found, err := readQualityVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson"))
 	if err == nil && found {
 		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
 		if verdict.Accept {
@@ -579,7 +579,7 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 		_ = l.writeDebateVerdict(cook, true, "")
 		return true, ""
 	}
-	feedback := "taster rejected with status " + status
+	feedback := "quality review rejected with status " + status
 	_ = l.writeDebateVerdict(cook, false, feedback)
 	return false, feedback
 }
@@ -782,20 +782,20 @@ func (l *Loop) steer(target string, prompt string) error {
 	return errors.New("session not found")
 }
 
-type tasterVerdict struct {
+type qualityVerdict struct {
 	Accept   bool   `json:"accept"`
 	Feedback string `json:"feedback,omitempty"`
 }
 
 var verdictJSONRegexp = regexp.MustCompile(`\{[^{}]*"accept"\s*:\s*(true|false)[^{}]*\}`)
 
-func readTasterVerdict(path string) (tasterVerdict, bool, error) {
+func readQualityVerdict(path string) (qualityVerdict, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return tasterVerdict{}, false, nil
+			return qualityVerdict{}, false, nil
 		}
-		return tasterVerdict{}, false, err
+		return qualityVerdict{}, false, err
 	}
 	defer file.Close()
 
@@ -815,19 +815,19 @@ func readTasterVerdict(path string) (tasterVerdict, bool, error) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return tasterVerdict{}, false, err
+		return qualityVerdict{}, false, err
 	}
-	return tasterVerdict{}, false, nil
+	return qualityVerdict{}, false, nil
 }
 
-func verdictFromText(text string) (tasterVerdict, bool) {
+func verdictFromText(text string) (qualityVerdict, bool) {
 	match := verdictJSONRegexp.FindString(text)
 	if match == "" {
-		return tasterVerdict{}, false
+		return qualityVerdict{}, false
 	}
-	var verdict tasterVerdict
+	var verdict qualityVerdict
 	if err := json.Unmarshal([]byte(match), &verdict); err != nil {
-		return tasterVerdict{}, false
+		return qualityVerdict{}, false
 	}
 	return verdict, true
 }
@@ -841,7 +841,7 @@ func (l *Loop) writeDebateVerdict(cook *activeCook, accept bool, feedback string
 	if err != nil {
 		return err
 	}
-	if _, err := store.AddRound(d, "reviewer", "Taster review for item "+cook.queueItem.ID); err != nil {
+	if _, err := store.AddRound(d, "reviewer", "Quality review for item "+cook.queueItem.ID); err != nil {
 		return err
 	}
 	return store.WriteVerdict(d, debate.Verdict{Consensus: accept, Summary: strings.TrimSpace(feedback)})

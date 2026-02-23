@@ -1,7 +1,7 @@
 # Noodle
 
 Noodle is an AI coding framework built in Go. It uses skills as the only extension point and a
-kitchen brigade model: chef (human), Prioritize (scheduler), cooks (implementation), and taster
+kitchen brigade model: chef (human), Prioritize (scheduler), cooks (implementation), and Quality
 (review).
 
 ## Quick Start
@@ -40,7 +40,7 @@ For continuous scheduling, run:
 - Chef: human direction and intervention
 - Prioritize: prioritizes queue from mise data
 - Cook: executes backlog work
-- Taster: reviews completed work
+- Quality: reviews completed work
 
 Architecture details: [Open-Source Architecture Overview](brain/plans/01-noodle-extensible-skill-layering/overview.md)
 

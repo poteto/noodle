@@ -43,7 +43,7 @@ const (
 	TaskKeyMeditate   = "meditate"
 	TaskKeyCook       = "cook"
 	TaskKeyPrioritize = "prioritize"
-	TaskKeyTaster     = "taster"
+	TaskKeyQuality    = "quality"
 	TaskKeyOops       = "oops"
 	TaskKeyRepair     = "repair"
 	TaskKeyDebate     = "debate"
@@ -127,13 +127,13 @@ var baseTaskTypes = []TaskType{
 		Purpose:    "Queue prioritization and routing generation.",
 	},
 	{
-		Key:        TaskKeyTaster,
-		Type:       "Taster",
+		Key:        TaskKeyQuality,
+		Type:       "Quality",
 		ConfigPath: "[review]",
-		Skill:      "taster",
+		Skill:      "quality",
 		Blocking:   false,
 		Synthetic:  true,
-		Aliases:    []string{"taster", "taste", "quality review"},
+		Aliases:    []string{"quality", "quality review"},
 		Purpose:    "Quality review after cook completion.",
 	},
 	{

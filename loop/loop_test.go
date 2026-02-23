@@ -683,13 +683,13 @@ func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
 	}
 }
 
-func TestReadTasterVerdictFromCanonical(t *testing.T) {
+func TestReadQualityVerdictFromCanonical(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "canonical.ndjson")
 	content := `{"provider":"claude","type":"action","message":"text: {\"accept\":false,\"feedback\":\"needs tests\"}","timestamp":"2026-02-22T20:00:00Z"}`
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write canonical: %v", err)
 	}
-	verdict, found, err := readTasterVerdict(path)
+	verdict, found, err := readQualityVerdict(path)
 	if err != nil {
 		t.Fatalf("read verdict: %v", err)
 	}
@@ -728,7 +728,7 @@ func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
 	}
 }
 
-func TestRunTasterCancelsSpawnedSessionOnContextDone(t *testing.T) {
+func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
 	projectDir := t.TempDir()
 	queuePath := filepath.Join(projectDir, ".noodle", "queue.json")
 	if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
@@ -756,18 +756,18 @@ func TestRunTasterCancelsSpawnedSessionOnContextDone(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	accepted, feedback := l.runTaster(ctx, cook)
+	accepted, feedback := l.runQuality(ctx, cook)
 	if accepted {
-		t.Fatal("expected canceled taster run to be rejected")
+		t.Fatal("expected canceled quality review run to be rejected")
 	}
 	if !strings.Contains(strings.ToLower(feedback), "canceled") {
 		t.Fatalf("feedback = %q", feedback)
 	}
 	if len(sp.sessions) != 1 {
-		t.Fatalf("taster spawn sessions = %d", len(sp.sessions))
+		t.Fatalf("quality spawn sessions = %d", len(sp.sessions))
 	}
 	if sp.sessions[0].status != "killed" {
-		t.Fatalf("expected canceled taster session to be killed, got %q", sp.sessions[0].status)
+		t.Fatalf("expected canceled quality session to be killed, got %q", sp.sessions[0].status)
 	}
 }
 
