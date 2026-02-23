@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -120,23 +121,15 @@ func computeFixtureInputHash(fixtureRoot string) (string, error) {
 		return "", fmt.Errorf("fixture root is required")
 	}
 
-	paths := make([]string, 0)
-	err := filepath.WalkDir(fixtureRoot, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			return nil
-		}
-		name := strings.TrimSpace(d.Name())
-		if strings.EqualFold(name, "expected.md") {
-			return nil
-		}
-		paths = append(paths, path)
-		return nil
-	})
+	paths, gitScoped, err := listGitVisibleFixtureInputs(fixtureRoot)
 	if err != nil {
-		return "", fmt.Errorf("walk fixture inputs %s: %w", fixtureRoot, err)
+		return "", err
+	}
+	if !gitScoped {
+		paths, err = listAllFixtureInputs(fixtureRoot)
+		if err != nil {
+			return "", err
+		}
 	}
 	sort.Strings(paths)
 
@@ -165,4 +158,58 @@ func computeFixtureInputHash(fixtureRoot string) (string, error) {
 		}
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func listAllFixtureInputs(fixtureRoot string) ([]string, error) {
+	paths := make([]string, 0)
+	err := filepath.WalkDir(fixtureRoot, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := strings.TrimSpace(d.Name())
+		if strings.EqualFold(name, "expected.md") {
+			return nil
+		}
+		paths = append(paths, path)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walk fixture inputs %s: %w", fixtureRoot, err)
+	}
+	return paths, nil
+}
+
+func listGitVisibleFixtureInputs(fixtureRoot string) ([]string, bool, error) {
+	cmd := exec.Command("git", "-C", fixtureRoot, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, false, nil
+	}
+	lines := strings.Split(strings.ReplaceAll(string(output), "\r\n", "\n"), "\n")
+	paths := make([]string, 0, len(lines))
+	for _, line := range lines {
+		relPath := strings.TrimSpace(line)
+		if relPath == "" {
+			continue
+		}
+		absPath := filepath.Join(fixtureRoot, filepath.FromSlash(relPath))
+		info, statErr := os.Stat(absPath)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				continue
+			}
+			return nil, true, fmt.Errorf("stat fixture input %s: %w", absPath, statErr)
+		}
+		if info.IsDir() {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(filepath.Base(absPath)), "expected.md") {
+			continue
+		}
+		paths = append(paths, absPath)
+	}
+	return paths, true, nil
 }
