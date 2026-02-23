@@ -181,10 +181,13 @@ func (d *TmuxDispatcher) resolveRuntime(req DispatchRequest) string {
     return d.runtimeDefault
 }
 
+// resolveTemplateVars replaces {{key}} placeholders with shell-quoted values.
+// Values are quoted with shellescape (or single-quote wrapping) to prevent
+// injection from paths with spaces, quotes, or special characters.
 func resolveTemplateVars(template string, vars map[string]string) string {
     result := template
     for key, value := range vars {
-        result = strings.ReplaceAll(result, "{{"+key+"}}", value)
+        result = strings.ReplaceAll(result, "{{"+key+"}}", shellQuote(value))
     }
     return result
 }
@@ -309,7 +312,7 @@ These are markdown files documenting the JSON schemas. Created alongside each sk
 - Frontmatter stripped: test that `loadSkillBundle` output does NOT contain `---` YAML markers
 - Preamble present: test that session system prompt starts with "# Noodle Context"
 - Execute bundle: test `loadExecuteBundle` produces combined prompt with methodology first, domain second
-- Runtime template: test `resolveTemplateVars` substitutes all variables
+- Runtime template: test `resolveTemplateVars` substitutes all variables and shell-quotes values with spaces/quotes
 - Custom runtime: test that non-empty `req.Runtime` changes the command inside tmux
 - Default runtime: test that empty `req.Runtime` uses built-in provider command logic
 - Loop passes `TaskKey`, `Runtime`, `DomainSkill` through `DispatchRequest`

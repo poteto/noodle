@@ -34,7 +34,7 @@ type Frontmatter struct {
 func (f Frontmatter) IsTaskType() bool { return f.Noodle != nil }
 
 // NoodleMeta is the noodle-specific scheduling metadata nested under `noodle:`.
-// Two required fields: blocking and schedule. Runtime is optional.
+// Schedule is required. Blocking defaults to false. Runtime is optional.
 type NoodleMeta struct {
     Blocking bool   `yaml:"blocking"`
     Schedule string `yaml:"schedule"`            // one-line guidance for the prioritize skill
@@ -170,9 +170,17 @@ Skills that don't exist yet (quality, oops, debate) get frontmatter when created
 
 All built-in tasks omit `runtime` (inherit project default). Quality review sequencing is handled by the prioritize skill — the quality skill's own `schedule` field says "After a cook session completes, before reflecting" and the prioritize skill decides when to run it.
 
-### Update loop — modify `loop/types.go` + `loop/loop.go`
+### Update loop — modify `loop/types.go` + `loop/loop.go` + `loop/task_types.go`
 
 `Loop` struct gains `registry taskreg.Registry` field, built at `New()` time from `resolver.DiscoverTaskTypes()`. Helper functions in `loop/task_types.go` change from `configuredTaskTypes()` to `l.registry` lookups.
+
+**Removed task types:** The old registry has task keys that are being removed (plan, review, verify, cook). These are out of scope — the Chef does review, the execute agent verifies its own work, plan is user-invoked, cook is synthetic. Phase 1 must:
+1. Delete all `taskreg.TaskKey*` constants and `loop/task_types.go` aliases
+2. Replace loop references with string literals where still needed (e.g., `"execute"`, `"prioritize"`)
+3. Remove loop code paths that reference removed types (`taskKeyReview`, `taskKeyVerify`, `taskKeyCook`, `taskKeyPlan`)
+4. Update `loop/task_types_test.go` — delete tests for removed types, update remaining tests
+
+**Deferred task types** (quality, oops, debate): these don't have SKILL.md files yet (created in Phases 5, 9, 10). The loop can reference them by string literal. `Registry.ByKey()` returns `(TaskType, bool)` — callers handle missing types gracefully. When those phases create the SKILL.md with `noodle:` frontmatter, the registry picks them up automatically.
 
 ## Data Structures
 

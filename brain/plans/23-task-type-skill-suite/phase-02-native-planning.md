@@ -174,7 +174,7 @@ Reads `*.json` files from `.noodle/quality/` directory. Each file is one verdict
 
 Add `QualityVerdicts []QualityVerdict` to `Brief`. The builder calls `readQualityVerdicts(b.runtimeDir)` in `Build()`.
 
-The loop's `runQuality()` function in `loop/loop.go` writes verdict files to `.noodle/quality/<session-id>.json`. Currently it reads verdicts from canonical.ndjson — extend it to also write a verdict JSON file to the quality directory.
+**Single-writer contract:** The quality skill agent (Phase 5) is the sole writer of verdict files. It writes to `.noodle/quality/<session-id>.json` as its primary output. Phase 2 only adds the reader infrastructure — the mise builder reads verdicts for the brief, the loop's `runQuality()` spawns the quality session and reads the result. No other code writes verdict files.
 
 Tests (`mise/quality_test.go`):
 - Temp `.noodle/quality/` with verdict JSON files
