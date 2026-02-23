@@ -124,6 +124,15 @@ func eventLabel(label string) string {
 	}
 }
 
+// renderEmptyState renders the noodle bowl art with a message, centered
+// horizontally and vertically within the given dimensions.
+func renderEmptyState(msg string, width, height int) string {
+	bowl := dimStyle.Render(noodleBowl)
+	text := dimStyle.Render(msg)
+	content := bowl + "\n\n" + text
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+}
+
 const noodleBowl = "" +
 	"⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣦⣤⣤⣤⣤⣤⣶⣶⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
 	"⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡿⠛⢻⠛⢻⠛⢻⣿⡟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +

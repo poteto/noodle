@@ -111,7 +111,7 @@ func (q *QueueTab) Render(width, height int) string {
 	var b strings.Builder
 	b.WriteString(q.renderProgressLine(width))
 	b.WriteString("\n\n")
-	b.WriteString(q.renderStyledTable())
+	b.WriteString(q.renderStyledTable(width, height-2))
 	return b.String()
 }
 
@@ -155,18 +155,15 @@ func (q *QueueTab) resizeTable(width, height int) {
 }
 
 // renderStyledTable renders the table view with colored Type and Status columns.
-func (q *QueueTab) renderStyledTable() string {
+func (q *QueueTab) renderStyledTable(width, height int) string {
 	raw := q.table.View()
 	if len(q.items) == 0 {
-		return renderEmptyQueue()
+		return renderEmptyState(
+			"Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly.",
+			width, height,
+		)
 	}
 	return raw
-}
-
-func renderEmptyQueue() string {
-	bowl := dimStyle.Render(noodleBowl)
-	msg := dimStyle.Render("Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly.")
-	return bowl + "\n\n" + msg
 }
 
 
