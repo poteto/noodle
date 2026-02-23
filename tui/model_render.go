@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // renderLayout composes the split layout: left rail + tabbed right pane + keybar.
@@ -44,7 +46,16 @@ func (m Model) renderLayout() string {
 	}
 
 	var tabContent string
-	if m.detailSession != "" {
+	if m.taskEditor.open {
+		// Render task editor centered in the content area as an overlay.
+		editorWidth := paneWidth - 4
+		if editorWidth < 30 {
+			editorWidth = 30
+		}
+		tabContent = lipgloss.Place(paneWidth, contentHeight,
+			lipgloss.Center, lipgloss.Center,
+			m.taskEditor.Render(editorWidth))
+	} else if m.detailSession != "" {
 		tabContent = m.renderActorDetail(paneWidth, contentHeight)
 	} else {
 		switch m.activeTab {
@@ -62,9 +73,6 @@ func (m Model) renderLayout() string {
 	pane := tabBar + "\n\n" + tabContent
 	layout := joinLayout(rail, pane)
 
-	if m.taskEditor.open {
-		layout += "\n" + m.taskEditor.Render(paneWidth)
-	}
 	if m.steerOpen {
 		layout += "\n" + keybarStyle.Render("[steer] ") +
 			dimStyle.Render("type @target instruction · enter sends · esc closes")
@@ -92,6 +100,7 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 	if inDetail {
 		parts := []string{
 			dimStyle.Render("esc") + " back",
+			dimStyle.Render("h/l") + " prev/next",
 			dimStyle.Render("j/k") + " scroll",
 		}
 		if autoScroll {
@@ -127,6 +136,10 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 		)
 	case TabConfig:
 		parts = append(parts, dimStyle.Render("←/→")+" autonomy")
+	}
+
+	if tab != TabConfig {
+		parts = append(parts, dimStyle.Render("h/l")+" actors")
 	}
 
 	parts = append(parts,
@@ -206,10 +219,10 @@ func (m Model) renderActorDetail(width, height int) string {
 		label = eventLabel(label)
 
 		wrapped := wrapText(ev.Body, msgWidth)
-		first := ts + strings.Repeat(" ", gap) + label + strings.Repeat(" ", gap) + dimStyle.Render(wrapped[0])
+		first := ts + strings.Repeat(" ", gap) + label + strings.Repeat(" ", gap) + wrapped[0]
 		allLines = append(allLines, first)
 		for _, cont := range wrapped[1:] {
-			allLines = append(allLines, indent+dimStyle.Render(cont))
+			allLines = append(allLines, indent+cont)
 		}
 	}
 

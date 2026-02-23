@@ -12,21 +12,7 @@ func Badge(label string, color lipgloss.Color) string {
 
 // TaskTypeBadge returns a badge colored by task type.
 func TaskTypeBadge(taskType string) string {
-	t := DefaultTheme
-	color := t.Text
-	switch taskType {
-	case "execute", "Execute":
-		color = t.Execute
-	case "plan", "Plan":
-		color = t.Plan
-	case "quality", "Quality":
-		color = t.Quality
-	case "reflect", "Reflect":
-		color = t.Reflect
-	case "prioritize", "Prioritize":
-		color = t.Prioritize
-	}
-	return Badge(taskType, color)
+	return Badge(taskType, TaskTypeColor(taskType))
 }
 
 // VerdictBadge returns a badge colored by verdict outcome.

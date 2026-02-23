@@ -3,7 +3,11 @@
 // Every render method takes width int. Parent calculates available width.
 package components
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Theme holds the pastel color palette shared across all components.
 type Theme struct {
@@ -43,4 +47,47 @@ var DefaultTheme = Theme{
 	Quality:    lipgloss.Color("#fde68a"),
 	Reflect:    lipgloss.Color("#f9a8d4"),
 	Prioritize: lipgloss.Color("#fdba74"),
+}
+
+// ColorPool is a set of distinct pastel colors for hashing arbitrary task types.
+// The first 5 match the named task type colors for consistency.
+var ColorPool = []lipgloss.Color{
+	"#86efac", // green (execute)
+	"#93c5fd", // blue (plan)
+	"#fde68a", // yellow (quality)
+	"#f9a8d4", // pink (reflect)
+	"#fdba74", // orange (prioritize)
+	"#c4b5fd", // violet
+	"#67e8f9", // cyan
+	"#fda4af", // rose
+	"#a3e635", // lime
+	"#fbbf24", // amber
+	"#818cf8", // indigo
+	"#34d399", // emerald
+	"#fb923c", // tangerine
+	"#e879f9", // fuchsia
+	"#38bdf8", // sky
+	"#a78bfa", // purple
+}
+
+// TaskTypeColor returns a consistent color for a task type. Named types use
+// their dedicated theme color; unknown types hash into the color pool.
+func TaskTypeColor(taskType string) lipgloss.Color {
+	switch strings.ToLower(taskType) {
+	case "execute":
+		return DefaultTheme.Execute
+	case "plan":
+		return DefaultTheme.Plan
+	case "quality":
+		return DefaultTheme.Quality
+	case "reflect":
+		return DefaultTheme.Reflect
+	case "prioritize":
+		return DefaultTheme.Prioritize
+	}
+	h := uint32(0)
+	for _, c := range taskType {
+		h = h*31 + uint32(c)
+	}
+	return ColorPool[h%uint32(len(ColorPool))]
 }

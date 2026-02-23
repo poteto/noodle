@@ -296,6 +296,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.detailScroll = 0
 			}
 			m.detailAutoScroll = false
+		case "h", "left":
+			m.navigateActor(-1)
+		case "l", "right":
+			m.navigateActor(1)
 		}
 		return m, nil
 	}
@@ -390,11 +394,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			mode := m.configTab.CycleLeft()
 			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
 		}
+		m.navigateActor(-1)
 	case "right", "l":
 		if m.activeTab == TabConfig {
 			mode := m.configTab.CycleRight()
 			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
 		}
+		m.navigateActor(1)
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
@@ -598,6 +604,41 @@ func (m Model) countDetailLines() int {
 		total += len(wrapText(ev.Body, msgWidth))
 	}
 	return total
+}
+
+// navigateActor cycles through active sessions by direction (-1 prev, +1 next).
+// When not in detail view, opens the first (or last) active session.
+func (m *Model) navigateActor(direction int) {
+	sessions := m.snapshot.Active
+	if len(sessions) == 0 {
+		return
+	}
+	if m.detailSession == "" {
+		if direction > 0 {
+			m.openDetail(sessions[0].ID)
+		} else {
+			m.openDetail(sessions[len(sessions)-1].ID)
+		}
+		return
+	}
+	current := -1
+	for i, s := range sessions {
+		if s.ID == m.detailSession {
+			current = i
+			break
+		}
+	}
+	if current == -1 {
+		m.openDetail(sessions[0].ID)
+		return
+	}
+	next := current + direction
+	if next < 0 {
+		next = len(sessions) - 1
+	} else if next >= len(sessions) {
+		next = 0
+	}
+	m.openDetail(sessions[next].ID)
 }
 
 func (m *Model) findSessionForQueueItem(queueItemID string) string {

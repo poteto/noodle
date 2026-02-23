@@ -100,19 +100,5 @@ func renderFeedItem(item FeedItem, width int, now time.Time, selected ...bool) s
 }
 
 func taskTypeBorderColor(taskType string) lipgloss.Color {
-	t := components.DefaultTheme
-	switch taskType {
-	case "execute", "Execute":
-		return t.Execute
-	case "plan", "Plan":
-		return t.Plan
-	case "quality", "Quality":
-		return t.Quality
-	case "reflect", "Reflect":
-		return t.Reflect
-	case "prioritize", "Prioritize":
-		return t.Prioritize
-	default:
-		return t.Border
-	}
+	return components.TaskTypeColor(taskType)
 }
