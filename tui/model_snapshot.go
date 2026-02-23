@@ -131,6 +131,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 
 		sessions = append(sessions, Session{
 			ID:                    sessionID,
+			DisplayName:           stringx.KitchenName(sessionID),
 			Status:                stringx.NonEmpty(status, "running"),
 			Provider:              strings.TrimSpace(meta.Provider),
 			Model:                 strings.TrimSpace(meta.Model),
@@ -590,7 +591,7 @@ func buildFeedEvents(sessions []Session, eventsBySession map[string][]EventLine)
 		if !ok {
 			continue
 		}
-		agentName := session.ID
+		agentName := stringx.KitchenName(session.ID)
 		taskType := inferTaskType(session.ID)
 		for _, line := range lines {
 			feed = append(feed, FeedEvent{

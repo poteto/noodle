@@ -28,7 +28,8 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		b.WriteString("\n")
 	} else {
 		for _, s := range snap.Active {
-			b.WriteString(healthDot(s.Health) + " " + trimTo(s.ID, w-3))
+			name := nonEmpty(s.DisplayName, s.ID)
+			b.WriteString(healthDot(s.Health) + " " + trimTo(name, w-3))
 			b.WriteString("\n")
 			model := shortModelName(nonEmpty(s.Model, "-"))
 			dur := durationLabel(s.DurationSeconds)
@@ -41,7 +42,8 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		}
 		for i := 0; i < limit; i++ {
 			s := snap.Recent[i]
-			b.WriteString(successStyle.Render("✓") + " " + trimTo(s.ID, w-3))
+			name := nonEmpty(s.DisplayName, s.ID)
+			b.WriteString(successStyle.Render("✓") + " " + trimTo(name, w-3))
 			b.WriteString("\n")
 			dur := durationLabel(s.DurationSeconds)
 			b.WriteString("  " + dimStyle.Render("done · "+dur))

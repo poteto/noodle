@@ -86,6 +86,7 @@ type Snapshot struct {
 
 type Session struct {
 	ID                    string
+	DisplayName           string
 	Status                string
 	Provider              string
 	Model                 string
