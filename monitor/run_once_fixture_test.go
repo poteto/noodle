@@ -52,7 +52,7 @@ func TestRunOnceDirectoryFixtures(t *testing.T) {
 			runtimeDir := t.TempDir()
 			monitor := NewMonitor(runtimeDir)
 
-			fixturedir.ForEachState(t, fixtureCase, func(_ int, state fixturedir.FixtureState) {
+			for _, state := range fixtureCase.States {
 				input := fixturedir.ParseStateJSON[monitorRunOnceFixtureInput](t, state, "input.json")
 				ensureFixtureSessionDirs(t, runtimeDir, input)
 				appendFixtureTicketEvents(t, runtimeDir, input.TicketEvents)
@@ -97,7 +97,7 @@ func TestRunOnceDirectoryFixtures(t *testing.T) {
 				}
 
 				observed.States[state.ID] = dump
-			})
+			}
 
 			if !reflect.DeepEqual(observed, expected) {
 				t.Fatalf("run once dump mismatch\nactual:\n%s\nexpected:\n%s", mustFixtureJSON(observed), mustFixtureJSON(expected))

@@ -15,7 +15,7 @@ func TestClaimsDirectoryFixtures(t *testing.T) {
 	fixturedir.AssertValidFixtureRoot(t, "testdata")
 	inventory := fixturedir.LoadInventory(t, "testdata")
 	for _, fixtureCase := range inventory.Cases {
-		if _, ok := fixtureCase.Section("Expected Claims"); !ok {
+		if !strings.HasPrefix(fixtureCase.Name, "claims") {
 			continue
 		}
 		fixtureCase := fixtureCase
