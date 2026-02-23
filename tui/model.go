@@ -18,14 +18,6 @@ const (
 	defaultStuckThreshold  = int64(120)
 )
 
-type Surface string
-
-const (
-	surfaceDashboard Surface = "dashboard"
-	surfaceSteer     Surface = "steer"
-	surfaceHelp      Surface = "help"
-)
-
 type TraceFilter string
 
 const (
@@ -49,8 +41,9 @@ type Model struct {
 	width  int
 	height int
 
-	surface Surface
-	overlay Surface
+	activeTab Tab
+	steerOpen bool
+	helpOpen  bool
 
 	snapshot Snapshot
 	err      error
@@ -140,7 +133,7 @@ func NewModel(opts Options) Model {
 		runtimeDir:      runtimeDir,
 		refreshInterval: interval,
 		now:             now,
-		surface:         surfaceDashboard,
+		activeTab:       TabFeed,
 	}
 }
 
@@ -179,26 +172,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	var b strings.Builder
-	b.WriteString(m.renderSurface())
-	if m.statusLine != "" {
-		b.WriteString("\n\nstatus: ")
-		b.WriteString(m.statusLine)
-	}
-	if m.err != nil {
-		b.WriteString("\n\n")
-		b.WriteString(errorStyle.Render("error: "))
-		b.WriteString(m.err.Error())
-	}
-	content := b.String()
-	if m.width > 0 {
-		target := m.width - 2
-		if target < 40 {
-			target = 40
-		}
-		return frameStyle.Width(target).Render(content)
-	}
-	return frameStyle.Render(content)
+	return m.renderLayout()
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -206,7 +180,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 	case tea.KeyEsc:
-		if m.surface == surfaceSteer {
+		if m.steerOpen {
 			if m.steerMentionOpen {
 				m.closeSteerMentions()
 				return m, nil
@@ -214,28 +188,35 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.closeSteer()
 			return m, nil
 		}
-		if m.surface == surfaceHelp {
-			m.closeHelp()
+		if m.helpOpen {
+			m.helpOpen = false
 			return m, nil
 		}
 		return m, nil
 	}
 
-	if m.surface == surfaceSteer {
+	if m.steerOpen {
 		return m.handleSteerKey(msg)
 	}
-	if m.surface == surfaceHelp {
+	if m.helpOpen {
 		if strings.ToLower(msg.String()) == "?" {
-			m.closeHelp()
+			m.helpOpen = false
 		}
 		return m, nil
 	}
 
 	key := strings.ToLower(msg.String())
 	switch key {
+	case "1":
+		m.activeTab = TabFeed
+	case "2":
+		m.activeTab = TabQueue
+	case "3":
+		m.activeTab = TabBrain
+	case "4":
+		m.activeTab = TabConfig
 	case "?":
-		m.openHelp()
-		return m, nil
+		m.helpOpen = true
 	case "s":
 		return m, m.openSteer()
 	case "p":
@@ -251,13 +232,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
-	case tea.KeyEsc:
-		if m.steerMentionOpen {
-			m.closeSteerMentions()
-			return m, nil
-		}
-		m.closeSteer()
-		return m, nil
 	case tea.KeyEnter:
 		if m.steerMentionOpen && len(m.steerMentionItems) > 0 {
 			selection := m.steerMentionItems[m.steerMentionIndex]
@@ -303,34 +277,8 @@ func (m Model) contentWidth() int {
 	return width
 }
 
-func (m *Model) baseSurface() Surface {
-	switch m.surface {
-	case surfaceHelp, surfaceSteer:
-		if m.overlay == "" {
-			return surfaceDashboard
-		}
-		return m.overlay
-	default:
-		return m.surface
-	}
-}
-
-func (m *Model) openHelp() {
-	m.overlay = m.baseSurface()
-	m.surface = surfaceHelp
-}
-
-func (m *Model) closeHelp() {
-	if m.overlay == "" {
-		m.surface = surfaceDashboard
-		return
-	}
-	m.surface = m.overlay
-}
-
 func (m *Model) openSteer() tea.Cmd {
-	m.overlay = m.baseSurface()
-	m.surface = surfaceSteer
+	m.steerOpen = true
 	m.steerInput = ""
 	m.steerMentionOpen = false
 	m.steerMentionItems = nil
@@ -340,13 +288,9 @@ func (m *Model) openSteer() tea.Cmd {
 }
 
 func (m *Model) closeSteer() {
+	m.steerOpen = false
 	m.steerInput = ""
 	m.closeSteerMentions()
-	if m.overlay == "" {
-		m.surface = surfaceDashboard
-		return
-	}
-	m.surface = m.overlay
 }
 
 func (m *Model) submitSteer() (tea.Cmd, bool) {

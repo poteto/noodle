@@ -6,45 +6,68 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	colorAccent       = lipgloss.Color("#fde68a")
-	colorSuccess      = lipgloss.Color("#34d399")
-	colorWarn         = lipgloss.Color("#fbbf24")
-	colorError        = lipgloss.Color("#f87171")
-	colorInfo         = lipgloss.Color("#7dd3fc")
-	colorFg           = lipgloss.Color("#d4d4d4")
-	colorMuted        = lipgloss.Color("#a3a3a3")
-	colorDim          = lipgloss.Color("#737373")
-	colorBorder       = lipgloss.Color("#665c00")
-	colorSelected     = lipgloss.Color("#525252")
-	colorNoodleYellow = lipgloss.Color("#F4E38E")
-)
+// Theme holds the pastel color palette for the TUI.
+type Theme struct {
+	Brand      lipgloss.Color
+	Border     lipgloss.Color
+	Surface    lipgloss.Color
+	CardBG     lipgloss.Color
+	Success    lipgloss.Color
+	Warning    lipgloss.Color
+	Error      lipgloss.Color
+	Info       lipgloss.Color
+	Text       lipgloss.Color
+	Dim        lipgloss.Color
+	Secondary  lipgloss.Color
+	Execute    lipgloss.Color
+	Plan       lipgloss.Color
+	Quality    lipgloss.Color
+	Reflect    lipgloss.Color
+	Prioritize lipgloss.Color
+}
+
+var theme = Theme{
+	Brand:      lipgloss.Color("#fde68a"),
+	Border:     lipgloss.Color("#fcd34d"),
+	Surface:    lipgloss.Color("#1c1c2e"),
+	CardBG:     lipgloss.Color("#24243a"),
+	Success:    lipgloss.Color("#86efac"),
+	Warning:    lipgloss.Color("#fdba74"),
+	Error:      lipgloss.Color("#fca5a5"),
+	Info:       lipgloss.Color("#93c5fd"),
+	Text:       lipgloss.Color("#f5f5f5"),
+	Dim:        lipgloss.Color("#6b6b80"),
+	Secondary:  lipgloss.Color("#a8a8b8"),
+	Execute:    lipgloss.Color("#86efac"),
+	Plan:       lipgloss.Color("#93c5fd"),
+	Quality:    lipgloss.Color("#fde68a"),
+	Reflect:    lipgloss.Color("#f9a8d4"),
+	Prioritize: lipgloss.Color("#fdba74"),
+}
 
 var (
-	frameStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorBorder).
-			Foreground(colorFg).
-			Padding(0, 1)
-	titleStyle   = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-	accentStyle  = lipgloss.NewStyle().Foreground(colorAccent)
-	dimStyle     = lipgloss.NewStyle().Foreground(colorDim)
-	mutedStyle   = lipgloss.NewStyle().Foreground(colorMuted)
-	infoStyle    = lipgloss.NewStyle().Foreground(colorInfo)
-	costStyle    = lipgloss.NewStyle().Foreground(colorNoodleYellow)
-	successStyle = lipgloss.NewStyle().
-			Foreground(colorSuccess).
-			Bold(true)
-	warnStyle  = lipgloss.NewStyle().Foreground(colorWarn).Bold(true)
-	errorStyle = lipgloss.NewStyle().
-			Foreground(colorError).
-			Bold(true)
+	titleStyle   = lipgloss.NewStyle().Foreground(theme.Brand).Bold(true)
+	accentStyle  = lipgloss.NewStyle().Foreground(theme.Brand)
+	dimStyle     = lipgloss.NewStyle().Foreground(theme.Dim)
+	mutedStyle   = lipgloss.NewStyle().Foreground(theme.Secondary)
+	infoStyle    = lipgloss.NewStyle().Foreground(theme.Info)
+	costStyle    = lipgloss.NewStyle().Foreground(theme.Brand)
+	successStyle = lipgloss.NewStyle().Foreground(theme.Success).Bold(true)
+	warnStyle    = lipgloss.NewStyle().Foreground(theme.Warning).Bold(true)
+	errorStyle   = lipgloss.NewStyle().Foreground(theme.Error).Bold(true)
+	sectionStyle = lipgloss.NewStyle().Foreground(theme.Secondary).Bold(true)
+	labelStyle   = lipgloss.NewStyle().Foreground(theme.Secondary)
+	keybarStyle  = lipgloss.NewStyle().Foreground(theme.Brand)
+
 	selectedRowStyle = lipgloss.NewStyle().
-				Background(colorSelected).
-				Foreground(lipgloss.Color("#f5f5f5"))
-	sectionStyle = lipgloss.NewStyle().Foreground(colorMuted).Bold(true)
-	labelStyle   = lipgloss.NewStyle().Foreground(colorMuted)
-	keybarStyle  = lipgloss.NewStyle().Foreground(colorAccent)
+				Background(lipgloss.Color("#2a2a40")).
+				Foreground(theme.Text)
+
+	railStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(theme.Border).
+			Foreground(theme.Text).
+			Padding(0, 1)
 )
 
 func sectionLine(label string, width int) string {

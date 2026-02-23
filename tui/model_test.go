@@ -41,6 +41,37 @@ func TestDeriveHealth(t *testing.T) {
 	}
 }
 
+func TestTabSwitching(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	if m.activeTab != TabFeed {
+		t.Fatalf("default tab = %v, want TabFeed", m.activeTab)
+	}
+
+	m = pressRune(t, m, '2')
+	if m.activeTab != TabQueue {
+		t.Fatalf("tab after 2 = %v, want TabQueue", m.activeTab)
+	}
+
+	m = pressRune(t, m, '3')
+	if m.activeTab != TabBrain {
+		t.Fatalf("tab after 3 = %v, want TabBrain", m.activeTab)
+	}
+
+	m = pressRune(t, m, '4')
+	if m.activeTab != TabConfig {
+		t.Fatalf("tab after 4 = %v, want TabConfig", m.activeTab)
+	}
+
+	m = pressRune(t, m, '1')
+	if m.activeTab != TabFeed {
+		t.Fatalf("tab after 1 = %v, want TabFeed", m.activeTab)
+	}
+}
+
 func TestHelpToggle(t *testing.T) {
 	m := NewModel(Options{
 		RuntimeDir:      t.TempDir(),
@@ -49,12 +80,12 @@ func TestHelpToggle(t *testing.T) {
 	})
 
 	m = pressRune(t, m, '?')
-	if m.surface != surfaceHelp {
-		t.Fatalf("surface after ? = %q, want %q", m.surface, surfaceHelp)
+	if !m.helpOpen {
+		t.Fatal("expected helpOpen after ?")
 	}
 	m = pressRune(t, m, '?')
-	if m.surface != surfaceDashboard {
-		t.Fatalf("surface after ? toggle = %q, want %q", m.surface, surfaceDashboard)
+	if m.helpOpen {
+		t.Fatal("expected helpOpen=false after ? toggle")
 	}
 }
 
@@ -68,8 +99,7 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		Now:             func() time.Time { return fixed },
 	})
 	m.snapshot.Active = []Session{{ID: "cook-a"}}
-	m.surface = surfaceSteer
-	m.overlay = surfaceDashboard
+	m.steerOpen = true
 	m.steerInput = "@cook-a focus on tests first"
 
 	cmd, ok := m.submitSteer()
@@ -88,8 +118,8 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 		t.Fatalf("control command failed: %v", result.err)
 	}
 
-	if m.surface != surfaceDashboard {
-		t.Fatalf("surface after submit = %q, want %q", m.surface, surfaceDashboard)
+	if m.steerOpen {
+		t.Fatal("expected steerOpen=false after submit")
 	}
 
 	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
@@ -133,8 +163,7 @@ func TestSteerEscClosesMentionsBeforeModal(t *testing.T) {
 		RefreshInterval: time.Hour,
 		Now:             time.Now,
 	})
-	m.surface = surfaceSteer
-	m.overlay = surfaceDashboard
+	m.steerOpen = true
 	m.steerInput = "@"
 	m.snapshot.Active = []Session{{ID: "cook-a"}}
 	m.refreshSteerMentions()
@@ -143,16 +172,16 @@ func TestSteerEscClosesMentionsBeforeModal(t *testing.T) {
 	}
 
 	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
-	if m.surface != surfaceSteer {
-		t.Fatalf("surface after first esc = %q, want %q", m.surface, surfaceSteer)
+	if !m.steerOpen {
+		t.Fatal("expected steer still open after first esc (only closes mentions)")
 	}
 	if m.steerMentionOpen {
 		t.Fatal("expected mention dropdown to close on first esc")
 	}
 
 	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
-	if m.surface != surfaceDashboard {
-		t.Fatalf("surface after second esc = %q, want %q", m.surface, surfaceDashboard)
+	if m.steerOpen {
+		t.Fatal("expected steerOpen=false after second esc")
 	}
 }
 
@@ -162,7 +191,7 @@ func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
 		RefreshInterval: time.Hour,
 		Now:             time.Now,
 	})
-	m.surface = surfaceSteer
+	m.steerOpen = true
 	m.snapshot.Active = []Session{{ID: "cook-a"}}
 
 	m = pressRune(t, m, '@')
@@ -183,6 +212,30 @@ func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
 	}
 	if m.steerInput == "" {
 		t.Fatal("expected steer input to contain selected mention")
+	}
+}
+
+func TestLayoutRendersAtVariousWidths(t *testing.T) {
+	now := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return now },
+	})
+	m.snapshot = Snapshot{
+		Active: []Session{
+			{ID: "cook-a", Status: "running", Health: "green", Model: "claude-opus-4-6", DurationSeconds: 120},
+		},
+		Queue: []QueueItem{{ID: "1", Title: "Test task"}},
+	}
+
+	for _, width := range []int{80, 120, 200} {
+		m.width = width
+		m.height = 24
+		view := m.View()
+		if view == "" {
+			t.Fatalf("empty view at width %d", width)
+		}
 	}
 }
 
