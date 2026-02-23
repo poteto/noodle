@@ -43,7 +43,7 @@ func bootstrapSousChefQueue(cfg config.Config, prompt string, generatedAt time.T
 func sousChefQueueItem(cfg config.Config, prompt string) QueueItem {
 	item := QueueItem{
 		ID:       sousChefQueueID,
-		Title:    "Refresh prioritized queue from mise",
+		Title:    "prioritizing tasks based on your backlog",
 		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
 		Skill:    sousChefSkill(cfg),
