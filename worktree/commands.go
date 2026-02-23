@@ -137,27 +137,8 @@ func (a *App) Merge(name string) error {
 	}
 
 	codexOut := filepath.Join(wtPath, ".codex-output")
-	if _, err := os.Stat(codexOut); err == nil {
-		a.info("Removing .codex-output/...")
-		_ = os.RemoveAll(codexOut)
-	}
-
-	a.info("Removing worktree...")
-	warnings := []string{}
-	if a.git("worktree", "remove", wtPath).Run() != nil {
-		if err := a.git("worktree", "remove", "--force", wtPath).Run(); err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to remove worktree %s: %v", wtPath, err))
-		}
-	}
-
-	a.info(fmt.Sprintf("Deleting branch %s...", mergeBranch))
-	if err := a.git("branch", "-d", mergeBranch).Run(); err != nil {
-		warnings = append(warnings, fmt.Sprintf("failed to delete branch %s: %v", mergeBranch, err))
-	}
-
-	if err := a.git("worktree", "prune").Run(); err != nil {
-		warnings = append(warnings, fmt.Sprintf("failed to prune worktrees: %v", err))
-	}
+	a.removeCodexOutput(codexOut, true)
+	warnings := a.cleanupWorktreeAndBranch(wtPath, mergeBranch, false)
 
 	a.installDeps(a.Root)
 	for _, warning := range warnings {
@@ -176,28 +157,13 @@ func (a *App) Cleanup(name string, force bool) error {
 
 	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
 		if !force {
-			commits := a.countUnmergedCommits(name)
-			if commits > 0 {
-				base := a.integrationBranch()
-				out, _ := a.gitOutput("log", fmt.Sprintf("%s..%s", base, cleanupBranch), "--oneline")
-				a.warnf("WARNING: %s has %d unmerged commit(s):\n%s\n", name, commits, out)
-				return fmt.Errorf(
-					"use '%s cleanup %s --force' to discard, or '%s merge %s' to keep",
-					a.cmdName(), name, a.cmdName(), name,
-				)
+			if err := a.ensureNoUnmergedCommits(name, cleanupBranch); err != nil {
+				return err
 			}
 		}
 
 		a.info("Worktree directory already removed, cleaning up refs...")
-		warnings := []string{}
-		if a.git("branch", "-d", cleanupBranch).Run() != nil {
-			if err := a.git("branch", "-D", cleanupBranch).Run(); err != nil {
-				warnings = append(warnings, fmt.Sprintf("failed to delete branch %s: %v", cleanupBranch, err))
-			}
-		}
-		if err := a.git("worktree", "prune").Run(); err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to prune worktrees: %v", err))
-		}
+		warnings := a.cleanupWorktreeAndBranch("", cleanupBranch, true)
 		for _, warning := range warnings {
 			a.warnf("WARNING: %s\n", warning)
 		}
@@ -210,46 +176,71 @@ func (a *App) Cleanup(name string, force bool) error {
 	}
 
 	if !force {
-		commits := a.countUnmergedCommits(name)
-		if commits > 0 {
-			base := a.integrationBranch()
-			out, _ := a.gitOutput("log", fmt.Sprintf("%s..%s", base, cleanupBranch), "--oneline")
-			a.warnf("WARNING: %s has %d unmerged commit(s):\n%s\n", name, commits, out)
-			return fmt.Errorf(
-				"use '%s cleanup %s --force' to discard, or '%s merge %s' to keep",
-				a.cmdName(), name, a.cmdName(), name,
-			)
+		if err := a.ensureNoUnmergedCommits(name, cleanupBranch); err != nil {
+			return err
 		}
 	}
 
 	codexOut := filepath.Join(wtPath, ".codex-output")
-	if _, err := os.Stat(codexOut); err == nil {
-		_ = os.RemoveAll(codexOut)
+	a.removeCodexOutput(codexOut, false)
+	warnings := a.cleanupWorktreeAndBranch(wtPath, cleanupBranch, true)
+	for _, warning := range warnings {
+		a.warnf("WARNING: %s\n", warning)
 	}
+	a.printf("Done. %s removed.\n", name)
+	return nil
+}
 
-	a.info("Removing worktree...")
+func (a *App) ensureNoUnmergedCommits(name, branch string) error {
+	commits := a.countUnmergedCommits(name)
+	if commits <= 0 {
+		return nil
+	}
+	base := a.integrationBranch()
+	out, _ := a.gitOutput("log", fmt.Sprintf("%s..%s", base, branch), "--oneline")
+	a.warnf("WARNING: %s has %d unmerged commit(s):\n%s\n", name, commits, out)
+	return fmt.Errorf(
+		"use '%s cleanup %s --force' to discard, or '%s merge %s' to keep",
+		a.cmdName(), name, a.cmdName(), name,
+	)
+}
+
+func (a *App) removeCodexOutput(path string, withLog bool) {
+	if _, err := os.Stat(path); err != nil {
+		return
+	}
+	if withLog {
+		a.info("Removing .codex-output/...")
+	}
+	_ = os.RemoveAll(path)
+}
+
+func (a *App) cleanupWorktreeAndBranch(wtPath, branch string, allowForceDelete bool) []string {
 	warnings := []string{}
-	if a.git("worktree", "remove", wtPath).Run() != nil {
-		if err := a.git("worktree", "remove", "--force", wtPath).Run(); err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to remove worktree %s: %v", wtPath, err))
+	if wtPath != "" {
+		a.info("Removing worktree...")
+		if a.git("worktree", "remove", wtPath).Run() != nil {
+			if err := a.git("worktree", "remove", "--force", wtPath).Run(); err != nil {
+				warnings = append(warnings, fmt.Sprintf("failed to remove worktree %s: %v", wtPath, err))
+			}
 		}
 	}
 
-	a.info(fmt.Sprintf("Deleting branch %s...", cleanupBranch))
-	if a.git("branch", "-d", cleanupBranch).Run() != nil {
-		if err := a.git("branch", "-D", cleanupBranch).Run(); err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to delete branch %s: %v", cleanupBranch, err))
+	a.info(fmt.Sprintf("Deleting branch %s...", branch))
+	if err := a.git("branch", "-d", branch).Run(); err != nil {
+		if allowForceDelete {
+			if err := a.git("branch", "-D", branch).Run(); err != nil {
+				warnings = append(warnings, fmt.Sprintf("failed to delete branch %s: %v", branch, err))
+			}
+		} else {
+			warnings = append(warnings, fmt.Sprintf("failed to delete branch %s: %v", branch, err))
 		}
 	}
 
 	if err := a.git("worktree", "prune").Run(); err != nil {
 		warnings = append(warnings, fmt.Sprintf("failed to prune worktrees: %v", err))
 	}
-	for _, warning := range warnings {
-		a.warnf("WARNING: %s\n", warning)
-	}
-	a.printf("Done. %s removed.\n", name)
-	return nil
+	return warnings
 }
 
 // List shows all worktrees with merge status.
