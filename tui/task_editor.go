@@ -20,15 +20,13 @@ type TaskEditor struct {
 	model    int
 	provider int
 	skill    string
-	priority int
-	field    int // active field index (0-5)
+	field    int // active field index (0-4)
 }
 
 var (
 	taskTypes = []string{"execute", "plan", "quality", "reflect", "prioritize"}
 	models    = []string{"claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5", "gpt-5.3-codex"}
 	providers = []string{"claude", "codex"}
-	priorities = []string{"normal", "high", "low"}
 )
 
 const (
@@ -37,8 +35,7 @@ const (
 	fieldModel    = 2
 	fieldProvider = 3
 	fieldSkill    = 4
-	fieldPriority = 5
-	fieldCount    = 6
+	fieldCount    = 5
 )
 
 // OpenNew opens the task editor in create mode.
@@ -49,7 +46,6 @@ func (e *TaskEditor) OpenNew() {
 	e.model = 0
 	e.provider = 0
 	e.skill = ""
-	e.priority = 0
 	e.field = 0
 }
 
@@ -109,8 +105,6 @@ func (e *TaskEditor) cyclePrev() {
 		e.model = (e.model - 1 + len(models)) % len(models)
 	case fieldProvider:
 		e.provider = (e.provider - 1 + len(providers)) % len(providers)
-	case fieldPriority:
-		e.priority = (e.priority - 1 + len(priorities)) % len(priorities)
 	}
 }
 
@@ -122,8 +116,6 @@ func (e *TaskEditor) cycleNext() {
 		e.model = (e.model + 1) % len(models)
 	case fieldProvider:
 		e.provider = (e.provider + 1) % len(providers)
-	case fieldPriority:
-		e.priority = (e.priority + 1) % len(priorities)
 	}
 }
 
@@ -175,7 +167,6 @@ func (e *TaskEditor) Render(width int) string {
 		{"Model", models[e.model], false},
 		{"Provider", providers[e.provider], false},
 		{"Skill", e.skill, true},
-		{"Priority", priorities[e.priority], false},
 	}
 
 	var rows []string
