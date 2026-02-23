@@ -17,7 +17,20 @@ Operate fully autonomously. Never ask the user to choose or pause for confirmati
 
 Only schedule `execute` items that have a linked plan (`plan` field non-null in backlog entry). Skip unplanned items entirely -- note their IDs in `queue.json` under `"action_needed"` so the TUI can surface them.
 
-When scheduling an item with a plan, populate the queue item's `"plan"` array with the plan overview path(s) from the backlog entry (e.g. `["plans/15-bootstrap-onboarding/overview"]`). The TUI uses this to display plan status.
+Populate the queue item's `"plan"` array with the plan paths this item covers. A plan path can be the overview (`plans/15-bootstrap/overview`) or a specific phase (`plans/15-bootstrap/phase-01-scaffold`).
+
+### Phase-level splitting
+
+A single backlog item with a plan may produce **multiple queue items** when its phases need different models. Read the plan's phases from mise (`plans[].phases[]`) and the model routing table below. If a plan has phases suited to different providers, split into separate queue items — one per provider group — each linking to the specific phase(s) it covers.
+
+Example: a plan with a scaffold phase (codex) and a design phase (opus) becomes two queue items:
+
+```json
+{"id": "execute-15-phase-01", "plan": ["plans/15-bootstrap/phase-01-scaffold"], "provider": "codex", "model": "gpt-5.3-codex", ...}
+{"id": "execute-15-phase-02", "plan": ["plans/15-bootstrap/phase-02-design"], "provider": "claude", "model": "claude-opus-4-6", ...}
+```
+
+Phases that share a provider/model can be grouped into one queue item with multiple entries in `plan`. Respect phase ordering — earlier phases must appear before later ones in the queue.
 
 ## Schedule Reading
 
