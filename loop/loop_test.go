@@ -943,6 +943,84 @@ func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
 	}
 }
 
+func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "approve"
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	l.state = StatePaused
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if updated.Autonomy != "approve" {
+		t.Fatalf("autonomy = %q, want approve", updated.Autonomy)
+	}
+}
+
+func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "full"
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	l.state = StateDraining
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if updated.Autonomy != "full" {
+		t.Fatalf("autonomy = %q, want full", updated.Autonomy)
+	}
+}
+
 func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

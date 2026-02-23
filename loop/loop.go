@@ -149,7 +149,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !ready {
-		return nil
+		return l.stampLoopState()
 	}
 
 	brief, warnings, running, err := l.buildCycleBrief(ctx)
@@ -157,7 +157,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !running {
-		return nil
+		return l.stampLoopState()
 	}
 
 	queue, shouldContinue, err := l.prepareQueueForCycle(ctx, brief, warnings)
@@ -165,7 +165,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !shouldContinue {
-		return nil
+		return l.stampLoopState()
 	}
 
 	plan := l.planCycleSpawns(queue, brief)
