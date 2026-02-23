@@ -1,0 +1,1 @@
+{"type":"state_change","payload":{"reason":"agent failed to start: missing auth token"},"timestamp":"2026-02-23T00:00:00Z","session_id":"prioritize-id"}
