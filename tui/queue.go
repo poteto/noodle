@@ -43,7 +43,7 @@ var noPlanTaskTypes = map[string]struct{}{
 func NewQueueTab() QueueTab {
 	cols := []table.Column{
 		{Title: "#", Width: 3},
-		{Title: "Type", Width: 10},
+		{Title: "Type", Width: 12},
 		{Title: "Item", Width: 40},
 		{Title: "Status", Width: 10},
 	}
@@ -137,17 +137,17 @@ func (q *QueueTab) resizeTable(width, height int) {
 	}
 	q.table.SetHeight(tableHeight)
 
-	// Distribute column widths: #(3), Type(10), Status(10), Item(rest)
+	// Distribute column widths: #(3), Type(12), Status(10), Item(rest)
 	numW := 3
-	typeW := 10
+	typeW := 12
 	statusW := 10
-	// Subtract column gaps (3 gaps * 2 chars each for padding)
-	itemW := width - numW - typeW - statusW - 6
+	// Subtract column gaps (3 gaps * 3 chars each for padding)
+	itemW := width - numW - typeW - statusW - 9
 	if itemW < 10 {
 		itemW = 10
 	}
 	q.table.SetColumns([]table.Column{
-		{Title: "#", Width: numW},
+		{Title: "#  ", Width: numW},
 		{Title: "Type", Width: typeW},
 		{Title: "Item", Width: itemW},
 		{Title: "Status", Width: statusW},
