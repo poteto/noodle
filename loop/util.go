@@ -10,7 +10,13 @@ import (
 )
 
 func buildCookPrompt(item QueueItem, resumePrompt string) string {
-	parts := []string{fmt.Sprintf("Work backlog item %s", item.ID)}
+	var header string
+	if len(item.Plan) > 0 {
+		header = fmt.Sprintf("Work on plan: %s", strings.Join(item.Plan, ", "))
+	} else {
+		header = fmt.Sprintf("Work backlog item %s", item.ID)
+	}
+	parts := []string{header}
 	if strings.TrimSpace(item.Rationale) != "" {
 		parts = append(parts, "Context: "+strings.TrimSpace(item.Rationale))
 	}
