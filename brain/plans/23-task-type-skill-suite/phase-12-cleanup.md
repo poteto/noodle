@@ -1,47 +1,55 @@
 Back to [[plans/23-task-type-skill-suite/overview]]
 
-# Phase 12: Cleanup — Delete Old Skills, Rename, Go Code
+# Phase 12: Cleanup — Stale References, Delete Old Skills
 
 ## Goal
 
-Delete the 5 old role-based skills, rename sous-chef→prioritize, and update Go task type registry.
+Fix stale CLI references across all skills, delete the 5 old role-based skills, and rename sous-chef→prioritize.
 
 ## Changes
 
+### Fix stale CLI references
+
+#### `.agents/skills/todo/SKILL.md`
+- Replace `go -C noodle run . todo` commands with backlog adapter equivalents
+- After Phase 2, `plan` commands are native but `todo` commands still route through the backlog adapter
+
+#### `.agents/skills/noodle/SKILL.md` + `references/config.md`
+- Update `~/.noodle/config.toml` references to `noodle.toml` (project root)
+- Update `[adapters.plans]` references to reflect plans are now native
+
+#### `.agents/skills/reflect/SKILL.md`
+- Remove references to deleted skills (manager, director, operator)
+- Update routing examples to current skill names
+
+#### `.agents/skills/worktree/SKILL.md`
+- Update `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree` to current binary path
+
 ### Delete old role-based skills
 
-Remove these directories entirely:
+Remove entirely:
 - `.agents/skills/ceo/`
 - `.agents/skills/cto/`
 - `.agents/skills/director/`
 - `.agents/skills/manager/`
 - `.agents/skills/operator/`
 
-These have been fully extracted — all valuable patterns are now encoded in the new task-type skills (Phases 1–8).
+All valuable patterns extracted in Phases 4–6.
 
-### Remove verify task type from registry
+### Rename sous-chef → prioritize
 
-The verify task type (`internal/taskreg/registry.go`) is no longer needed — the execute skill handles its own verification (tests, lint, plan completeness check). Remove:
-- `TaskKeyVerify` constant and its registry entry
-- Any verify-related stage transitions in `loop/prioritize.go`
-- Any verify references in `config/config.go`
+Update any remaining references to `sous-chef` in config, documentation, or Go code.
 
-### Rename sous-chef references to prioritize
+### Mark todos done
 
-- Update any references to `sous-chef` in config files, documentation, or Go code
-- The task type registry already defaults to skill name `"prioritize"`, so this aligns naming
-
-### Update todos
-
-Mark todo items as done:
 - #11 (Remove old role-based skills)
-- #12 (Update worktree skill — done in Phase 11)
-- #14 (Evaluate interactive skill overlap — addressed by the dual-mode pattern)
+- #12 (Update worktree skill)
+- #14 (Evaluate interactive skill overlap)
 
 ## Verification
 
-- Old skill directories are gone: `ls .agents/skills/{ceo,cto,director,manager,operator}` all fail
-- No remaining references to `sous-chef` in Go code or config
-- `make ci` passes (test, vet, lintarch, fixtures)
-- No `TaskKeyVerify` in `internal/taskreg/registry.go`
-- Skill resolver finds all new skills: `go run . skills list`
+- `make ci` passes
+- Old skill directories gone
+- No references to `sous-chef` in Go code or config
+- Grep for `noodle todo`, `old_noodle`, `~/.noodle/config.toml`, deleted skill names — zero matches across `.agents/skills/`
+- Skill resolver finds all new skills

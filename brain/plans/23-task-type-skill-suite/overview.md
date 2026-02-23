@@ -10,60 +10,95 @@ Combines todo #23 (task-type skills) and todo #22 (opinionated planning).
 
 ## Context
 
-Noodle's task type registry defines 12 task types, each mapping to a skill that a cook session invokes. Several skills are missing entirely (quality, oops), several exist but weren't designed for cook sessions or grounded in engineering principles (prioritize, reflect, meditate, debugging), and 5 old role-based skills (CEO, CTO, Director, Manager, Operator) contain valuable patterns that should be extracted before deletion.
+Noodle is a light framework with strong opinions and few primitives. Like React — where everything is a component — in Noodle, everything is a file. Skills, plans, state, brain notes — all files that agents read directly.
 
-Additionally, planning is currently implemented as a user-configurable adapter — but it should be opinionated and first-class. Plans always live in `brain/plans/` with a Noodle-owned format. The adapter indirection adds complexity without value.
+Task types are Noodle's equivalent of built-in components. Today they're hardcoded in a Go registry. This plan makes them dynamic: any skill with a `task.toml` file becomes a task type. Built-in task types (prioritize, execute, quality, etc.) follow the same convention as user-defined ones. Users extend Noodle by dropping a skill directory with a `task.toml` — no Go code changes needed.
 
-Several existing skills also reference CLI commands that no longer exist (`noodle todo`, `noodle plan`).
+Several built-in skills are missing (quality, oops, debate), several exist but lack principle grounding (prioritize, reflect, meditate), and 5 old role-based skills (CEO, CTO, Director, Manager, Operator) contain patterns worth extracting before deletion.
+
+Planning is currently a user-configurable adapter — it should be native. Plans always live in `brain/plans/` with a Noodle-owned format. The user creates plans outside Noodle using their own agent and the plan skill. Noodle only executes work that has a plan.
 
 ## Scope
 
 **In scope:**
+- Dynamic task type registry via `task.toml` convention (replaces hardcoded Go registry)
 - Create or rewrite 8 skills in `.agents/skills/` — 7 task-type skills + 1 utility skill (debugging)
-- Extract valuable patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
+- Extract patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
 - Ground each skill in engineering principles from `brain/principles/`
-- Design for cook sessions — Noodle handles autonomy via spawn flags, skills don't need to manage it
-- Make planning native: remove plan adapter, add minimal Go reader for `brain/plans/` metadata, add `noodle plan` CLI commands
-- Add model routing recommendations to plan phase files
-- Plan skill updates backlog item to link back to created plan
-- Plans as precondition: prioritize skill only schedules items that have plans, TUI shows "action needed" for unplanned items
-- Add Noodle context preamble to cook session spawner (state model map for agents)
-- Each skill includes relevant `.noodle/` schemas in `references/` directory
-- Fix stale CLI references across all existing skills
-- Delete old role-based skills after extraction
+- Native planning: remove plan adapter, minimal Go reader, `noodle plan` CLI commands
+- Context injection: Noodle preamble in cook sessions + skill-specific schema `references/`
+- Multi-skill loading in spawner (methodology skill alongside domain skill)
+- Plans as precondition: prioritize skill only schedules items with linked plans
+- Quality verdict ingestion in mise builder
+- Fix stale CLI references, delete old role-based skills
 
 **Out of scope:**
-- Review skill — the Chef (human) does review via the TUI, not an LLM agent
-- Verify skill — the execute agent verifies its own work (tests, lint, plan completeness check) before committing
-- Backlog adapter changes — backlogs stay configurable (GitHub Issues, Linear, etc.)
+- Review skill — the Chef (human) does review via the TUI
+- Verify skill — the execute agent verifies its own work
+- Backlog adapter changes — backlogs stay configurable
 - Bootstrap skill updates
-- Interactive-only skills that don't map to task types (commit, codex, skill-creator, etc.)
+- Interactive-only skills (commit, codex, skill-creator, etc.)
 
 ## Constraints
 
-- **Lean core, smart skills.** Noodle's Go core is a thin orchestration layer: process lifecycle, concurrency, file I/O, and data assembly. All scheduling intelligence, quality judgment, and task semantics live in skills. The Go core surfaces data (mise brief, plan metadata, session history); skills read that data and make decisions. This keeps the core extensible — users customize behavior by writing skills, not by modifying Go code.
-- **Everything is a file.** Skills, brain notes, plans, `.noodle/` state — all are files the agent reads directly. This makes agents powerful (full filesystem access) and the tool extensible (users modify files, not config APIs).
-- **Context injection bridges core and skills.** The Go core surfaces data as files, but agents need to know those files exist and what they mean. Two layers handle this: (1) a **Noodle context preamble** injected by the spawner into every cook session — a lean map of `.noodle/` state files and their purpose, and (2) **skill-specific schemas** in each skill's `references/` directory documenting the exact data that skill reads and writes. The preamble says "here's what exists"; the skill references say "here's how to use it."
-- All skills live in `.agents/skills/`. No `skills/` stubs directory — users who want to scaffold skills can reference the Noodle repo directly.
-- Cook sessions are autonomous by default — Noodle passes flags to disable interactive prompts (e.g. `--no-input` for Claude, equivalent for Codex). Skills don't need to handle this themselves.
-- **Plans are the user's responsibility.** Noodle never auto-plans. The user creates plans outside Noodle (using their own agent + the plan skill) before running `noodle cook`. The prioritize skill only schedules execution for backlog items that have a linked plan. Unplanned items are surfaced in the TUI as "action needed" — Noodle shows the gap but doesn't try to fill it.
-- **Subtract before adding.** Delete code, tests, and schemas that no longer serve a purpose after changes. Redesign from first principles — don't bolt new behavior onto old structures.
-- **No backwards compatibility.** The project hasn't launched. Remove schema versioning (e.g. in loop fixture tests), compatibility shims, and any other complexity that only exists for migration. Build for the current design, not previous iterations.
-- Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
-- Use the `skill-creator` skill when writing each skill to ensure quality and consistency.
+- **Lean core, smart skills.** Go core is thin orchestration: process lifecycle, concurrency, file I/O, data assembly. All scheduling intelligence, quality judgment, and task semantics live in skills. The core surfaces data; skills make decisions.
+- **Everything is a file.** Skills, plans, brain notes, `.noodle/` state — all files the agent reads directly. This makes agents powerful and the tool extensible.
+- **Context injection bridges core and skills.** Two layers: (1) a Noodle context preamble injected by the spawner into every cook session — a lean map of `.noodle/` state files and their purpose, and (2) skill-specific schemas in each skill's `references/` directory. The preamble says "here's what exists"; the references say "here's how to use it."
+- **Plans are the user's responsibility.** Noodle never auto-plans. The user creates plans outside Noodle (using their agent + the plan skill). The prioritize skill only schedules execution for items with a linked plan. Unplanned items surface as "action needed" in the TUI.
+- **Autonomy via spawn flags.** Noodle passes flags to disable interactive prompts. Skills don't need to manage this themselves.
+- **Subtract before adding.** Delete code, tests, and schemas that no longer serve a purpose. Redesign from first principles.
+- **No backwards compatibility.** Pre-launch project. Remove schema versioning, compatibility shims, and any complexity that only exists for migration.
+- All skills live in `.agents/skills/`. No stubs directory.
+- Skills should be lean — guard the context window.
+- Use the `skill-creator` skill when writing each skill.
 
 ### Execution contract
 
 Each phase must follow this workflow:
-1. **Work in a worktree** — never the primary checkout
-2. **Minimum one commit per phase** — atomic, conventional commit messages
-3. **`make ci` must pass** before merging — test, vet, lintarch, fixtures
-4. **Rebase on main** after commits if main has advanced
-5. **Merge to main** at the end of the phase
+1. Work in a worktree
+2. Minimum one commit per phase with conventional messages
+3. `make ci` must pass before merging
+4. Rebase on main if it has advanced
+5. Merge to main at the end of the phase
+
+## User-Defined Task Types
+
+Task types are the core primitive. A task type is a skill with a `task.toml` file:
+
+```
+.agents/skills/deploy/
+├── SKILL.md          # Agent instructions (loaded into context)
+├── references/       # Schema docs (loaded into context)
+└── task.toml         # Noodle metadata (never loaded into context)
+```
+
+`task.toml` contains only what the Go core needs for scheduling and lifecycle:
+
+```toml
+blocking = false
+review = true
+schedule_hint = "After successful execute on main branch"
+```
+
+| Field | Purpose | Default |
+|-------|---------|---------|
+| `blocking` | Prevents other cooks from running in parallel | `false` |
+| `review` | Output goes through quality gate | `true` |
+| `schedule_hint` | One-line guidance for the prioritize skill | required |
+
+The `schedule_hint` goes into the mise brief so the prioritize skill knows when to schedule this task without reading every skill's full SKILL.md.
+
+**Discovery:** The skill resolver scans `.agents/skills/*/task.toml` during startup. Skills with `task.toml` are registered as task types. Skills without it are utility skills (invoked by other skills, never scheduled).
+
+**Composition:** Tasks compose through four existing mechanisms:
+1. **Scheduling** — the prioritize skill sequences tasks based on session history and schedule_hints
+2. **Plans** — multi-phase workflows are plans; each phase is an execute task
+3. **Runtime delegation** — skills tell agents to invoke other skills inline
+4. **Output-driven** — tasks produce state changes (files), the prioritize skill reacts next cycle
+
+No new composition mechanism needed.
 
 ## Old Skill Extraction Map
-
-Patterns worth preserving from the old role-based skills:
 
 | Source | Pattern | Target |
 |--------|---------|--------|
@@ -106,43 +141,42 @@ Patterns worth preserving from the old role-based skills:
 
 ## Phases
 
+### Infrastructure
+
+1. [[plans/23-task-type-skill-suite/phase-01-dynamic-task-registry]] — Replace hardcoded Go registry with task.toml discovery
+2. [[plans/23-task-type-skill-suite/phase-02-native-planning]] — Remove plan adapter, minimal Go reader + CLI commands
+3. [[plans/23-task-type-skill-suite/phase-03-context-injection]] — Noodle preamble, multi-skill loading, mise enhancements
+
 ### Task-type skills
 
-1. [[plans/23-task-type-skill-suite/phase-01-prioritize]] — Rewrite queue scheduler with CEO scheduling judgment
-2. [[plans/23-task-type-skill-suite/phase-02-quality]] — Post-cook quality gate
-3. [[plans/23-task-type-skill-suite/phase-03-reflect]] — Cook-session-first learning from mistakes and corrections
-4. [[plans/23-task-type-skill-suite/phase-04-meditate]] — Cook-session-first brain cleanup and principle extraction
-5. [[plans/23-task-type-skill-suite/phase-05-oops]] — User-project infrastructure fix skill
-6. [[plans/23-task-type-skill-suite/phase-06-debugging]] — Root-cause diagnosis utility (invoked by oops/execute/repair, not a task type)
-7. [[plans/23-task-type-skill-suite/phase-07-debate]] — Structured debate with per-task state in `.noodle/debates/<task-id>/`
-8. [[plans/23-task-type-skill-suite/phase-08-execute]] — Implementation methodology skill (worktrees, delegation, verification)
+4. [[plans/23-task-type-skill-suite/phase-04-prioritize]] — Queue scheduler with plans-as-precondition and schedule_hint reading
+5. [[plans/23-task-type-skill-suite/phase-05-quality]] — Post-cook quality gate with verdict files
+6. [[plans/23-task-type-skill-suite/phase-06-execute]] — Implementation methodology (worktrees, delegation, verification)
+7. [[plans/23-task-type-skill-suite/phase-07-reflect]] — Learning capture from mistakes and corrections
+8. [[plans/23-task-type-skill-suite/phase-08-meditate]] — Brain cleanup and principle extraction
+9. [[plans/23-task-type-skill-suite/phase-09-oops]] — User-project infrastructure fix
+10. [[plans/23-task-type-skill-suite/phase-10-debate]] — Structured debate with per-task state
 
-### First-class planning
+### Skills + cleanup
 
-9. [[plans/23-task-type-skill-suite/phase-09-native-planning]] — Remove plan adapter, minimal Go reader + CLI commands
-10. [[plans/23-task-type-skill-suite/phase-10-plan-skill]] — Update plan skill for native commands + model routing + backlog link-back
-
-### Cleanup
-
-11. [[plans/23-task-type-skill-suite/phase-11-stale-references]] — Fix stale CLI references across remaining skills
-12. [[plans/23-task-type-skill-suite/phase-12-cleanup]] — Delete old skills, rename sous-chef→prioritize, Go code updates
+11. [[plans/23-task-type-skill-suite/phase-11-utility-skills]] — Debugging amendments + plan skill update
+12. [[plans/23-task-type-skill-suite/phase-12-cleanup]] — Stale references, delete old skills
 
 ## Verification
 
+- `make ci` passes (test, vet, lintarch, fixtures)
+- Task types discovered from `task.toml`: `go test ./skill/...` covers discovery
 - Each skill SKILL.md has: frontmatter, purpose, principles, contract, process, verification
-- Skill resolver finds each skill: `go test ./skill/...`
 - Old role-based skills (CEO, CTO, Director, Manager, Operator) are deleted
 - No remaining references to `sous-chef` in Go code or config
-- Verify task type removed from `internal/taskreg/registry.go`
+- Verify and plan task types removed from registry
 - `noodle plan create/done/phase-add` commands work
 - No `[adapters.plans]` in config
-- Mise brief includes plan metadata (prioritize skill computes associations)
-- Plan skill updates backlog item to link back to created plan
-- Plan phases include Routing sections with provider/model
-- Execute skill is loaded alongside adapter-configured skill for execute task type
-- Noodle context preamble is injected into all cook sessions (agents can locate `.noodle/` state files)
-- Skills that read/write `.noodle/` state include schema docs in `references/` (prioritize, quality, debate)
-- Prioritize skill skips unplanned backlog items (plans-as-precondition)
-- TUI shows "action needed" indicator for unplanned items
-- No remaining references to stale CLI commands
-- `make ci` passes (test, vet, lintarch, fixtures-loop, fixtures-hash)
+- Mise brief includes plan metadata and quality verdict history
+- Plan skill uses native commands and backlog adapter for link-back
+- Execute skill loaded alongside adapter-configured skill (multi-skill)
+- Noodle context preamble injected into all cook sessions
+- Skills with `.noodle/` interaction include schema docs in `references/`
+- Prioritize skill skips unplanned backlog items
+- TUI shows "action needed" for unplanned items
+- No stale CLI command references
