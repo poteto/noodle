@@ -25,7 +25,7 @@ If any answer is "it depends on what state was left behind," the operation needs
 ## Relationship to Other Principles
 
 - Extends [[principles/fix-root-causes]] by preventing a class of root causes (partial completion) at design time
-- Complements [[principles/suspect-state-before-code]] by making state self-correcting rather than requiring debugging
+- Complements [[principles/fix-root-causes]] by making state self-correcting rather than requiring debugging
 - Distinct from [[principles/encode-lessons-in-structure]] (which is about how to encode rules, not operation design)
 - Distinct from [[principles/boundary-discipline]] (which is about where validation lives, not convergence behavior)
 

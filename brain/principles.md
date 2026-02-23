@@ -3,7 +3,6 @@
 ## Core
 
 - [[principles/foundational-thinking]]
-- [[principles/scaffold-first]]
 - [[principles/redesign-from-first-principles]]
 - [[principles/subtract-before-you-add]]
 - [[principles/outcome-oriented-execution]]
@@ -18,10 +17,8 @@
 
 ## Verification
 
-- [[principles/verify-runtime]]
-- [[principles/observe-directly]]
+- [[principles/prove-it-works]]
 - [[principles/fix-root-causes]]
-- [[principles/suspect-state-before-code]]
 - [[principles/trust-the-output-not-the-report]]
 
 ## Delegation

@@ -23,7 +23,7 @@ Light amendments to the debugging utility skill, and update the plan skill for n
 
 ### Principles
 
-- [[principles/observe-directly]] — for repair: check `.noodle/` state files directly
+- [[principles/prove-it-works]] — for repair: check `.noodle/` state files directly
 - [[principles/never-block-on-the-human]] — repair sessions must be fully autonomous
 
 ## Plan Skill

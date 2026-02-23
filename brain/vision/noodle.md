@@ -112,5 +112,5 @@ Session crashes auto-retry. Spawn failures retry with backoff. The systemfix pha
 - [[principles/never-block-on-the-human]] — the human supervises asynchronously; agents stay unblocked
 - [[principles/encode-lessons-in-structure]] — CLI enforces process, prompts focus on work
 - [[principles/cost-aware-delegation]] — LLM for judgment, Go for mechanics, resource-aware parallelism
-- [[principles/observe-directly]] — the log is the source of truth; direct process liveness checks
+- [[principles/prove-it-works]] — the log is the source of truth; direct process liveness checks
 - [[principles/redesign-from-first-principles]] — rewrite over refactor when 86% of code is coupled to the old model

@@ -12,6 +12,6 @@ Agents (human and AI) have blind spots. They report what they intended, not alwa
 
 ## Distinction from Existing Principles
 
-[[principles/observe-directly]] is about *system observation* — read actual state rather than inferring from proxies. This is about *delegation verification* — the specific pattern where the delegate's self-report is the proxy you must not trust. [[principles/verify-runtime]] says verify your own work at runtime; this says verify someone else's work via artifacts.
+[[principles/prove-it-works]] says to check real state, not proxies. This is the delegation-specific application — the delegate's self-report is the proxy you must not trust.
 
-See also [[principles/observe-directly]], [[principles/verify-runtime]], [[delegation/codex-scope-violations]]
+See also [[principles/prove-it-works]], [[delegation/codex-scope-violations]]

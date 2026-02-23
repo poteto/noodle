@@ -39,7 +39,7 @@ The instruction IS the symptom. If you're writing "don't do X" in a prompt, ask 
 
 ## Relationship to Other Principles
 
-This is not about *where* validation belongs ([[principles/boundary-discipline]]) or *testing behavior* ([[principles/verify-runtime]]). It's about the meta-question of how to make rules stick — the delivery mechanism for lessons learned.
+This is not about *where* validation belongs ([[principles/boundary-discipline]]) or *testing behavior* ([[principles/prove-it-works]]). It's about the meta-question of how to make rules stick — the delivery mechanism for lessons learned.
 
 [[principles/never-block-on-the-human]] says agents should proceed autonomously. This principle defines what happens when autonomy goes wrong: the system learns and hardens instead of waiting for intervention.
 

@@ -35,7 +35,7 @@ Run in order. Stop early and reject on any high-severity finding.
 ### 3. Principle Compliance
 
 - For each changed file, check against loaded principles.
-- Common violations: bolted-on changes instead of redesign (redesign-from-first-principles), missing runtime verification (verify-runtime), unnecessarily added complexity (subtract-before-you-add).
+- Common violations: bolted-on changes instead of redesign (redesign-from-first-principles), missing verification (prove-it-works), unnecessarily added complexity (subtract-before-you-add).
 
 ### 4. Test Evidence
 
@@ -63,5 +63,5 @@ Issues that don't warrant rejection (style nits, minor improvements, documentati
 ## Principles
 
 - [[trust-the-output-not-the-report]]
-- [[verify-runtime]]
+- [[prove-it-works]]
 - [[outcome-oriented-execution]]

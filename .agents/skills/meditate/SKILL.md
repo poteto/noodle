@@ -70,6 +70,7 @@ Apply all changes directly. The user reviews the diff.
 - **New connections**: Add `[[wikilinks]]`
 - **Tensions**: Reword to clarify boundaries
 - **New principles**: Only from the distiller, only if genuinely independent. Write brain files and update `brain/principles.md`
+- **Merge principles**: Look for principles that are subsets or specific applications of each other — merge the narrower into the broader and pick a name that captures the combined insight
 - **CLAUDE.md issues**: Rewrite or delete
 - **Stale memories**: Delete or rewrite
 

@@ -183,7 +183,7 @@ Every phase **must** have a verification section with both:
 - Edge cases to cover
 - For UI: visual verification via screenshot
 
-Per verify-runtime principle: "it compiles" is not verification. Every phase must describe how to **prove** the change works.
+Per prove-it-works principle: "it compiles" is not verification. Every phase must describe how to **prove** the change works.
 
 Common verification commands:
 

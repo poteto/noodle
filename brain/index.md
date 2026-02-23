@@ -16,14 +16,11 @@
 - [[principles/make-operations-idempotent]]
 - [[principles/migrate-callers-then-delete-legacy-apis]]
 - [[principles/never-block-on-the-human]]
-- [[principles/observe-directly]]
 - [[principles/outcome-oriented-execution]]
 - [[principles/redesign-from-first-principles]]
-- [[principles/scaffold-first]]
 - [[principles/subtract-before-you-add]]
-- [[principles/suspect-state-before-code]]
 - [[principles/trust-the-output-not-the-report]]
-- [[principles/verify-runtime]]
+- [[principles/prove-it-works]]
 
 ## Delegation
 - [[delegation]]

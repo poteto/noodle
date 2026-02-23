@@ -31,8 +31,7 @@ Run the failing command. Capture exact error output. If intermittent, run multip
 ### Principles
 
 - [[fix-root-causes]]
-- [[suspect-state-before-code]]
-- [[observe-directly]]
+- [[prove-it-works]]
 
 Noodle-internal checklist:
 - `.noodle/` state files: corrupt, stale, or inconsistent?

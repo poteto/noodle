@@ -20,7 +20,7 @@ Read [[principles/fix-root-causes]] before starting. Every debugging session fol
 
 2. **Read the error.** The error message, stack trace, and line numbers are data. Read all of it before forming hypotheses. Most bugs tell you exactly where they are.
 
-3. **Suspect state before code.** Before debugging code, check persistent state — especially on restart bugs or environment drift. See [[principles/suspect-state-before-code]].
+3. **Suspect state before code.** Before debugging code, check persistent state — especially on restart bugs or environment drift. See [[principles/fix-root-causes]].
    - **Noodle state**: `.noodle/queue.json` (stale items?), `.noodle/sessions/` (orphaned?), `.noodle.toml` (valid?)
    - **Environment**: tmux sessions (`tmux ls`), lock files, cached artifacts
    - **Config**: `.noodle.toml` validation (`noodle start` reports diagnostics), skill frontmatter parse errors
@@ -51,7 +51,7 @@ When debugging Noodle infrastructure failures:
 
 ## When Stuck
 
-- **Instrument, don't guess.** Add logging at key points to see actual values. Read actual state ([[principles/observe-directly]]).
+- **Instrument, don't guess.** Add logging at key points to see actual values. Read actual state ([[principles/prove-it-works]]).
 - **Diff what changed.** `git diff`, `git log`, `git bisect`. Most bugs are recent.
 - **Simplify.** Strip the failing case to minimum reproduction. Remove everything unrelated.
 - **Change one thing at a time.** Multiple changes at once make it impossible to know what fixed (or broke) it.

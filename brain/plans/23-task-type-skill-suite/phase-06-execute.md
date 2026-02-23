@@ -18,7 +18,7 @@ From **Manager**: parallel by default, minimal-context workers, verify artifacts
 
 ## Principles
 
-- [[principles/verify-runtime]] — verify your own work before calling it done
+- [[principles/prove-it-works]] — verify your own work before calling it done
 - [[principles/trust-the-output-not-the-report]] — inspect artifacts, not sub-agent summaries
 - [[principles/cost-aware-delegation]] — use sub-agents when beneficial, self-execute when simpler
 - [[principles/guard-the-context-window]] — delegate large reads to sub-agents

@@ -8,4 +8,4 @@
 - Oops sessions need the same startup adoption behavior; otherwise each restart can spawn duplicate oops cooks for the same issue.
 - Embedded runtime worktree operations should run in quiet mode so CLI/provisioning logs never bleed into the Bubble Tea frame.
 
-See also [[codebase/worktree-gotchas]], [[principles/suspect-state-before-code]]
+See also [[codebase/worktree-gotchas]], [[principles/fix-root-causes]]

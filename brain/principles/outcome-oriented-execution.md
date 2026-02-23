@@ -27,4 +27,4 @@ Preserving obsolete paths only to keep every intermediate step green when no lon
 
 This complements [[principles/subtract-before-you-add]] and [[principles/migrate-callers-then-delete-legacy-apis]] by making outcome-first sequencing explicit.
 
-It also reinforces [[principles/verify-runtime]]: the outcome must be proven, not assumed.
+It also reinforces [[principles/prove-it-works]]: the outcome must be proven, not assumed.

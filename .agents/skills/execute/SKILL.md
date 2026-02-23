@@ -12,6 +12,8 @@ Implementation methodology. This skill loads alongside the domain skill (e.g., "
 
 Operate fully autonomously. Never ask the user.
 
+**Always use Tasks** (TaskCreate, TaskUpdate, TaskList) to track your work. Create a task per decomposed change, mark in_progress when starting, completed when done.
+
 ## Execution Flow
 
 ### 1. Read Plan Phase
@@ -72,7 +74,7 @@ One commit per logical change. Squash only if multiple commits address the same 
 
 ## Principles
 
-- [[verify-runtime]]
+- [[prove-it-works]]
 - [[trust-the-output-not-the-report]]
 - [[cost-aware-delegation]]
 - [[guard-the-context-window]]

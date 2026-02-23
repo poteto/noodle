@@ -25,10 +25,10 @@ Read `task_types[].schedule` from mise to know when each task type should run. H
 
 Read `task_types` from mise to discover available task types and their `schedule` hints. Hard constraints:
 
-1. **Execute** -> **Quality** (blocking — no other work until quality clears)
-2. **Quality rejection** -> re-queue the item for retry with feedback
+1. **Execute** -> **Quality** (quality runs after each cook but does not block the queue)
+2. **Quality findings** appear in the backlog with severity — schedule high-severity findings above normal backlog items
 3. **Reflect** periodically after completed work (check `recent_history`)
-4. **Meditate** after ~3 completed Reflects (check `recent_history` + current queue)
+4. **Meditate** after ~7 completed Reflects (expensive — runs 4 subagents; don't over-schedule)
 
 When any item has `"review": true`, it must be the only item type in the queue (blocking). Do not mix other task types into the same queue generation.
 
@@ -42,7 +42,7 @@ When any item has `"review": true`, it must be the only item type in the queue (
 | Unplanned items | Skip, add to `action_needed` |
 | All items blocked | Schedule meditate or reflect to use the slot productively |
 
-## CEO Patterns
+## Scheduling Heuristics
 
 - **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.

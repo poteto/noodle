@@ -18,7 +18,7 @@ From **Manager**: verify artifacts not reports, scope discipline.
 ## Principles
 
 - [[principles/trust-the-output-not-the-report]] — inspect the diff, not the agent's summary
-- [[principles/verify-runtime]] — confirm the feature path works, not just that tests pass
+- [[principles/prove-it-works]] — confirm the feature path works, not just that tests pass
 - [[principles/outcome-oriented-execution]] — evaluate against the intended outcome
 
 ## Changes

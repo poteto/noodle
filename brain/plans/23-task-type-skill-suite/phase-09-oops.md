@@ -18,15 +18,15 @@ From **Operator**: Decompose → Implement → Verify → Commit, lint-before-co
 ## Principles
 
 - [[principles/fix-root-causes]] — trace to root cause, never paper over symptoms
-- [[principles/suspect-state-before-code]] — on restart bugs, check persistent state first
-- [[principles/observe-directly]] — read actual error output, don't infer
+- [[principles/fix-root-causes]] — on restart bugs, check persistent state first
+- [[principles/prove-it-works]] — read actual error output, don't infer
 
 ## Changes
 
 - Create `.agents/skills/oops/SKILL.md` — **use the `skill-creator` skill**
 - Add `noodle:` frontmatter: `blocking = false`
 - Fix flow: Reproduce → Diagnose → Fix → Verify → Commit
-- Include suspect-state-before-code as an explicit diagnostic step
+- Include "suspect state before code" as an explicit diagnostic step (see fix-root-causes)
 - Include "check for the pattern" — if a bug exists in one place, grep for it elsewhere
 - Noodle-internal diagnostic checklist: `.noodle/` state files, queue consistency, config validity, tmux session health
 - No separate scope boundary — the agent reads the error context and determines whether the fix is in user-project code or Noodle state. The prioritize skill decides urgency based on what broke.

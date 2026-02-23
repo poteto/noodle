@@ -150,11 +150,9 @@ default = ""  # empty = built-in provider command
 
 | Principle | Skills |
 |-----------|--------|
-| verify-runtime | quality, debugging, execute |
+| prove-it-works | quality, debugging, execute, oops |
 | trust-the-output-not-the-report | quality, execute |
 | fix-root-causes | debugging, oops |
-| observe-directly | debugging, oops |
-| suspect-state-before-code | debugging, oops |
 | encode-lessons-in-structure | reflect, meditate |
 | cost-aware-delegation | prioritize, execute |
 | foundational-thinking | prioritize |

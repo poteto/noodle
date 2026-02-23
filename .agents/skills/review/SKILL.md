@@ -110,4 +110,4 @@ When using `AskUserQuestion`, label each option with issue NUMBER and option LET
 - Do not assume priorities on timeline or scale
 - Do not make changes — present findings and wait for direction
 - Present all sections together, then ask for feedback once at the end
-- Per verify-runtime: if something can be tested, note how in the issue description
+- Per prove-it-works: if something can be tested, note how in the issue description

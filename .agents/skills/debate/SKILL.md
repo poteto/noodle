@@ -71,4 +71,4 @@ Non-convergence: set `consensus: false` and populate `open_questions` with unres
 
 - [[foundational-thinking]]
 - [[subtract-before-you-add]]
-- [[verify-runtime]]
+- [[prove-it-works]]

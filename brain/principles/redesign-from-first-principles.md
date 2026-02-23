@@ -9,4 +9,4 @@ When integrating a change, don't bolt it onto the existing design. Instead, rede
 
 This is the method for preserving [[principles/foundational-thinking|option value]] when integrating changes into an existing design.
 
-See also [[principles/verify-runtime]]
+See also [[principles/prove-it-works]]
