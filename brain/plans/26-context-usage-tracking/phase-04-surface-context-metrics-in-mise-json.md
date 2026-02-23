@@ -15,8 +15,9 @@ Expose context metrics in `mise.json` so skills (prioritize, quality, meditate) 
   - `Skill string`
 
 - **`mise/types.go`** — Add new type `ContextStats` and a `ContextSummary` field to `Brief`:
-  - `ContextStats` per skill: skill name, avg peak context, total compressions, session count
+  - `ContextStats` per skill: skill name, avg peak context pct, total compressions, session count
   - `ContextSummary` at the brief level: aggregate across recent history
+  - `AvgPeakContextPct` should be computed from each session's already-persisted `ContextWindowUsagePct` in meta — do NOT re-derive from raw tokens (avoids duplicating the budget constant from `monitor/types.go`)
 
 - **`mise/builder.go`** — In `readSessionState()`:
   - Copy new meta fields into `HistoryItem`

@@ -10,18 +10,22 @@ Add context-window fields to `CanonicalEvent` and teach both provider adapters t
 
 Compression/compacted events are separate NDJSON lines from result events. Claude has no turn ID; Codex has `turn_id` in `turn_context` but it's only embedded in message text. Correlating compression to a specific turn is unreliable.
 
-**Decision:** Emit compression as a standalone `EventAction` canonical event (Codex already does this: `"text:context compacted"`). Count them at the session level in phase 2. Do NOT add a `Compressed` field to `CanonicalEvent` — it's a separate event, not a per-turn attribute.
+**Decision:** Add a new `EventCompression` canonical event type (not `EventAction` with magic string matching — that's brittle). Both adapters emit `EventCompression` for their compression signals. Count at session level in phase 2. Do NOT add a `Compressed` field to `CanonicalEvent` — it's a separate event, not a per-turn attribute.
 
 ## Changes
 
 - **`parse/canonical.go`** — Add field to `CanonicalEvent`:
   - `ContextTokens int` — input tokens for this turn (reflects context window usage at that point)
 
+- **`parse/canonical.go`** — Add `EventCompression EventType` constant. This replaces the brittle `"text:context compacted"` string convention.
+
 - **`parse/claude.go`** — Extract from Claude NDJSON:
   - `result` events already provide `tokens_in` via `extractClaudeUsage()` — map to `ContextTokens`
-  - Ensure `system` events with compression indicators emit an `EventAction` with a recognizable message prefix (e.g., `"text:context compacted"`) matching the Codex convention
+  - `system` events with compression indicators → emit `EventCompression`
 
-- **`parse/codex.go`** — Already emits `EventAction` with `"text:context compacted"` for `compacted` events. Add `ContextTokens` extraction from `turn_context` or `event_msg` cost data if token counts are available.
+- **`parse/codex.go`** — Two changes:
+  - `compacted` event type → emit `EventCompression` (currently emits `EventAction` with magic string)
+  - Codex emits token/cost data on `task_complete` (`EventComplete`), not `EventResult`. Ensure `ContextTokens` is populated on `EventComplete` events so phase 2 aggregation captures Codex data. Note: phase 2 must aggregate on both `EventResult` and `EventComplete`.
 
 ## Data structures
 
@@ -36,7 +40,7 @@ Compression/compacted events are separate NDJSON lines from result events. Claud
 ## Verification
 
 - `go test ./parse/...` — existing tests still pass
-- New test: Claude compression event → emits `EventAction` with `"text:context compacted"` message
-- New test: Codex `compacted` event → emits `EventAction` with `"text:context compacted"` (already works, add explicit assertion)
-- New test: `ContextTokens` populated from both providers' result events
+- New test: Claude compression event → emits `EventCompression`
+- New test: Codex `compacted` event → emits `EventCompression`
+- New test: `ContextTokens` populated from Claude `result` and Codex `task_complete` events
 - New test: absent/partial provider context data → `ContextTokens` is 0, no crash

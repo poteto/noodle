@@ -10,13 +10,13 @@ Aggregate per-turn context metrics from canonical events into session-level meta
 
 - **`monitor/types.go`** — Add fields to `SessionClaims`:
   - `PeakContextTokens int` — highest `ContextTokens` value seen across all turns
-  - `CompressionCount int` — count of `EventAction` events with `"text:context compacted"` message
-  - `TurnCount int` — total number of result events (for computing averages)
+  - `CompressionCount int` — count of `EventCompression` events
+  - `TurnCount int` — total number of result/complete events (for computing averages)
 
 - **`monitor/claims.go`** — Update `accumulateClaim()` to track:
-  - Max of `ContextTokens` → `PeakContextTokens` (on `EventResult`)
-  - Count of `"text:context compacted"` messages → `CompressionCount` (on `EventAction`)
-  - Increment `TurnCount` on each `EventResult`
+  - Max of `ContextTokens` → `PeakContextTokens` (on `EventResult` AND `EventComplete` — Codex emits tokens on complete, not result)
+  - Count of `EventCompression` events → `CompressionCount`
+  - Increment `TurnCount` on each `EventResult` or `EventComplete`
 
 - **`internal/sessionmeta/sessionmeta.go`** — Replace `ContextWindowUsagePct float64` with:
   - `PeakContextTokens int`

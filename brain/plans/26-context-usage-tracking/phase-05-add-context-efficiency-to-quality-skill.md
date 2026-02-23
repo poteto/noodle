@@ -14,7 +14,10 @@ Teach the quality gate to flag sessions that hit compression or used disproporti
   - Note the skill name and suggest investigation if context usage is abnormally high relative to the task complexity
   - Include context metrics in the verdict output
 
-- **`loop/quality.go`** — Pass context metrics from `meta.json` to the quality skill's prompt (already passes session info — extend with new fields)
+- **`loop/quality.go`** — `runQuality` currently sends only a text prompt (`"Review completed cook work for item <id>"`); it does NOT pass structured session metadata. Add plumbing to:
+  - Read `meta.json` for the completed session
+  - Include `PeakContextTokens`, `CompressionCount`, `ContextWindowUsagePct`, and `Skill` in the quality prompt
+  - This is new infrastructure, not just extending existing fields
 
 Use the `skill-creator` skill when editing the quality skill spec.
 

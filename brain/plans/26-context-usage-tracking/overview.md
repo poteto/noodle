@@ -55,7 +55,7 @@ We manually audited skill descriptions this session and saved ~550 tokens/sessio
 6. [[plans/26-context-usage-tracking/phase-06-add-context-audit-to-meditate-skill]]
 7. [[plans/26-context-usage-tracking/phase-07-surface-context-metrics-in-tui]]
 
-Phases 1-4 are sequential (data model → aggregation → exposure). Phases 5-7 are independent and can run in parallel after phase 4.
+Phases 1-4 are sequential (data model → aggregation → exposure). Phases 5-6 are independent and can run in parallel after phase 4. Phase 7 is blocked on [[plans/25-tui-revamp/overview]] (currently draft) — implement against the revamped TUI layout, not the current one.
 
 ## Verification
 
