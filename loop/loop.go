@@ -631,12 +631,21 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 	// The quality skill writes .noodle/quality/<session-id>.json relative to
 	// its CWD (the cook's worktree). That's the single source of truth.
 	// No verdict file → reject. No fallback, no fail-open.
-	verdict, err := readQualityVerdictFile(filepath.Join(cook.worktreePath, ".noodle", "quality", session.ID()+".json"))
+	verdictName := session.ID() + ".json"
+	verdict, err := readQualityVerdictFile(filepath.Join(cook.worktreePath, ".noodle", "quality", verdictName))
 	if err != nil {
 		feedback := "quality review produced no verdict"
 		_ = l.writeDebateVerdict(cook, false, feedback)
 		return false, feedback
 	}
+
+	// Copy verdict to project-level .noodle/quality/ so mise can include
+	// historical quality signals in the brief for prioritization.
+	_ = copyVerdictToRuntime(
+		filepath.Join(cook.worktreePath, ".noodle", "quality", verdictName),
+		filepath.Join(l.runtimeDir, "quality", verdictName),
+	)
+
 	_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
 	return verdict.Accept, verdict.Feedback
 }
@@ -852,6 +861,19 @@ func readQualityVerdictFile(path string) (mise.QualityVerdict, error) {
 		return mise.QualityVerdict{}, err
 	}
 	return v, nil
+}
+
+// copyVerdictToRuntime copies a verdict file from a worktree's .noodle/quality/
+// to the project-level .noodle/quality/ so mise can read historical verdicts.
+func copyVerdictToRuntime(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o644)
 }
 
 func (l *Loop) writeDebateVerdict(cook *activeCook, accept bool, feedback string) error {
