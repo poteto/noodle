@@ -20,3 +20,4 @@ The `brain/` directory is an Obsidian vault — persistent memory across session
 
 - **Error messages:** Describe failure state ("session not found"), not expectations ("session must exist").
 - **Cross-platform** (macOS/Windows/Linux): No bash 4+ features. Prefer POSIX shell or Go.
+- **No backward compatibility** by default. No `omitempty` shims, no legacy fallbacks, no dual-path support. Only add compat when explicitly requested.
