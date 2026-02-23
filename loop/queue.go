@@ -8,7 +8,7 @@ import (
 )
 
 func readQueue(path string) (Queue, error) {
-	queue, err := queuex.Read(path)
+	queue, err := queuex.ReadStrict(path)
 	if err != nil {
 		return Queue{}, err
 	}

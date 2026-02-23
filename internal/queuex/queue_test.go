@@ -64,6 +64,18 @@ func TestReadSupportsWrappedAndLegacyArray(t *testing.T) {
 	}
 }
 
+func TestReadStrictRejectsLegacyArray(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "queue.json")
+	legacy := `[{\"id\":\"2\",\"task_key\":\"execute\"}]`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write legacy: %v", err)
+	}
+	if _, err := ReadStrict(path); err == nil {
+		t.Fatal("expected strict read to reject legacy array")
+	}
+}
+
 func TestNormalizeAndValidateRejectsDuplicateIDs(t *testing.T) {
 	cfg := config.DefaultConfig()
 	reg := taskreg.New(cfg)

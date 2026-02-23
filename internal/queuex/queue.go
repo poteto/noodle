@@ -42,6 +42,25 @@ func Read(path string) (Queue, error) {
 	if strings.TrimSpace(string(data)) == "" {
 		return Queue{}, nil
 	}
+	return decodeQueue(data, true)
+}
+
+// ReadStrict parses only the canonical wrapped queue object and rejects legacy arrays.
+func ReadStrict(path string) (Queue, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Queue{}, nil
+		}
+		return Queue{}, fmt.Errorf("read queue: %w", err)
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		return Queue{}, nil
+	}
+	return decodeQueue(data, false)
+}
+
+func decodeQueue(data []byte, allowLegacyArray bool) (Queue, error) {
 	var wrapped Queue
 	if err := json.Unmarshal(data, &wrapped); err == nil {
 		if wrapped.Items == nil {
@@ -51,9 +70,11 @@ func Read(path string) (Queue, error) {
 	}
 
 	// Legacy compatibility: queue can be a bare array.
-	var items []Item
-	if err := json.Unmarshal(data, &items); err == nil {
-		return Queue{Items: items}, nil
+	if allowLegacyArray {
+		var items []Item
+		if err := json.Unmarshal(data, &items); err == nil {
+			return Queue{Items: items}, nil
+		}
 	}
 	return Queue{}, fmt.Errorf("parse queue: invalid JSON")
 }
