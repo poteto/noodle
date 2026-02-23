@@ -13,14 +13,14 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
   2. Create `.noodle/` directory if missing (runtime state directory)
   3. Generate minimal `.noodle.toml` if missing — just enough to start. No adapter entries — the agent sets those up later guided by the noodle skill. Canonical scaffold:
      ```toml
+     autonomy = "review"
+
      [routing.defaults]
      provider = "claude"
      model = "claude-opus-4-6"
 
      [skills]
      paths = [".agents/skills"]
-
-     autonomy = "review"
      ```
   4. Log what was created so the user/agent can see what happened
 
@@ -53,5 +53,5 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 - Generated `.noodle.toml` passes `config.Parse()`
 
 ### Runtime
-- Run `noodle start --once` in an empty temp directory — should not crash, should create structure and report diagnostics for missing adapters/skills
+- Run `noodle start --once` in an empty temp directory — should not crash, should create structure with no adapter diagnostics (scaffolded config has no adapter entries)
 - Run again — no files recreated, same behavior

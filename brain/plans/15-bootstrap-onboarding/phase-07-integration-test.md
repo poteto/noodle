@@ -23,7 +23,7 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
   3. Assert: `PersistentPreRunE` in `root.go` triggers scaffolding before `config.Load`
   4. Deterministic exit expectations:
      - **tmux on PATH**: exit 0, scaffolded files exist, no fatal diagnostics
-     - **tmux not on PATH**: exit non-zero with `runtime_tmux_missing` fatal diagnostic in stderr
+     - **tmux not on PATH**: exit non-zero with `runtime.tmux` fatal diagnostic message in stderr (current output format is severity/field/message, not diagnostic codes)
      Test both paths explicitly — no "or expected non-fatal" ambiguity.
   5. Run again — assert idempotent (no files recreated, same output)
   This tests the boundary path where `PersistentPreRunE` gates the `start` command, not just the library function in isolation.
