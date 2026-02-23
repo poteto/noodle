@@ -51,12 +51,13 @@ Run multiple agents in parallel when investigating independent areas.
 
 ## Step 4 — Gather Domain Skills
 
-Identify which domain skills apply based on what the review touches:
+Check installed skills (`.claude/skills/`) for any that match the review's domain. Common matches:
 
 | Domain | Skill | When |
 |--------|-------|------|
 | Bubble Tea TUI | `bubbletea-tui` | Terminal UI components, views, styling |
 | Frontend UI | `frontend-design` | Web UI components, layouts, visual design |
+| Codex delegation | `codex` | Tasks delegated to Codex workers |
 
 For domains **not listed above**, use `find-skills` to search for a relevant skill.
 

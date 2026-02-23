@@ -9,4 +9,6 @@ Examples:
 
 The pattern: if you've seen a delegate spend turns discovering a quirk before, bake it into every future prompt that touches that domain. The cost of a longer prompt is one read; the cost of rediscovery is 3-5 turns of trial and error.
 
-See also [[delegation/share-what-you-know]], [[codebase/worktree-gotchas]]
+Domain quirks that recur across many delegations are candidates for structural encoding (lint rules, tool defaults, skill instructions) per [[principles/encode-lessons-in-structure]]. Prompt inclusion is the right delivery mechanism when the quirk is domain-specific and the structural fix would require unreasonable investment.
+
+See also [[principles/cost-aware-delegation]], [[codebase/worktree-gotchas]]

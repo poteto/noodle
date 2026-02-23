@@ -2,7 +2,6 @@
 
 Principles for effectively delegating work across agent boundaries (director→manager, manager→worker).
 
-- [[delegation/share-what-you-know]]
 - [[delegation/specify-verification-boundary]]
 - [[delegation/include-domain-quirks]]
 - [[delegation/prevent-subdelegation]]

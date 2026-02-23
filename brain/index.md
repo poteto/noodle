@@ -13,6 +13,7 @@
 - [[principles/fix-root-causes]]
 - [[principles/foundational-thinking]]
 - [[principles/guard-the-context-window]]
+- [[principles/make-operations-idempotent]]
 - [[principles/migrate-callers-then-delete-legacy-apis]]
 - [[principles/never-block-on-the-human]]
 - [[principles/observe-directly]]
@@ -33,7 +34,6 @@
 - [[delegation/opus-worker-permissions]]
 - [[delegation/prevent-subdelegation]]
 - [[delegation/respect-api-contracts]]
-- [[delegation/share-what-you-know]]
 - [[delegation/specify-verification-boundary]]
 
 ## Codebase
@@ -41,9 +41,7 @@
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
-- [[codebase/fixture-frontmatter-contract]]
 - [[codebase/loop-test-overlap-matrix]]
-- [[codebase/plan-phase-discipline]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
 - [[codebase/worktree-prune-patch-equivalence]]

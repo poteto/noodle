@@ -24,7 +24,7 @@ Run the failing command. Capture exact error output. If intermittent, run multip
 
 1. **Noodle state** — `.noodle/` files, queue consistency, config validity
 2. **Environment** — Go version, missing deps, stale caches, tmux session health
-3. **Config** — `.noodle/config.toml`, `.agents/skills/` structure, `brain/` integrity
+3. **Config** — `.noodle.toml` (project root), `.agents/skills/` structure, `brain/` integrity
 4. **Persistent files** — lock files, temp files, incomplete writes
 5. **Code** — only after ruling out state and environment
 

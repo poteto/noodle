@@ -73,19 +73,14 @@ Two parts: match known skills, then discover gaps.
 
 ### 4a — Match known skills
 
-Identify which existing skills apply based on what the plan touches:
+Check installed skills (`.claude/skills/`) for any that match the plan's domain. Common matches:
 
 | Domain | Skill | When |
 |--------|-------|------|
-| TypeScript | `ts-best-practices` | Any TS code changes |
-| React | `react-best-practices` | Any React component or hook work |
-| Rust | `rust-best-practices` | Any Rust code changes |
-| Frontend UI | `frontend-design` | UI components, layouts, visual design |
-| Frontend review | `web-design-guidelines` | Reviewing frontend code for a11y, UX, best practices |
-| Frontend UX | `interaction-design` | Animations, transitions, microinteractions |
-| Go concurrency | `go-concurrency-patterns` | Goroutines, channels, sync primitives, worker pools |
+| Bubble Tea TUI | `bubbletea-tui` | TUI components, views, styling |
+| Codex delegation | `codex` | Tasks delegated to Codex workers |
 
-**Invoke matched skills now** — read their output and incorporate domain guidance into the plan (e.g. useEffect anti-patterns to avoid, a11y requirements, type patterns to use).
+**Invoke matched skills now** — read their output and incorporate domain guidance into the plan.
 
 ### 4b — Discover missing skills
 

@@ -10,4 +10,4 @@ Operational procedures for [[principles/cost-aware-delegation]] applied to Codex
 - **Prompt content:** Task description + file paths + constraints. No pseudocode, no inline code snippets, no architecture analysis.
 - **Failure mode:** If the worker hasn't called `codex exec` by turn 3, the prompt is too complex or the worker is overthinking.
 
-See also [[delegation]], [[delegation/share-what-you-know]], [[principles/cost-aware-delegation]], [[principles/guard-the-context-window]]
+See also [[delegation]], [[delegation/codex-scope-violations]], [[principles/cost-aware-delegation]], [[principles/guard-the-context-window]]

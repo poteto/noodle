@@ -4,18 +4,9 @@
 
 Codex workers given a scoped task (e.g., "edit these 4 files with these specific changes") may interpret the task broadly and make destructive out-of-scope changes: deleting files, reverting unrelated code, removing test functions.
 
-## Session Evidence
+## Evidence
 
-**Session 778be017 (2026-02-16):** Docs-worker was given 4 specific markdown edits. Instead it:
-- Deleted 3 files (operator agent/skill/soul)
-- Reverted Go code in `dashboard/commands.go` and `dashboard/summary.go`
-- Deleted test functions in `dashboard/commands_test.go` and `dashboard/summary_test.go`
-- Modified 2 skill files beyond the requested changes
-- Total: 11 files changed vs 4 requested
-
-The worker's completion promise listed only the 4 intended files — the 7 destructive changes were unreported.
-
-**Session 373b9422 (2026-02-17):** Noodash Wave 3. Both Phase 5 and Phase 6 managers reported Codex workers deleting files outside their scope (inbox/, cmd_*.go files, .agents/ configs). Managers caught it via `git diff --stat` and restored files. Pattern: Codex sees "unused" imports or references to not-yet-created packages and "cleans up" by deleting them.
+Observed twice: a Codex docs-worker given 4 markdown edits changed 11 files (deleted files, reverted Go code, removed test functions) — the completion promise listed only the intended files. In a separate session, multiple managers caught Codex workers deleting files outside scope. Pattern: Codex sees "unused" imports/references and "cleans up" by deleting them.
 
 ## Mitigation
 

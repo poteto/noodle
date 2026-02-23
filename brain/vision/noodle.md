@@ -1,3 +1,5 @@
+> **Stale:** This document predates Plan 23 (task-type skills) and Plan 25 (TUI revamp). Terminology (sous-chef, taster, spawner, config path) is outdated. See `[[plans/23-task-type-skill-suite/overview]]` for current architecture. Rewrite tracked by todo #24.
+
 # Noodle: Open-Source AI Coding Framework
 
 ## The Problem

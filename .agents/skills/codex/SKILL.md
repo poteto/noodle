@@ -59,6 +59,14 @@ Don't pass model/effort/sandbox flags when resuming — original session setting
 
 This is a Go project. Use `go test`, `go build`, `go vet` in prompts. Codex workers don't receive CLAUDE.md or hooks, so project conventions must be explicit.
 
+## Post-Execution Verification
+
+**Always verify Codex output via `git diff --stat`** — never trust the worker's self-reported file list. Codex workers may make out-of-scope changes (deleting files, reverting unrelated code, removing test functions). The completion promise may list only intended files while omitting destructive side effects.
+
+When other work exists in the same codebase, include explicit "DO NOT modify or delete" file lists in the prompt. The positive instruction ("only touch these files") is insufficient — Codex interprets "clean up" broadly.
+
+See `brain/delegation/codex-scope-violations` for documented incidents.
+
 ## Worktree Usage
 
 With `-C <worktree-dir>`, the worktree has its own git index. `.claude/` may symlink to `.agents/` — use `.agents/` paths for git operations.

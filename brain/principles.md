@@ -13,6 +13,7 @@
 ## Architecture
 
 - [[principles/boundary-discipline]]
+- [[principles/make-operations-idempotent]]
 - [[principles/migrate-callers-then-delete-legacy-apis]]
 
 ## Verification

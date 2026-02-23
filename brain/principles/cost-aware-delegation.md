@@ -18,4 +18,4 @@ Agent turns, CI minutes, and API dollars are finite. Without explicit budgets, w
 
 This is not about *what* to build ([[principles/foundational-thinking]]) or *how* to structure it ([[principles/boundary-discipline]]). It's about the economics of having someone else build it — treating attention as a finite currency.
 
-See also [[delegation/share-what-you-know]], [[delegation/include-domain-quirks]]
+See also [[delegation/include-domain-quirks]]
