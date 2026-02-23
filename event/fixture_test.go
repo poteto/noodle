@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"encoding/json"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -24,31 +23,20 @@ func TestTicketMaterializerDirectoryFixtures(t *testing.T) {
 
 func runTicketFixture(t *testing.T, fixtureCase fixturedir.FixtureCase) {
 	t.Helper()
-	state := fixtureCase.States[0]
+	state := fixturedir.RequireSingleState(t, fixtureCase)
 
-	var sessions map[string][]Event
-	if err := json.Unmarshal(state.MustReadFile(t, "sessions.json"), &sessions); err != nil {
-		t.Fatalf("decode sessions fixture: %v", err)
-	}
-
-	var options struct {
+	sessions := fixturedir.ParseStateJSON[map[string][]Event](t, state, "sessions.json")
+	options := fixturedir.ParseStateJSON[struct {
 		Now            time.Time `json:"now"`
 		Timeout        string    `json:"timeout"`
 		ActiveSessions []string  `json:"active_sessions"`
-	}
-	if err := json.Unmarshal(state.MustReadFile(t, "options.json"), &options); err != nil {
-		t.Fatalf("decode options fixture: %v", err)
-	}
+	}](t, state, "options.json")
 	timeout, err := time.ParseDuration(options.Timeout)
 	if err != nil {
 		t.Fatalf("parse timeout %q: %v", options.Timeout, err)
 	}
 
-	expectedRaw := fixturedir.MustSection(t, fixtureCase, "Expected Tickets")
-	var expected []Ticket
-	if err := json.Unmarshal([]byte(expectedRaw), &expected); err != nil {
-		t.Fatalf("decode expected tickets: %v", err)
-	}
+	expected := fixturedir.ParseSectionJSON[[]Ticket](t, fixtureCase, "Expected Tickets")
 
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	for sessionID, events := range sessions {

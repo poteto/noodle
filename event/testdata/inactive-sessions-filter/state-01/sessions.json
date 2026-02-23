@@ -1,0 +1,22 @@
+{
+  "cook-alive": [
+    {
+      "type": "ticket_claim",
+      "timestamp": "2026-02-22T20:22:00Z",
+      "payload": {
+        "target": "99",
+        "target_type": "backlog_item"
+      }
+    }
+  ],
+  "cook-killed": [
+    {
+      "type": "ticket_claim",
+      "timestamp": "2026-02-22T20:23:00Z",
+      "payload": {
+        "target": "100",
+        "target_type": "backlog_item"
+      }
+    }
+  ]
+}

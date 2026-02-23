@@ -1,0 +1,30 @@
+{
+  "cook-1": [
+    {
+      "type": "ticket_claim",
+      "timestamp": "2026-02-22T21:57:00Z",
+      "payload": {
+        "target": "42",
+        "target_type": "backlog_item"
+      }
+    },
+    {
+      "type": "ticket_release",
+      "timestamp": "2026-02-22T21:59:00Z",
+      "payload": {
+        "target": "42",
+        "reason": "old claim cleanup"
+      }
+    }
+  ],
+  "cook-2": [
+    {
+      "type": "ticket_claim",
+      "timestamp": "2026-02-22T21:58:00Z",
+      "payload": {
+        "target": "42",
+        "target_type": "backlog_item"
+      }
+    }
+  ]
+}

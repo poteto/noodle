@@ -1,0 +1,28 @@
+{
+  "cook-1": [
+    {
+      "type": "ticket_claim",
+      "timestamp": "2026-02-22T22:27:00Z",
+      "payload": {
+        "target": "42",
+        "target_type": "backlog_item"
+      }
+    },
+    {
+      "type": "ticket_progress",
+      "timestamp": "2026-02-22T22:28:00Z",
+      "payload": {
+        "target": "42"
+      }
+    },
+    {
+      "type": "ticket_blocked",
+      "timestamp": "2026-02-22T22:28:00Z",
+      "payload": {
+        "target": "42",
+        "blocked_by": "99",
+        "reason": "waiting"
+      }
+    }
+  ]
+}
