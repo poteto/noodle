@@ -448,7 +448,9 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 		return nil, false, nil
 	}
 	reviewEnabled := l.config.Review.Enabled
-	if item.Review != nil {
+	if isPrioritizeItem(item) {
+		reviewEnabled = false
+	} else if item.Review != nil {
 		reviewEnabled = *item.Review
 	}
 	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, item)

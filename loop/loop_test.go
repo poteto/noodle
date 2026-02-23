@@ -716,6 +716,18 @@ func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 	}
 }
 
+func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "prompt.txt")
+	content := "Use Skill(prioritize) to refresh .noodle/queue.json from .noodle/mise.json."
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write prompt: %v", err)
+	}
+	target := readSessionTarget(path)
+	if target != PrioritizeTaskKey() {
+		t.Fatalf("target = %q", target)
+	}
+}
+
 func TestTmuxSessionNameMatchesSanitizedLength(t *testing.T) {
 	sessionID := strings.Repeat("A", 80) + "-with spaces"
 	name := tmuxSessionName(sessionID)
@@ -771,6 +783,42 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	}
 	if len(l.adoptedTargets) != 0 {
 		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
+	}
+}
+
+func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{prioritizeQueueItem(config.DefaultConfig(), "")}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Review.Enabled = true
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Spawner:   &fakeSpawner{},
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+
+	cook, ok, err := l.buildAdoptedCook(PrioritizeTaskKey(), "session-1", "running")
+	if err != nil {
+		t.Fatalf("build adopted cook: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected adopted prioritize cook")
+	}
+	if cook.reviewEnabled {
+		t.Fatal("expected prioritize adopted cook to keep review disabled")
 	}
 }
 
