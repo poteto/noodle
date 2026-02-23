@@ -109,7 +109,7 @@ The `runtime` field is a command template that controls what command runs inside
 runtime: "ssh gpu-box 'cd {{repo}} && claude -p < {{prompt}}'"
 ```
 
-Template variables: `{{session}}`, `{{repo}}`, `{{prompt}}`, `{{skill}}`, `{{brief}}`. The dispatcher resolves them before execution.
+Template variables: `{{session}}`, `{{repo}}`, `{{prompt}}`, `{{skill}}`, `{{brief}}`. Placeholders are substituted verbatim (no shell quoting added) — the template author controls quoting. All values are Noodle-controlled paths, not user input.
 
 A project-wide default can be set in `noodle.toml`:
 

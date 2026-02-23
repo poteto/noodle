@@ -181,13 +181,15 @@ func (d *TmuxDispatcher) resolveRuntime(req DispatchRequest) string {
     return d.runtimeDefault
 }
 
-// resolveTemplateVars replaces {{key}} placeholders with shell-quoted values.
-// Values are quoted with shellescape (or single-quote wrapping) to prevent
-// injection from paths with spaces, quotes, or special characters.
+// resolveTemplateVars replaces {{key}} placeholders with verbatim values.
+// No shell quoting — the template author controls quoting in their template.
+// This matches envsubst/docker semantics: placeholders are pure substitution.
+// Built-in variables (session, repo, prompt, skill, brief) are paths controlled
+// by Noodle, not user input, so injection risk is minimal.
 func resolveTemplateVars(template string, vars map[string]string) string {
     result := template
     for key, value := range vars {
-        result = strings.ReplaceAll(result, "{{"+key+"}}", shellQuote(value))
+        result = strings.ReplaceAll(result, "{{"+key+"}}", value)
     }
     return result
 }
@@ -312,7 +314,7 @@ These are markdown files documenting the JSON schemas. Created alongside each sk
 - Frontmatter stripped: test that `loadSkillBundle` output does NOT contain `---` YAML markers
 - Preamble present: test that session system prompt starts with "# Noodle Context"
 - Execute bundle: test `loadExecuteBundle` produces combined prompt with methodology first, domain second
-- Runtime template: test `resolveTemplateVars` substitutes all variables and shell-quotes values with spaces/quotes
+- Runtime template: test `resolveTemplateVars` substitutes all variables verbatim (no quoting added)
 - Custom runtime: test that non-empty `req.Runtime` changes the command inside tmux
 - Default runtime: test that empty `req.Runtime` uses built-in provider command logic
 - Loop passes `TaskKey`, `Runtime`, `DomainSkill` through `DispatchRequest`
