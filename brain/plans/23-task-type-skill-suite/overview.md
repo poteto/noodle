@@ -22,7 +22,7 @@ Planning is currently a user-configurable adapter — it should be native. Plans
 
 **In scope:**
 - Dynamic task type registry via `noodle:` frontmatter convention (replaces hardcoded Go registry)
-- Create or rewrite 9 skills in `.agents/skills/` — 8 task-type skills + 1 utility skill (debugging)
+- Create or rewrite 8 skills in `.agents/skills/` — 7 task-type skills + 1 utility skill (debugging)
 - Extract patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
 - Ground each skill in engineering principles from `brain/principles/`
 - Native planning: remove plan adapter, minimal Go reader, `noodle plan` CLI commands
@@ -181,7 +181,7 @@ default = ""  # empty = built-in provider command
 6. [[plans/23-task-type-skill-suite/phase-06-execute]] — Implementation methodology (worktrees, delegation, verification)
 7. [[plans/23-task-type-skill-suite/phase-07-reflect]] — Learning capture from mistakes and corrections
 8. [[plans/23-task-type-skill-suite/phase-08-meditate]] — Brain cleanup and principle extraction
-9. [[plans/23-task-type-skill-suite/phase-09-oops]] — Oops (user-project) + Repair (Noodle-internal) infrastructure fix
+9. [[plans/23-task-type-skill-suite/phase-09-oops]] — Infrastructure fix (user-project and Noodle-internal)
 10. [[plans/23-task-type-skill-suite/phase-10-debate]] — Structured debate with per-task state
 
 ### Skills + cleanup
