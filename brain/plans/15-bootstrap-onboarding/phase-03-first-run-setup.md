@@ -11,7 +11,17 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 - **`startup/firstrun.go`** (new) — `EnsureProjectStructure(projectDir string) error`
   1. Create `brain/` directory structure if missing: `brain/index.md`, `brain/todos.md` (starter template with section headers and `<!-- next-id: 1 -->`), `brain/principles.md` (empty index), `brain/plans/index.md`
   2. Create `.noodle/` directory if missing (runtime state directory)
-  3. Generate minimal `.noodle.toml` if missing — just enough to start: `[routing.defaults]` with provider/model, `[skills]` with default paths, `[autonomy]` set to `"review"`. Adapter config left empty — the agent sets this up later guided by the noodle skill.
+  3. Generate minimal `.noodle.toml` if missing — just enough to start. No adapter entries — the agent sets those up later guided by the noodle skill. Canonical scaffold:
+     ```toml
+     [routing.defaults]
+     provider = "claude"
+     model = "claude-opus-4-6"
+
+     [skills]
+     paths = [".agents/skills"]
+
+     autonomy = "review"
+     ```
   4. Log what was created so the user/agent can see what happened
 
 - **`root.go`** — call `EnsureProjectStructure` in `PersistentPreRunE` before `config.Load`. The root pre-run is where config loading happens (`root.go:25`), so scaffolding must run there to ensure `.noodle.toml` exists before the loader reads it. Gate on the `start` command only — other commands (e.g., `skills list`, `debug`) should not scaffold.

@@ -13,7 +13,7 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
   2. Run `EnsureProjectStructure`
   3. Assert: `brain/`, `.noodle/`, `.noodle.toml` all created with expected content
   4. Run `config.Load` + `config.Validate` on the generated config
-  5. Assert: no fatal diagnostics (repairable diagnostics for missing adapters/skills are expected and fine)
+  5. Assert: no fatal diagnostics and no repairable diagnostics (scaffolded config has no adapter entries, so no adapter diagnostics are expected)
   6. Deliberately delete a required directory, re-run `EnsureProjectStructure`
   7. Assert: directory recreated (idempotency)
 
@@ -21,7 +21,10 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
   1. Build the `noodle` binary to a temp path
   2. Run `noodle start --once` in a fresh temp directory (no existing config, no brain, no skills)
   3. Assert: `PersistentPreRunE` in `root.go` triggers scaffolding before `config.Load`
-  4. Assert: exit code is 0 (or expected non-fatal), scaffolded files exist
+  4. Deterministic exit expectations:
+     - **tmux on PATH**: exit 0, scaffolded files exist, no fatal diagnostics
+     - **tmux not on PATH**: exit non-zero with `runtime_tmux_missing` fatal diagnostic in stderr
+     Test both paths explicitly — no "or expected non-fatal" ambiguity.
   5. Run again — assert idempotent (no files recreated, same output)
   This tests the boundary path where `PersistentPreRunE` gates the `start` command, not just the library function in isolation.
 
