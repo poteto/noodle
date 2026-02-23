@@ -16,6 +16,8 @@ Document the deeper "why" behind Noodle's design. INSTALL.md says *what* Noodle 
   5. **Everything is a file** — queue.json, mise.json, verdicts, control.ndjson. No hidden state, no databases. Files are debuggable, diffable, composable. Any tool can read them.
   6. **Skills as the single extension point** — no plugins, no hooks API, no configuration DSL. Skills are just SKILL.md files that teach agents how to do things. Users extend Noodle by writing skills.
 
+**Use the `humanizer` skill when writing this file** — philosophy docs especially need a human voice. Convictions, not hedging. Personality, not corporate tone.
+
 ## Routing
 
 | Provider | Model | Rationale |
