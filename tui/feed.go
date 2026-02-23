@@ -87,10 +87,22 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 		cards = append(cards, renderVerdictCard(v, width, now, showActions))
 	}
 
+	// Show a limited number of recent cards based on terminal height.
+	// Each card is ~4 lines (border + title + events + spacing).
+	maxCards := height / 4
+	if maxCards < 3 {
+		maxCards = 3
+	}
+	if maxCards > 8 {
+		maxCards = 8
+	}
+
 	// Render items in reverse-chronological order (newest first).
-	for i := len(f.items) - 1; i >= 0; i-- {
+	shown := 0
+	for i := len(f.items) - 1; i >= 0 && shown < maxCards; i-- {
 		card := renderFeedItem(f.items[i], width, now)
 		cards = append(cards, card)
+		shown++
 	}
 
 	all := strings.Join(cards, "\n")
