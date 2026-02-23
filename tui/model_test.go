@@ -257,7 +257,7 @@ func TestSteerSubmitWritesControlCommand(t *testing.T) {
 func TestParseSteerInputEveryoneExpandsTargets(t *testing.T) {
 	targets, prompt, err := parseSteerInput(
 		"@everyone focus on tests first",
-		[]string{"sous-chef", "cook-a", "cook-b"},
+		[]string{"prioritize", "cook-a", "cook-b"},
 	)
 	if err != nil {
 		t.Fatalf("parseSteerInput returned error: %v", err)

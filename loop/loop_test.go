@@ -377,7 +377,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+	if len(updated.Items) != 1 || updated.Items[0].ID != SousChefTaskKey() {
 		t.Fatalf("expected sous-chef bootstrap item after completion, got %#v", updated.Items)
 	}
 }
@@ -458,7 +458,7 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+	if len(updated.Items) != 1 || updated.Items[0].ID != SousChefTaskKey() {
 		t.Fatalf("expected sous-chef queue bootstrap item, got %#v", updated.Items)
 	}
 	if updated.Items[0].Skill != "priority-chef" {
@@ -563,7 +563,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(parsed.Items) != 1 || parsed.Items[0].ID != "sous-chef" {
+	if len(parsed.Items) != 1 || parsed.Items[0].ID != SousChefTaskKey() {
 		t.Fatalf("expected sous-chef bootstrap item after max retries, got %#v", parsed.Items)
 	}
 }
@@ -591,7 +591,7 @@ func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
 		QueueFile: queuePath,
 	})
 
-	if err := l.steer("sous-chef", "prioritize security tasks"); err != nil {
+	if err := l.steer(SousChefTaskKey(), "prioritize security tasks"); err != nil {
 		t.Fatalf("steer sous-chef: %v", err)
 	}
 	queue, err := readQueue(queuePath)
@@ -601,7 +601,7 @@ func TestSteerSousChefRegeneratesQueueWithPromptRationale(t *testing.T) {
 	if len(queue.Items) != 1 {
 		t.Fatalf("queue items = %d", len(queue.Items))
 	}
-	if queue.Items[0].ID != "sous-chef" {
+	if queue.Items[0].ID != SousChefTaskKey() {
 		t.Fatalf("unexpected id: %q", queue.Items[0].ID)
 	}
 	if queue.Items[0].Skill != "priority-chef" {
@@ -793,7 +793,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after adopted completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != "sous-chef" {
+	if len(updated.Items) != 1 || updated.Items[0].ID != SousChefTaskKey() {
 		t.Fatalf("expected sous-chef bootstrap item after adopted completion, got %#v", updated.Items)
 	}
 }

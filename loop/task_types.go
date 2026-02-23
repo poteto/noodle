@@ -26,7 +26,7 @@ const (
 	taskKeyReflect  = "reflect"
 	taskKeyMeditate = "meditate"
 	taskKeyCook     = "cook"
-	taskKeySousChef = "sous-chef"
+	taskKeySousChef = "prioritize"
 	taskKeyTaster   = "taster"
 	taskKeyOops     = "oops"
 	taskKeyRepair   = "repair"
@@ -103,7 +103,7 @@ var baseTaskTypes = []TaskType{
 	},
 	{
 		Key:        taskKeySousChef,
-		Type:       "Sous Chef",
+		Type:       "Prioritize",
 		ConfigPath: "[sous-chef]",
 		Blocking:   false,
 		Synthetic:  true,

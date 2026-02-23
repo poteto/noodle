@@ -1003,8 +1003,9 @@ func (m *Model) submitSteer() (tea.Cmd, bool) {
 }
 
 func (m Model) steerTargets() []string {
-	targets := []string{"sous-chef"}
-	seen := map[string]struct{}{"sous-chef": {}}
+	scheduler := loop.SousChefTaskKey()
+	targets := []string{scheduler}
+	seen := map[string]struct{}{scheduler: {}}
 	for _, session := range m.snapshot.Active {
 		id := strings.TrimSpace(session.ID)
 		if id == "" {

@@ -520,7 +520,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 	nextAttempt := cook.attempt + 1
 	if nextAttempt > l.config.Recovery.MaxRetries {
 		if isSousChefItem(cook.queueItem) {
-			return fmt.Errorf("sous-chef failed after retries: %s", strings.TrimSpace(reason))
+			return fmt.Errorf("prioritize failed after retries: %s", strings.TrimSpace(reason))
 		}
 		if err := l.markFailed(cook.queueItem.ID, reason); err != nil {
 			return err

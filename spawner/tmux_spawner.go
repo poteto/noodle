@@ -107,13 +107,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		return nil, err
 	}
 
-	systemPrompt := ""
-	finalPrompt := req.Prompt
-	if strings.EqualFold(req.Provider, "claude") {
-		systemPrompt = skillBundle.SystemPrompt
-	} else if strings.EqualFold(req.Provider, "codex") && strings.TrimSpace(skillBundle.SystemPrompt) != "" {
-		finalPrompt = skillBundle.SystemPrompt + "\n\n---\n\n" + req.Prompt
-	}
+	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, skillBundle.SystemPrompt)
 	if err := os.WriteFile(promptPath, []byte(finalPrompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
 	}
@@ -221,4 +215,16 @@ func defaultRunner(
 
 func nowUTC() time.Time {
 	return time.Now().UTC()
+}
+
+func composePrompts(provider, requestPrompt, skillSystemPrompt string) (systemPrompt, finalPrompt string) {
+	finalPrompt = requestPrompt
+	if strings.EqualFold(provider, "claude") {
+		systemPrompt = skillSystemPrompt
+		return systemPrompt, finalPrompt
+	}
+	if strings.EqualFold(provider, "codex") && strings.TrimSpace(skillSystemPrompt) != "" {
+		finalPrompt = requestPrompt + "\n\n---\n\n" + skillSystemPrompt
+	}
+	return systemPrompt, finalPrompt
 }
