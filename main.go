@@ -163,38 +163,22 @@ func splitMissingScriptDiagnostics(
 func parseMissingScriptDiagnostic(
 	diagnostic config.ConfigDiagnostic,
 ) (missingScriptDiagnostic, bool) {
-	if diagnostic.Severity != config.DiagnosticSeverityRepairable {
+	if diagnostic.Severity != config.DiagnosticSeverityRepairable ||
+		diagnostic.Code != config.DiagnosticCodeAdapterScriptMissing {
 		return missingScriptDiagnostic{}, false
 	}
-
-	parts := strings.Split(diagnostic.FieldPath, ".")
-	if len(parts) != 4 || parts[0] != "adapters" || parts[2] != "scripts" {
-		return missingScriptDiagnostic{}, false
-	}
-	path, ok := parseMissingScriptPath(diagnostic.Message)
-	if !ok {
+	adapter := strings.TrimSpace(diagnostic.Meta["adapter"])
+	action := strings.TrimSpace(diagnostic.Meta["action"])
+	path := strings.TrimSpace(diagnostic.Meta["path"])
+	if adapter == "" || action == "" || path == "" {
 		return missingScriptDiagnostic{}, false
 	}
 	return missingScriptDiagnostic{
 		FieldPath: diagnostic.FieldPath,
-		Adapter:   parts[1],
-		Action:    parts[3],
+		Adapter:   adapter,
+		Action:    action,
 		Path:      path,
 	}, true
-}
-
-func parseMissingScriptPath(message string) (string, bool) {
-	const prefix = `script path "`
-	const suffix = `" not found`
-	if !strings.HasPrefix(message, prefix) || !strings.HasSuffix(message, suffix) {
-		return "", false
-	}
-	value := strings.TrimSuffix(strings.TrimPrefix(message, prefix), suffix)
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-	return value, true
 }
 
 func writeMissingScriptDiagnostics(w io.Writer, missing []missingScriptDiagnostic) {

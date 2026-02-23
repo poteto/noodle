@@ -91,7 +91,18 @@ type ConfigDiagnostic struct {
 	Message   string
 	Severity  DiagnosticSeverity
 	Fix       string
+	Code      string
+	Meta      map[string]string
 }
+
+const (
+	DiagnosticCodeRoutingDefaultsMissing = "routing_defaults_missing"
+	DiagnosticCodeRuntimeTmuxMissing     = "runtime_tmux_missing"
+	DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
+	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
+	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
+	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
+)
 
 type ValidationResult struct {
 	Diagnostics []ConfigDiagnostic
@@ -395,6 +406,7 @@ func Validate(config Config) ValidationResult {
 			Message:   "provider and model must both be configured",
 			Severity:  DiagnosticSeverityFatal,
 			Fix:       "Set routing.defaults.provider and routing.defaults.model in noodle.toml.",
+			Code:      DiagnosticCodeRoutingDefaultsMissing,
 		})
 	}
 
@@ -404,6 +416,7 @@ func Validate(config Config) ValidationResult {
 			Message:   "tmux is not available on PATH",
 			Severity:  DiagnosticSeverityFatal,
 			Fix:       "Install tmux and ensure it is available on PATH.",
+			Code:      DiagnosticCodeRuntimeTmuxMissing,
 		})
 	}
 
@@ -420,6 +433,10 @@ func Validate(config Config) ValidationResult {
 			Message:   fmt.Sprintf("directory %q not found", value),
 			Severity:  DiagnosticSeverityFatal,
 			Fix:       fmt.Sprintf("Create %s or update %s to the correct directory.", value, fieldPath),
+			Code:      DiagnosticCodeAgentDirMissing,
+			Meta: map[string]string{
+				"path": value,
+			},
 		})
 	}
 	appendAgentDirDiagnostic("agents.claude_dir", config.Agents.ClaudeDir)
@@ -432,6 +449,10 @@ func Validate(config Config) ValidationResult {
 				Message:   "skill is not configured",
 				Severity:  DiagnosticSeverityRepairable,
 				Fix:       fmt.Sprintf("Set adapters.%s.skill in noodle.toml.", adapterName),
+				Code:      DiagnosticCodeAdapterSkillMissing,
+				Meta: map[string]string{
+					"adapter": adapterName,
+				},
 			})
 		}
 		for action, command := range adapter.Scripts {
@@ -441,6 +462,11 @@ func Validate(config Config) ValidationResult {
 					Message:   "script command is empty",
 					Severity:  DiagnosticSeverityRepairable,
 					Fix:       fmt.Sprintf("Set adapters.%s.scripts.%s to an executable command.", adapterName, action),
+					Code:      DiagnosticCodeAdapterScriptEmpty,
+					Meta: map[string]string{
+						"adapter": adapterName,
+						"action":  action,
+					},
 				})
 				continue
 			}
@@ -456,6 +482,12 @@ func Validate(config Config) ValidationResult {
 				Message:   fmt.Sprintf("script path %q not found", token),
 				Severity:  DiagnosticSeverityRepairable,
 				Fix:       fmt.Sprintf("Create %s or update adapters.%s.scripts.%s.", token, adapterName, action),
+				Code:      DiagnosticCodeAdapterScriptMissing,
+				Meta: map[string]string{
+					"adapter": adapterName,
+					"action":  action,
+					"path":    token,
+				},
 			})
 		}
 	}

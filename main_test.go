@@ -81,12 +81,24 @@ func TestReportConfigDiagnosticsGroupsMissingScripts(t *testing.T) {
 				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
 				Fix:       "Create .noodle/adapters/backlog-sync or update adapters.backlog.scripts.sync.",
+				Code:      config.DiagnosticCodeAdapterScriptMissing,
+				Meta: map[string]string{
+					"adapter": "backlog",
+					"action":  "sync",
+					"path":    ".noodle/adapters/backlog-sync",
+				},
 			},
 			{
 				FieldPath: "adapters.plans.scripts.create",
 				Message:   `script path ".noodle/adapters/plan-create" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
 				Fix:       "Create .noodle/adapters/plan-create or update adapters.plans.scripts.create.",
+				Code:      config.DiagnosticCodeAdapterScriptMissing,
+				Meta: map[string]string{
+					"adapter": "plans",
+					"action":  "create",
+					"path":    ".noodle/adapters/plan-create",
+				},
 			},
 		},
 	}
@@ -126,6 +138,12 @@ func TestReportConfigDiagnosticsStartPromptsAndLaunchesRepair(t *testing.T) {
 				FieldPath: "adapters.backlog.scripts.sync",
 				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
+				Code:      config.DiagnosticCodeAdapterScriptMissing,
+				Meta: map[string]string{
+					"adapter": "backlog",
+					"action":  "sync",
+					"path":    ".noodle/adapters/backlog-sync",
+				},
 			},
 		},
 	}
@@ -188,6 +206,12 @@ func TestReportConfigDiagnosticsStartRepairLaunchFailure(t *testing.T) {
 				FieldPath: "adapters.backlog.scripts.sync",
 				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
+				Code:      config.DiagnosticCodeAdapterScriptMissing,
+				Meta: map[string]string{
+					"adapter": "backlog",
+					"action":  "sync",
+					"path":    ".noodle/adapters/backlog-sync",
+				},
 			},
 		},
 	}
