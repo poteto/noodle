@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/queuex"
 )
 
 func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
@@ -164,29 +165,22 @@ func readSessions(runtimeDir string) ([]Session, error) {
 }
 
 func readQueue(path string) ([]QueueItem, error) {
-	data, err := os.ReadFile(path)
+	queue, err := queuex.Read(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read queue.json: %w", err)
+		return nil, err
 	}
-	if strings.TrimSpace(string(data)) == "" {
-		return nil, nil
+	items := make([]QueueItem, 0, len(queue.Items))
+	for _, item := range queue.Items {
+		items = append(items, QueueItem{
+			ID:       item.ID,
+			Title:    item.Title,
+			Provider: item.Provider,
+			Model:    item.Model,
+			Skill:    item.Skill,
+			Review:   item.Review,
+		})
 	}
-
-	var wrapped struct {
-		Items []QueueItem `json:"items"`
-	}
-	if err := json.Unmarshal(data, &wrapped); err == nil {
-		return wrapped.Items, nil
-	}
-
-	var items []QueueItem
-	if err := json.Unmarshal(data, &items); err == nil {
-		return items, nil
-	}
-	return nil, fmt.Errorf("parse queue.json")
+	return items, nil
 }
 
 func mapEventLines(events []event.Event) []EventLine {

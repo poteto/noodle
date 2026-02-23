@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/poteto/noodle/internal/queuex"
 )
 
 type statusSummary struct {
@@ -161,25 +163,9 @@ func loopStateRank(state string) int {
 }
 
 func readQueueDepth(path string) (int, error) {
-	data, err := os.ReadFile(path)
+	queue, err := queuex.Read(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("read queue.json: %w", err)
+		return 0, err
 	}
-
-	var wrapper struct {
-		Items []json.RawMessage `json:"items"`
-	}
-	if err := json.Unmarshal(data, &wrapper); err == nil {
-		return len(wrapper.Items), nil
-	}
-
-	var items []json.RawMessage
-	if err := json.Unmarshal(data, &items); err == nil {
-		return len(items), nil
-	}
-
-	return 0, fmt.Errorf("parse queue.json")
+	return len(queue.Items), nil
 }
