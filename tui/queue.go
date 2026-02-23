@@ -67,10 +67,8 @@ func queueTableStyles() table.Styles {
 		BorderForeground(t.Dim)
 	s.Cell = lipgloss.NewStyle().
 		Foreground(t.Text)
-	s.Selected = lipgloss.NewStyle().
-		Foreground(t.Brand).
-		Background(lipgloss.Color("#2a2a40")).
-		Bold(true)
+	// Selected style matches Cell — full-row highlight is applied in renderStyledTable.
+	s.Selected = s.Cell
 	return s
 }
 
@@ -155,15 +153,31 @@ func (q *QueueTab) resizeTable(width, height int) {
 }
 
 // renderStyledTable renders the table view with colored Type and Status columns.
+// Post-processes the selected row to apply background color across the full width.
 func (q *QueueTab) renderStyledTable(width, height int) string {
-	raw := q.table.View()
 	if len(q.items) == 0 {
 		return renderEmptyState(
 			"Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly.",
 			width, height,
 		)
 	}
-	return raw
+	raw := q.table.View()
+	lines := strings.Split(raw, "\n")
+
+	// The table renders: header (1 line) + border (1 line) + data rows.
+	// The cursor row in data is at offset 2 + cursor.
+	cursor := q.table.Cursor()
+	selectedLine := 2 + cursor
+	if selectedLine >= 0 && selectedLine < len(lines) {
+		t := components.DefaultTheme
+		bg := lipgloss.NewStyle().
+			Background(lipgloss.Color("#2a2a40")).
+			Foreground(t.Brand).
+			Bold(true).
+			Width(width)
+		lines[selectedLine] = bg.Render(lines[selectedLine])
+	}
+	return strings.Join(lines, "\n")
 }
 
 
