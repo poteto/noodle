@@ -24,7 +24,7 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 
 **Use the `skill-creator` skill when writing this file** — INSTALL.md is structured like a skill: it's agent-readable instructions that guide an agent through a workflow. Use skill-creator for the structure and progressive disclosure.
 
-**Use the `humanizer` skill for the prose** — the vision sections especially should sound like a person wrote them. No "serves as," no "pivotal," no sterile prose. Opinions, personality, varied rhythm.
+**Use the `unslop` skill for the prose** — the vision sections especially should sound like a person wrote them. No "serves as," no "pivotal," no sterile prose. Opinions, personality, varied rhythm.
 
 ## Routing
 

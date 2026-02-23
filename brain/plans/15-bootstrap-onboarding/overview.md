@@ -60,7 +60,7 @@ This follows the agent-pilled philosophy: agents do agent work, the binary does 
 - `noodle` — will be auto-generated in Phase 4
 - `skill-creator` — use when designing the skill template (Phase 4) and structuring INSTALL.md (Phase 5)
 - `go-best-practices` — use for Go implementation (Phases 3, 4)
-- `humanizer` — use when writing INSTALL.md and PHILOSOPHY.md (Phases 5, 6)
+- `unslop` — use when writing INSTALL.md and PHILOSOPHY.md (Phases 5, 6)
 
 ## Phases
 
