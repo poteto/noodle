@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 24 -->
+<!-- next-id: 25 -->
 
 ## Tooling
 
@@ -36,4 +36,5 @@
 20. [ ] Clarify skills.paths default for Noodle's own repo vs user projects — in the Noodle repo, `skills/` contains Noodle's default skills (backlog, sous-chef, etc.) while the developer's project skills are in `.agents/skills/` (todo, plan, etc.). For user projects, `skills/` would be the project's own skills. The bootstrap skill and config-schema need to distinguish between these two cases: bootstrapping the Noodle repo itself vs bootstrapping a user's project. The default `skills.paths` should reflect where the user's actual skills live, not assume `skills/` is always right.
 21. [x] Redesign fixture framework to directory-based state fixtures with metadata assertions [[plans/21-fixture-directory-redesign/overview]]
 22. [x] Make planning opinionated and first-class — native plan reader and brain/plans format done (Plan 23). Interactive TUI planning session was dropped; steering via control commands is sufficient.
+24. [ ] Rewrite vision/noodle doc — current vision doc is outdated. Update to reflect the current architecture: everything is a file (queue.json, mise.json, verdict JSON, control.ndjson), agent-pilled design (LLM prioritization, LLM quality gate, skills as system prompts), skills as the single extensibility point (frontmatter-based task type discovery, no hardcoded registries), and the kitchen brigade model as implemented.
 
