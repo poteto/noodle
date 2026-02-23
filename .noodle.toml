@@ -3,7 +3,7 @@ provider = "claude"
 model = "claude-opus-4-6"
 
 [skills]
-paths = [".agents/skills", "skills"]
+paths = [".agents/skills"]
 
 [agents.claude]
 path = "/Users/lauren/code/noodle/.claude"
@@ -21,14 +21,6 @@ add = "go run .noodle/adapters/main.go backlog-add"
 done = "go run .noodle/adapters/main.go backlog-done"
 edit = "go run .noodle/adapters/main.go backlog-edit"
 
-[adapters.plans]
-skill = "plan"
-
-[adapters.plans.scripts]
-sync = "go run .noodle/adapters/main.go plans-sync"
-create = "go run .noodle/adapters/main.go plan-create"
-done = "go run .noodle/adapters/main.go plan-done"
-phase-add = "go run .noodle/adapters/main.go plan-phase-add"
 
 [concurrency]
 max_cooks = 1
