@@ -18,7 +18,7 @@ Rewrite `.agents/skills/reflect/SKILL.md` for cook sessions. Reflect captures le
 ## Changes
 
 - Rewrite `.agents/skills/reflect/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = false`
+- Add `noodle:` frontmatter: `blocking = false`
 - Narrow scope: only capture mistakes and human corrections — not routing rules, not brain organization
 - Structural enforcement: "can this lesson be a lint rule or skill instruction?" before writing a brain note
 - One-topic-per-file brain note convention
@@ -32,7 +32,7 @@ Rewrite `.agents/skills/reflect/SKILL.md` for cook sessions. Reflect captures le
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, narrow scope definition, structural enforcement step
-- Static: `task.toml` exists
+- Static: `noodle:` frontmatter exists
 - Runtime: Spawn a reflect session after a cook. Verify:
   - Agent scans session for mistakes/corrections
   - New brain notes are one-topic-per-file

@@ -4,55 +4,228 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Replace the plan adapter with minimal Go code that reads `brain/plans/` and surfaces plan metadata in the mise brief. Add native CLI commands for plan CRUD. The plan format becomes Noodle-owned, not user-configurable.
+Replace the plan adapter with native Go code. Plans are read directly from `brain/plans/`, plan mutations are native CLI commands, and the mise brief includes plan metadata without calling an adapter sync script. Quality verdict files are also ingested into the brief.
 
 ## Current State
 
-- `[adapters.plans]` in `noodle.toml` configures shell scripts for sync/create/done/phase-add
-- `.noodle/adapters/main.go` implements plan operations (invoked as external process)
-- `adapter.Runner.SyncPlans()` runs sync script, parses NDJSON — only caller: `mise/builder.go`
-- Plan mutation commands (create, done, phase-add) are only called from skills
+- `[adapters.plans]` in `noodle.toml` configures shell scripts: sync, create, done, phase-add
+- `.noodle/adapters/main.go` implements plan operations: `plansSync`, `planCreate`, `planDone`, `planPhaseAdd`
+- `adapter.Runner.SyncPlans()` calls `runner.Run(ctx, "plans", "sync", RunOptions{})` → parses NDJSON
+- `adapter.PlanItem` struct: ID, Title, Status, Phases, Tags
+- `adapter.PlanPhase` struct: Name, Status
+- `mise/builder.go:Build()` calls `SyncPlans()` to populate `brief.Plans`
+- Plan mutation commands are only called from skills (plan skill uses `go -C noodle run . plan create/done/phase-add`)
 
 ## Changes
 
-### Native plan reader
+### Plan reader — create `plan/reader.go`
 
-Create a Go package that reads `brain/plans/` directly:
-- Parse `brain/plans/index.md` for plan discovery (wikilink format)
-- Parse `overview.md` YAML frontmatter (id, status, created)
-- List phase files in each plan directory
-- Return minimal metadata — the prioritize skill reads actual plan files for deeper analysis
+```go
+package plan
 
-### Native CLI commands
+// PlanMeta is the parsed YAML frontmatter from a plan's overview.md.
+type PlanMeta struct {
+    ID      int    `yaml:"id" json:"id"`
+    Created string `yaml:"created" json:"created"`
+    Status  string `yaml:"status" json:"status"` // draft | active | done
+}
 
-Move plan mutation logic from `.noodle/adapters/main.go` into the Go binary:
-- `noodle plan create <todo-id> <slug>` — create plan directory with overview + phase-01
-- `noodle plan done <id>` — set status to done in frontmatter
-- `noodle plan phase-add <todo-id> "Phase Name"` — add numbered phase file
+// Plan is the fully resolved metadata for one plan directory.
+type Plan struct {
+    Meta      PlanMeta `json:"meta"`
+    Title     string   `json:"title"`
+    Directory string   `json:"directory"` // absolute path
+    Slug      string   `json:"slug"`      // directory basename (e.g., "23-task-type-skill-suite")
+    Phases    []Phase  `json:"phases"`
+}
 
-### Remove plan adapter
+// Phase is one phase file within a plan directory.
+type Phase struct {
+    Name     string `json:"name"`     // from heading or filename
+    Filename string `json:"filename"` // e.g., "phase-01-scaffold.md"
+    Status   string `json:"status"`   // pending | active | done (inferred from checklist or default)
+}
 
-- Remove `[adapters.plans]` from config schema and `config.defaultAdapters()`
-- Remove plan-related code from `.noodle/adapters/main.go`
-- Remove `adapter.Runner.SyncPlans()` — replaced by native reader
-- Update `mise/builder.go` to call native reader instead of adapter sync
+// ReadAll discovers plans from brain/plans/index.md wikilinks
+// and reads metadata from each plan's overview.md frontmatter.
+// Silently skips unreadable plans.
+func ReadAll(plansDir string) ([]Plan, error)
+```
 
-### Quality verdict ingestion
+Discovery logic:
+1. Read `brain/plans/index.md`
+2. Find wikilinks matching `[[plans/NN-slug/overview]]`
+3. For each: read `overview.md`, parse YAML frontmatter for `PlanMeta`
+4. Extract title from first `# Heading`
+5. Discover phase files: list `phase-*.md` files in the plan directory, sorted by number
+6. Filter out done plans (status == "done") — same as current adapter behavior
 
-Add `.noodle/quality/` reading to the mise builder so the prioritize skill can see rejection history. Include verdict summaries (accept/reject, session ID, feedback) in the brief.
+Phase status inference: if the overview has a checklist (`- [x]` / `- [ ]`), use it. Otherwise default all phases to "pending".
+
+Tests (`plan/reader_test.go`):
+- Temp `brain/plans/` with index.md, one plan dir with overview.md + phase files
+- `ReadAll` returns correct plan count, metadata, title, phases
+- Plans with `status: done` are excluded
+- Missing index.md returns empty slice (not error)
+- Malformed overview.md is skipped silently
+- Phase files discovered and sorted by number
+
+### Plan CLI commands — create `plan/commands.go` + `cmd_plan.go`
+
+Move logic from `.noodle/adapters/main.go` (functions `planCreate`, `planDone`, `planPhaseAdd`) into native Go:
+
+```go
+package plan
+
+// Create creates a new plan directory with overview.md (with frontmatter) and phase-01.
+// Updates brain/plans/index.md with a wikilink.
+// Returns the created directory path.
+func Create(plansDir string, todoID int, slug string) (string, error)
+
+// Done sets a plan's status to "done" in its overview.md frontmatter.
+func Done(plansDir string, planID int) error
+
+// PhaseAdd creates a new numbered phase file in an existing plan directory.
+// Auto-numbers based on existing phase files (phase-01, phase-02, etc.).
+func PhaseAdd(plansDir string, planID int, phaseName string) (string, error)
+```
+
+CLI layer (`cmd_plan.go`):
+
+```go
+func runPlanCommand(ctx context.Context, app *App, _ []Command, args []string) error
+```
+
+Subcommands:
+- `noodle plan create <todo-id> <slug>` — calls `plan.Create()`
+- `noodle plan done <plan-id>` — calls `plan.Done()`
+- `noodle plan phase-add <plan-id> "Phase Name"` — calls `plan.PhaseAdd()`
+- `noodle plan list` — calls `plan.ReadAll()`, prints JSON
+
+Register `plan` in the command catalog alongside existing commands.
+
+Tests:
+- `plan/commands_test.go`: `Create` makes dir + overview + phase-01, updates index; `Done` flips status; `PhaseAdd` creates numbered file
+- `cmd_plan_test.go`: CLI argument parsing, subcommand routing, error cases
+
+### Mise integration — modify `mise/builder.go` + `mise/types.go`
+
+Replace adapter-based plan sync with native reader:
+
+```go
+import "github.com/<module>/plan"
+
+func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
+    // Backlog: still adapter-based (unchanged)
+    backlogItems, err := b.runner.SyncBacklog(ctx)
+    // ...
+
+    // Plans: native reader (replaces adapter sync)
+    plansDir := filepath.Join(b.projectDir, "brain", "plans")
+    plans, err := plan.ReadAll(plansDir)
+    if err != nil {
+        warnings = append(warnings, "plan reading failed: "+err.Error())
+    }
+    brief.Plans = toPlanSummaries(plans)
+
+    // ... rest unchanged ...
+}
+```
+
+New types in `mise/types.go`:
+
+```go
+// PlanSummary is the plan entry in the mise brief (replaces adapter.PlanItem).
+type PlanSummary struct {
+    ID        int            `json:"id"`
+    Title     string         `json:"title"`
+    Status    string         `json:"status"`
+    Directory string         `json:"directory"` // slug
+    Phases    []PhaseSummary `json:"phases"`
+}
+
+type PhaseSummary struct {
+    Name     string `json:"name"`
+    Filename string `json:"filename"`
+    Status   string `json:"status"`
+}
+```
+
+`Brief.Plans` field changes type from `[]adapter.PlanItem` to `[]PlanSummary`.
+
+### Quality verdict ingestion — create `mise/quality.go`
+
+```go
+// QualityVerdict is one quality review result, read from .noodle/quality/.
+type QualityVerdict struct {
+    SessionID string    `json:"session_id"`
+    TargetID  string    `json:"target_id,omitempty"`
+    Accept    bool      `json:"accept"`
+    Feedback  string    `json:"feedback,omitempty"`
+    Timestamp time.Time `json:"timestamp"`
+}
+
+// readQualityVerdicts reads verdict files from .noodle/quality/.
+// Returns most recent 20, sorted newest first.
+func readQualityVerdicts(runtimeDir string) ([]QualityVerdict, error)
+```
+
+Reads `*.json` files from `.noodle/quality/` directory. Each file is one verdict.
+
+Add `QualityVerdicts []QualityVerdict` to `Brief`. The builder calls `readQualityVerdicts(b.runtimeDir)` in `Build()`.
+
+The loop's `runQuality()` function in `loop/loop.go` writes verdict files to `.noodle/quality/<session-id>.json`. Currently it reads verdicts from canonical.ndjson — extend it to also write a verdict JSON file to the quality directory.
+
+Tests (`mise/quality_test.go`):
+- Temp `.noodle/quality/` with verdict JSON files
+- `readQualityVerdicts` returns correct count, sorted by timestamp
+- Non-existent directory returns empty slice
+- Malformed JSON files are skipped
+- Capped at 20 most recent
+
+### Remove plan adapter — modify `config/config.go` + delete from `adapter/`
+
+**Modify `config/config.go`:**
+- Remove `"plans"` entry from `defaultAdapters()` function
+- Only `"backlog"` remains in the default adapters map
+
+**Delete from `adapter/types.go`:**
+- `PlanItem` struct
+- `PlanPhase` struct
+- `PlanStatus` type and constants (`PlanStatusDraft`, `PlanStatusActive`, `PlanStatusDone`)
+- `PlanPhaseStatus` type and constants
+
+**Delete from `adapter/runner.go`:**
+- `SyncPlans()` method
+
+**Delete from `adapter/sync.go`:**
+- `ParsePlanItems()` function
+- Plan-related validation logic
+
+**Delete from `.noodle/adapters/main.go`:**
+- `plansSync`, `planCreate`, `planDone`, `planPhaseAdd` functions
+- `plan-*` case branches in the main switch
+- Leave backlog functions intact
 
 ## Data Structures
 
-- Plan metadata in brief: `{ id, status, created, directory, phase_files }`
-- Quality verdict in brief: `{ session_id, accept, feedback, timestamp }`
-- Plan format unchanged: `brain/plans/NN-slug/overview.md` + phase files
+- `plan.PlanMeta` — YAML frontmatter (id, created, status)
+- `plan.Plan` — full plan (meta, title, slug, directory, phases)
+- `plan.Phase` — phase file (name, filename, status)
+- `mise.PlanSummary` — plan entry in brief (replaces `adapter.PlanItem`)
+- `mise.PhaseSummary` — phase entry in brief (replaces `adapter.PlanPhase`)
+- `mise.QualityVerdict` — verdict file (session_id, accept, feedback, timestamp)
 
 ## Verification
 
 - `make ci` passes
-- Plan parsing tests cover: index parsing, frontmatter extraction
-- `noodle plan create` creates plan directory with overview and phase-01
-- `noodle plan done <ID>` sets status to done
-- `noodle mise` produces brief with plan metadata (no adapter sync)
-- Mise brief includes quality verdict history from `.noodle/quality/`
-- No `[adapters.plans]` in config schema
+- `go test ./plan/...` — plan reading and CLI commands
+- `go test ./mise/...` — native plan reading in brief, quality verdict ingestion
+- `noodle plan create 99 test-plan` creates `brain/plans/99-test-plan/` with overview + phase-01
+- `noodle plan done 99` sets status to done in overview frontmatter
+- `noodle plan phase-add 99 "Second Phase"` creates `phase-02-second-phase.md`
+- Mise brief has `plans` array with native plan data (no adapter)
+- Mise brief has `quality_verdicts` array from `.noodle/quality/`
+- No `[adapters.plans]` in config schema or defaults
+- No `adapter.PlanItem` references remain
+- Plan-related functions removed from `.noodle/adapters/main.go`

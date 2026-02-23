@@ -28,7 +28,7 @@ From **Manager**: parallel by default, minimal-context workers, verify artifacts
 ## Changes
 
 - Create `.agents/skills/execute/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = true`
+- Add `noodle:` frontmatter: `blocking = false`
 - Execution flow:
   1. Read the plan phase (if one exists)
   2. Decompose into sub-tasks if large enough
@@ -38,7 +38,7 @@ From **Manager**: parallel by default, minimal-context workers, verify artifacts
   6. Commit with conventional message
 - Delegation heuristics: when to self-execute vs spawn sub-agents
 - Scope discipline: only change what the phase specifies, flag anything else
-- This skill is loaded alongside the adapter-configured skill via multi-skill loading (Phase 3)
+- This skill is loaded alongside the adapter-configured domain skill by the dispatcher (execute session assembly, Phase 3)
 
 ## Data Structures
 
@@ -48,7 +48,7 @@ From **Manager**: parallel by default, minimal-context workers, verify artifacts
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, execution flow, delegation heuristics, scope discipline
-- Static: `task.toml` exists with `review = true`
+- Static: `noodle:` frontmatter exists
 - Runtime: Spawn an execute session for a plan phase. Verify:
   - Agent reads the plan phase file
   - Agent works in a worktree

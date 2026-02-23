@@ -4,7 +4,7 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Rewrite `.agents/skills/prioritize/SKILL.md` to incorporate CEO scheduling judgment, plans-as-precondition, and schedule_hint reading. This is the sous chef's brain — the most important skill in the cook loop.
+Rewrite `.agents/skills/prioritize/SKILL.md` to incorporate CEO scheduling judgment, plans-as-precondition, and schedule reading. This is the sous chef's brain — the most important skill in the cook loop.
 
 ## Current State
 
@@ -31,7 +31,7 @@ From **CEO**:
 ## Changes
 
 - Rewrite `.agents/skills/prioritize/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = true, review = false`
+- Add `noodle:` frontmatter: `blocking = true`
 - Include `references/mise-schema.md` and `references/queue-schema.md`
 - Add scheduling judgment framework from CEO patterns
 - Rationale must cite the ordering principle that drove placement
@@ -45,7 +45,7 @@ Only schedule execution for backlog items with a linked plan. Unplanned items ar
 
 ### Schedule_hint reading
 
-Read the `schedule_hint` from each discovered task type in the mise brief. Use these hints alongside session history and backlog state to decide when to schedule each task type. This is how user-defined task types get scheduled — the prioritize skill reads their hints and exercises judgment.
+Read the `schedule` from each discovered task type in the mise brief. Use these hints alongside session history and backlog state to decide when to schedule each task type. This is how user-defined task types get scheduled — the prioritize skill reads their hints and exercises judgment.
 
 ### Situational awareness
 
@@ -65,7 +65,7 @@ The agent infers context from the mise brief — no explicit reason from Go:
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, contract, process with rationale requirements
-- Static: `task.toml` exists with `blocking = true`
+- Static: `noodle:` frontmatter exists with `blocking: true`
 - Static: `references/` includes mise and queue schemas
 - Runtime: Spawn a prioritize session with mixed priorities, quality rejections, and unplanned items. Verify:
   - Foundation items precede feature items

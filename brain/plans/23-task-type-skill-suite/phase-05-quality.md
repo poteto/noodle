@@ -24,7 +24,7 @@ From **Manager**: verify artifacts not reports, scope discipline.
 ## Changes
 
 - Create `.agents/skills/quality/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = false`
+- Add `noodle:` frontmatter: `blocking = false`
 - Include `references/verdict-schema.md`
 - **Read brain principles** at the start of every review. Findings must be anchored to specific principles.
 - Assessment sections: Scope Check, Code Quality, Principle Compliance, Test Evidence, Runtime Verification
@@ -41,7 +41,7 @@ From **Manager**: verify artifacts not reports, scope discipline.
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, assessment sections, verdict contract
-- Static: `task.toml` and `references/verdict-schema.md` exist
+- Static: `noodle:` frontmatter and `references/verdict-schema.md` exist
 - Runtime: Spawn a quality session reviewing a completed cook. Verify:
   - Reviewer reads actual diff (git diff --stat)
   - Reviewer checks for scope violations

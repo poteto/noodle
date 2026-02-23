@@ -20,7 +20,7 @@ Rewrite `.agents/skills/meditate/SKILL.md` for cook sessions. Meditate is the pe
 ## Changes
 
 - Rewrite `.agents/skills/meditate/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = false`
+- Add `noodle:` frontmatter: `blocking = false`
 - Streamlined process — single agent, no sub-agent teams in cook sessions
 - Three core activities:
   1. **Prune**: flag and remove stale, redundant, low-value brain notes
@@ -36,7 +36,7 @@ Rewrite `.agents/skills/meditate/SKILL.md` for cook sessions. Meditate is the pe
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, three-activity process, quality bar
-- Static: `task.toml` exists
+- Static: `noodle:` frontmatter exists
 - Runtime: Spawn a meditate session. Verify:
   - Brain notes are read and evaluated (not just listed)
   - At least one stale/redundant item identified (or vault declared healthy)

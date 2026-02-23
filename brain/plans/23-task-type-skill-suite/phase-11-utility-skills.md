@@ -4,7 +4,7 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Light amendments to the debugging utility skill, and update the plan skill for native commands. Neither is a task type — no `task.toml`.
+Light amendments to the debugging utility skill, and update the plan skill for native commands. Neither is a task type — no `noodle:` frontmatter.
 
 ## Debugging
 
@@ -19,7 +19,7 @@ Light amendments to the debugging utility skill, and update the plan skill for n
 - Add `.noodle/` state file inspection as diagnostic step
 - Add brain-update step: capture novel gotchas
 - Keep existing root-cause methodology — it's well-written
-- No `task.toml` — this is a utility skill invoked by oops, execute, and repair
+- No `noodle:` frontmatter — this is a utility skill invoked by oops, execute, and repair
 
 ### Principles
 
@@ -48,7 +48,7 @@ Light amendments to the debugging utility skill, and update the plan skill for n
 | Scaffolding | `codex` | `gpt-5.3-codex` | Boilerplate, mechanical transforms |
 
 - Update backlog item link-back via configured adapter after plan creation
-- No `task.toml` — planning is user-invoked, not Noodle-scheduled
+- No `noodle:` frontmatter — planning is user-invoked, not Noodle-scheduled
 
 ## Verification
 

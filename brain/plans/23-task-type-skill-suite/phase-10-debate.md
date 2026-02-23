@@ -18,7 +18,7 @@ Create `.agents/skills/debate/SKILL.md` as a task-type skill with per-task confi
 ## Changes
 
 - Create `.agents/skills/debate/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = false`
+- Add `noodle:` frontmatter: `blocking = false`
 - Include `references/debate-state-schema.md`
 - Convergence criteria: what counts as consensus, when to stop without consensus
 - **Non-convergence escalation** — verdict written with `consensus: false` and `open_questions` in `.noodle/debates/<task-id>/verdict.json`. The prioritize skill sees this and surfaces it to the chef.
@@ -57,7 +57,7 @@ Users set project-wide defaults in `.noodle/debates/defaults.json`.
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, convergence criteria, role instructions, verdict contract
-- Static: `task.toml` and `references/debate-state-schema.md` exist
+- Static: `noodle:` frontmatter and `references/debate-state-schema.md` exist
 - Runtime: Spawn a debate for a plan phase. Verify:
   - Agent writes `config.json` with appropriate `max_rounds`
   - Round files alternate reviewer/responder

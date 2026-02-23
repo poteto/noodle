@@ -23,7 +23,7 @@ From **Operator**: Decompose → Implement → Verify → Commit, lint-before-co
 ## Changes
 
 - Create `.agents/skills/oops/SKILL.md` — **use the `skill-creator` skill**
-- Create `task.toml`: `blocking = false, review = false`
+- Add `noodle:` frontmatter: `blocking = false`
 - Fix flow: Reproduce → Diagnose → Fix → Verify → Commit
 - Include suspect-state-before-code as an explicit diagnostic step
 - Include "check for the pattern" — if a bug exists in one place, grep for it elsewhere
@@ -37,7 +37,7 @@ From **Operator**: Decompose → Implement → Verify → Commit, lint-before-co
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, fix flow, scope boundary
-- Static: `task.toml` exists
+- Static: `noodle:` frontmatter exists
 - Runtime: Spawn an oops session for a broken test. Verify:
   - Root cause identified (not just symptom)
   - Fix verified (tests pass after)
