@@ -397,6 +397,7 @@ func TestRenderDashboardShowsUpNextTitle(t *testing.T) {
 		Queue: []QueueItem{
 			{
 				ID:       "22",
+				TaskKey:  "verify",
 				Title:    "Make planning opinionated and first-class",
 				Provider: "codex",
 				Model:    "gpt-5.3-codex",
@@ -407,6 +408,12 @@ func TestRenderDashboardShowsUpNextTitle(t *testing.T) {
 	view := m.renderDashboard()
 	if !strings.Contains(view, "Make planning opinionated and first-class") {
 		t.Fatalf("expected queue title in dashboard up next view, got:\n%s", view)
+	}
+	if !strings.Contains(view, "Verify") {
+		t.Fatalf("expected task display name in dashboard up next view, got:\n%s", view)
+	}
+	if strings.Contains(view, "gpt-5.3-codex") {
+		t.Fatalf("did not expect model in dashboard up next view, got:\n%s", view)
 	}
 }
 

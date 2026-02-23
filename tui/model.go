@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/poteto/noodle/loop"
@@ -109,6 +110,7 @@ type Session struct {
 
 type QueueItem struct {
 	ID       string `json:"id"`
+	TaskKey  string `json:"task_key,omitempty"`
 	Title    string `json:"title,omitempty"`
 	Provider string `json:"provider"`
 	Model    string `json:"model"`
@@ -581,17 +583,17 @@ func (m Model) renderDashboard() string {
 		}
 		for i := 0; i < limit; i++ {
 			item := m.snapshot.Queue[i]
-			titleWidth := bodyWidth - 58
+			titleWidth := bodyWidth - 56
 			if titleWidth < 20 {
 				titleWidth = 20
 			}
 			fmt.Fprintf(
 				&b,
-				"  %d. %-16s %-12s %-20s %s\n",
+				"  %d. %-16s %-12s %-12s %s\n",
 				i+1,
 				trimTo(item.ID, 16),
 				infoStyle.Render(nonEmpty(item.Provider, "claude")),
-				trimTo(nonEmpty(item.Model, "(default)"), 20),
+				trimTo(queueTaskDisplayName(item), 12),
 				trimTo(nonEmpty(strings.TrimSpace(item.Title), "(untitled)"), titleWidth),
 			)
 		}
@@ -792,6 +794,60 @@ func renderHelp() string {
 	b.WriteString("Trace: f filter | G bottom | up/down scroll | esc back\n")
 	b.WriteString("Steer: type @target + instruction; @everyone for broadcast")
 	return b.String()
+}
+
+func queueTaskDisplayName(item QueueItem) string {
+	token := strings.TrimSpace(item.TaskKey)
+	if token == "" {
+		token = strings.TrimSpace(item.Skill)
+	}
+	if token == "" {
+		id := strings.TrimSpace(item.ID)
+		if isNumeric(id) {
+			return "Execute"
+		}
+		if head, _, ok := strings.Cut(id, "-"); ok && strings.TrimSpace(head) != "" {
+			token = head
+		}
+	}
+	switch strings.ToLower(strings.TrimSpace(token)) {
+	case "sous-chef", "sous chef":
+		return "Sous Chef"
+	default:
+		return titleCaseToken(token, "Task")
+	}
+}
+
+func titleCaseToken(token string, fallback string) string {
+	token = strings.ToLower(strings.TrimSpace(token))
+	token = strings.ReplaceAll(token, "_", " ")
+	token = strings.ReplaceAll(token, "-", " ")
+	parts := strings.Fields(token)
+	if len(parts) == 0 {
+		return fallback
+	}
+	for i := range parts {
+		runes := []rune(parts[i])
+		if len(runes) == 0 {
+			continue
+		}
+		runes[0] = unicode.ToUpper(runes[0])
+		parts[i] = string(runes)
+	}
+	return strings.Join(parts, " ")
+}
+
+func isNumeric(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (m Model) renderSteer() string {
