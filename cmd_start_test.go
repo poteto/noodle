@@ -63,7 +63,7 @@ func TestRunStartCommandOnceUsesLoopCycle(t *testing.T) {
 
 func TestRunStartWithTUIStopsLoopOnExit(t *testing.T) {
 	originalRunStartTUI := runStartTUI
-	runStartTUI = func(string) error { return nil }
+	runStartTUI = func(context.Context, string) error { return nil }
 	defer func() { runStartTUI = originalRunStartTUI }()
 
 	loop := &fakeStartLoop{
@@ -83,7 +83,7 @@ func TestRunStartWithTUIStopsLoopOnExit(t *testing.T) {
 
 func TestRunStartWithTUIPropagatesLoopError(t *testing.T) {
 	originalRunStartTUI := runStartTUI
-	runStartTUI = func(string) error { return nil }
+	runStartTUI = func(context.Context, string) error { return nil }
 	defer func() { runStartTUI = originalRunStartTUI }()
 
 	loop := &fakeStartLoop{runErr: errors.New("loop failed")}
@@ -98,15 +98,11 @@ func TestRunStartWithTUIPropagatesLoopError(t *testing.T) {
 
 func TestRunStartWithTUIExitsWhenLoopFailsBeforeTUIExits(t *testing.T) {
 	originalRunStartTUI := runStartTUI
-	releaseTUI := make(chan struct{})
-	runStartTUI = func(string) error {
-		<-releaseTUI
-		return nil
+	runStartTUI = func(ctx context.Context, _ string) error {
+		<-ctx.Done()
+		return ctx.Err()
 	}
-	t.Cleanup(func() {
-		close(releaseTUI)
-		runStartTUI = originalRunStartTUI
-	})
+	t.Cleanup(func() { runStartTUI = originalRunStartTUI })
 
 	loop := &fakeStartLoop{runErr: errors.New("loop failed")}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -129,7 +125,7 @@ func TestRunStartWithTUIExitsWhenLoopFailsBeforeTUIExits(t *testing.T) {
 
 func TestRunStartWithTUIPropagatesTUIError(t *testing.T) {
 	originalRunStartTUI := runStartTUI
-	runStartTUI = func(string) error { return errors.New("tui failed") }
+	runStartTUI = func(context.Context, string) error { return errors.New("tui failed") }
 	defer func() { runStartTUI = originalRunStartTUI }()
 
 	loop := &fakeStartLoop{

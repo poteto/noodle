@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
 )
@@ -63,19 +64,40 @@ func runStartWithTUI(
 	runtimeDir string,
 ) error {
 	loopErrCh := make(chan error, 1)
+	tuiErrCh := make(chan error, 1)
 	go func() {
 		loopErrCh <- runtimeLoop.Run(ctx)
 	}()
+	go func() {
+		tuiErrCh <- runStartTUI(ctx, runtimeDir)
+	}()
 
-	tuiErr := runStartTUI(runtimeDir)
-	cancel()
-	loopErr := <-loopErrCh
+	var loopErr error
+	var tuiErr error
+	loopDone := false
+	tuiDone := false
+	for !loopDone || !tuiDone {
+		select {
+		case err := <-loopErrCh:
+			loopDone = true
+			if err != nil && !errors.Is(err, context.Canceled) {
+				loopErr = err
+			}
+			cancel()
+		case err := <-tuiErrCh:
+			tuiDone = true
+			if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, tea.ErrProgramKilled) {
+				tuiErr = err
+			}
+			cancel()
+		}
+	}
 
+	if loopErr != nil {
+		return loopErr
+	}
 	if tuiErr != nil {
 		return tuiErr
-	}
-	if loopErr != nil && !errors.Is(loopErr, context.Canceled) {
-		return loopErr
 	}
 	return nil
 }
