@@ -10,45 +10,56 @@ Remote sessions produce changes remotely, not in a local worktree. Without sync-
 
 ## Data structures
 
-- `SyncResult` struct — holds branch name (streaming) or PR URL (polling), merge outcome
-- Extend `StreamHandle` or session metadata with `RemoteBranch string`
-- Extend polling session metadata with `PullRequestURL string`
+- `SyncResult` struct — holds branch name or PR URL, result type (branch/pr/none)
+- `StreamingSyncBacker` interface — `SyncBack(ctx, sessionID string) (SyncResult, error)` for streaming backends that push branches
+- `PollingSyncBacker` interface — `SyncBack(ctx, remoteID string) (SyncResult, error)` for polling backends that create PRs
+
+Two separate interfaces because the inputs differ: streaming backends identify by session ID (used to name the remote branch), polling backends identify by remote agent ID (used to query the PR URL from the API).
 
 ## Changes
 
 **`dispatcher/backend.go`**
-Add optional `SyncBack` interface that backends can implement:
+Add two optional sync-back interfaces:
 ```go
-type SyncBacker interface {
-    SyncBack(ctx context.Context, handle StreamHandle) (SyncResult, error)
+type StreamingSyncBacker interface {
+    SyncBack(ctx context.Context, sessionID string) (SyncResult, error)
+}
+
+type PollingSyncBacker interface {
+    SyncBack(ctx context.Context, remoteID string) (SyncResult, error)
 }
 ```
-Not all backends need this — `TmuxBackend` doesn't (local diffs merge via worktree). Check with a type assertion.
+Not all backends need these — `TmuxBackend` doesn't (local diffs merge via worktree). Check with type assertions.
 
 **`dispatcher/sprites_backend.go`**
-Implement `SyncBacker`. After the agent session completes, the Sprite VM has local git changes. The agent should commit and push to a branch named `noodle/<session-id>`. `SyncBack` returns the branch name. The agent prompt (composed by StreamingDispatcher) should include instructions to commit and push before exiting.
+Implement `StreamingSyncBacker`. After the agent session completes, the Sprite VM has local git changes. The agent should commit and push to a branch named `noodle/<session-id>`. `SyncBack` returns the branch name. The agent prompt (composed by StreamingDispatcher) should include instructions to commit and push before exiting.
 
 **`dispatcher/cursor_backend.go`**
-Implement `SyncBacker`. Cursor creates PRs natively — `SyncBack` calls `GET /v0/agents/{id}` to read the PR URL from the response and returns it. No local merge needed.
-
-**`loop/cook.go`**
-Update `handleCompletion` for remote runtimes:
-1. After session completes, check if the dispatcher session carries sync-back metadata
-2. For streaming remotes with a branch: `git fetch origin && git merge origin/noodle/<session-id>` into the current integration branch, then delete the remote branch
-3. For polling remotes with a PR URL: store the PR URL in session metadata (`spawn.json`), mark item done without local merge
-4. On merge conflict: mark session as "conflict", surface to user via queue action_needed — don't auto-resolve
+Implement `PollingSyncBacker`. Cursor creates PRs natively — `SyncBack` calls `GET /v0/agents/{id}` to read the PR URL from the response and returns it.
 
 **`dispatcher/streaming_session.go`**
-After `backend.IsAlive` returns false and session is complete, call `SyncBacker.SyncBack` if the backend implements it. Store the result in session metadata.
+After session completes (EOF on stream, backend not alive), check if backend implements `StreamingSyncBacker`. If so, call `SyncBack(ctx, sessionID)` and store the `SyncResult` in session metadata (`spawn.json`). This happens before the session signals done.
+
+**`dispatcher/polling_session.go`**
+After terminal status reached, check if backend implements `PollingSyncBacker`. If so, call `SyncBack(ctx, remoteID)` and store the `SyncResult` in session metadata.
+
+**`loop/cook.go`**
+Update `handleCompletion` — sync-back artifacts flow through the existing completion pipeline, not around it:
+1. Quality gate and pending-approval checks run first (unchanged)
+2. In `mergeCook`, read `SyncResult` from session metadata (`spawn.json`)
+3. If result type is `branch`: `git fetch origin && git merge origin/noodle/<session-id>` into the integration branch, then delete the remote branch. This replaces the worktree merge for remote sessions.
+4. If result type is `pr`: store the PR URL in session metadata, mark item done without local merge
+5. If no sync result (tmux): existing worktree merge path (unchanged)
+6. On merge conflict: return error, loop marks the cook as failed with a clear message. User resolves manually.
 
 ## Verification
 
 ### Static
 - Compiles, passes vet
-- `SyncBacker` interface is optional — existing `TmuxBackend` compiles without implementing it
+- Both sync-back interfaces are optional — existing `TmuxBackend` compiles without implementing either
 
 ### Runtime
-- Unit test: mock streaming backend implementing `SyncBacker` returns a branch name → cook loop calls git fetch + merge
-- Unit test: mock polling backend implementing `SyncBacker` returns a PR URL → cook loop records URL, skips merge
-- Unit test: backend not implementing `SyncBacker` → cook loop skips sync-back (existing tmux path)
-- Unit test: git merge conflict → session marked "conflict", queue item gets action_needed
+- Unit test: mock streaming backend implementing `StreamingSyncBacker` returns a branch → `mergeCook` calls git fetch + merge
+- Unit test: mock polling backend implementing `PollingSyncBacker` returns a PR URL → `mergeCook` records URL, skips merge
+- Unit test: backend not implementing sync-back → `mergeCook` uses existing worktree merge path
+- Unit test: git merge conflict → cook fails with descriptive error

@@ -49,4 +49,10 @@ All HTTP calls include timeout via context, retry on 429 with backoff, structure
 - Compiles, passes vet
 - `var _ PollingBackend = (*CursorBackend)(nil)` compile-time check
 
-No unit tests for this backend — the `PollingDispatcher` tests (Phase 4) cover the dispatch path with mock backends. Testing CursorBackend directly would just be testing `net/http` plumbing against an `httptest.Server`, which isn't worth the maintenance cost.
+### Runtime
+- Boundary test with `httptest.Server`: verify `Launch` sends correct POST body and parses agent ID from response
+- Boundary test: verify `PollStatus` maps each Cursor status string (CREATING, RUNNING, FINISHED, ERROR, EXPIRED) to the correct `RemoteStatus`
+- Boundary test: verify auth header format (Bearer token for Cursor)
+- Boundary test: verify 429 response triggers retry with backoff
+
+No live API tests — the `PollingDispatcher` tests (Phase 4) cover the full dispatch path with mock backends.

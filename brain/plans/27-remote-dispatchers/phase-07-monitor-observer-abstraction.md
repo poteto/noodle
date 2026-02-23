@@ -11,25 +11,26 @@ The monitor uses `TmuxObserver` to check if sessions are alive (`tmux has-sessio
 ## Data structures
 
 - `Observer` interface — `Observe(sessionID) → (Observation, error)` (already exists as a concrete type)
-- `SessionObserver` — runtime-aware observer for remote sessions. Checks session liveness via the session's own state (done channel / status) rather than external heuristics. Falls back to heartbeat file for monitor restarts.
+- `HeartbeatObserver` — file-based observer for remote sessions. Checks a heartbeat file written by dispatcher session goroutines. No dependency on in-memory session objects.
 
 ## Changes
 
 **`monitor/observer.go`**
 Extract `Observer` interface from `TmuxObserver`. The `Observe` method signature stays the same. `TmuxObserver` implements it (already does, just make it explicit).
 
-Add `SessionObserver` that checks liveness via the session's own state:
-- Primary: query the session's `Status()` and `Done()` channel directly (streaming sessions track backend liveness, polling sessions track poll loop state)
-- Fallback (monitor restart, session from previous process): check a heartbeat file (`heartbeat.json`) written periodically by the dispatcher session goroutines. Contains a timestamp — alive if within 2× the write interval. This avoids the false-failure problem of a static mtime threshold on `canonical.ndjson`, since remote sessions may go long periods between events.
+Add `HeartbeatObserver` — purely file-based, no coupling to live session objects:
+- Reads `heartbeat.json` from the session directory. Contains a timestamp and a TTL (set by the writer).
+- Returns `Alive: true` if the timestamp is within 2× the TTL, `Alive: false` otherwise.
+- Works across process restarts — the monitor doesn't need session references, just the filesystem.
 
 **`monitor/monitor.go`**
-Change `observer` field from `*TmuxObserver` to `Observer` interface. Constructor accepts `Observer`. No other changes — `DeriveSessionMeta` and `ClaimsReader` are already generic.
+Change `observer` field from `*TmuxObserver` to `Observer` interface. Constructor accepts `Observer`. For local sessions, use `TmuxObserver` (unchanged). For remote sessions, use `HeartbeatObserver`. Selection based on session metadata (`spawn.json` runtime field).
 
 **`dispatcher/streaming_session.go` (from Phase 3)**
-Write `heartbeat.json` periodically (every 10s) from the monitor goroutine. Also write on each event received. This gives `SessionObserver` a reliable liveness signal even during long gaps between events.
+Write `heartbeat.json` periodically (every 10s) from the monitor goroutine. Also write on each event received. Contains `{"timestamp": "...", "ttl_seconds": 30}`. This gives `HeartbeatObserver` a reliable liveness signal even during long gaps between events.
 
 **`dispatcher/polling_session.go` (from Phase 4)**
-Write `heartbeat.json` on each poll cycle. The poll interval (default 5s) naturally keeps the heartbeat fresh.
+Write `heartbeat.json` on each poll cycle with `{"timestamp": "...", "ttl_seconds": 15}`. The poll interval (default 5s) naturally keeps the heartbeat fresh.
 
 ## Verification
 
@@ -38,7 +39,7 @@ Write `heartbeat.json` on each poll cycle. The poll interval (default 5s) natura
 - Existing monitor tests pass unchanged (TmuxObserver still default)
 
 ### Runtime
-- Unit test: SessionObserver returns alive when session status is "running"
-- Unit test: SessionObserver returns not-alive when done channel is closed
-- Unit test: heartbeat fallback — alive when heartbeat is fresh, not-alive when stale (>2× interval)
-- Unit test: Monitor works with SessionObserver
+- Unit test: HeartbeatObserver returns alive when heartbeat timestamp is within TTL
+- Unit test: HeartbeatObserver returns not-alive when heartbeat is stale (>2× TTL)
+- Unit test: HeartbeatObserver returns not-alive when heartbeat file missing
+- Unit test: Monitor works with HeartbeatObserver (mock filesystem)

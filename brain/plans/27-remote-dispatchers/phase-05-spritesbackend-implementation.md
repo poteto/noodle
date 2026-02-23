@@ -45,4 +45,9 @@ Add `github.com/superfly/sprites-go` dependency.
 - Compiles with sprites-go dependency
 - `var _ StreamingBackend = (*SpritesBackend)(nil)` compile-time check
 
-No unit tests for this backend — the `StreamingDispatcher` tests (Phase 3) cover the dispatch path with mock backends. Testing SpritesBackend directly would require hitting live APIs or mocking the sprites-go SDK internals, neither of which adds meaningful coverage beyond the interface contract.
+### Runtime
+- Boundary test: verify `Start` builds the correct `sprites.Cmd` arguments from a `StreamStartConfig` (mock the sprites client interface, assert command/args/env passed through)
+- Boundary test: verify `IsAlive` tracks process lifecycle via done channel (goroutine calling `cmd.Wait()`)
+- Boundary test: verify `Kill` calls the right termination method
+
+No live API tests — the `StreamingDispatcher` tests (Phase 3) cover the full dispatch path with mock backends.
