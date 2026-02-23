@@ -116,9 +116,9 @@ func eventLabel(label string) string {
 	case "ticket":
 		return accentStyle.Render(label)
 	case "read", "edit", "bash", "glob", "grep":
-		return infoStyle.Render(label)
-	case "think":
 		return mutedStyle.Render(label)
+	case "think":
+		return dimStyle.Render(label)
 	default:
 		return dimStyle.Render(label)
 	}

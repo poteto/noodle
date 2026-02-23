@@ -70,6 +70,7 @@ func renderFeedItem(item FeedItem, width int, now time.Time) string {
 	}
 	titleLine := title + strings.Repeat(" ", gap) + ageRendered
 
+	dimBody := lipgloss.NewStyle().Foreground(t.Dim)
 	var body strings.Builder
 	for i, ev := range item.Events {
 		if i > 0 {
@@ -79,7 +80,8 @@ func renderFeedItem(item FeedItem, width int, now time.Time) string {
 			body.WriteString(fmt.Sprintf("%q", ev.Body))
 		} else {
 			label := eventLabel(ev.Label)
-			body.WriteString(label + " " + components.TrimTo(ev.Body, innerWidth-lipgloss.Width(ev.Label)-2))
+			bodyText := dimBody.Render(components.TrimTo(ev.Body, innerWidth-lipgloss.Width(ev.Label)-2))
+			body.WriteString(label + " " + bodyText)
 		}
 	}
 
