@@ -16,15 +16,16 @@ func buildProviderCommand(
 	promptFile string,
 	agentBinary string,
 	systemPrompt string,
+	stderrFile string,
 ) string {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	if provider == "codex" {
-		return buildCodexCommand(req, promptFile, agentBinary)
+		return buildCodexCommand(req, promptFile, agentBinary, stderrFile)
 	}
-	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt)
+	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile)
 }
 
-func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt string) string {
+func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt, stderrFile string) string {
 	args := []string{
 		agentBinary,
 		"-p",
@@ -47,10 +48,14 @@ func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt 
 	if strings.TrimSpace(systemPrompt) != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
-	return shellCommandWithInput(args, promptFile, true)
+	command := shellCommandWithInput(args, promptFile, true)
+	if strings.TrimSpace(stderrFile) != "" {
+		command += " 2> " + shellQuote(stderrFile)
+	}
+	return command
 }
 
-func buildCodexCommand(req SpawnRequest, promptFile, agentBinary string) string {
+func buildCodexCommand(req SpawnRequest, promptFile, agentBinary, stderrFile string) string {
 	args := []string{
 		agentBinary,
 		"exec",
@@ -64,7 +69,11 @@ func buildCodexCommand(req SpawnRequest, promptFile, agentBinary string) string 
 	}
 	// Codex writes non-JSON progress banners to stderr even with --json.
 	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
-	return shellCommandWithInput(args, promptFile, false)
+	command := shellCommandWithInput(args, promptFile, false)
+	if strings.TrimSpace(stderrFile) != "" {
+		command += " 2> " + shellQuote(stderrFile)
+	}
+	return command
 }
 
 func buildPipelineCommand(providerCmd, noodleBin, stampedPath, canonicalPath string) string {
@@ -147,10 +156,11 @@ func generateSessionID(name string) (string, error) {
 	return fmt.Sprintf("%s-%s-%x", base, timestamp, randBytes), nil
 }
 
-func sessionPaths(runtimeDir, sessionID string) (sessionDir, promptPath, stampedPath, canonicalPath string) {
+func sessionPaths(runtimeDir, sessionID string) (sessionDir, promptPath, stampedPath, canonicalPath, stderrPath string) {
 	sessionDir = filepath.Join(runtimeDir, "sessions", sessionID)
 	promptPath = filepath.Join(sessionDir, "prompt.txt")
 	stampedPath = filepath.Join(sessionDir, "raw.ndjson")
 	canonicalPath = filepath.Join(sessionDir, "canonical.ndjson")
+	stderrPath = filepath.Join(sessionDir, "stderr.log")
 	return
 }

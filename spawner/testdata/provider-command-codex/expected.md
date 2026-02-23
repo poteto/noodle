@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 3a1381cbd39342abbaf179758c446d86fd06a914aaebfa80be39404b5baf4833
+source_hash: 8a23ac679d95241dbd61e8665fe929bdfecb907fd6c13a8c797af6262dc1a4b3
 ---
 
 ## Expected
@@ -16,7 +16,8 @@ source_hash: 3a1381cbd39342abbaf179758c446d86fd06a914aaebfa80be39404b5baf4833
     "'--sandbox' 'workspace-write'",
     "'--json'",
     "'--model' 'gpt-5.3-codex'",
-    "< '/tmp/prompt.txt'"
+    "< '/tmp/prompt.txt'",
+    "2> '/tmp/stderr.log'"
   ],
   "omits": [
     "2>&1"

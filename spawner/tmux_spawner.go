@@ -92,7 +92,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	if err != nil {
 		return nil, fmt.Errorf("generate session ID: %w", err)
 	}
-	sessionDir, promptPath, stampedPath, canonicalPath := sessionPaths(s.runtimeDir, sessionID)
+	sessionDir, promptPath, stampedPath, canonicalPath, stderrPath := sessionPaths(s.runtimeDir, sessionID)
 
 	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create session directory: %w", err)
@@ -113,7 +113,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	}
 
 	agentBinary := s.resolveAgentBinary(req.Provider)
-	providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt)
+	providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath)
 	pipeline := buildPipelineCommand(providerCommand, s.noodleBin, stampedPath, canonicalPath)
 
 	tmuxName := tmuxSessionName(sessionID, req.Name)

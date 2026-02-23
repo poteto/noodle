@@ -7,6 +7,7 @@
     "worktreepath": ".worktrees/phase-06-spawner"
   },
   "prompt_file": "/tmp/prompt.txt",
+  "stderr_file": "/tmp/stderr.log",
   "agent_binary": "codex",
   "system_prompt": ""
 }
