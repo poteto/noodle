@@ -38,6 +38,7 @@ Work in the assigned worktree.
 **Delegation heuristics:**
 - **Self-execute**: Single change, or changes with tight coupling (shared types, sequential dependencies).
 - **Sub-agents**: 2+ independent changes that touch different files. Front-load context for each sub-agent: the plan phase, relevant existing code, and applicable domain skill name.
+- **Cross-phase parallelism**: Use Teams (Claude) or subagents (Codex) to run independent plan phases concurrently. Study the dependency graph between phases — phases with no shared inputs can overlap. The main agent can work a phase itself while workers handle others. Use judgment; sequential is fine when phases are tightly coupled.
 
 ### 4. Verify
 
