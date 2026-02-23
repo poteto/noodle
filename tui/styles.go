@@ -123,3 +123,9 @@ func eventLabel(label string) string {
 		return dimStyle.Render(label)
 	}
 }
+
+const noodleBowl = `      ~~~~
+    ~~    ~~
+   ( ~~~~~  )
+    \      /
+     '----'`

@@ -158,10 +158,17 @@ func (q *QueueTab) resizeTable(width, height int) {
 func (q *QueueTab) renderStyledTable() string {
 	raw := q.table.View()
 	if len(q.items) == 0 {
-		return dimStyle.Render("(queue empty)")
+		return renderEmptyQueue()
 	}
 	return raw
 }
+
+func renderEmptyQueue() string {
+	bowl := dimStyle.Render(noodleBowl)
+	msg := dimStyle.Render("Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly.")
+	return bowl + "\n\n" + msg
+}
+
 
 // deriveQueueStatus determines the status of a queue item.
 func deriveQueueStatus(item QueueItem, activeIDs map[string]struct{}, actionNeeded map[string]struct{}) QueueStatus {

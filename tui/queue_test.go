@@ -83,7 +83,7 @@ func TestQueueTabRendersEmptyState(t *testing.T) {
 	qt := NewQueueTab()
 	qt.SetQueue(nil, nil, nil)
 	out := qt.Render(80, 20)
-	if !strings.Contains(out, "queue empty") {
+	if !strings.Contains(out, "Queue is empty") {
 		t.Fatalf("expected empty state message, got %q", out)
 	}
 }

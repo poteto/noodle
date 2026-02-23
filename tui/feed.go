@@ -81,7 +81,9 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 // Items are displayed newest first (reverse chronological).
 func (f *FeedTab) Render(width, height int, now time.Time) string {
 	if len(f.items) == 0 && len(f.verdicts) == 0 {
-		return dimStyle.Render("No events yet. Waiting for activity...")
+		bowl := dimStyle.Render(noodleBowl)
+		msg := dimStyle.Render("No events yet. Warming up the kitchen...")
+		return bowl + "\n\n" + msg
 	}
 
 	var cards []string
