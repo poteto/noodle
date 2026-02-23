@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/spawner"
+	"github.com/poteto/noodle/dispatcher"
 )
 
-func TestRunSpawnCommandRequiresPrompt(t *testing.T) {
-	err := runSpawnCommand(context.Background(), nil, nil, []string{"--worktree", ".worktrees/phase-06-spawner"})
+func TestRunDispatchCommandRequiresPrompt(t *testing.T) {
+	err := runDispatchCommand(context.Background(), nil, nil, []string{"--worktree", ".worktrees/phase-06-dispatcher"})
 	if err == nil {
 		t.Fatal("expected prompt required error")
 	}
@@ -19,8 +19,8 @@ func TestRunSpawnCommandRequiresPrompt(t *testing.T) {
 	}
 }
 
-func TestRunSpawnCommandRequiresWorktree(t *testing.T) {
-	err := runSpawnCommand(context.Background(), nil, nil, []string{"--prompt", "Say ok"})
+func TestRunDispatchCommandRequiresWorktree(t *testing.T) {
+	err := runDispatchCommand(context.Background(), nil, nil, []string{"--prompt", "Say ok"})
 	if err == nil {
 		t.Fatal("expected worktree required error")
 	}
@@ -29,14 +29,14 @@ func TestRunSpawnCommandRequiresWorktree(t *testing.T) {
 	}
 }
 
-func TestRunSpawnCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
-	originalFactory := newSpawnCommandSpawner
-	t.Cleanup(func() { newSpawnCommandSpawner = originalFactory })
+func TestRunDispatchCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
+	originalFactory := newDispatchCommandDispatcher
+	t.Cleanup(func() { newDispatchCommandDispatcher = originalFactory })
 
-	fake := &fakeSpawnCommandSpawner{
+	fake := &fakeDispatchCommandDispatcher{
 		session: fakeSession{id: "session-123"},
 	}
-	newSpawnCommandSpawner = func(_ spawner.TmuxSpawnerConfig) spawnCommandSpawner {
+	newDispatchCommandDispatcher = func(_ dispatcher.TmuxDispatcherConfig) dispatchCommandDispatcher {
 		return fake
 	}
 
@@ -52,12 +52,12 @@ func TestRunSpawnCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
 
 	var err error
 	_ = captureStdout(t, func() {
-		err = runSpawnCommand(context.Background(), app, nil, []string{
+		err = runDispatchCommand(context.Background(), app, nil, []string{
 			"--name", "cook-a",
 			"--prompt", "Say ok",
 			"--skill", "debugging",
 			"--reasoning-level", "high",
-			"--worktree", ".worktrees/phase-06-spawner",
+			"--worktree", ".worktrees/phase-06-dispatcher",
 			"--max-turns", "7",
 			"--budget-cap", "1.25",
 			"--env", "FOO=bar",
@@ -65,10 +65,10 @@ func TestRunSpawnCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
 		})
 	})
 	if err != nil {
-		t.Fatalf("runSpawnCommand returned error: %v", err)
+		t.Fatalf("runDispatchCommand returned error: %v", err)
 	}
 	if fake.called != 1 {
-		t.Fatalf("spawn called %d times, expected 1", fake.called)
+		t.Fatalf("dispatch called %d times, expected 1", fake.called)
 	}
 	if fake.req.Name != "cook-a" {
 		t.Fatalf("request name = %q", fake.req.Name)
@@ -88,7 +88,7 @@ func TestRunSpawnCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
 	if fake.req.ReasoningLevel != "high" {
 		t.Fatalf("request reasoning level = %q", fake.req.ReasoningLevel)
 	}
-	if fake.req.WorktreePath != ".worktrees/phase-06-spawner" {
+	if fake.req.WorktreePath != ".worktrees/phase-06-dispatcher" {
 		t.Fatalf("request worktree path = %q", fake.req.WorktreePath)
 	}
 	if fake.req.MaxTurns != 7 {
@@ -102,14 +102,14 @@ func TestRunSpawnCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
 	}
 }
 
-type fakeSpawnCommandSpawner struct {
-	req     spawner.SpawnRequest
-	session spawner.Session
+type fakeDispatchCommandDispatcher struct {
+	req     dispatcher.DispatchRequest
+	session dispatcher.Session
 	err     error
 	called  int
 }
 
-func (f *fakeSpawnCommandSpawner) Spawn(_ context.Context, req spawner.SpawnRequest) (spawner.Session, error) {
+func (f *fakeDispatchCommandDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
 	f.called++
 	f.req = req
 	if f.err != nil {
@@ -122,9 +122,9 @@ type fakeSession struct {
 	id string
 }
 
-func (s fakeSession) ID() string                          { return s.id }
-func (s fakeSession) Status() string                      { return "running" }
-func (s fakeSession) Events() <-chan spawner.SessionEvent { return make(chan spawner.SessionEvent) }
-func (s fakeSession) Done() <-chan struct{}               { return make(chan struct{}) }
-func (s fakeSession) TotalCost() float64                  { return 0 }
-func (s fakeSession) Kill() error                         { return nil }
+func (s fakeSession) ID() string                              { return s.id }
+func (s fakeSession) Status() string                          { return "running" }
+func (s fakeSession) Events() <-chan dispatcher.SessionEvent { return make(chan dispatcher.SessionEvent) }
+func (s fakeSession) Done() <-chan struct{}                   { return make(chan struct{}) }
+func (s fakeSession) TotalCost() float64                      { return 0 }
+func (s fakeSession) Kill() error                             { return nil }

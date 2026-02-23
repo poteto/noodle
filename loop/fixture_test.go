@@ -16,15 +16,15 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
-	"github.com/poteto/noodle/spawner"
 )
 
 var runtimeRepairNamePattern = regexp.MustCompile(`repair-runtime-\d{8}-\d{6}-\d+`)
 
 type loopFixtureSetup struct {
-	SpawnerError                  string            `json:"spawner_error"`
+	DispatcherError                  string            `json:"dispatcher_error"`
 	WorktreeCreateError           string            `json:"worktree_create_error"`
 	WorktreeCreateErrorNames      []string          `json:"worktree_create_error_names"`
 	FailedTargets                 map[string]string `json:"failed_targets"`
@@ -122,9 +122,9 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			queuePath := filepath.Join(runtimeDir, "queue.json")
 
 			miseResults := buildMiseResults(stateInputs)
-			sp := &fakeSpawner{}
-			if strings.TrimSpace(setup.SpawnerError) != "" {
-				sp.spawnErr = errors.New(strings.TrimSpace(setup.SpawnerError))
+			sp := &fakeDispatcher{}
+			if strings.TrimSpace(setup.DispatcherError) != "" {
+				sp.dispatchErr = errors.New(strings.TrimSpace(setup.DispatcherError))
 			}
 			wt := &fakeWorktree{}
 			if strings.TrimSpace(setup.WorktreeCreateError) != "" {
@@ -150,7 +150,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 
 			l := New(projectDir, "noodle", baseCfg, Dependencies{
-				Spawner:   sp,
+				Dispatcher: sp,
 				Worktree:  wt,
 				Adapter:   &fakeAdapterRunner{},
 				Mise:      &fakeMise{results: miseResults},
@@ -240,7 +240,7 @@ func buildMiseResults(stateInputs []loopFixtureStateInput) []fakeMiseResult {
 	return results
 }
 
-func applySessionStatusInput(t *testing.T, sp *fakeSpawner, input loopFixtureStateInput, defaultIndex int) {
+func applySessionStatusInput(t *testing.T, sp *fakeDispatcher, input loopFixtureStateInput, defaultIndex int) {
 	t.Helper()
 	status := strings.TrimSpace(input.RuntimeRepairSessionStatus)
 	if status == "" {
@@ -343,8 +343,8 @@ func assertRuntimeDumpCoverage(t *testing.T, fixtureCase fixturedir.FixtureCase,
 	}
 }
 
-func runtimeRepairCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
-	out := make([]spawner.SpawnRequest, 0, len(calls))
+func runtimeRepairCalls(calls []dispatcher.DispatchRequest) []dispatcher.DispatchRequest {
+	out := make([]dispatcher.DispatchRequest, 0, len(calls))
 	for _, call := range calls {
 		if strings.HasPrefix(call.Name, "repair-runtime-") {
 			out = append(out, call)
@@ -353,8 +353,8 @@ func runtimeRepairCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
 	return out
 }
 
-func normalSpawnCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
-	out := make([]spawner.SpawnRequest, 0, len(calls))
+func normalSpawnCalls(calls []dispatcher.DispatchRequest) []dispatcher.DispatchRequest {
+	out := make([]dispatcher.DispatchRequest, 0, len(calls))
 	for _, call := range calls {
 		if !strings.HasPrefix(call.Name, "repair-runtime-") {
 			out = append(out, call)
@@ -363,7 +363,7 @@ func normalSpawnCalls(calls []spawner.SpawnRequest) []spawner.SpawnRequest {
 	return out
 }
 
-func hasSkill(calls []spawner.SpawnRequest, skill string) bool {
+func hasSkill(calls []dispatcher.DispatchRequest, skill string) bool {
 	for _, call := range calls {
 		if strings.EqualFold(strings.TrimSpace(call.Skill), strings.TrimSpace(skill)) {
 			return true
@@ -379,7 +379,7 @@ func errorString(err error) string {
 	return strings.TrimSpace(err.Error())
 }
 
-func requestDump(request spawner.SpawnRequest) *loopFixtureSpawnDump {
+func requestDump(request dispatcher.DispatchRequest) *loopFixtureSpawnDump {
 	dump := &loopFixtureSpawnDump{
 		Name:     normalizeSpawnName(request.Name),
 		Skill:    strings.TrimSpace(request.Skill),

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/poteto/noodle/spawner"
+	"github.com/poteto/noodle/dispatcher"
 )
 
 const maxRuntimeRepairAttempts = 3
@@ -230,14 +230,14 @@ func (l *Loop) advanceRuntimeRepair(ctx context.Context) error {
 	return l.ensureRuntimeRepair(ctx, retryIssue)
 }
 
-func (l *Loop) spawnRuntimeRepair(ctx context.Context, issue runtimeIssue, attempt int) (spawner.Session, error) {
+func (l *Loop) spawnRuntimeRepair(ctx context.Context, issue runtimeIssue, attempt int) (dispatcher.Session, error) {
 	name := fmt.Sprintf("repair-runtime-%s-%d", time.Now().UTC().Format("20060102-150405"), attempt)
 	if err := l.deps.Worktree.Create(name); err != nil {
 		return nil, fmt.Errorf("create repair worktree: %w", err)
 	}
 
 	worktreePath := filepath.Join(l.projectDir, ".worktrees", name)
-	request := spawner.SpawnRequest{
+	request := dispatcher.DispatchRequest{
 		Name:         name,
 		Prompt:       buildRuntimeRepairPrompt(issue, attempt),
 		Provider:     nonEmpty(l.config.Routing.Defaults.Provider, "claude"),
@@ -245,7 +245,7 @@ func (l *Loop) spawnRuntimeRepair(ctx context.Context, issue runtimeIssue, attem
 		Skill:        l.runtimeRepairSkill(),
 		WorktreePath: worktreePath,
 	}
-	session, err := l.deps.Spawner.Spawn(ctx, request)
+	session, err := l.deps.Dispatcher.Dispatch(ctx, request)
 	if err != nil {
 		_ = l.deps.Worktree.Cleanup(name, true)
 		return nil, err

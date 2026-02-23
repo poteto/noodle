@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"crypto/rand"
@@ -12,7 +12,7 @@ import (
 const codexSkillRefsLimitBytes = 50 * 1024
 
 func buildProviderCommand(
-	req SpawnRequest,
+	req DispatchRequest,
 	promptFile string,
 	agentBinary string,
 	systemPrompt string,
@@ -25,7 +25,7 @@ func buildProviderCommand(
 	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile)
 }
 
-func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt, stderrFile string) string {
+func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string) string {
 	args := []string{
 		agentBinary,
 		"-p",
@@ -55,7 +55,7 @@ func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt,
 	return command
 }
 
-func buildCodexCommand(req SpawnRequest, promptFile, agentBinary, stderrFile string) string {
+func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string) string {
 	args := []string{
 		agentBinary,
 		"--ask-for-approval", "never",

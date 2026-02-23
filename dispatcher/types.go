@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// SpawnRequest defines one session launch.
-type SpawnRequest struct {
+// DispatchRequest defines one session launch.
+type DispatchRequest struct {
 	Name                 string
 	Prompt               string
 	Provider             string
@@ -20,10 +20,13 @@ type SpawnRequest struct {
 	EnvVars              map[string]string
 	BudgetCap            float64
 	AllowPrimaryCheckout bool
+	TaskKey              string // resolved task type key (e.g., "execute", "prioritize")
+	DomainSkill          string // for execute: adapter-configured domain skill
+	Runtime              string // command template from frontmatter, empty = built-in
 }
 
 // Validate ensures required request fields are set at the boundary.
-func (r SpawnRequest) Validate() error {
+func (r DispatchRequest) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
 		return fmt.Errorf("session name is required")
 	}
@@ -62,7 +65,7 @@ type SessionEvent struct {
 	TokensOut int
 }
 
-// Session is one spawned agent session.
+// Session is one dispatched agent session.
 type Session interface {
 	ID() string
 	Status() string
@@ -72,7 +75,7 @@ type Session interface {
 	Kill() error
 }
 
-// Spawner starts sessions from requests.
-type Spawner interface {
-	Spawn(ctx context.Context, req SpawnRequest) (Session, error)
+// Dispatcher starts sessions from requests.
+type Dispatcher interface {
+	Dispatch(ctx context.Context, req DispatchRequest) (Session, error)
 }

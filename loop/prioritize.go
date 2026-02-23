@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/recover"
-	"github.com/poteto/noodle/spawner"
 )
 
 const prioritizeQueueID = "prioritize"
@@ -67,7 +67,7 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 
 	skillName := nonEmpty(item.Skill, "prioritize")
 	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
-	req := spawner.SpawnRequest{
+	req := dispatcher.DispatchRequest{
 		Name:                 name,
 		Prompt:               buildPrioritizePrompt(skillName, taskTypesPrompt, item, resumePrompt),
 		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
@@ -76,7 +76,7 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 		WorktreePath:         l.projectDir,
 		AllowPrimaryCheckout: true,
 	}
-	session, err := l.deps.Spawner.Spawn(ctx, req)
+	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 )
 
 type providerCommandFixtureSetup struct {
-	Request      SpawnRequest `json:"request"`
+	Request      DispatchRequest `json:"request"`
 	PromptFile   string       `json:"prompt_file"`
 	AgentBinary  string       `json:"agent_binary"`
 	SystemPrompt string       `json:"system_prompt"`

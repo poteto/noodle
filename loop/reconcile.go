@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/monitor"
-	"github.com/poteto/noodle/spawner"
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
@@ -157,8 +157,8 @@ func (s *adoptedSession) Status() string {
 	return s.status
 }
 
-func (s *adoptedSession) Events() <-chan spawner.SessionEvent {
-	ch := make(chan spawner.SessionEvent)
+func (s *adoptedSession) Events() <-chan dispatcher.SessionEvent {
+	ch := make(chan dispatcher.SessionEvent)
 	close(ch)
 	return ch
 }

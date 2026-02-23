@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type spawnMetadata struct {
+type dispatchMetadata struct {
 	SessionID    string    `json:"session_id"`
 	Provider     string    `json:"provider"`
 	Model        string    `json:"model"`
@@ -18,10 +18,10 @@ type spawnMetadata struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func writeSpawnMetadata(
+func writeDispatchMetadata(
 	runtimeDir string,
 	sessionID string,
-	req SpawnRequest,
+	req DispatchRequest,
 	createdAt time.Time,
 ) error {
 	runtimeDir = strings.TrimSpace(runtimeDir)
@@ -38,7 +38,7 @@ func writeSpawnMetadata(
 		return fmt.Errorf("create metadata directory: %w", err)
 	}
 
-	payload, err := json.Marshal(spawnMetadata{
+	payload, err := json.Marshal(dispatchMetadata{
 		SessionID:    sessionID,
 		Provider:     strings.TrimSpace(req.Provider),
 		Model:        strings.TrimSpace(req.Model),

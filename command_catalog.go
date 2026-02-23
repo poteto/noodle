@@ -70,10 +70,10 @@ func CommandCatalog() []Command {
 			Run:         runStampCommand,
 		},
 		{
-			Name:        "spawn",
-			Description: "Spawn a cook session in tmux",
+			Name:        "dispatch",
+			Description: "Dispatch a cook session in tmux",
 			Category:    "internal",
-			Run:         runSpawnCommand,
+			Run:         runDispatchCommand,
 		},
 		{
 			Name:        "mise",

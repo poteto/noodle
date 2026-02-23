@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"fmt"
@@ -88,6 +88,32 @@ func loadSkillBundle(
 	return loadedSkill{
 		SystemPrompt: strings.Join(sections, "\n\n"),
 		Warnings:     warnings,
+	}, nil
+}
+
+// loadExecuteBundle loads execute methodology + adapter-configured domain skill.
+func loadExecuteBundle(
+	resolver skill.Resolver,
+	provider string,
+	methodologySkill string,
+	domainSkill string,
+) (loadedSkill, error) {
+	methodology, err := loadSkillBundle(resolver, provider, methodologySkill)
+	if err != nil {
+		return loadedSkill{}, fmt.Errorf("load methodology skill %s: %w", methodologySkill, err)
+	}
+	if domainSkill == "" || domainSkill == methodologySkill {
+		return methodology, nil
+	}
+	domain, err := loadSkillBundle(resolver, provider, domainSkill)
+	if err != nil {
+		methodology.Warnings = append(methodology.Warnings,
+			fmt.Sprintf("domain skill %q not found: %v", domainSkill, err))
+		return methodology, nil
+	}
+	return loadedSkill{
+		SystemPrompt: methodology.SystemPrompt + "\n\n" + domain.SystemPrompt,
+		Warnings:     append(methodology.Warnings, domain.Warnings...),
 	}, nil
 }
 

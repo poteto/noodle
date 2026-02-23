@@ -6,10 +6,10 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
-	"github.com/poteto/noodle/spawner"
 )
 
 type State string
@@ -56,15 +56,15 @@ type ControlAck struct {
 
 type activeCook struct {
 	queueItem     QueueItem
-	session       spawner.Session
+	session       dispatcher.Session
 	worktreeName  string
 	worktreePath  string
 	attempt       int
 	reviewEnabled bool
 }
 
-type Spawner interface {
-	Spawn(ctx context.Context, req spawner.SpawnRequest) (spawner.Session, error)
+type Dispatcher interface {
+	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
 }
 
 type WorktreeManager interface {
@@ -86,8 +86,8 @@ type Monitor interface {
 }
 
 type Dependencies struct {
-	Spawner   Spawner
-	Worktree  WorktreeManager
+	Dispatcher Dispatcher
+	Worktree   WorktreeManager
 	Adapter   AdapterRunner
 	Mise      MiseBuilder
 	Monitor   Monitor
@@ -128,6 +128,6 @@ type runtimeRepairState struct {
 	Issue       runtimeIssue
 	Attempt     int
 	SessionID   string
-	Session     spawner.Session
+	Session     dispatcher.Session
 	StateBefore State
 }

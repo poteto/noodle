@@ -23,7 +23,7 @@ func TestFixtureSuitesDoNotMutateFixtureFiles(t *testing.T) {
 		"stamp/testdata",
 		"event/testdata",
 		"monitor/testdata",
-		"spawner/testdata",
+		"dispatcher/testdata",
 		"loop/testdata",
 	}
 	before := snapshotFixtureFiles(t, roots)
@@ -36,7 +36,7 @@ func TestFixtureSuitesDoNotMutateFixtureFiles(t *testing.T) {
 		"./stamp",
 		"./event",
 		"./monitor",
-		"./spawner",
+		"./dispatcher",
 		"./loop",
 	)
 	out, err := cmd.CombinedOutput()

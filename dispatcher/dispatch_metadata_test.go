@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"encoding/json"
@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-func TestWriteSpawnMetadata(t *testing.T) {
+func TestWriteDispatchMetadata(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	createdAt := time.Date(2026, 2, 22, 20, 0, 0, 0, time.UTC)
 
-	err := writeSpawnMetadata(runtimeDir, sessionID, SpawnRequest{
+	err := writeDispatchMetadata(runtimeDir, sessionID, DispatchRequest{
 		Provider:     "claude",
 		Model:        "claude-sonnet-4-6",
 		Skill:        "debugging",
@@ -24,7 +24,7 @@ func TestWriteSpawnMetadata(t *testing.T) {
 	}
 
 	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
-	var meta spawnMetadata
+	var meta dispatchMetadata
 	if err := decodeJSONFile(path, &meta); err != nil {
 		t.Fatalf("read spawn metadata: %v", err)
 	}

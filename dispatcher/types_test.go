@@ -1,14 +1,14 @@
-package spawner
+package dispatcher
 
 import "testing"
 
-func TestSpawnRequestValidate(t *testing.T) {
-	valid := SpawnRequest{
+func TestDispatchRequestValidate(t *testing.T) {
+	valid := DispatchRequest{
 		Name:         "cook-a",
 		Prompt:       "Say ok",
 		Provider:     "claude",
 		Model:        "claude-sonnet-4-6",
-		WorktreePath: ".worktrees/phase-06-spawner",
+		WorktreePath: ".worktrees/phase-06-dispatcher",
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("validate valid request: %v", err)
@@ -16,11 +16,11 @@ func TestSpawnRequestValidate(t *testing.T) {
 
 	cases := []struct {
 		name string
-		req  SpawnRequest
+		req  DispatchRequest
 	}{
 		{
 			name: "missing name",
-			req: SpawnRequest{
+			req: DispatchRequest{
 				Prompt:       "p",
 				Provider:     "claude",
 				Model:        "m",
@@ -29,7 +29,7 @@ func TestSpawnRequestValidate(t *testing.T) {
 		},
 		{
 			name: "missing prompt",
-			req: SpawnRequest{
+			req: DispatchRequest{
 				Name:         "n",
 				Provider:     "claude",
 				Model:        "m",
@@ -38,7 +38,7 @@ func TestSpawnRequestValidate(t *testing.T) {
 		},
 		{
 			name: "bad provider",
-			req: SpawnRequest{
+			req: DispatchRequest{
 				Name:         "n",
 				Prompt:       "p",
 				Provider:     "openai",
@@ -48,7 +48,7 @@ func TestSpawnRequestValidate(t *testing.T) {
 		},
 		{
 			name: "missing model",
-			req: SpawnRequest{
+			req: DispatchRequest{
 				Name:         "n",
 				Prompt:       "p",
 				Provider:     "claude",
@@ -57,7 +57,7 @@ func TestSpawnRequestValidate(t *testing.T) {
 		},
 		{
 			name: "missing worktree",
-			req: SpawnRequest{
+			req: DispatchRequest{
 				Name:     "n",
 				Prompt:   "p",
 				Provider: "claude",

@@ -16,21 +16,21 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/debate"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/parse"
 	"github.com/poteto/noodle/recover"
 	"github.com/poteto/noodle/skill"
-	"github.com/poteto/noodle/spawner"
 )
 
 func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Loop {
 	projectDir = strings.TrimSpace(projectDir)
 	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if deps.Spawner == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
+	if deps.Dispatcher == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
 		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg)
-		if deps.Spawner == nil {
-			deps.Spawner = defaults.Spawner
+		if deps.Dispatcher == nil {
+			deps.Dispatcher = defaults.Dispatcher
 		}
 		if deps.Worktree == nil {
 			deps.Worktree = defaults.Worktree
@@ -321,15 +321,24 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 
 	worktreePath := l.worktreePath(name)
 	prompt := buildCookPrompt(item, resumePrompt)
-	req := spawner.SpawnRequest{
+
+	taskType, _ := l.registry.ByKey(item.TaskKey)
+	req := dispatcher.DispatchRequest{
 		Name:         name,
 		Prompt:       prompt,
 		Provider:     nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:        nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:        item.Skill,
 		WorktreePath: worktreePath,
+		TaskKey:      taskType.Key,
+		Runtime:      taskType.Runtime,
 	}
-	session, err := l.deps.Spawner.Spawn(ctx, req)
+	if taskType.Key == "execute" {
+		if adapter, exists := l.config.Adapters["backlog"]; exists {
+			req.DomainSkill = adapter.Skill
+		}
+	}
+	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
@@ -598,7 +607,7 @@ func retryFailureReason(base string, info recover.RecoveryInfo) string {
 }
 
 func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) {
-	reviewReq := spawner.SpawnRequest{
+	reviewReq := dispatcher.DispatchRequest{
 		Name:         cook.worktreeName + "-quality",
 		Prompt:       "Review completed cook work for item " + cook.queueItem.ID,
 		Provider:     l.config.Routing.Defaults.Provider,
@@ -606,7 +615,7 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 		Skill:        taskSkill(l.registry, "quality", "quality"),
 		WorktreePath: cook.worktreePath,
 	}
-	session, err := l.deps.Spawner.Spawn(ctx, reviewReq)
+	session, err := l.deps.Dispatcher.Dispatch(ctx, reviewReq)
 	if err != nil {
 		return false, "unable to spawn quality review: " + err.Error()
 	}

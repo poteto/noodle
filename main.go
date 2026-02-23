@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/skill"
-	"github.com/poteto/noodle/spawner"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -305,18 +305,18 @@ func startRepairSession(
 	}
 	runtimeDir := filepath.Join(worktreeApp.Root, ".noodle")
 	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-	agentDirs := spawner.AgentDirs{
+	agentDirs := dispatcher.AgentDirs{
 		ClaudeDir: app.Config.Agents.ClaudeDir,
 		CodexDir:  app.Config.Agents.CodexDir,
 	}
-	spawn := spawner.NewTmuxSpawner(spawner.TmuxSpawnerConfig{
+	d := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
 		ProjectDir:    worktreeApp.Root,
 		RuntimeDir:    runtimeDir,
 		NoodleBin:     noodleBin,
 		SkillResolver: resolver,
 		AgentDirs:     agentDirs,
 	})
-	request := spawner.SpawnRequest{
+	request := dispatcher.DispatchRequest{
 		Name:         name,
 		Prompt:       prompt,
 		Provider:     provider,
@@ -324,7 +324,7 @@ func startRepairSession(
 		Skill:        loop.RepairTaskSkill(),
 		WorktreePath: worktreePath,
 	}
-	session, err := spawn.Spawn(ctx, request)
+	session, err := d.Dispatch(ctx, request)
 	if err != nil {
 		_ = worktreeApp.Cleanup(name, true)
 		return repairLaunchResult{}, err

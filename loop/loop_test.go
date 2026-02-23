@@ -12,9 +12,9 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
-	"github.com/poteto/noodle/spawner"
 )
 
 type fakeSession struct {
@@ -25,21 +25,21 @@ type fakeSession struct {
 
 func (s *fakeSession) ID() string                          { return s.id }
 func (s *fakeSession) Status() string                      { return s.status }
-func (s *fakeSession) Events() <-chan spawner.SessionEvent { return make(chan spawner.SessionEvent) }
+func (s *fakeSession) Events() <-chan dispatcher.SessionEvent { return make(chan dispatcher.SessionEvent) }
 func (s *fakeSession) Done() <-chan struct{}               { return s.done }
 func (s *fakeSession) TotalCost() float64                  { return 0 }
 func (s *fakeSession) Kill() error                         { s.status = "killed"; close(s.done); return nil }
 
-type fakeSpawner struct {
-	calls    []spawner.SpawnRequest
+type fakeDispatcher struct {
+	calls    []dispatcher.DispatchRequest
 	sessions []*fakeSession
-	spawnErr error
+	dispatchErr error
 }
 
-func (f *fakeSpawner) Spawn(_ context.Context, req spawner.SpawnRequest) (spawner.Session, error) {
+func (f *fakeDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
 	f.calls = append(f.calls, req)
-	if f.spawnErr != nil {
-		return nil, f.spawnErr
+	if f.dispatchErr != nil {
+		return nil, f.dispatchErr
 	}
 	s := &fakeSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
 	f.sessions = append(f.sessions, s)
@@ -129,11 +129,11 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   ar,
 		Mise:      &fakeMise{},
@@ -173,10 +173,10 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -215,10 +215,10 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	}
 
 	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{createErr: errors.New("worktree '42' already exists at " + existingWorktree)}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -257,10 +257,10 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
-	sp := &fakeSpawner{spawnErr: errors.New("spawn failed")}
+	sp := &fakeDispatcher{dispatchErr: errors.New("spawn failed")}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -295,10 +295,10 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeSpawner{spawnErr: errors.New("spawn failed")}
+	sp := &fakeDispatcher{dispatchErr: errors.New("spawn failed")}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -348,11 +348,11 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   ar,
 		Mise:      &fakeMise{},
@@ -396,10 +396,10 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -482,7 +482,7 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   &fakeSpawner{},
+		Dispatcher: &fakeDispatcher{},
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -529,10 +529,10 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -589,9 +589,9 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -632,7 +632,7 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:  &fakeSpawner{},
+		Dispatcher: &fakeDispatcher{},
 		Worktree: &fakeWorktree{},
 		Adapter:  &fakeAdapterRunner{},
 		Mise: &fakeMise{brief: mise.Brief{
@@ -739,9 +739,9 @@ func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -812,9 +812,9 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 1
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -851,7 +851,7 @@ func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Review.Enabled = true
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Spawner:   &fakeSpawner{},
+		Dispatcher: &fakeDispatcher{},
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
@@ -913,7 +913,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   &fakeSpawner{},
+		Dispatcher: &fakeDispatcher{},
 		Worktree:  wt,
 		Adapter:   ar,
 		Mise:      &fakeMise{},
@@ -954,10 +954,10 @@ func TestCycleSchedulesRuntimeRepairForMiseErrors(t *testing.T) {
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{err: errors.New("plans sync failed")},
@@ -999,7 +999,7 @@ func TestCycleResumesSchedulingAfterRepairCompletion(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeSpawner{}
+	sp := &fakeDispatcher{}
 	miseBuilder := &fakeMise{
 		results: []fakeMiseResult{
 			{err: errors.New("backlog sync failed")},
@@ -1007,7 +1007,7 @@ func TestCycleResumesSchedulingAfterRepairCompletion(t *testing.T) {
 		},
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Spawner:   sp,
+		Dispatcher: sp,
 		Worktree:  &fakeWorktree{},
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      miseBuilder,

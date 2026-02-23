@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/skill"
-	"github.com/poteto/noodle/spawner"
 )
 
-type spawnCommandSpawner interface {
-	Spawn(ctx context.Context, req spawner.SpawnRequest) (spawner.Session, error)
+type dispatchCommandDispatcher interface {
+	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
 }
 
-var newSpawnCommandSpawner = func(config spawner.TmuxSpawnerConfig) spawnCommandSpawner {
-	return spawner.NewTmuxSpawner(config)
+var newDispatchCommandDispatcher = func(config dispatcher.TmuxDispatcherConfig) dispatchCommandDispatcher {
+	return dispatcher.NewTmuxDispatcher(config)
 }
 
 type envFlag map[string]string
@@ -49,16 +49,16 @@ func (e *envFlag) Set(value string) error {
 	return nil
 }
 
-func runSpawnCommand(ctx context.Context, app *App, _ []Command, args []string) error {
+func runDispatchCommand(ctx context.Context, app *App, _ []Command, args []string) error {
 	if app != nil && !app.Validation.CanSpawn() {
-		return fmt.Errorf("fatal config diagnostics prevent spawn")
+		return fmt.Errorf("fatal config diagnostics prevent dispatch")
 	}
 
-	flags := flag.NewFlagSet("spawn", flag.ContinueOnError)
+	flags := flag.NewFlagSet("dispatch", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 
 	name := flags.String("name", "cook", "Session name")
-	prompt := flags.String("prompt", "", "Prompt text for the spawned session")
+	prompt := flags.String("prompt", "", "Prompt text for the dispatched session")
 	provider := flags.String("provider", "", "Provider (claude or codex)")
 	model := flags.String("model", "", "Model name")
 	skillName := flags.String("skill", "", "Optional skill name to inject")
@@ -106,23 +106,23 @@ func runSpawnCommand(ctx context.Context, app *App, _ []Command, args []string) 
 	}
 
 	var resolver skill.Resolver
-	var agentDirs spawner.AgentDirs
+	var agentDirs dispatcher.AgentDirs
 	if app != nil {
 		resolver = skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-		agentDirs = spawner.AgentDirs{
+		agentDirs = dispatcher.AgentDirs{
 			ClaudeDir: app.Config.Agents.ClaudeDir,
 			CodexDir:  app.Config.Agents.CodexDir,
 		}
 	}
 
-	s := newSpawnCommandSpawner(spawner.TmuxSpawnerConfig{
+	s := newDispatchCommandDispatcher(dispatcher.TmuxDispatcherConfig{
 		ProjectDir:    cwd,
 		RuntimeDir:    runtimeDir,
 		NoodleBin:     noodleBin,
 		SkillResolver: resolver,
 		AgentDirs:     agentDirs,
 	})
-	session, err := s.Spawn(ctx, spawner.SpawnRequest{
+	session, err := s.Dispatch(ctx, dispatcher.DispatchRequest{
 		Name:           *name,
 		Prompt:         *prompt,
 		Provider:       *provider,

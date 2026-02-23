@@ -1,4 +1,4 @@
-package spawner
+package dispatcher
 
 import (
 	"context"
@@ -28,39 +28,42 @@ type AgentDirs struct {
 	CodexDir  string
 }
 
-// TmuxSpawnerConfig configures a tmux spawner.
-type TmuxSpawnerConfig struct {
-	ProjectDir    string
-	RuntimeDir    string
-	NoodleBin     string
-	SkillResolver skill.Resolver
-	AgentDirs     AgentDirs
+// TmuxDispatcherConfig configures a tmux dispatcher.
+type TmuxDispatcherConfig struct {
+	ProjectDir     string
+	RuntimeDir     string
+	NoodleBin      string
+	SkillResolver  skill.Resolver
+	AgentDirs      AgentDirs
+	RuntimeDefault string // command template from config, empty = built-in
 }
 
-// TmuxSpawner spawns provider sessions in detached tmux sessions.
-type TmuxSpawner struct {
-	projectDir    string
-	runtimeDir    string
-	noodleBin     string
-	skillResolver skill.Resolver
-	agentDirs     AgentDirs
-	run           commandRunner
+// TmuxDispatcher dispatches provider sessions in detached tmux sessions.
+type TmuxDispatcher struct {
+	projectDir     string
+	runtimeDir     string
+	noodleBin      string
+	skillResolver  skill.Resolver
+	agentDirs      AgentDirs
+	runtimeDefault string
+	run            commandRunner
 }
 
-// NewTmuxSpawner constructs a spawner from config.
-func NewTmuxSpawner(config TmuxSpawnerConfig) *TmuxSpawner {
-	return &TmuxSpawner{
-		projectDir:    strings.TrimSpace(config.ProjectDir),
-		runtimeDir:    strings.TrimSpace(config.RuntimeDir),
-		noodleBin:     strings.TrimSpace(config.NoodleBin),
-		skillResolver: config.SkillResolver,
-		agentDirs:     config.AgentDirs,
-		run:           defaultRunner,
+// NewTmuxDispatcher constructs a dispatcher from config.
+func NewTmuxDispatcher(config TmuxDispatcherConfig) *TmuxDispatcher {
+	return &TmuxDispatcher{
+		projectDir:     strings.TrimSpace(config.ProjectDir),
+		runtimeDir:     strings.TrimSpace(config.RuntimeDir),
+		noodleBin:      strings.TrimSpace(config.NoodleBin),
+		skillResolver:  config.SkillResolver,
+		agentDirs:      config.AgentDirs,
+		runtimeDefault: strings.TrimSpace(config.RuntimeDefault),
+		run:            defaultRunner,
 	}
 }
 
-// Spawn validates a request and starts a detached tmux-backed session.
-func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, error) {
+// Dispatch validates a request and starts a detached tmux-backed session.
+func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Session, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
@@ -102,25 +105,44 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		return nil, fmt.Errorf("create event writer: %w", err)
 	}
 
-	skillBundle, err := loadSkillBundle(s.skillResolver, req.Provider, req.Skill)
+	var skillBundle loadedSkill
+	if req.TaskKey == "execute" && req.DomainSkill != "" {
+		skillBundle, err = loadExecuteBundle(s.skillResolver, req.Provider, req.Skill, req.DomainSkill)
+	} else {
+		skillBundle, err = loadSkillBundle(s.skillResolver, req.Provider, req.Skill)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, skillBundle.SystemPrompt)
+	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
+	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
 	if err := os.WriteFile(promptPath, []byte(finalPrompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
 	}
 
-	agentBinary := s.resolveAgentBinary(req.Provider)
-	providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath)
-	pipeline := buildPipelineCommand(providerCommand, s.noodleBin, stampedPath, canonicalPath)
+	var pipeline string
+	if runtimeCmd := s.resolveRuntime(req); runtimeCmd != "" {
+		vars := map[string]string{
+			"session": sessionID,
+			"repo":    req.WorktreePath,
+			"prompt":  promptPath,
+			"skill":   req.Skill,
+			"brief":   filepath.Join(s.runtimeDir, "mise.json"),
+		}
+		resolved := resolveTemplateVars(runtimeCmd, vars)
+		pipeline = buildPipelineCommand(resolved, s.noodleBin, stampedPath, canonicalPath)
+	} else {
+		agentBinary := s.resolveAgentBinary(req.Provider)
+		providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath)
+		pipeline = buildPipelineCommand(providerCommand, s.noodleBin, stampedPath, canonicalPath)
+	}
 
 	tmuxName := tmuxSessionName(sessionID, req.Name)
 	output, err := s.run(
 		ctx,
 		req.WorktreePath,
-		buildSpawnEnv(req),
+		buildDispatchEnv(req),
 		"tmux",
 		"new-session",
 		"-d",
@@ -131,8 +153,8 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %s: %w", strings.TrimSpace(string(output)), err)
 	}
-	if err := writeSpawnMetadata(s.runtimeDir, sessionID, req, nowUTC()); err != nil {
-		_, _ = s.run(ctx, req.WorktreePath, buildSpawnEnv(req), "tmux", "kill-session", "-t", tmuxName)
+	if err := writeDispatchMetadata(s.runtimeDir, sessionID, req, nowUTC()); err != nil {
+		_, _ = s.run(ctx, req.WorktreePath, buildDispatchEnv(req), "tmux", "kill-session", "-t", tmuxName)
 		return nil, fmt.Errorf("write spawn metadata: %w", err)
 	}
 
@@ -140,7 +162,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		sessionID,
 		tmuxName,
 		req.WorktreePath,
-		buildSpawnEnv(req),
+		buildDispatchEnv(req),
 		canonicalPath,
 		finalPrompt,
 		eventWriter,
@@ -151,7 +173,24 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 	return session, nil
 }
 
-func (s *TmuxSpawner) resolveAgentBinary(provider string) string {
+func (s *TmuxDispatcher) resolveRuntime(req DispatchRequest) string {
+	if r := strings.TrimSpace(req.Runtime); r != "" {
+		return r
+	}
+	return s.runtimeDefault
+}
+
+// resolveTemplateVars replaces {{key}} placeholders with verbatim values.
+// No shell quoting — the template author controls quoting in their template.
+func resolveTemplateVars(tmpl string, vars map[string]string) string {
+	result := tmpl
+	for key, value := range vars {
+		result = strings.ReplaceAll(result, "{{"+key+"}}", value)
+	}
+	return result
+}
+
+func (s *TmuxDispatcher) resolveAgentBinary(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "codex":
 		if path := strings.TrimSpace(s.agentDirs.CodexDir); path != "" {
@@ -172,7 +211,7 @@ func (s *TmuxSpawner) resolveAgentBinary(provider string) string {
 	}
 }
 
-func buildSpawnEnv(req SpawnRequest) []string {
+func buildDispatchEnv(req DispatchRequest) []string {
 	env := make([]string, 0, len(os.Environ())+len(req.EnvVars)+4)
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
