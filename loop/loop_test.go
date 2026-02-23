@@ -688,6 +688,71 @@ func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
 	}
 }
 
+func TestCopyVerdictToRuntime(t *testing.T) {
+	worktreeDir := t.TempDir()
+	runtimeDir := t.TempDir()
+
+	// Write verdict to worktree location (where quality skill writes it)
+	worktreeQuality := filepath.Join(worktreeDir, ".noodle", "quality")
+	if err := os.MkdirAll(worktreeQuality, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	verdict := `{"accept":false,"feedback":"needs tests","session_id":"sess-1"}`
+	src := filepath.Join(worktreeQuality, "sess-1.json")
+	if err := os.WriteFile(src, []byte(verdict), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Copy to runtime (project-level .noodle/quality/)
+	dst := filepath.Join(runtimeDir, "quality", "sess-1.json")
+	if err := copyVerdictToRuntime(src, dst); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+
+	// Verify the copy exists and is correct
+	data, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("read dst: %v", err)
+	}
+	if string(data) != verdict {
+		t.Fatalf("copy mismatch: %q", string(data))
+	}
+}
+
+func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	// Create a loop with a registry error (simulates discovery failure)
+	l := &Loop{
+		projectDir:            projectDir,
+		runtimeDir:            runtimeDir,
+		registryErr:           errors.New("task type discovery failed: bad frontmatter"),
+		activeByTarget:        map[string]*activeCook{},
+		activeByID:            map[string]*activeCook{},
+		adoptedTargets:        map[string]string{},
+		failedTargets:         map[string]string{},
+		processedIDs:          map[string]struct{}{},
+		runtimeRepairAttempts: map[string]int{},
+		deps: Dependencies{
+			Mise:    &fakeMise{brief: mise.Brief{}},
+			Monitor: fakeMonitor{},
+		},
+	}
+
+	// Cycle (the --once path) should fail with the registry error
+	err := l.Cycle(context.Background())
+	if err == nil {
+		t.Fatal("expected Cycle to return registry error")
+	}
+	if !strings.Contains(err.Error(), "task type discovery failed") {
+		t.Fatalf("wrong error: %v", err)
+	}
+}
+
 func TestReadQualityVerdictFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "verdict.json")

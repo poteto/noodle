@@ -641,10 +641,12 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 
 	// Copy verdict to project-level .noodle/quality/ so mise can include
 	// historical quality signals in the brief for prioritization.
-	_ = copyVerdictToRuntime(
+	if err := copyVerdictToRuntime(
 		filepath.Join(cook.worktreePath, ".noodle", "quality", verdictName),
 		filepath.Join(l.runtimeDir, "quality", verdictName),
-	)
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: verdict not mirrored to runtime: %v\n", err)
+	}
 
 	_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
 	return verdict.Accept, verdict.Feedback
