@@ -55,16 +55,12 @@ Identify which domain skills apply based on what the review touches:
 
 | Domain | Skill | When |
 |--------|-------|------|
-| TypeScript | `ts-best-practices` | Any TS code |
-| React | `react-best-practices` | React components or hooks |
-| Rust | `rust-best-practices` | Any Rust code |
-| Frontend UI | `frontend-design` | UI components, layouts, visual design |
-| Frontend a11y/UX | `web-design-guidelines` | Reviewing for a11y, UX best practices |
-| Frontend motion | `interaction-design` | Animations, transitions, microinteractions |
+| Bubble Tea TUI | `bubbletea-tui` | Terminal UI components, views, styling |
+| Frontend UI | `frontend-design` | Web UI components, layouts, visual design |
 
-**Invoke matched skills now** — read their output and use domain guidance to inform your review (e.g. ts-best-practices patterns to check for, useEffect anti-patterns, a11y requirements).
+For domains **not listed above**, use `find-skills` to search for a relevant skill.
 
-If the review touches a domain **not covered** above, use `find-skills` to search for a relevant skill.
+**Invoke matched skills now** — read their output and use domain guidance to inform your review.
 
 ## Step 5 — Review Sections
 
