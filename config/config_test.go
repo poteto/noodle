@@ -16,7 +16,7 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Phases["debugging"] != "debugging" {
 		t.Fatalf("phases.debugging default = %q", config.Phases["debugging"])
 	}
-	if got := strings.Join(config.Skills.Paths, ","); got != "skills,~/.noodle/skills" {
+	if got := strings.Join(config.Skills.Paths, ","); got != ".agents/skills" {
 		t.Fatalf("skills.paths default = %q", got)
 	}
 	if config.Prioritize.Run != "after-each" {
@@ -114,7 +114,7 @@ provider = "claude"
 model = "opus"
 
 [skills]
-paths = ["skills", "~/.noodle/skills"]
+paths = [".agents/skills"]
 
 [review]
 enabled = false

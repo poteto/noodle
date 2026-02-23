@@ -151,7 +151,7 @@ func DefaultConfig() Config {
 			Tags: map[string]ModelPolicy{},
 		},
 		Skills: SkillsConfig{
-			Paths: []string{"skills", "~/.noodle/skills"},
+			Paths: defaultSkillPaths(),
 		},
 		Review: ReviewConfig{
 			Enabled: true,
@@ -243,7 +243,7 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	}
 
 	if !metadata.IsDefined("skills", "paths") || len(config.Skills.Paths) == 0 {
-		config.Skills.Paths = []string{"skills", "~/.noodle/skills"}
+		config.Skills.Paths = defaultSkillPaths()
 	}
 
 	if !metadata.IsDefined("prioritize", "run") {
@@ -319,6 +319,10 @@ func applyAdapterDefaults(adapters map[string]AdapterConfig) {
 		}
 		adapters[name] = adapter
 	}
+}
+
+func defaultSkillPaths() []string {
+	return []string{".agents/skills"}
 }
 
 func validateParsedValues(config Config) error {

@@ -33,8 +33,12 @@ func TestResolveQueueItem(t *testing.T) {
 		t.Fatalf("resolve by skill = %+v, %v", bySkill, ok)
 	}
 
-	byAlias, ok := reg.ResolveQueueItem(QueueItemInput{ID: "42", Title: "runtime repair for monitor"})
-	if !ok || byAlias.Key != TaskKeyRepair {
-		t.Fatalf("resolve by alias = %+v, %v", byAlias, ok)
+	byIDPrefix, ok := reg.ResolveQueueItem(QueueItemInput{ID: "repair-runtime-20260223-010203-1"})
+	if !ok || byIDPrefix.Key != TaskKeyRepair {
+		t.Fatalf("resolve by id prefix = %+v, %v", byIDPrefix, ok)
+	}
+
+	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "42", Title: "review API docs"}); ok {
+		t.Fatal("title-only text should not resolve synthetic task types")
 	}
 }

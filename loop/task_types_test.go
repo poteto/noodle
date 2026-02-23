@@ -75,18 +75,28 @@ func TestTaskTypeRegistryIncludesKeySyntheticAliases(t *testing.T) {
 	}
 }
 
-func TestTaskTypeForQueueItemUsesAliases(t *testing.T) {
+func TestTaskTypeForQueueItemUsesIDPrefix(t *testing.T) {
 	cfg := config.DefaultConfig()
 	item := QueueItem{
-		ID:    "gate-1",
-		Title: "Chef review approval before execute",
+		ID: "review-gate-1",
 	}
 	taskType, ok := taskTypeForQueueItem(cfg, item)
 	if !ok {
-		t.Fatal("expected alias-based task type resolution")
+		t.Fatal("expected id-prefix task type resolution")
 	}
 	if taskType.Key != taskKeyReview {
 		t.Fatalf("task key = %q, want %q", taskType.Key, taskKeyReview)
+	}
+}
+
+func TestTaskTypeForQueueItemDoesNotUseTitleAlias(t *testing.T) {
+	cfg := config.DefaultConfig()
+	item := QueueItem{
+		ID:    "42",
+		Title: "Chef review approval before execute",
+	}
+	if _, ok := taskTypeForQueueItem(cfg, item); ok {
+		t.Fatal("title-only alias text should not resolve synthetic task types")
 	}
 }
 

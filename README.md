@@ -59,7 +59,7 @@ model = "claude-sonnet-4-6"
 skill = "prioritize"
 
 [skills]
-paths = ["skills", "~/.noodle/skills"]
+paths = [".agents/skills"]
 
 [agents]
 claude_dir = ""
@@ -72,8 +72,7 @@ Schema reference: `config/config.go`
 
 Skills are the only extension point.
 
-- Project skills: `.agents/skills/` (committed, highest precedence)
-- User defaults: `~/.noodle/skills/`
+- Project skills: `.agents/skills/` (default resolver path)
 - Resolver order is configured by your `noodle.toml`.
 
 ## Adapters

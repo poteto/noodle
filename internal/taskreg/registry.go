@@ -28,15 +28,10 @@ type QueueItemInput struct {
 
 // Registry indexes task types for fast lookup by key, skill, or aliases.
 type Registry struct {
-	types      []TaskType
-	byKey      map[string]TaskType
-	bySkill    map[string]TaskType
-	aliasRules []aliasRule
-}
-
-type aliasRule struct {
-	alias string
-	task  TaskType
+	types   []TaskType
+	byKey   map[string]TaskType
+	bySkill map[string]TaskType
+	byAlias map[string]TaskType
 }
 
 const (
@@ -175,10 +170,10 @@ var baseTaskTypes = []TaskType{
 func New(cfg config.Config) Registry {
 	types := configuredTaskTypes(cfg)
 	reg := Registry{
-		types:      types,
-		byKey:      make(map[string]TaskType, len(types)),
-		bySkill:    make(map[string]TaskType, len(types)),
-		aliasRules: make([]aliasRule, 0, len(types)*2),
+		types:   types,
+		byKey:   make(map[string]TaskType, len(types)),
+		bySkill: make(map[string]TaskType, len(types)),
+		byAlias: make(map[string]TaskType, len(types)*2),
 	}
 	for _, taskType := range types {
 		key := normalize(taskType.Key)
@@ -197,7 +192,9 @@ func New(cfg config.Config) Registry {
 			if alias == "" {
 				continue
 			}
-			reg.aliasRules = append(reg.aliasRules, aliasRule{alias: alias, task: taskType})
+			if _, exists := reg.byAlias[alias]; !exists {
+				reg.byAlias[alias] = taskType
+			}
 		}
 	}
 	return reg
@@ -222,8 +219,15 @@ func (r Registry) PrioritizeTarget() string {
 }
 
 func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
-	if taskType, ok := r.ByKey(item.TaskKey); ok {
-		return taskType, true
+	taskKey := normalize(item.TaskKey)
+	if taskKey != "" {
+		if taskType, ok := r.byKey[taskKey]; ok {
+			return taskType, true
+		}
+		if taskType, ok := r.byAlias[taskKey]; ok {
+			return taskType, true
+		}
+		return TaskType{}, false
 	}
 
 	skill := normalize(item.Skill)
@@ -231,15 +235,28 @@ func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
 		if taskType, ok := r.bySkill[skill]; ok {
 			return taskType, true
 		}
-	}
-
-	text := normalize(item.ID + " " + item.Title)
-	if text == "" {
+		if taskType, ok := r.byAlias[skill]; ok {
+			return taskType, true
+		}
 		return TaskType{}, false
 	}
-	for _, rule := range r.aliasRules {
-		if strings.Contains(text, rule.alias) {
-			return rule.task, true
+
+	id := normalize(item.ID)
+	if id == "" {
+		return TaskType{}, false
+	}
+	if taskType, ok := r.byKey[id]; ok {
+		return taskType, true
+	}
+	if taskType, ok := r.byAlias[id]; ok {
+		return taskType, true
+	}
+	if head, _, ok := strings.Cut(id, "-"); ok {
+		if taskType, exists := r.byKey[head]; exists {
+			return taskType, true
+		}
+		if taskType, exists := r.byAlias[head]; exists {
+			return taskType, true
 		}
 	}
 	return TaskType{}, false
