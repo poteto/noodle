@@ -46,6 +46,6 @@ Aggregate per-turn context metrics from canonical events into session-level meta
 
 - `go test ./monitor/...` — existing tests pass
 - New test: feed canonical events with varying `ContextTokens` → `PeakContextTokens` is the max
-- New test: feed `EventAction` with `"text:context compacted"` → `CompressionCount` incremented
+- New test: feed `EventCompression` events → `CompressionCount` incremented
 - New test: health threshold still triggers at 80% with new peak-turn semantics
 - Grep for all `ContextWindowUsagePct` consumers — verify all updated

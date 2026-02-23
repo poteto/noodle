@@ -15,8 +15,9 @@ Teach the quality gate to flag sessions that hit compression or used disproporti
   - Include context metrics in the verdict output
 
 - **`loop/quality.go`** — `runQuality` currently sends only a text prompt (`"Review completed cook work for item <id>"`); it does NOT pass structured session metadata. Add plumbing to:
-  - Read `meta.json` for the completed session
+  - Read `meta.json` for the completed session (`.noodle/sessions/<cook-session-id>/meta.json`)
   - Include `PeakContextTokens`, `CompressionCount`, `ContextWindowUsagePct`, and `Skill` in the quality prompt
+  - If `meta.json` is missing/unreadable, continue quality review with default/empty context metrics (no fail-open for verdict file behavior; only context enrichment is best-effort)
   - This is new infrastructure, not just extending existing fields
 
 Use the `skill-creator` skill when editing the quality skill spec.

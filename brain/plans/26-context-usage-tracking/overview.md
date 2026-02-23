@@ -31,7 +31,7 @@ We manually audited skill descriptions this session and saved ~550 tokens/sessio
 
 - **Extend, don't replace.** Build on existing `CanonicalEvent`, `SessionClaims`, `SessionMeta` types. No new data stores — enrich the session metadata file.
 - **Both providers.** Claude and Codex adapters must both emit context metrics. Claude emits compression events natively; Codex may not — handle gracefully with zero values.
-- **Skill attribution is best-effort.** We can detect which skill/task-type a session was spawned with (already in `spawn.json`), but not mid-session skill switches in interactive mode. Per-session attribution is sufficient.
+- **Skill attribution is best-effort.** `spawn.json` currently persists `skill`; phase 3 adds `task_key`. We still cannot detect mid-session skill switches in interactive mode. Per-session attribution is sufficient.
 
 ## Alternatives considered
 

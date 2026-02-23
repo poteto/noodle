@@ -18,11 +18,14 @@ Attribute each session's context usage to the skill/task-type that spawned it. T
   - `Skill string` — from `spawn.json` (already persisted)
   - `TaskKey string` — from `spawn.json` (added above)
 
-- **`monitor/derive.go`** — Populate `Meta.Skill` and `Meta.TaskKey` from `spawn.json`. The monitor already reads session directories — add spawn metadata reading.
+- **`monitor/claims.go`** — Extend `readSpawnMetadata()` to parse `Skill` and `TaskKey` in addition to provider/model, and thread them through `SessionClaims`.
+
+- **`monitor/derive.go`** — Keep `DeriveSessionMeta` as a pure transform. Map `claims.Skill` and `claims.TaskKey` into `Meta` (no file IO in derive layer).
 
 ## Data structures
 
 - `dispatchMetadata` gains `TaskKey string`
+- `SessionClaims` gains `Skill string` and `TaskKey string`
 - `Meta` gains `Skill string` and `TaskKey string`
 
 ## Routing
