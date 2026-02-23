@@ -10,7 +10,7 @@ func TestRootCommandRegistersAllSubcommands(t *testing.T) {
 	root := NewRootCmd()
 
 	expected := []string{
-		"start", "skills", "status", "debug",
+		"start", "skills", "schema", "status", "debug",
 		"worktree", "stamp", "dispatch", "mise", "plan",
 	}
 

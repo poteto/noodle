@@ -99,6 +99,7 @@ Script templates are project-defined in `.noodle.toml`.
 | `noodle skills list` | List resolved skills with precedence |
 | `noodle worktree <subcommand>` | Worktree operations (`create`, `merge`, `cleanup`, `list`, `prune`, `hook`) |
 | `noodle plan <subcommand>` | Plan management (`create`, `done`, `phase-add`, `list`) |
+| `noodle schema [target]` | Print generated runtime schema docs (`list`, `mise`, `queue`) |
 | `noodle mise` | Build and print current mise brief (internal) |
 | `noodle dispatch` | Dispatch a cook session in tmux (internal) |
 | `noodle stamp` | Stamp NDJSON logs (internal) |
