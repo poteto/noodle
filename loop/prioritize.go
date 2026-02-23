@@ -18,7 +18,7 @@ const queueSchemaPrompt = `queue.json schema (JSON):
   "items": [
     {
       "id": "string",
-      "task_key": "string (optional)",
+      "task_key": "string — must match a task_types[].key from mise",
       "title": "string (optional)",
       "provider": "string",
       "model": "string",
@@ -26,7 +26,8 @@ const queueSchemaPrompt = `queue.json schema (JSON):
       "review": "boolean (optional)",
       "rationale": "string (optional)"
     }
-  ]
+  ],
+  "action_needed": ["string — backlog item IDs skipped (no linked plan, needs user attention)"]
 }`
 
 func isPrioritizeItem(item QueueItem) bool {

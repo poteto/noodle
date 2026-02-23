@@ -688,24 +688,29 @@ func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
 	}
 }
 
-func TestReadQualityVerdictFromCanonical(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "canonical.ndjson")
-	content := `{"provider":"claude","type":"action","message":"text: {\"accept\":false,\"feedback\":\"needs tests\"}","timestamp":"2026-02-22T20:00:00Z"}`
+func TestReadQualityVerdictFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "verdict.json")
+	content := `{"accept":false,"feedback":"needs tests"}`
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write canonical: %v", err)
+		t.Fatalf("write verdict: %v", err)
 	}
-	verdict, found, err := readQualityVerdict(path)
+	verdict, err := readQualityVerdictFile(path)
 	if err != nil {
 		t.Fatalf("read verdict: %v", err)
 	}
-	if !found {
-		t.Fatal("expected verdict to be found")
-	}
 	if verdict.Accept {
-		t.Fatalf("expected reject verdict: %#v", verdict)
+		t.Fatalf("expected reject verdict")
 	}
 	if verdict.Feedback != "needs tests" {
 		t.Fatalf("feedback = %q", verdict.Feedback)
+	}
+}
+
+func TestReadQualityVerdictFileMissing(t *testing.T) {
+	_, err := readQualityVerdictFile(filepath.Join(t.TempDir(), "nonexistent.json"))
+	if err == nil {
+		t.Fatal("expected error for missing verdict file")
 	}
 }
 

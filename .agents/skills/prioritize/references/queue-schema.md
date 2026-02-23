@@ -8,7 +8,7 @@ Output of the prioritize skill. Consumed by the dispatcher.
   "items": [
     {
       "id": "string — backlog item ID",
-      "task_key": "string — prioritize|execute|reflect|meditate|oops|debate|quality",
+      "task_key": "string — must match a task_types[].key from mise",
       "title": "string — brief description of the work",
       "provider": "string — claude|codex",
       "model": "string — model ID",

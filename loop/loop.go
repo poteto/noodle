@@ -1,14 +1,12 @@
 package loop
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,7 +17,6 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
-	"github.com/poteto/noodle/parse"
 	"github.com/poteto/noodle/recover"
 	"github.com/poteto/noodle/skill"
 )
@@ -109,9 +106,6 @@ func (l *Loop) Run(ctx context.Context) error {
 	if strings.TrimSpace(l.projectDir) == "" {
 		return fmt.Errorf("project directory is required")
 	}
-	if l.registryErr != nil {
-		return l.registryErr
-	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
 	}
@@ -166,6 +160,9 @@ func (l *Loop) Run(ctx context.Context) error {
 }
 
 func (l *Loop) Cycle(ctx context.Context) error {
+	if l.registryErr != nil {
+		return l.registryErr
+	}
 	if err := l.processControlCommands(); err != nil {
 		return l.handleRuntimeIssue(ctx, "loop.control", err, nil)
 	}
@@ -631,33 +628,17 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 	case <-session.Done():
 	}
 
-	// Primary: read the structured verdict file the quality skill writes.
-	verdictPath := filepath.Join(l.runtimeDir, "quality", session.ID()+".json")
-	if verdict, err := readQualityVerdictFile(verdictPath); err == nil {
-		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
-		if verdict.Accept {
-			return true, verdict.Feedback
-		}
-		return false, verdict.Feedback
+	// The quality skill writes .noodle/quality/<session-id>.json relative to
+	// its CWD (the cook's worktree). That's the single source of truth.
+	// No verdict file → reject. No fallback, no fail-open.
+	verdict, err := readQualityVerdictFile(filepath.Join(cook.worktreePath, ".noodle", "quality", session.ID()+".json"))
+	if err != nil {
+		feedback := "quality review produced no verdict"
+		_ = l.writeDebateVerdict(cook, false, feedback)
+		return false, feedback
 	}
-
-	// Fallback: parse verdict from canonical session output.
-	if verdict, found, err := readQualityVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson")); err == nil && found {
-		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
-		if verdict.Accept {
-			return true, verdict.Feedback
-		}
-		return false, verdict.Feedback
-	}
-
-	status := strings.ToLower(strings.TrimSpace(session.Status()))
-	if status == "completed" {
-		_ = l.writeDebateVerdict(cook, true, "")
-		return true, ""
-	}
-	feedback := "quality review rejected with status " + status
-	_ = l.writeDebateVerdict(cook, false, feedback)
-	return false, feedback
+	_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
+	return verdict.Accept, verdict.Feedback
 }
 
 func (l *Loop) pollInterval() time.Duration {
@@ -858,68 +839,19 @@ func (l *Loop) steer(target string, prompt string) error {
 	return errors.New("session not found")
 }
 
-type qualityVerdict struct {
-	Accept   bool   `json:"accept"`
-	Feedback string `json:"feedback,omitempty"`
-}
-
-// readQualityVerdictFile reads the structured JSON verdict file the quality
-// skill writes to .noodle/quality/<session-id>.json.
-func readQualityVerdictFile(path string) (qualityVerdict, error) {
+// readQualityVerdictFile reads the structured JSON verdict the quality skill
+// writes to .noodle/quality/<session-id>.json. Uses mise.QualityVerdict as
+// the single canonical type — no separate loop-local struct needed.
+func readQualityVerdictFile(path string) (mise.QualityVerdict, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return qualityVerdict{}, err
+		return mise.QualityVerdict{}, err
 	}
-	var v qualityVerdict
+	var v mise.QualityVerdict
 	if err := json.Unmarshal(data, &v); err != nil {
-		return qualityVerdict{}, err
+		return mise.QualityVerdict{}, err
 	}
 	return v, nil
-}
-
-var verdictJSONRegexp = regexp.MustCompile(`\{[^{}]*"accept"\s*:\s*(true|false)[^{}]*\}`)
-
-func readQualityVerdict(path string) (qualityVerdict, bool, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return qualityVerdict{}, false, nil
-		}
-		return qualityVerdict{}, false, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		var event parse.CanonicalEvent
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			continue
-		}
-		verdict, found := verdictFromText(event.Message)
-		if found {
-			return verdict, true, nil
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return qualityVerdict{}, false, err
-	}
-	return qualityVerdict{}, false, nil
-}
-
-func verdictFromText(text string) (qualityVerdict, bool) {
-	match := verdictJSONRegexp.FindString(text)
-	if match == "" {
-		return qualityVerdict{}, false
-	}
-	var verdict qualityVerdict
-	if err := json.Unmarshal([]byte(match), &verdict); err != nil {
-		return qualityVerdict{}, false
-	}
-	return verdict, true
 }
 
 func (l *Loop) writeDebateVerdict(cook *activeCook, accept bool, feedback string) error {
