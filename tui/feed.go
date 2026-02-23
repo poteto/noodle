@@ -32,8 +32,8 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 	var current *FeedItem
 
 	for _, ev := range events {
-		// Group consecutive events from same session + same category.
-		if current != nil && current.SessionID == ev.SessionID && current.Category == ev.Category {
+		// Group consecutive events from the same session into one card.
+		if current != nil && current.SessionID == ev.SessionID {
 			current.Events = append(current.Events, ev)
 			continue
 		}
