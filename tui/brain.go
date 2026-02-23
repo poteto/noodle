@@ -70,7 +70,43 @@ func (b *BrainTab) renderList(width, height int) string {
 		}
 	}
 
-	return out.String()
+	// Constrain output to available height.
+	rendered := out.String()
+	lines := strings.Split(rendered, "\n")
+
+	// Ensure selected item is visible by scrolling.
+	selectedLine := b.findSelectedLine(lines)
+	start := 0
+	if selectedLine >= height {
+		start = selectedLine - height + 2
+	}
+	end := start + height
+	if end > len(lines) {
+		end = len(lines)
+	}
+	if start > 0 && start >= len(lines) {
+		start = len(lines) - height
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	return strings.Join(lines[start:end], "\n")
+}
+
+// findSelectedLine returns the approximate line index of the selected item.
+func (b *BrainTab) findSelectedLine(lines []string) int {
+	// Count entries seen to find which line the selected entry falls on.
+	entryCount := 0
+	for i, line := range lines {
+		if strings.HasPrefix(line, "  ") && (strings.Contains(line, "new") || strings.Contains(line, "edit") || strings.Contains(line, "del")) {
+			if entryCount == b.selected {
+				return i
+			}
+			entryCount++
+		}
+	}
+	return 0
 }
 
 func (b *BrainTab) renderPreview(width, height int) string {
@@ -89,7 +125,14 @@ func (b *BrainTab) renderPreview(width, height int) string {
 	} else {
 		out.WriteString(dimStyle.Render("(loading preview...)"))
 	}
-	return out.String()
+
+	// Constrain to available height.
+	rendered := out.String()
+	lines := strings.Split(rendered, "\n")
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (b *BrainTab) renderEmpty(width int) string {
