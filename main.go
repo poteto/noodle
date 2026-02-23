@@ -321,7 +321,7 @@ func startRepairSession(
 		Prompt:       prompt,
 		Provider:     provider,
 		Model:        repairModelForProvider(provider, app.Config),
-		Skill:        loop.RepairTaskSkill(app.Config),
+		Skill:        loop.RepairTaskSkill(),
 		WorktreePath: worktreePath,
 	}
 	session, err := spawn.Spawn(ctx, request)

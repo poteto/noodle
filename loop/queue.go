@@ -19,8 +19,7 @@ func writeQueueAtomic(path string, queue Queue) error {
 	return queuex.WriteAtomic(path, toQueueX(queue))
 }
 
-func applyQueueRoutingDefaults(queue Queue, cfg config.Config) (Queue, bool) {
-	reg := taskreg.New(cfg)
+func applyQueueRoutingDefaults(queue Queue, reg taskreg.Registry, cfg config.Config) (Queue, bool) {
 	updated, changed := queuex.ApplyRoutingDefaults(toQueueX(queue), reg, cfg)
 	if !changed {
 		return queue, false
@@ -28,8 +27,7 @@ func applyQueueRoutingDefaults(queue Queue, cfg config.Config) (Queue, bool) {
 	return fromQueueX(updated), true
 }
 
-func normalizeAndValidateQueue(queue Queue, backlog []adapter.BacklogItem, cfg config.Config) (Queue, bool, error) {
-	reg := taskreg.New(cfg)
+func normalizeAndValidateQueue(queue Queue, backlog []adapter.BacklogItem, reg taskreg.Registry, cfg config.Config) (Queue, bool, error) {
 	updated, changed, err := queuex.NormalizeAndValidate(toQueueX(queue), backlog, reg, cfg)
 	if err != nil {
 		return Queue{}, false, err

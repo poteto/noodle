@@ -28,6 +28,7 @@ type Config struct {
 	Monitor     MonitorConfig            `toml:"monitor"`
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
 	Agents      AgentsConfig             `toml:"agents"`
+	Runtime     RuntimeConfig            `toml:"runtime"`
 }
 
 type AdapterConfig struct {
@@ -77,6 +78,11 @@ type ConcurrencyConfig struct {
 type AgentsConfig struct {
 	ClaudeDir string `toml:"claude_dir"`
 	CodexDir  string `toml:"codex_dir"`
+}
+
+// RuntimeConfig controls the default runtime for spawned cook sessions.
+type RuntimeConfig struct {
+	Default string `toml:"default"` // command template, empty = built-in tmux
 }
 
 type DiagnosticSeverity string

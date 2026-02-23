@@ -31,7 +31,7 @@ source_hash: 37e63afba6ed7b8f359d6a03e46cece42a0177b99ec3376c6c57907de68ddb6b
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": true,
       "spawn_calls": 2,
       "runtime_repair_spawn_calls": 1,
@@ -45,7 +45,7 @@ source_hash: 37e63afba6ed7b8f359d6a03e46cece42a0177b99ec3376c6c57907de68ddb6b
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }

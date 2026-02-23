@@ -149,12 +149,13 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				applyConfigOverride(t, &baseCfg, path)
 			}
 
-			l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+			l := New(projectDir, "noodle", baseCfg, Dependencies{
 				Spawner:   sp,
 				Worktree:  wt,
 				Adapter:   &fakeAdapterRunner{},
 				Mise:      &fakeMise{results: miseResults},
 				Monitor:   fakeMonitor{},
+				Registry:  testLoopRegistry(),
 				Now:       time.Now,
 				QueueFile: queuePath,
 			})

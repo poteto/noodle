@@ -9,7 +9,27 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/skill"
 )
+
+func testRegistry() taskreg.Registry {
+	return taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name: "execute",
+			Path: "/skills/execute",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "When a planned item is ready"},
+			},
+		},
+		{
+			Name: "prioritize",
+			Path: "/skills/prioritize",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Blocking: true, Schedule: "When queue is empty"},
+			},
+		},
+	})
+}
 
 func TestReadMissingAndEmpty(t *testing.T) {
 	dir := t.TempDir()
@@ -78,7 +98,7 @@ func TestReadStrictRejectsLegacyArray(t *testing.T) {
 
 func TestNormalizeAndValidateRejectsDuplicateIDs(t *testing.T) {
 	cfg := config.DefaultConfig()
-	reg := taskreg.New(cfg)
+	reg := testRegistry()
 	queue := Queue{Items: []Item{{ID: "1", TaskKey: "execute"}, {ID: "1", TaskKey: "execute"}}}
 
 	_, _, err := NormalizeAndValidate(queue, nil, reg, cfg)
@@ -89,7 +109,7 @@ func TestNormalizeAndValidateRejectsDuplicateIDs(t *testing.T) {
 
 func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	cfg := config.DefaultConfig()
-	reg := taskreg.New(cfg)
+	reg := testRegistry()
 	queue := Queue{Items: []Item{{ID: "1", Title: "implement feature"}}}
 	backlog := []adapter.BacklogItem{{ID: "1", Title: "x", Status: adapter.BacklogStatusOpen}}
 
@@ -100,7 +120,7 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	if !changed {
 		t.Fatal("expected changed")
 	}
-	if got.Items[0].TaskKey != taskreg.TaskKeyExecute {
+	if got.Items[0].TaskKey != "execute" {
 		t.Fatalf("task key = %q", got.Items[0].TaskKey)
 	}
 	if strings.TrimSpace(got.Items[0].Skill) == "" {

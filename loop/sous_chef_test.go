@@ -5,25 +5,17 @@ import (
 	"testing"
 )
 
-func TestBuildQueueTaskTypesPromptIncludesKeyAndDescription(t *testing.T) {
+func TestBuildQueueTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
 	prompt := buildQueueTaskTypesPrompt([]TaskType{
 		{
-			Key:        "review",
-			Type:       "Review",
-			ConfigPath: "[review]",
-			Skill:      "review",
-			Blocking:   true,
-			Synthetic:  true,
-			Aliases:    []string{"review", "chef review"},
-			Purpose:    "Blocking review gate.",
+			Key:      "prioritize",
+			Blocking: true,
+			Schedule: "When the queue is empty",
 		},
 	})
 
-	if !strings.Contains(prompt, "- review: Blocking review gate.") {
+	if !strings.Contains(prompt, "- prioritize: When the queue is empty") {
 		t.Fatalf("unexpected prompt: %q", prompt)
-	}
-	if strings.Contains(prompt, "| config: ") || strings.Contains(prompt, "| synthetic: ") {
-		t.Fatalf("expected concise prompt without verbose metadata: %q", prompt)
 	}
 }
 

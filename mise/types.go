@@ -41,14 +41,22 @@ type RoutingPolicy struct {
 	Model    string `json:"model"`
 }
 
+// TaskTypeSummary describes a schedulable task type discovered from skill frontmatter.
+type TaskTypeSummary struct {
+	Key      string `json:"key"`
+	Blocking bool   `json:"blocking"`
+	Schedule string `json:"schedule"`
+}
+
 type Brief struct {
-	GeneratedAt    time.Time           `json:"generated_at"`
+	GeneratedAt    time.Time             `json:"generated_at"`
 	Backlog        []adapter.BacklogItem `json:"backlog"`
-	Plans          []adapter.PlanItem  `json:"plans"`
-	ActiveCooks    []ActiveCook        `json:"active_cooks"`
-	Tickets        []event.Ticket      `json:"tickets"`
-	Resources      ResourceSnapshot    `json:"resources"`
-	RecentHistory  []HistoryItem       `json:"recent_history"`
-	Routing        RoutingSnapshot     `json:"routing"`
-	Warnings       []string            `json:"warnings,omitempty"`
+	Plans          []adapter.PlanItem    `json:"plans"`
+	ActiveCooks    []ActiveCook          `json:"active_cooks"`
+	Tickets        []event.Ticket        `json:"tickets"`
+	Resources      ResourceSnapshot      `json:"resources"`
+	RecentHistory  []HistoryItem         `json:"recent_history"`
+	Routing        RoutingSnapshot       `json:"routing"`
+	TaskTypes      []TaskTypeSummary     `json:"task_types,omitempty"`
+	Warnings       []string              `json:"warnings,omitempty"`
 }

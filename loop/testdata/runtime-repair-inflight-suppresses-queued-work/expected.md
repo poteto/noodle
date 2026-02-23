@@ -14,7 +14,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -22,7 +22,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }
@@ -31,7 +31,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -39,7 +39,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }
@@ -48,7 +48,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -56,7 +56,7 @@ source_hash: 00ff87cf07ed7d6ef15a5d7d1c8fd6a60dc3ba13f576aefb1980c502b5bbf920
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }

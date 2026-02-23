@@ -138,6 +138,7 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 		Adapter:   ar,
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: filepath.Join(runtimeDir, "queue.json"),
 	})
@@ -180,6 +181,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -221,6 +223,7 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -262,6 +265,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -299,6 +303,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -352,6 +357,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 		Adapter:   ar,
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -382,7 +388,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	}
 }
 
-func TestCycleBootstrapsPrioritizeUsingConfiguredSkill(t *testing.T) {
+func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -390,17 +396,15 @@ func TestCycleBootstrapsPrioritizeUsingConfiguredSkill(t *testing.T) {
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
-	cfg := config.DefaultConfig()
-	cfg.Prioritize.Skill = "priority-chef"
-
 	sp := &fakeSpawner{}
 	wt := &fakeWorktree{}
-	l := New(projectDir, "noodle", cfg, Dependencies{
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Spawner:   sp,
 		Worktree:  wt,
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -411,11 +415,11 @@ func TestCycleBootstrapsPrioritizeUsingConfiguredSkill(t *testing.T) {
 	if len(sp.calls) != 1 {
 		t.Fatalf("spawn calls = %d", len(sp.calls))
 	}
-	if sp.calls[0].Skill != "priority-chef" {
+	if sp.calls[0].Skill != "prioritize" {
 		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(priority-chef) to refresh .noodle/queue.json from .noodle/mise.json.") {
-		t.Fatalf("spawn prompt missing configured skill invocation: %q", sp.calls[0].Prompt)
+	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(prioritize) to refresh .noodle/queue.json from .noodle/mise.json.") {
+		t.Fatalf("spawn prompt missing skill invocation: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
@@ -423,8 +427,8 @@ func TestCycleBootstrapsPrioritizeUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "- plan: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
-		t.Fatalf("spawn prompt missing key+description task type guidance: %q", sp.calls[0].Prompt)
+	if !strings.Contains(sp.calls[0].Prompt, "- prioritize: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
+		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", sp.calls[0].Prompt)
 	}
 	if strings.Contains(sp.calls[0].Prompt, "| config: ") || strings.Contains(sp.calls[0].Prompt, "| synthetic: ") {
 		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", sp.calls[0].Prompt)
@@ -461,7 +465,7 @@ func TestCycleBootstrapsPrioritizeUsingConfiguredSkill(t *testing.T) {
 	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
 		t.Fatalf("expected prioritize queue bootstrap item, got %#v", updated.Items)
 	}
-	if updated.Items[0].Skill != "priority-chef" {
+	if updated.Items[0].Skill != "prioritize" {
 		t.Fatalf("queue skill = %q", updated.Items[0].Skill)
 	}
 }
@@ -483,6 +487,7 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
 		QueueFile: filepath.Join(runtimeDir, "queue.json"),
 	})
@@ -532,6 +537,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -590,6 +596,7 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -624,10 +631,7 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 
-	cfg := config.DefaultConfig()
-	cfg.Prioritize.Skill = "priority-chef"
-
-	l := New(projectDir, "noodle", cfg, Dependencies{
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Spawner:  &fakeSpawner{},
 		Worktree: &fakeWorktree{},
 		Adapter:  &fakeAdapterRunner{},
@@ -635,6 +639,7 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 			Backlog: []adapter.BacklogItem{{ID: "1", Title: "Fix", Status: adapter.BacklogStatusOpen}},
 		}},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -652,7 +657,7 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 	if queue.Items[0].ID != PrioritizeTaskKey() {
 		t.Fatalf("unexpected id: %q", queue.Items[0].ID)
 	}
-	if queue.Items[0].Skill != "priority-chef" {
+	if queue.Items[0].Skill != "prioritize" {
 		t.Fatalf("unexpected skill: %q", queue.Items[0].Skill)
 	}
 	if queue.Items[0].Title == "Fix" {
@@ -741,6 +746,7 @@ func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -813,6 +819,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -849,6 +856,7 @@ func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -910,6 +918,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 		Adapter:   ar,
 		Mise:      &fakeMise{},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -953,6 +962,7 @@ func TestCycleSchedulesRuntimeRepairForMiseErrors(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      &fakeMise{err: errors.New("plans sync failed")},
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})
@@ -962,7 +972,7 @@ func TestCycleSchedulesRuntimeRepairForMiseErrors(t *testing.T) {
 	if len(sp.calls) != 1 {
 		t.Fatalf("repair spawn calls = %d", len(sp.calls))
 	}
-	if sp.calls[0].Skill != "debugging" {
+	if sp.calls[0].Skill != "oops" {
 		t.Fatalf("repair skill = %q", sp.calls[0].Skill)
 	}
 	if !strings.HasPrefix(sp.calls[0].Name, "repair-runtime-") {
@@ -1002,6 +1012,7 @@ func TestCycleResumesSchedulingAfterRepairCompletion(t *testing.T) {
 		Adapter:   &fakeAdapterRunner{},
 		Mise:      miseBuilder,
 		Monitor:   fakeMonitor{},
+		Registry:  testLoopRegistry(),
 		Now:       time.Now,
 		QueueFile: queuePath,
 	})

@@ -1,6 +1,8 @@
 ---
 name: reflect
 description: Reflect on the conversation and update the brain (Obsidian vault at brain/). Use when wrapping up a conversation, after making mistakes, after being corrected, or when significant new knowledge about the codebase has been gained. Also use when the user says "reflect", "update the brain", "remember this", or "save what you learned".
+noodle:
+  schedule: "After a cook session completes"
 ---
 
 # Reflect

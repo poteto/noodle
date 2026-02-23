@@ -39,7 +39,7 @@ func loadSkillBundle(
 	sections := []string{
 		fmt.Sprintf("# Skill: %s", skillName),
 		"## SKILL.md",
-		string(skillMarkdown),
+		string(skill.StripFrontmatter(skillMarkdown)),
 	}
 
 	referenceRoot := filepath.Join(skillPath, "references")

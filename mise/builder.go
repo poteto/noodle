@@ -21,6 +21,7 @@ type Builder struct {
 	config     config.Config
 	runner     *adapter.Runner
 	now        func() time.Time
+	TaskTypes  []TaskTypeSummary
 }
 
 func NewBuilder(projectDir string, cfg config.Config) *Builder {
@@ -111,6 +112,7 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		Resources:     resources,
 		RecentHistory: recentHistory,
 		Routing:       routing,
+		TaskTypes:     b.TaskTypes,
 		Warnings:      warnings,
 	}
 

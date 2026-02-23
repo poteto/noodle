@@ -16,9 +16,11 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/debate"
+	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/parse"
 	"github.com/poteto/noodle/recover"
+	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/spawner"
 )
 
@@ -56,10 +58,19 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		deps.QueueFile = filepath.Join(runtimeDir, "queue.json")
 	}
 
+	registry := deps.Registry
+	if len(registry.All()) == 0 {
+		registry = discoverRegistry(projectDir, cfg)
+	}
+	if builder, ok := deps.Mise.(*mise.Builder); ok {
+		builder.TaskTypes = registryToTaskTypeSummaries(registry)
+	}
+
 	return &Loop{
 		projectDir:            projectDir,
 		runtimeDir:            runtimeDir,
 		config:                cfg,
+		registry:              registry,
 		deps:                  deps,
 		state:                 StateRunning,
 		activeByTarget:        map[string]*activeCook{},
@@ -70,6 +81,26 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		processedIDs:          map[string]struct{}{},
 		runtimeRepairAttempts: map[string]int{},
 	}
+}
+
+func discoverRegistry(projectDir string, cfg config.Config) taskreg.Registry {
+	paths := make([]string, 0, len(cfg.Skills.Paths))
+	for _, p := range cfg.Skills.Paths {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(projectDir, p)
+		}
+		paths = append(paths, p)
+	}
+	resolver := skill.Resolver{SearchPaths: paths}
+	skills, err := resolver.DiscoverTaskTypes()
+	if err != nil {
+		return taskreg.NewFromSkills(nil)
+	}
+	return taskreg.NewFromSkills(skills)
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -158,7 +189,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.Backlog, l.config); err != nil {
+	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.Backlog, l.registry, l.config); err != nil {
 		return l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
 	} else if changed {
 		queue = normalizedQueue
@@ -179,7 +210,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 			return err
 		}
 	}
-	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.config); changed {
+	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.registry, l.config); changed {
 		queue = updatedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 			return err
@@ -197,7 +228,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		if len(l.activeByID)+len(l.adoptedTargets) >= limit {
 			break
 		}
-		if isBlockingQueueItem(l.config, item) && len(l.activeByID)+len(l.adoptedTargets) > 0 {
+		if isBlockingQueueItem(l.registry, item) && len(l.activeByID)+len(l.adoptedTargets) > 0 {
 			continue
 		}
 		if _, busy := l.activeByTarget[item.ID]; busy {
@@ -221,13 +252,13 @@ func (l *Loop) Cycle(ctx context.Context) error {
 
 func (l *Loop) hasBlockingActive(queueItems []QueueItem) bool {
 	for _, cook := range l.activeByID {
-		if isBlockingQueueItem(l.config, cook.queueItem) {
+		if isBlockingQueueItem(l.registry, cook.queueItem) {
 			return true
 		}
 	}
 	for targetID := range l.adoptedTargets {
 		if item, ok := findQueueItemByTarget(queueItems, targetID); ok {
-			if isBlockingQueueItem(l.config, item) {
+			if isBlockingQueueItem(l.registry, item) {
 				return true
 			}
 		}
@@ -572,7 +603,7 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 		Prompt:       "Review completed cook work for item " + cook.queueItem.ID,
 		Provider:     l.config.Routing.Defaults.Provider,
 		Model:        l.config.Routing.Defaults.Model,
-		Skill:        qualityTaskSkill(l.config),
+		Skill:        taskSkill(l.registry, "quality", "quality"),
 		WorktreePath: cook.worktreePath,
 	}
 	session, err := l.deps.Spawner.Spawn(ctx, reviewReq)

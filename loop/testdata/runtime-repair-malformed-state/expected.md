@@ -14,7 +14,7 @@ source_hash: 04ddde00afcefe9dc8c7af2cad6fe8d4441bc5aa820c3c9f5616c5e9059c7b63
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -22,7 +22,7 @@ source_hash: 04ddde00afcefe9dc8c7af2cad6fe8d4441bc5aa820c3c9f5616c5e9059c7b63
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }

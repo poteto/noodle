@@ -10,7 +10,7 @@ import (
 	"github.com/poteto/noodle/spawner"
 )
 
-const prioritizeQueueID = taskKeyPrioritize
+const prioritizeQueueID = "prioritize"
 
 const queueSchemaPrompt = `queue.json schema (JSON):
 {
@@ -46,7 +46,7 @@ func prioritizeQueueItem(cfg config.Config, prompt string) QueueItem {
 		Title:    "prioritizing tasks based on your backlog",
 		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
-		Skill:    prioritizeSkill(cfg),
+		Skill:    "prioritize",
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt != "" {
@@ -65,8 +65,8 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 		name = nextName
 	}
 
-	skillName := nonEmpty(item.Skill, prioritizeSkill(l.config))
-	taskTypesPrompt := buildQueueTaskTypesPrompt(configuredTaskTypes(l.config))
+	skillName := nonEmpty(item.Skill, "prioritize")
+	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
 	req := spawner.SpawnRequest{
 		Name:                 name,
 		Prompt:               buildPrioritizePrompt(skillName, taskTypesPrompt, item, resumePrompt),
@@ -123,19 +123,13 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 		if key == "" {
 			continue
 		}
-		description := strings.TrimSpace(taskType.Purpose)
-		if description == "" {
-			description = strings.TrimSpace(taskType.Type)
+		schedule := strings.TrimSpace(taskType.Schedule)
+		if schedule == "" {
+			schedule = key
 		}
-		line := "- " + key + ": " + description
-		b.WriteString("\n")
-		b.WriteString(line)
+		b.WriteString("\n- " + key + ": " + schedule)
 	}
 	return b.String()
-}
-
-func prioritizeSkill(cfg config.Config) string {
-	return prioritizeTaskSkill(cfg)
 }
 
 func (l *Loop) reprioritizeForChefPrompt(prompt string) error {

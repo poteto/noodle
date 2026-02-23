@@ -154,7 +154,7 @@ func NormalizeAndValidate(
 			Skill:   items[i].Skill,
 		})
 		if !ok && strings.TrimSpace(items[i].TaskKey) == "" && strings.TrimSpace(items[i].Skill) == "" {
-			if resolved, found := reg.ByKey(taskreg.TaskKeyExecute); found {
+			if resolved, found := reg.ByKey("execute"); found {
 				taskType = resolved
 				ok = true
 			}
@@ -167,16 +167,16 @@ func NormalizeAndValidate(
 			items[i].TaskKey = taskType.Key
 			changed = true
 		}
-		if strings.TrimSpace(items[i].Skill) == "" && strings.TrimSpace(taskType.Skill) != "" {
-			items[i].Skill = taskType.Skill
+		if strings.TrimSpace(items[i].Skill) == "" {
+			items[i].Skill = taskType.Key
 			changed = true
 		}
-		if !taskType.Synthetic && len(backlogIDs) > 0 {
+		// Execute items must exist in backlog.
+		if taskType.Key == "execute" && len(backlogIDs) > 0 {
 			if _, exists := backlogIDs[id]; !exists {
 				return queue, false, fmt.Errorf(
-					"queue item %q uses non-synthetic task type %q but is not in backlog",
+					"queue item %q is an execute task but is not in backlog",
 					id,
-					taskType.Key,
 				)
 			}
 		}

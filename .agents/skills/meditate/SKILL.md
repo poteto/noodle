@@ -1,6 +1,8 @@
 ---
 name: meditate
 description: Audit the brain Obsidian vault, CLAUDE.md, and auto-memory files for outdated information, discover connections between learnings to form higher-level principles, and review skills against brain principles to find structural encoding opportunities. Uses an agent team to parallelize the work. Use when the user says "meditate", "audit the brain", "clean up the brain", "find connections", "review skills", "prune memories", or wants to review and evolve their knowledge base.
+noodle:
+  schedule: "Periodically after several reflect cycles have accumulated"
 ---
 
 # Meditate

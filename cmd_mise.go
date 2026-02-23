@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/poteto/noodle/mise"
+	"github.com/poteto/noodle/skill"
 )
 
 func runMiseCommand(ctx context.Context, app *App, _ []Command, args []string) error {
@@ -23,6 +24,18 @@ func runMiseCommand(ctx context.Context, app *App, _ []Command, args []string) e
 	}
 
 	builder := mise.NewBuilder(cwd, app.Config)
+	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
+	if taskTypeSkills, discoverErr := resolver.DiscoverTaskTypes(); discoverErr == nil {
+		summaries := make([]mise.TaskTypeSummary, len(taskTypeSkills))
+		for i, s := range taskTypeSkills {
+			summaries[i] = mise.TaskTypeSummary{
+				Key:      s.Name,
+				Blocking: s.Frontmatter.Noodle.Blocking,
+				Schedule: s.Frontmatter.Noodle.Schedule,
+			}
+		}
+		builder.TaskTypes = summaries
+	}
 	brief, warnings, err := builder.Build(ctx)
 	if err != nil {
 		return err

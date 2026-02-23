@@ -6,6 +6,9 @@ description: >
   Plan must be followed by blocking Chef Review, Execute must be followed by
   Verify, Verify must be followed by Reflect, and Meditate should be scheduled
   periodically after several Reflects.
+noodle:
+  blocking: true
+  schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 
 # Prioritize

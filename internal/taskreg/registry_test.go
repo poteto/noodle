@@ -3,42 +3,109 @@ package taskreg
 import (
 	"testing"
 
-	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/skill"
 )
 
-func TestRegistryByKeyAndPrioritizeTarget(t *testing.T) {
-	reg := New(config.DefaultConfig())
-	taskType, ok := reg.ByKey(TaskKeyPrioritize)
-	if !ok {
-		t.Fatal("expected prioritize task type")
-	}
-	if taskType.Key != TaskKeyPrioritize {
-		t.Fatalf("key = %q", taskType.Key)
-	}
-	if got := reg.PrioritizeTarget(); got != TaskKeyPrioritize {
-		t.Fatalf("prioritize target = %q", got)
+func testSkills() []skill.SkillMeta {
+	return []skill.SkillMeta{
+		{
+			Name: "prioritize",
+			Path: "/skills/prioritize",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{
+					Blocking: true,
+					Schedule: "When the queue is empty",
+				},
+			},
+		},
+		{
+			Name: "execute",
+			Path: "/skills/execute",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{
+					Schedule: "When a planned item is ready",
+				},
+			},
+		},
+		{
+			Name: "reflect",
+			Path: "/skills/reflect",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{
+					Schedule: "After a cook session completes",
+				},
+			},
+		},
+		{
+			Name: "debugging",
+			Path: "/skills/debugging",
+			Frontmatter: skill.Frontmatter{
+				Name: "debugging",
+			},
+		},
 	}
 }
 
-func TestResolveQueueItem(t *testing.T) {
-	reg := New(config.DefaultConfig())
-
-	byKey, ok := reg.ResolveQueueItem(QueueItemInput{TaskKey: TaskKeyReview, ID: "x"})
-	if !ok || byKey.Key != TaskKeyReview {
-		t.Fatalf("resolve by key = %+v, %v", byKey, ok)
+func TestNewFromSkillsExcludesUtilitySkills(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	all := reg.All()
+	if len(all) != 3 {
+		t.Fatalf("types = %d, want 3", len(all))
 	}
-
-	bySkill, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "prioritize", ID: "x"})
-	if !ok || bySkill.Key != TaskKeyPrioritize {
-		t.Fatalf("resolve by skill = %+v, %v", bySkill, ok)
+	if _, ok := reg.ByKey("debugging"); ok {
+		t.Fatal("utility skill should not be in registry")
 	}
+}
 
-	byIDPrefix, ok := reg.ResolveQueueItem(QueueItemInput{ID: "repair-runtime-20260223-010203-1"})
-	if !ok || byIDPrefix.Key != TaskKeyRepair {
-		t.Fatalf("resolve by id prefix = %+v, %v", byIDPrefix, ok)
+func TestByKey(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	tt, ok := reg.ByKey("prioritize")
+	if !ok {
+		t.Fatal("expected prioritize")
 	}
+	if tt.Key != "prioritize" {
+		t.Fatalf("key = %q", tt.Key)
+	}
+	if !tt.Blocking {
+		t.Fatal("expected blocking")
+	}
+}
 
-	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "42", Title: "review API docs"}); ok {
-		t.Fatal("title-only text should not resolve synthetic task types")
+func TestResolveQueueItemByTaskKey(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	tt, ok := reg.ResolveQueueItem(QueueItemInput{TaskKey: "execute", ID: "x"})
+	if !ok || tt.Key != "execute" {
+		t.Fatalf("resolve by task_key = %+v, %v", tt, ok)
+	}
+}
+
+func TestResolveQueueItemBySkill(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	tt, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "prioritize", ID: "x"})
+	if !ok || tt.Key != "prioritize" {
+		t.Fatalf("resolve by skill = %+v, %v", tt, ok)
+	}
+}
+
+func TestResolveQueueItemByIDPrefix(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	tt, ok := reg.ResolveQueueItem(QueueItemInput{ID: "prioritize-20260222-123456-1"})
+	if !ok || tt.Key != "prioritize" {
+		t.Fatalf("resolve by id prefix = %+v, %v", tt, ok)
+	}
+}
+
+func TestResolveQueueItemUnknown(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "42", Title: "some ticket"}); ok {
+		t.Fatal("unknown item should not resolve")
+	}
+}
+
+func TestResolveQueueItemByExactID(t *testing.T) {
+	reg := NewFromSkills(testSkills())
+	tt, ok := reg.ResolveQueueItem(QueueItemInput{ID: "reflect"})
+	if !ok || tt.Key != "reflect" {
+		t.Fatalf("resolve by exact id = %+v, %v", tt, ok)
 	}
 }

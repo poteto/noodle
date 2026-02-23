@@ -14,7 +14,7 @@ source_hash: ad028250f94289c2ba9fc6f22f837e2819de83a0a392688d08aa82fe77d93efb
       "transition": "paused",
       "runtime_repair_in_flight": true,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -22,7 +22,7 @@ source_hash: ad028250f94289c2ba9fc6f22f837e2819de83a0a392688d08aa82fe77d93efb
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }
@@ -32,7 +32,7 @@ source_hash: ad028250f94289c2ba9fc6f22f837e2819de83a0a392688d08aa82fe77d93efb
       "transition": "paused",
       "runtime_repair_in_flight": false,
       "repair_task_scheduled": true,
-      "oops_task_scheduled": false,
+      "oops_task_scheduled": true,
       "normal_task_scheduled": false,
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 1,
@@ -40,7 +40,7 @@ source_hash: ad028250f94289c2ba9fc6f22f837e2819de83a0a392688d08aa82fe77d93efb
       "created_worktrees": 1,
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
-        "skill": "debugging",
+        "skill": "oops",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }

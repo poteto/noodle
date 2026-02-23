@@ -6,6 +6,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	"github.com/poteto/noodle/spawner"
@@ -90,6 +91,7 @@ type Dependencies struct {
 	Adapter   AdapterRunner
 	Mise      MiseBuilder
 	Monitor   Monitor
+	Registry  taskreg.Registry
 	Now       func() time.Time
 	QueueFile string
 }
@@ -98,6 +100,7 @@ type Loop struct {
 	projectDir string
 	runtimeDir string
 	config     config.Config
+	registry   taskreg.Registry
 	deps       Dependencies
 
 	state State

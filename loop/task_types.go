@@ -3,92 +3,53 @@ package loop
 import (
 	"strings"
 
-	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/mise"
 )
 
 // TaskType is the canonical registry entry for a Noodle task/session type.
 type TaskType = taskreg.TaskType
 
-const (
-	taskKeyPlan       = taskreg.TaskKeyPlan
-	taskKeyReview     = taskreg.TaskKeyReview
-	taskKeyExecute    = taskreg.TaskKeyExecute
-	taskKeyVerify     = taskreg.TaskKeyVerify
-	taskKeyReflect    = taskreg.TaskKeyReflect
-	taskKeyMeditate   = taskreg.TaskKeyMeditate
-	taskKeyCook       = taskreg.TaskKeyCook
-	taskKeyPrioritize = taskreg.TaskKeyPrioritize
-	taskKeyQuality    = taskreg.TaskKeyQuality
-	taskKeyOops       = taskreg.TaskKeyOops
-	taskKeyRepair     = taskreg.TaskKeyRepair
-	taskKeyDebate     = taskreg.TaskKeyDebate
-)
-
-func configuredTaskTypes(cfg config.Config) []TaskType {
-	return taskreg.New(cfg).All()
-}
-
-func configuredTaskTypeByKey(cfg config.Config, taskKey string) (TaskType, bool) {
-	return taskreg.New(cfg).ByKey(taskKey)
-}
-
-func configuredTaskSkill(cfg config.Config, taskKey, fallback string) string {
-	taskType, ok := configuredTaskTypeByKey(cfg, taskKey)
-	if !ok {
-		return fallback
-	}
-	return nonEmpty(strings.TrimSpace(taskType.Skill), fallback)
-}
-
-func taskTypeForQueueItem(cfg config.Config, item QueueItem) (TaskType, bool) {
-	return taskreg.New(cfg).ResolveQueueItem(taskreg.QueueItemInput{
+func isBlockingQueueItem(reg taskreg.Registry, item QueueItem) bool {
+	taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
 		ID:      item.ID,
 		TaskKey: item.TaskKey,
 		Title:   item.Title,
 		Skill:   item.Skill,
 	})
-}
-
-func isBlockingQueueItem(cfg config.Config, item QueueItem) bool {
-	taskType, ok := taskTypeForQueueItem(cfg, item)
 	return ok && taskType.Blocking
 }
 
-func prioritizeTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeyPrioritize, taskKeyPrioritize)
-}
-
-func qualityTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeyQuality, taskKeyQuality)
-}
-
-func oopsTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeyOops, taskKeyOops)
-}
-
-func repairTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeyRepair, "debugging")
-}
-
-// RepairTaskSkill returns the configured skill for repair sessions.
-func RepairTaskSkill(cfg config.Config) string {
-	return repairTaskSkill(cfg)
-}
-
-func executeTaskKey() string {
-	return taskKeyExecute
+func taskSkill(reg taskreg.Registry, taskKey, fallback string) string {
+	if _, ok := reg.ByKey(taskKey); ok {
+		return taskKey
+	}
+	return fallback
 }
 
 // PrioritizeTaskKey returns the canonical steer target for the scheduler.
 func PrioritizeTaskKey() string {
-	return taskKeyPrioritize
+	return "prioritize"
 }
 
 func isPrioritizeTarget(value string) bool {
-	value = strings.ToLower(strings.TrimSpace(value))
-	if value == "" {
-		return false
+	return strings.EqualFold(strings.TrimSpace(value), PrioritizeTaskKey())
+}
+
+// RepairTaskSkill returns the skill name for runtime repair sessions.
+func RepairTaskSkill() string {
+	return "debugging"
+}
+
+func registryToTaskTypeSummaries(reg taskreg.Registry) []mise.TaskTypeSummary {
+	all := reg.All()
+	summaries := make([]mise.TaskTypeSummary, len(all))
+	for i, tt := range all {
+		summaries[i] = mise.TaskTypeSummary{
+			Key:      tt.Key,
+			Blocking: tt.Blocking,
+			Schedule: tt.Schedule,
+		}
 	}
-	return strings.EqualFold(value, PrioritizeTaskKey())
+	return summaries
 }

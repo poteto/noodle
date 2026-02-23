@@ -5,7 +5,35 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/skill"
 )
+
+func testQueueRegistry() taskreg.Registry {
+	return taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name: "execute",
+			Path: "/skills/execute",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "When a planned item is ready"},
+			},
+		},
+		{
+			Name: "prioritize",
+			Path: "/skills/prioritize",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Blocking: true, Schedule: "When queue is empty"},
+			},
+		},
+		{
+			Name: "reflect",
+			Path: "/skills/reflect",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "After cook completes"},
+			},
+		},
+	})
+}
 
 func TestApplyQueueRoutingDefaultsPreservesExplicitRouting(t *testing.T) {
 	cfg := config.DefaultConfig()
@@ -22,7 +50,7 @@ func TestApplyQueueRoutingDefaultsPreservesExplicitRouting(t *testing.T) {
 		},
 	}
 
-	updated, changed := applyQueueRoutingDefaults(queue, cfg)
+	updated, changed := applyQueueRoutingDefaults(queue, testQueueRegistry(), cfg)
 	if changed {
 		t.Fatal("expected explicit routing to remain unchanged")
 	}
@@ -38,7 +66,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Routing.Defaults.Provider = "codex"
 	cfg.Routing.Defaults.Model = "gpt-5.3-codex"
-	cfg.Routing.Tags["plan"] = config.ModelPolicy{
+	cfg.Routing.Tags["prioritize"] = config.ModelPolicy{
 		Provider: "claude",
 		Model:    "claude-opus-4-6",
 	}
@@ -47,7 +75,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 		Items: []QueueItem{
 			{
 				ID:       "task-1",
-				TaskKey:  "plan",
+				TaskKey:  "prioritize",
 				Provider: "",
 				Model:    "",
 			},
@@ -59,7 +87,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 		},
 	}
 
-	updated, changed := applyQueueRoutingDefaults(queue, cfg)
+	updated, changed := applyQueueRoutingDefaults(queue, testQueueRegistry(), cfg)
 	if !changed {
 		t.Fatal("expected missing routing fields to be defaulted")
 	}
@@ -79,6 +107,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 
 func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testing.T) {
 	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
 			{ID: "42", Title: "Implement fix"},
@@ -88,7 +117,7 @@ func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testin
 		{ID: "42", Status: adapter.BacklogStatusOpen},
 	}
 
-	updated, changed, err := normalizeAndValidateQueue(queue, backlog, cfg)
+	updated, changed, err := normalizeAndValidateQueue(queue, backlog, reg, cfg)
 	if err != nil {
 		t.Fatalf("normalizeAndValidateQueue error: %v", err)
 	}
@@ -98,41 +127,44 @@ func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testin
 	if got := updated.Items[0].TaskKey; got != "execute" {
 		t.Fatalf("task_key = %q, want execute", got)
 	}
-	if got := updated.Items[0].Skill; got != "backlog" {
-		t.Fatalf("skill = %q, want backlog", got)
+	if got := updated.Items[0].Skill; got != "execute" {
+		t.Fatalf("skill = %q, want execute", got)
 	}
 }
 
-func TestNormalizeAndValidateQueueRejectsUnknownSyntheticItem(t *testing.T) {
+func TestNormalizeAndValidateQueueRejectsUnknownItem(t *testing.T) {
 	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
 			{ID: "synth-1", TaskKey: "new-type", Title: "brand new type"},
 		},
 	}
 
-	_, _, err := normalizeAndValidateQueue(queue, nil, cfg)
+	_, _, err := normalizeAndValidateQueue(queue, nil, reg, cfg)
 	if err == nil {
-		t.Fatal("expected validation error for unknown synthetic queue item")
+		t.Fatal("expected validation error for unknown queue item")
 	}
 }
 
-func TestNormalizeAndValidateQueueAllowsNonSyntheticWhenBacklogUnavailable(t *testing.T) {
+func TestNormalizeAndValidateQueueAllowsExecuteWhenBacklogUnavailable(t *testing.T) {
 	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
 			{ID: "42", TaskKey: "execute", Title: "execute something"},
 		},
 	}
 
-	_, _, err := normalizeAndValidateQueue(queue, nil, cfg)
+	_, _, err := normalizeAndValidateQueue(queue, nil, reg, cfg)
 	if err != nil {
 		t.Fatalf("normalizeAndValidateQueue error: %v", err)
 	}
 }
 
-func TestNormalizeAndValidateQueueRejectsNonSyntheticOutsideKnownBacklog(t *testing.T) {
+func TestNormalizeAndValidateQueueRejectsExecuteOutsideBacklog(t *testing.T) {
 	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
 			{ID: "not-in-backlog", TaskKey: "execute", Title: "execute something"},
@@ -142,28 +174,29 @@ func TestNormalizeAndValidateQueueRejectsNonSyntheticOutsideKnownBacklog(t *test
 		{ID: "42", Status: adapter.BacklogStatusOpen},
 	}
 
-	_, _, err := normalizeAndValidateQueue(queue, backlog, cfg)
+	_, _, err := normalizeAndValidateQueue(queue, backlog, reg, cfg)
 	if err == nil {
-		t.Fatal("expected validation error for non-synthetic item not in known backlog")
+		t.Fatal("expected validation error for execute item not in backlog")
 	}
 }
 
-func TestNormalizeAndValidateQueueAllowsSyntheticReview(t *testing.T) {
+func TestNormalizeAndValidateQueueAllowsReflectTask(t *testing.T) {
 	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
-			{ID: "review-after-plan", TaskKey: "review", Title: "Chef review gate"},
+			{ID: "reflect-after-cook", TaskKey: "reflect", Title: "Post-cook reflection"},
 		},
 	}
 
-	updated, changed, err := normalizeAndValidateQueue(queue, nil, cfg)
+	updated, changed, err := normalizeAndValidateQueue(queue, nil, reg, cfg)
 	if err != nil {
 		t.Fatalf("normalizeAndValidateQueue error: %v", err)
 	}
 	if !changed {
-		t.Fatal("expected synthetic review normalization to fill skill")
+		t.Fatal("expected normalization to fill skill")
 	}
-	if got := updated.Items[0].Skill; got != "review" {
-		t.Fatalf("skill = %q, want review", got)
+	if got := updated.Items[0].Skill; got != "reflect" {
+		t.Fatalf("skill = %q, want reflect", got)
 	}
 }

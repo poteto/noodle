@@ -3,114 +3,108 @@ package loop
 import (
 	"testing"
 
-	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/skill"
 )
 
-func TestConfiguredTaskTypesApplyConfigOverrides(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Adapters["plans"] = config.AdapterConfig{Skill: "plan-custom"}
-	cfg.Adapters["backlog"] = config.AdapterConfig{Skill: "execute-custom"}
-	cfg.Prioritize.Skill = "priority-chef"
-	cfg.Phases["oops"] = "oops-custom"
-	cfg.Phases["debugging"] = "repair-custom"
+func testLoopRegistry() taskreg.Registry {
+	return taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name: "prioritize",
+			Path: "/skills/prioritize",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Blocking: true, Schedule: "When queue is empty"},
+			},
+		},
+		{
+			Name: "execute",
+			Path: "/skills/execute",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "When a planned item is ready"},
+			},
+		},
+		{
+			Name: "reflect",
+			Path: "/skills/reflect",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "After cook completes"},
+			},
+		},
+		{
+			Name: "meditate",
+			Path: "/skills/meditate",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "Periodically after reflects"},
+			},
+		},
+		{
+			Name: "oops",
+			Path: "/skills/oops",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{Schedule: "On runtime error"},
+			},
+		},
+	})
+}
 
-	plan, ok := configuredTaskTypeByKey(cfg, taskKeyPlan)
-	if !ok {
-		t.Fatal("expected plan task type")
-	}
-	if plan.Skill != "plan-custom" {
-		t.Fatalf("plan skill = %q, want plan-custom", plan.Skill)
-	}
+func TestIsBlockingQueueItem(t *testing.T) {
+	reg := testLoopRegistry()
 
-	execute, ok := configuredTaskTypeByKey(cfg, taskKeyExecute)
-	if !ok {
-		t.Fatal("expected execute task type")
+	if !isBlockingQueueItem(reg, QueueItem{ID: "prioritize"}) {
+		t.Fatal("prioritize should be blocking")
 	}
-	if execute.Skill != "execute-custom" {
-		t.Fatalf("execute skill = %q, want execute-custom", execute.Skill)
+	if isBlockingQueueItem(reg, QueueItem{ID: "execute"}) {
+		t.Fatal("execute should not be blocking")
 	}
-
-	prioritize, ok := configuredTaskTypeByKey(cfg, taskKeyPrioritize)
-	if !ok {
-		t.Fatal("expected prioritize task type")
-	}
-	if prioritize.Skill != "priority-chef" {
-		t.Fatalf("prioritize skill = %q, want priority-chef", prioritize.Skill)
-	}
-
-	oops, ok := configuredTaskTypeByKey(cfg, taskKeyOops)
-	if !ok {
-		t.Fatal("expected oops task type")
-	}
-	if oops.Skill != "oops-custom" {
-		t.Fatalf("oops skill = %q, want oops-custom", oops.Skill)
-	}
-
-	repair, ok := configuredTaskTypeByKey(cfg, taskKeyRepair)
-	if !ok {
-		t.Fatal("expected repair task type")
-	}
-	if repair.Skill != "repair-custom" {
-		t.Fatalf("repair skill = %q, want repair-custom", repair.Skill)
+	if isBlockingQueueItem(reg, QueueItem{ID: "unknown-42"}) {
+		t.Fatal("unknown item should not be blocking")
 	}
 }
 
-func TestTaskTypeRegistryIncludesKeySyntheticAliases(t *testing.T) {
-	cfg := config.DefaultConfig()
-	review, ok := configuredTaskTypeByKey(cfg, taskKeyReview)
-	if !ok {
-		t.Fatal("expected review task type")
+func TestTaskSkillFallback(t *testing.T) {
+	reg := testLoopRegistry()
+
+	if got := taskSkill(reg, "prioritize", "fallback"); got != "prioritize" {
+		t.Fatalf("got %q, want prioritize", got)
 	}
-	if !review.Blocking {
-		t.Fatal("expected review to be blocking")
-	}
-	if !review.Synthetic {
-		t.Fatal("expected review to be synthetic")
-	}
-	if len(review.Aliases) == 0 {
-		t.Fatal("expected review aliases")
-	}
-	if review.Key == "" {
-		t.Fatal("expected stable key")
+	if got := taskSkill(reg, "nonexistent", "fallback"); got != "fallback" {
+		t.Fatalf("got %q, want fallback", got)
 	}
 }
 
-func TestTaskTypeForQueueItemUsesIDPrefix(t *testing.T) {
-	cfg := config.DefaultConfig()
-	item := QueueItem{
-		ID: "review-gate-1",
-	}
-	taskType, ok := taskTypeForQueueItem(cfg, item)
-	if !ok {
-		t.Fatal("expected id-prefix task type resolution")
-	}
-	if taskType.Key != taskKeyReview {
-		t.Fatalf("task key = %q, want %q", taskType.Key, taskKeyReview)
-	}
-}
-
-func TestTaskTypeForQueueItemDoesNotUseTitleAlias(t *testing.T) {
-	cfg := config.DefaultConfig()
-	item := QueueItem{
-		ID:    "42",
-		Title: "Chef review approval before execute",
-	}
-	if _, ok := taskTypeForQueueItem(cfg, item); ok {
-		t.Fatal("title-only alias text should not resolve synthetic task types")
-	}
-}
-
-func TestTaskTypeForQueueItemUsesExplicitTaskKey(t *testing.T) {
-	cfg := config.DefaultConfig()
-	item := QueueItem{
+func TestResolveByExplicitTaskKey(t *testing.T) {
+	reg := testLoopRegistry()
+	tt, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
 		ID:      "x-1",
-		TaskKey: taskKeyMeditate,
-	}
-	taskType, ok := taskTypeForQueueItem(cfg, item)
+		TaskKey: "meditate",
+	})
 	if !ok {
 		t.Fatal("expected explicit task key resolution")
 	}
-	if taskType.Key != taskKeyMeditate {
-		t.Fatalf("task key = %q, want %q", taskType.Key, taskKeyMeditate)
+	if tt.Key != "meditate" {
+		t.Fatalf("task key = %q, want meditate", tt.Key)
+	}
+}
+
+func TestResolveByIDPrefix(t *testing.T) {
+	reg := testLoopRegistry()
+	tt, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+		ID: "prioritize-20260222-123456",
+	})
+	if !ok {
+		t.Fatal("expected id-prefix resolution")
+	}
+	if tt.Key != "prioritize" {
+		t.Fatalf("task key = %q, want prioritize", tt.Key)
+	}
+}
+
+func TestUnknownItemDoesNotResolve(t *testing.T) {
+	reg := testLoopRegistry()
+	if _, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+		ID:    "42",
+		Title: "some ticket",
+	}); ok {
+		t.Fatal("unknown item should not resolve")
 	}
 }
