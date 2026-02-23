@@ -3,10 +3,11 @@ package dispatcher
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 type dispatchMetadata struct {
@@ -34,9 +35,6 @@ func writeDispatchMetadata(
 	}
 
 	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create metadata directory: %w", err)
-	}
 
 	payload, err := json.Marshal(dispatchMetadata{
 		SessionID:    sessionID,
@@ -49,12 +47,7 @@ func writeDispatchMetadata(
 	if err != nil {
 		return fmt.Errorf("encode spawn metadata: %w", err)
 	}
-
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, payload, 0o644); err != nil {
-		return fmt.Errorf("write temp spawn metadata: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := filex.WriteFileAtomic(path, payload); err != nil {
 		return fmt.Errorf("rename spawn metadata: %w", err)
 	}
 	return nil

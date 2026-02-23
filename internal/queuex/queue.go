@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/filex"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 )
@@ -82,18 +82,11 @@ func decodeQueue(data []byte, allowLegacyArray bool) (Queue, error) {
 }
 
 func WriteAtomic(path string, queue Queue) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create queue parent directory: %w", err)
-	}
 	data, err := json.MarshalIndent(queue, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode queue: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
-		return fmt.Errorf("write queue temp file: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := filex.WriteFileAtomic(path, append(data, '\n')); err != nil {
 		return fmt.Errorf("rename queue file: %w", err)
 	}
 	return nil

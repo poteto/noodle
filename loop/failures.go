@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 func (l *Loop) failedPath() string {
@@ -52,18 +54,11 @@ func (l *Loop) markFailed(id string, reason string) error {
 
 func (l *Loop) writeFailedTargets() error {
 	path := l.failedPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create failed targets directory: %w", err)
-	}
 	data, err := json.MarshalIndent(l.failedTargets, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode failed targets: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
-		return fmt.Errorf("write failed targets temp file: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := filex.WriteFileAtomic(path, append(data, '\n')); err != nil {
 		return fmt.Errorf("rename failed targets file: %w", err)
 	}
 	return nil

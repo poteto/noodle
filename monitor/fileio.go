@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 func listSessionIDs(runtimeDir string) ([]string, error) {
@@ -48,37 +50,12 @@ func readSessionMeta(path string) (SessionMeta, error) {
 }
 
 func writeSessionMeta(path string, meta SessionMeta) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create meta directory: %w", err)
-	}
-
 	data, err := json.Marshal(meta)
 	if err != nil {
 		return fmt.Errorf("encode session meta: %w", err)
 	}
-
-	tmp, err := os.CreateTemp(filepath.Dir(path), "meta-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temporary meta file: %w", err)
-	}
-	tmpPath := tmp.Name()
-	keepTemp := true
-	defer func() {
-		if keepTemp {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write temporary meta file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temporary meta file: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := filex.WriteFileAtomic(path, data); err != nil {
 		return fmt.Errorf("replace session meta file: %w", err)
 	}
-	keepTemp = false
 	return nil
 }

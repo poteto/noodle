@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 const defaultTicketStaleTimeout = 30 * time.Minute
@@ -285,39 +287,12 @@ func uniqueTrimmed(values []string) []string {
 }
 
 func writeTicketsAtomic(path string, tickets []Ticket) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create tickets directory: %w", err)
-	}
-
 	data, err := json.Marshal(tickets)
 	if err != nil {
 		return fmt.Errorf("encode tickets: %w", err)
 	}
-
-	tmpFile, err := os.CreateTemp(filepath.Dir(path), "tickets-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temporary tickets file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-
-	keepTemp := true
-	defer func() {
-		if keepTemp {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
-	if _, err := tmpFile.Write(data); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("write temporary tickets file: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("close temporary tickets file: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := filex.WriteFileAtomic(path, data); err != nil {
 		return fmt.Errorf("replace tickets file: %w", err)
 	}
-
-	keepTemp = false
 	return nil
 }
