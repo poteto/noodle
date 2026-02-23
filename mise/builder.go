@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/poteto/noodle/plan"
 )
 
@@ -156,59 +157,33 @@ func toPlanSummaries(plans []plan.Plan) []PlanSummary {
 }
 
 func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
-	sessionsPath := filepath.Join(b.runtimeDir, "sessions")
-	entries, err := os.ReadDir(sessionsPath)
+	metas, err := sessionmeta.ReadAll(b.runtimeDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil, nil
-		}
-		return nil, nil, fmt.Errorf("read sessions directory: %w", err)
+		return nil, nil, err
+	}
+	if len(metas) == 0 {
+		return nil, nil, nil
 	}
 
-	active := make([]ActiveCook, 0, len(entries))
+	active := make([]ActiveCook, 0, len(metas))
 	history := make([]struct {
 		item      HistoryItem
 		updatedAt time.Time
-	}, 0, len(entries))
+	}, 0, len(metas))
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		metaPath := filepath.Join(sessionsPath, entry.Name(), "meta.json")
-		data, err := os.ReadFile(metaPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, nil, fmt.Errorf("read session meta %s: %w", entry.Name(), err)
-		}
-
-		var meta struct {
-			SessionID       string    `json:"session_id"`
-			Status          string    `json:"status"`
-			Provider        string    `json:"provider"`
-			Model           string    `json:"model"`
-			TotalCostUSD    float64   `json:"total_cost_usd"`
-			DurationSeconds int64     `json:"duration_seconds"`
-			UpdatedAt       time.Time `json:"updated_at"`
-		}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			return nil, nil, fmt.Errorf("parse session meta %s: %w", entry.Name(), err)
-		}
-
+	for _, meta := range metas {
 		cookID := strings.TrimSpace(meta.SessionID)
 		if cookID == "" {
-			cookID = entry.Name()
+			continue
 		}
-
-		switch meta.Status {
+		status := strings.ToLower(strings.TrimSpace(meta.Status))
+		switch status {
 		case "running", "stuck", "spawning":
 			active = append(active, ActiveCook{
 				ID:        cookID,
-				Provider:  meta.Provider,
-				Model:     meta.Model,
-				Status:    meta.Status,
+				Provider:  strings.TrimSpace(meta.Provider),
+				Model:     strings.TrimSpace(meta.Model),
+				Status:    status,
 				Cost:      meta.TotalCostUSD,
 				DurationS: meta.DurationSeconds,
 			})
@@ -219,7 +194,7 @@ func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
 			}{
 				item: HistoryItem{
 					CookID:    cookID,
-					Outcome:   meta.Status,
+					Outcome:   status,
 					Cost:      meta.TotalCostUSD,
 					DurationS: meta.DurationSeconds,
 				},
