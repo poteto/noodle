@@ -30,6 +30,7 @@ func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt 
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
+		"--permission-mode", "dontAsk",
 	}
 	if req.MaxTurns > 0 {
 		args = append(args, "--max-turns", strconv.Itoa(req.MaxTurns))
@@ -54,7 +55,7 @@ func buildCodexCommand(req SpawnRequest, promptFile, agentBinary string) string 
 		agentBinary,
 		"exec",
 		"--skip-git-repo-check",
-		"--full-auto",
+		"--ask-for-approval", "never",
 		"--sandbox", "workspace-write",
 		"--json",
 	}

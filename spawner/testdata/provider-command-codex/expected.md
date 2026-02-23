@@ -12,7 +12,7 @@ source_hash: 3a1381cbd39342abbaf179758c446d86fd06a914aaebfa80be39404b5baf4833
   "contains": [
     "'codex' 'exec'",
     "'--skip-git-repo-check'",
-    "'--full-auto'",
+    "'--ask-for-approval' 'never'",
     "'--sandbox' 'workspace-write'",
     "'--json'",
     "'--model' 'gpt-5.3-codex'",

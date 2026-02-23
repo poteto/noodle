@@ -12,6 +12,7 @@ source_hash: 4b48a345a0e70843dfe04d8c1585d61cdf2f32aaba996cee822a0e006ee678ab
   "contains": [
     "'claude'",
     "'--output-format' 'stream-json'",
+    "'--permission-mode' 'dontAsk'",
     "'--model' 'claude-sonnet-4-6'",
     "'--max-turns' '5'",
     "'--max-budget-usd' '2.50'",
