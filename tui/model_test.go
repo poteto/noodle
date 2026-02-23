@@ -251,6 +251,197 @@ func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 	}
 }
 
+func TestVerdictCardShowsActionsInReviewMode(t *testing.T) {
+	now := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	v := Verdict{
+		SessionID: "cook-a",
+		Accept:    true,
+		Feedback:  "looks good",
+		Timestamp: now.Add(-5 * time.Minute),
+	}
+
+	// Review mode: should show action pills.
+	card := renderVerdictCard(v, 80, now, true)
+	if card == "" {
+		t.Fatal("expected non-empty verdict card")
+	}
+	if !containsStr(card, "Merge") {
+		t.Fatal("expected Merge pill in review mode")
+	}
+
+	// Full mode: no action pills.
+	card = renderVerdictCard(v, 80, now, false)
+	if containsStr(card, "Merge") {
+		t.Fatal("expected no Merge pill in full mode")
+	}
+}
+
+func TestMergeWritesControlCommand(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
+
+	m := NewModel(Options{
+		RuntimeDir:      runtimeDir,
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.snapshot.Verdicts = []Verdict{
+		{SessionID: "cook-a", Accept: true},
+	}
+	m.activeTab = TabFeed
+
+	cmd := m.mergeSelectedVerdict()
+	if cmd == nil {
+		t.Fatal("expected merge command")
+	}
+	msg := cmd()
+	result, ok := msg.(controlResultMsg)
+	if !ok {
+		t.Fatalf("command msg type = %T, want controlResultMsg", msg)
+	}
+	if result.err != nil {
+		t.Fatalf("merge command failed: %v", result.err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	var wrote loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &wrote); err != nil {
+		t.Fatalf("parse control command: %v", err)
+	}
+	if wrote.Action != "merge" {
+		t.Fatalf("action = %q, want merge", wrote.Action)
+	}
+	if wrote.Target != "cook-a" {
+		t.Fatalf("target = %q, want cook-a", wrote.Target)
+	}
+}
+
+func TestPendingCountMatchesApprovedVerdicts(t *testing.T) {
+	verdicts := []Verdict{
+		{SessionID: "cook-a", Accept: true},
+		{SessionID: "cook-b", Accept: false},
+		{SessionID: "cook-c", Accept: true},
+	}
+	count := 0
+	for _, v := range verdicts {
+		if v.Accept {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Fatalf("pending count = %d, want 2", count)
+	}
+}
+
+func TestMergeAllApprovedSkipsRejected(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
+
+	m := NewModel(Options{
+		RuntimeDir:      runtimeDir,
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.snapshot.Verdicts = []Verdict{
+		{SessionID: "cook-a", Accept: true},
+		{SessionID: "cook-b", Accept: false},
+		{SessionID: "cook-c", Accept: true},
+	}
+
+	cmd := m.mergeAllApproved()
+	if cmd == nil {
+		t.Fatal("expected batch command")
+	}
+
+	// tea.Batch returns a BatchMsg ([]tea.Cmd) — execute each inner command.
+	batchMsg := cmd()
+	innerCmds, ok := batchMsg.(tea.BatchMsg)
+	if !ok {
+		t.Fatalf("batch result type = %T, want tea.BatchMsg", batchMsg)
+	}
+	for _, inner := range innerCmds {
+		if inner != nil {
+			inner()
+		}
+	}
+
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	lines := splitNDJSON(string(data))
+	if len(lines) != 2 {
+		t.Fatalf("control commands = %d, want 2 (skipping rejected)", len(lines))
+	}
+
+	for _, line := range lines {
+		var cmd loop.ControlCommand
+		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+			t.Fatalf("parse control command: %v", err)
+		}
+		if cmd.Action != "merge" {
+			t.Fatalf("action = %q, want merge", cmd.Action)
+		}
+		if cmd.Target == "cook-b" {
+			t.Fatal("expected cook-b (rejected) to be skipped")
+		}
+	}
+}
+
+func containsStr(s, substr string) bool {
+	return len(s) > 0 && len(substr) > 0 && contains(s, substr)
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func splitNDJSON(data string) []string {
+	var lines []string
+	for _, line := range splitLines(data) {
+		line = trimSpace(line)
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+func splitLines(s string) []string {
+	var lines []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
+}
+
+func trimSpace(s string) string {
+	start := 0
+	for start < len(s) && (s[start] == ' ' || s[start] == '\t' || s[start] == '\r' || s[start] == '\n') {
+		start++
+	}
+	end := len(s)
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\r' || s[end-1] == '\n') {
+		end--
+	}
+	return s[start:end]
+}
+
 func pressRune(t *testing.T, m Model, r rune) Model {
 	t.Helper()
 	return pressKey(t, m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})

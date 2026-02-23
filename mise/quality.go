@@ -17,9 +17,9 @@ type QualityVerdict struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// readQualityVerdicts reads verdict files from .noodle/quality/.
+// ReadQualityVerdicts reads verdict files from .noodle/quality/.
 // Returns most recent 20, sorted newest first (by Timestamp).
-func readQualityVerdicts(runtimeDir string) ([]QualityVerdict, error) {
+func ReadQualityVerdicts(runtimeDir string) ([]QualityVerdict, error) {
 	qualityDir := filepath.Join(runtimeDir, "quality")
 	entries, err := os.ReadDir(qualityDir)
 	if err != nil {

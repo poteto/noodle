@@ -63,6 +63,9 @@ func renderHelp() string {
 		dimStyle.Render("1-4") + " switch tabs  " +
 		dimStyle.Render("s") + " steer  " +
 		dimStyle.Render("p") + " pause/resume  " +
+		dimStyle.Render("m") + " merge  " +
+		dimStyle.Render("x") + " reject  " +
+		dimStyle.Render("a") + " merge all approved  " +
 		dimStyle.Render("?") + " help  " +
 		dimStyle.Render("ctrl+c") + " quit"
 }

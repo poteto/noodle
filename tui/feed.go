@@ -10,6 +10,8 @@ const maxFeedItems = 100
 // FeedTab manages the feed view state.
 type FeedTab struct {
 	items      []FeedItem
+	verdicts   []Verdict
+	autonomy   string
 	selection  int
 	scroll     int
 	userScroll bool // true when user has scrolled up manually
@@ -18,6 +20,8 @@ type FeedTab struct {
 // SetSnapshot rebuilds feed items from the snapshot's FeedEvents.
 // Consecutive events from the same session are grouped into one card.
 func (f *FeedTab) SetSnapshot(snap Snapshot) {
+	f.verdicts = snap.Verdicts
+	f.autonomy = snap.Autonomy
 	events := snap.FeedEvents
 	if len(events) == 0 {
 		f.items = nil
@@ -71,12 +75,19 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 // Render renders the feed tab content for the given dimensions.
 // Items are displayed newest first (reverse chronological).
 func (f *FeedTab) Render(width, height int, now time.Time) string {
-	if len(f.items) == 0 {
+	if len(f.items) == 0 && len(f.verdicts) == 0 {
 		return dimStyle.Render("No events yet. Waiting for activity...")
 	}
 
-	// Render items in reverse-chronological order (newest first).
 	var cards []string
+
+	// Verdict cards appear at the top (most actionable).
+	showActions := f.autonomy != "full"
+	for _, v := range f.verdicts {
+		cards = append(cards, renderVerdictCard(v, width, now, showActions))
+	}
+
+	// Render items in reverse-chronological order (newest first).
 	for i := len(f.items) - 1; i >= 0; i-- {
 		card := renderFeedItem(f.items[i], width, now)
 		cards = append(cards, card)

@@ -98,7 +98,7 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	}
 
 	// Quality verdicts
-	verdicts, verdictErr := readQualityVerdicts(b.runtimeDir)
+	verdicts, verdictErr := ReadQualityVerdicts(b.runtimeDir)
 	if verdictErr != nil {
 		warnings = append(warnings, "quality verdict reading failed: "+verdictErr.Error())
 	}

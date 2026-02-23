@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
@@ -82,6 +83,16 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	brainDir := filepath.Join(filepath.Dir(runtimeDir), "brain")
 	brainActivity := scanBrainActivity(brainDir)
 
+	verdicts := loadVerdicts(runtimeDir)
+	pendingCount := 0
+	for _, v := range verdicts {
+		if v.Accept {
+			pendingCount++
+		}
+	}
+
+	autonomy := readAutonomy(filepath.Dir(runtimeDir))
+
 	return Snapshot{
 		UpdatedAt:       now.UTC(),
 		LoopState:       loopState,
@@ -94,6 +105,9 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		FeedEvents:      feedEvents,
 		TotalCostUSD:    totalCost,
 		BrainActivity:   brainActivity,
+		Verdicts:           verdicts,
+		PendingReviewCount: pendingCount,
+		Autonomy:           autonomy,
 	}, nil
 }
 
@@ -724,4 +738,18 @@ func inferDescription(relPath string) string {
 	base := strings.TrimSuffix(filepath.Base(relPath), ".md")
 	base = strings.ReplaceAll(base, "-", " ")
 	return base
+}
+
+// readAutonomy reads the current autonomy mode from .noodle.toml.
+// Returns "review" as default if config cannot be read.
+func readAutonomy(projectDir string) string {
+	configPath := filepath.Join(projectDir, config.DefaultConfigPath)
+	cfg, _, err := config.Load(configPath)
+	if err != nil {
+		return config.AutonomyReview
+	}
+	if cfg.Autonomy == "" {
+		return config.AutonomyReview
+	}
+	return cfg.Autonomy
 }

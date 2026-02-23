@@ -72,6 +72,10 @@ type Snapshot struct {
 	FeedEvents      []FeedEvent
 	TotalCostUSD    float64
 	BrainActivity   []BrainActivity
+
+	Verdicts            []Verdict
+	PendingReviewCount  int
+	Autonomy            string
 }
 
 type Session struct {
@@ -272,6 +276,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.activeTab == TabFeed {
 			m.feedTab.ScrollUp(3)
 		}
+	case "m":
+		if m.activeTab == TabFeed && len(m.snapshot.Verdicts) > 0 {
+			return m, m.mergeSelectedVerdict()
+		}
+	case "x":
+		if m.activeTab == TabFeed && len(m.snapshot.Verdicts) > 0 {
+			return m, m.rejectSelectedVerdict()
+		}
+	case "a":
+		if m.activeTab == TabFeed {
+			return m, m.mergeAllApproved()
+		}
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
@@ -407,6 +423,46 @@ func (m Model) steerTargets() []string {
 	}
 	sort.Strings(targets[1:])
 	return targets
+}
+
+func (m *Model) mergeSelectedVerdict() tea.Cmd {
+	if len(m.snapshot.Verdicts) == 0 {
+		return nil
+	}
+	// Merge the first pending verdict.
+	v := m.snapshot.Verdicts[0]
+	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+		Action: "merge",
+		Target: v.SessionID,
+	})
+}
+
+func (m *Model) rejectSelectedVerdict() tea.Cmd {
+	if len(m.snapshot.Verdicts) == 0 {
+		return nil
+	}
+	v := m.snapshot.Verdicts[0]
+	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+		Action: "reject",
+		Target: v.SessionID,
+	})
+}
+
+func (m *Model) mergeAllApproved() tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	for _, v := range m.snapshot.Verdicts {
+		if v.Accept {
+			cmds = append(cmds, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+				Action: "merge",
+				Target: v.SessionID,
+			}))
+		}
+	}
+	if len(cmds) == 0 {
+		m.statusLine = "no approved verdicts to merge"
+		return nil
+	}
+	return tea.Batch(cmds...)
 }
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {

@@ -31,7 +31,7 @@ func TestReadQualityVerdicts_MultipleSortedByTimestamp(t *testing.T) {
 	writeVerdict(t, qualityDir, "older.json", older)
 	writeVerdict(t, qualityDir, "newer.json", newer)
 
-	verdicts, err := readQualityVerdicts(dir)
+	verdicts, err := ReadQualityVerdicts(dir)
 	if err != nil {
 		t.Fatalf("read quality verdicts: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestReadQualityVerdicts_MultipleSortedByTimestamp(t *testing.T) {
 func TestReadQualityVerdicts_NonExistentDirectory(t *testing.T) {
 	dir := t.TempDir()
 
-	verdicts, err := readQualityVerdicts(dir)
+	verdicts, err := ReadQualityVerdicts(dir)
 	if err != nil {
 		t.Fatalf("unexpected error for missing directory: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestReadQualityVerdicts_MalformedJSONSkipped(t *testing.T) {
 		t.Fatalf("write malformed file: %v", err)
 	}
 
-	verdicts, err := readQualityVerdicts(dir)
+	verdicts, err := ReadQualityVerdicts(dir)
 	if err != nil {
 		t.Fatalf("unexpected error with malformed file: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestReadQualityVerdicts_CappedAt20(t *testing.T) {
 		writeVerdict(t, qualityDir, name, v)
 	}
 
-	verdicts, err := readQualityVerdicts(dir)
+	verdicts, err := ReadQualityVerdicts(dir)
 	if err != nil {
 		t.Fatalf("read quality verdicts: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestReadQualityVerdicts_NonJSONFilesIgnored(t *testing.T) {
 		t.Fatalf("write yaml file: %v", err)
 	}
 
-	verdicts, err := readQualityVerdicts(dir)
+	verdicts, err := ReadQualityVerdicts(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

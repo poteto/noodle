@@ -46,6 +46,10 @@ func renderRail(snap Snapshot, now time.Time, height int) string {
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("%d active\n", len(snap.Active)))
 	b.WriteString(fmt.Sprintf("%d queued\n", len(snap.Queue)))
+	if snap.PendingReviewCount > 0 {
+		b.WriteString(warnStyle.Render(fmt.Sprintf("%d pending review", snap.PendingReviewCount)))
+		b.WriteString("\n")
+	}
 	b.WriteString(costStyle.Render(fmt.Sprintf("$%.2f", snap.TotalCostUSD)))
 	b.WriteString("\n")
 
