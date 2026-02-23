@@ -4,11 +4,10 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Expand `skills/oops/SKILL.md` from a 6-line stub into a full skill, and create `.agents/skills/oops/SKILL.md` as the rich project override. Oops fixes user-project infrastructure failures — broken tests, build failures, environment drift — NOT Noodle internals (that's repair/debugging).
+Create `.agents/skills/oops/SKILL.md` as a full task-type skill. Oops fixes user-project infrastructure failures — broken tests, build failures, environment drift — NOT Noodle internals (that's repair/debugging).
 
 ## Current State
 
-- `skills/oops/SKILL.md` — 6-line stub listing focus areas
 - No `.agents/skills/oops/` exists
 
 ## Patterns to Incorporate
@@ -26,13 +25,12 @@ From **Operator**:
 ## Changes
 
 - Create `.agents/skills/oops/SKILL.md` — **use the `skill-creator` skill**
-- This skill is autonomous-only — oops sessions are always spawned by the loop, never interactive
-- Define the fix flow: Reproduce → Diagnose → Fix → Verify → Commit
+-- Define the fix flow: Reproduce → Diagnose → Fix → Verify → Commit
 - Include suspect-state-before-code as an explicit diagnostic step
 - Include "check for the pattern" — if a bug exists in one place, grep for it elsewhere
 - Define scope boundary: user-project infrastructure only, not Noodle internals
 - Keep it lean — oops sessions should be fast and focused
-- Update `skills/oops/SKILL.md` stub to be consistent
+
 
 ## Data Structures
 

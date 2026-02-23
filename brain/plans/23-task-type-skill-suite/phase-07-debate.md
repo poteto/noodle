@@ -4,11 +4,11 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Expand `skills/debate/SKILL.md` from a basic protocol into a full skill with principle grounding, and create `.agents/skills/debate/SKILL.md` as the rich project override. Debate is a **task-type skill** — the debate agent gets scheduled as a task, evaluates the context (what's being debated, how complex it is), configures the debate parameters, and runs the structured multi-round validation. Two perspectives (reviewer + responder) alternate until consensus or max rounds.
+Create `.agents/skills/debate/SKILL.md` as a full task-type skill with principle grounding and per-task configurable state. Debate is a **task-type skill** — the debate agent gets scheduled as a task, evaluates the context (what's being debated, how complex it is), configures the debate parameters, and runs the structured multi-round validation. Two perspectives (reviewer + responder) alternate until consensus or max rounds.
 
 ## Current State
 
-- `skills/debate/SKILL.md` — decent structure: round files, verdict.json contract, style guidance. Missing principles, convergence criteria, role-specific instructions, and configurable settings.
+- No `.agents/skills/debate/` exists
 
 ## Principles
 

@@ -8,7 +8,6 @@ Create `.agents/skills/quality/SKILL.md` as the post-cook quality gate. The qual
 
 ## Current State
 
-- `skills/quality/SKILL.md` — 10-line stub with a checklist and verdict format
 - No `.agents/skills/quality/` exists
 
 ## Patterns to Incorporate
@@ -32,7 +31,6 @@ From **Manager**:
 ## Changes
 
 - Create `.agents/skills/quality/SKILL.md` — **use the `skill-creator` skill**
-- This skill is autonomous-only — quality review is always a cook session, never interactive
 - **Read brain principles** — the quality agent reads `brain/principles.md` and follows all linked principle files at the start of every review. Findings must be anchored to specific principles.
 - Define assessment sections: Scope Check, Code Quality, Principle Compliance, Test Evidence, Runtime Verification
 - Define accept/reject contract with actionable feedback on rejection

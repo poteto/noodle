@@ -38,7 +38,6 @@ From **Manager** (for phases that need delegation):
 ## Changes
 
 - Create `.agents/skills/execute/SKILL.md` — **use the `skill-creator` skill**
-- This skill is cook-session-first — autonomous execution is the only mode
 - Define the execution flow:
   1. Read the plan phase (if one exists) — it has goal, changes, data structures, verification, routing
   2. Decompose into sub-tasks if the phase is large enough

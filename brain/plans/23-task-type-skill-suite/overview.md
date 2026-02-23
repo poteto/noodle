@@ -22,7 +22,7 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - Create or rewrite 8 skills in `.agents/skills/` — 7 task-type skills + 1 utility skill (debugging)
 - Extract valuable patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
 - Ground each skill in engineering principles from `brain/principles/`
-- Design cook-session-first: autonomous mode is primary, interactive features are additive
+- Design for cook sessions — Noodle handles autonomy via spawn flags, skills don't need to manage it
 - Make planning native: remove plan adapter, add minimal Go reader for `brain/plans/` metadata, add `noodle plan` CLI commands
 - Add model routing recommendations to plan phase files
 - Plan skill updates backlog item to link back to created plan
@@ -44,8 +44,8 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - **Lean core, smart skills.** Noodle's Go core is a thin orchestration layer: process lifecycle, concurrency, file I/O, and data assembly. All scheduling intelligence, quality judgment, and task semantics live in skills. The Go core surfaces data (mise brief, plan metadata, session history); skills read that data and make decisions. This keeps the core extensible — users customize behavior by writing skills, not by modifying Go code.
 - **Everything is a file.** Skills, brain notes, plans, `.noodle/` state — all are files the agent reads directly. This makes agents powerful (full filesystem access) and the tool extensible (users modify files, not config APIs).
 - **Context injection bridges core and skills.** The Go core surfaces data as files, but agents need to know those files exist and what they mean. Two layers handle this: (1) a **Noodle context preamble** injected by the spawner into every cook session — a lean map of `.noodle/` state files and their purpose, and (2) **skill-specific schemas** in each skill's `references/` directory documenting the exact data that skill reads and writes. The preamble says "here's what exists"; the skill references say "here's how to use it."
-- All skills live in `.agents/skills/` (project overrides). `skills/` keeps lean stubs for other Noodle users.
-- Each skill uses the "Autonomous Session Mode" pattern: cook-session behavior is primary, interactive features are gated by context.
+- All skills live in `.agents/skills/`. No `skills/` stubs directory — users who want to scaffold skills can reference the Noodle repo directly.
+- Cook sessions are autonomous by default — Noodle passes flags to disable interactive prompts (e.g. `--no-input` for Claude, equivalent for Codex). Skills don't need to handle this themselves.
 - Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
 - Use the `skill-creator` skill when writing each skill to ensure quality and consistency.
 
@@ -118,7 +118,7 @@ Patterns worth preserving from the old role-based skills:
 
 ## Verification
 
-- Each skill SKILL.md has: frontmatter, purpose, autonomous session mode, principles, contract, process, verification
+- Each skill SKILL.md has: frontmatter, purpose, principles, contract, process, verification
 - Skill resolver finds each skill: `go test ./skill/...`
 - Old role-based skills (CEO, CTO, Director, Manager, Operator) are deleted
 - No remaining references to `sous-chef` in Go code or config

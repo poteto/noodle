@@ -4,7 +4,7 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Delete the 5 old role-based skills, rename sous-chef→prioritize, update Go task type registry, and ensure `skills/` stubs are consistent with the new `.agents/skills/` versions.
+Delete the 5 old role-based skills, rename sous-chef→prioritize, and update Go task type registry.
 
 ## Changes
 

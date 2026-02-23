@@ -9,7 +9,7 @@ Rewrite `.agents/skills/prioritize/SKILL.md` to incorporate CEO scheduling judgm
 ## Current State
 
 - `.agents/skills/prioritize/SKILL.md` — functional queue builder but lacks scheduling judgment framework, rationale depth, and principle grounding
-- `skills/sous-chef/SKILL.md` — old name, lean stub (renamed in Phase 13)
+- `skills/sous-chef/` — old name (renamed in Phase 13)
 
 ## Patterns to Incorporate
 
@@ -38,7 +38,7 @@ From **CEO**:
 - Add cost-awareness to model routing — explain when to use expensive vs cheap models
 - Add blocker-avoidance logic — when chef review is pending, schedule unblocked work
 - Add timebox guidance — items that have failed repeatedly should be rescoped, not retried
-- This skill is autonomous-only — no AskUserQuestion, no interactive sections
+
 - Include `references/mise-schema.md` documenting the mise brief fields (backlog items, plans, sessions, history, resources, routing) so the agent knows exactly what data is available
 - Include `references/queue-schema.md` documenting the queue.json output format the agent must produce
 

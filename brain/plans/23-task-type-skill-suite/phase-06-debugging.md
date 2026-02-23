@@ -8,8 +8,7 @@ Light amendments to `.agents/skills/debugging/SKILL.md`. Debugging is a **utilit
 
 ## Current State
 
-- `.agents/skills/debugging/SKILL.md` — well-structured root-cause methodology. Already principle-grounded (links to fix-root-causes, suspect-state-before-code, observe-directly). Missing autonomous session mode and Noodle-specific repair context.
-- `skills/debugging/SKILL.md` — 5-line stub in Noodle defaults
+- `.agents/skills/debugging/SKILL.md` — well-structured root-cause methodology. Already principle-grounded (links to fix-root-causes, suspect-state-before-code, observe-directly). Missing Noodle-specific repair context.
 
 ## Patterns to Incorporate
 
@@ -26,13 +25,12 @@ Already well-grounded. Add:
 ## Changes
 
 - Rewrite `.agents/skills/debugging/SKILL.md` — **use the `skill-creator` skill**
-- Add Autonomous Session Mode section for cook-session repair
 - Add Noodle-specific repair context: common failure modes (missing skills, stale queue, config errors, tmux issues)
 - Add `.noodle/` state file inspection as an explicit diagnostic step
 - Add brain-update step: capture the gotcha if it's novel
 - Keep the existing root-cause methodology — it's well-written
 - Interactive mode stays as-is (user-facing debugging)
-- Update `skills/debugging/SKILL.md` stub to be consistent
+
 
 ## Data Structures
 
@@ -43,7 +41,7 @@ Already well-grounded. Add:
 
 ## Verification
 
-- Static: SKILL.md has frontmatter, autonomous session mode, Noodle repair context, root-cause process
+- Static: SKILL.md has frontmatter, Noodle repair context, root-cause process
 - Runtime: Spawn a repair session for a simulated config error (e.g., missing skill in noodle.toml). Confirm:
   - `.noodle/` state files are inspected
   - Root cause is identified
