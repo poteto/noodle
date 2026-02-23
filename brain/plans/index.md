@@ -4,3 +4,4 @@
 - [ ] [[plans/21-fixture-directory-redesign/overview]]
 - [ ] [[plans/23-task-type-skill-suite/overview]]
 - [ ] [[plans/24-test-plan/overview]]
+- [ ] [[plans/25-tui-revamp/overview]]
