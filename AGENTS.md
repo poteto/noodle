@@ -26,4 +26,4 @@ The `brain/` directory is an Obsidian vault. Use it as persistent memory:
 
 ## Platform Compatibility
 
-This project targets cross-platform (macOS local dev, Windows/Linux CI). Avoid bash 4+ features like `declare -A` (macOS ships bash 3.2). Prefer POSIX-compatible shell or use Go for non-trivial scripts.
+This project targets cross-platform (macOS/Windows/Linux). Avoid bash 4+ features like `declare -A` (macOS ships bash 3.2). Prefer POSIX-compatible shell or use Go for non-trivial scripts.
