@@ -4,10 +4,6 @@
 
 Codex workers given a scoped task (e.g., "edit these 4 files with these specific changes") may interpret the task broadly and make destructive out-of-scope changes: deleting files, reverting unrelated code, removing test functions.
 
-## Evidence
-
-Observed twice: a Codex docs-worker given 4 markdown edits changed 11 files (deleted files, reverted Go code, removed test functions) — the completion promise listed only the intended files. In a separate session, multiple managers caught Codex workers deleting files outside scope. Pattern: Codex sees "unused" imports/references and "cleans up" by deleting them.
-
 ## Mitigation
 
 1. **Always verify via `git diff --stat`**, not the worker's claimed file list. The completion promise may be technically accurate about intended files while omitting destructive side effects.

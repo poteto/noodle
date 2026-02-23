@@ -4,8 +4,6 @@
 
 If the shell's cwd is inside a worktree when it gets removed (or when `git merge` runs from inside it), the shell dies permanently — every subsequent command returns exit code 1 with no recovery.
 
-**Evidence:** Hit in two separate sessions — one during dashboard builds, one while rewriting the worktree tool itself. Both used `cd` into a worktree, then a later cleanup (`git worktree remove` or `rm -rf`) killed the shell.
-
 **Why it keeps happening:** The Bash tool maintains a **persistent shell** across calls. `cd` in one call drifts the CWD for ALL future calls. The danger is the temporal distance between the `cd` and the later cleanup — invisible and easy to forget.
 
 **Prevention:** Never `cd` into a worktree. Always use:

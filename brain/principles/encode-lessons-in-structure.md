@@ -16,14 +16,6 @@ Textual instructions ("do not use subagents", "always run fmt") are routinely ig
 - **Close the feedback loop.** Do not only record learnings; apply them now or create a concrete todo for the next round.
 - **Observe patterns across sessions.** Brain notes, auto-memory, and todos are cross-session memory. Read them before starting and write back what this session learned.
 
-## Evidence
-
-- `prevent-subdelegation`: Three failed attempts at instruction-based solutions before `MODE: direct` baked enforcement into the skill itself.
-- Lint rules: `go vet`, `staticcheck`, and custom linters enforce rules structurally. No one needs to remember.
-- `gofmt`: "Never fix formatting manually" — the formatter is the mechanism.
-- Skills read brain at runtime: Instead of hardcoding principle text (which drifts), a `Read` call fetches the authoritative source.
-- Worktree script: "Replace manual workflow with deterministic script" — moved from rules agents follow to a script that can't be gotten wrong.
-
 ## Encoding Pattern
 
 When you catch yourself writing the same instruction a second time:

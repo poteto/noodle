@@ -13,12 +13,6 @@ Indirect observation (file mtimes, output freshness, CWD matching, screenshot ca
 - **"It compiles," "it looks right," or "the file was created" is not verification.** Run it and exercise the actual feature path.
 - **When verification fails, suspect the observation method** before suspecting the system.
 
-## Evidence
-
-- Noodash-cli bugs: three of four bugs shared the root cause — process liveness inferred from indirect signals (file mtime, CWD matching via lsof) instead of checked directly. Led to spawning a duplicate manager on a live worktree.
-- MCP verification gotchas: `xcap` captures the OS compositor's cached frame, not a fresh render. Sequential screenshots can't verify incremental changes. Hit test results are unreliable.
-- Director operational discipline: "Before spawning a replacement manager, verify the process is truly dead" — check monitor state, NDJSON timestamps, tmux pane process.
-
 ## Relationship to Other Principles
 
 [[principles/verify-runtime]] says *verify your work*. This principle says *how* to verify: prefer direct observation over indirect inference. The dashboard-cli bugs happened because the system *did* verify — it just used indirect signals.

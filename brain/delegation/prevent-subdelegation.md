@@ -12,11 +12,7 @@ The director skill's compose prompts section documents when to use this: verific
 
 ## Current Status: Not Working
 
-**Observed:** All 3 managers had `MODE: direct` on line 1 of their prompts. Two of three still delegated.
-
-**Root cause:** The prompt text was never injected into the managers' conversation context — NDJSON logs showed no `user` message containing the prompt file content before the first `assistant` turn. The dispatch mechanism's polling failure caused prompt delivery to silently fail.
-
-**Secondary cause:** The `allowed-tools` list in the manager skill frontmatter includes `Task`, `Skill`, `SendMessage`, and `TeamCreate` — the model sees available delegation tools and reaches for them as default behavior. Without the `MODE: direct` instruction in context, there's nothing to override this.
+Instruction-based `MODE: direct` failed because (a) the dispatch mechanism's polling failure silently dropped prompt delivery, so managers never saw the instruction, and (b) the `allowed-tools` list includes delegation tools (`Task`, `Skill`, `SendMessage`, `TeamCreate`) — models reach for available tools as default behavior.
 
 **What doesn't work (even when the prompt IS delivered):**
 - Prose paragraphs telling the model not to delegate

@@ -14,14 +14,6 @@ Adding to a complex system compounds complexity. Removing first reduces the surf
 - **Simplify prompts.** Remove redundant instructions, excessive templates, and sub-band examples. One-line instructions often work as well as 15-line templates.
 - **When a reference has no novel content, delete it** rather than leaving a stub.
 
-## Evidence
-
-- UI simplification plan: "removal before construction. Deleting code first (phases 1-4) reduces the surface area and makes later merge/consolidation work (phases 5-10) simpler."
-- Product direction: "Say no to 1,000 things. Every item must earn its place. When in doubt, cut."
-- CI prompt design: stripped sub-band examples, output format templates, and redundant instructions — each removal improved clarity without reducing quality.
-- Skill authoring: "If a reference file has no novel content, delete it entirely rather than leaving a stub."
-- Noodle planning: deferred locking and multi-process complexity when the expected usage is one active noodle process, focusing effort on command consistency and actual operator pain.
-
 ## Relationship to Other Principles
 
 This is not about *what* to build ([[principles/foundational-thinking]]) or *how* to redesign it ([[principles/redesign-from-first-principles]]). It's about *when* to act — an ordering principle that says subtraction comes before addition.
