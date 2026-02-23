@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: true
 bug: true
-source_hash: 83143a5a12a612cf544e6a0a8fa125b72a6a48e149598217fae240d993e22adc
+source_hash: 9cfed9378be665e9fd315f71e853caf5ddde84e12903cacb0b7c5523485c0609
 ---
 
 ## Runtime Dump
@@ -97,7 +97,7 @@ source_hash: 83143a5a12a612cf544e6a0a8fa125b72a6a48e149598217fae240d993e22adc
       }
     },
     "state-05": {
-      "cycle_error": "runtime issue unresolved after 3 repair attempt(s) (loop.collect): prioritize failed after retries: cook exited with status failed",
+      "cycle_error": "runtime issue unresolved after 3 repair attempt(s) (loop.collect): prioritize failed after retries: Error: unable to start codex agent: missing API key",
       "transition": "paused",
       "runtime_repair_in_flight": false,
       "repair_task_scheduled": true,

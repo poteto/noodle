@@ -3,6 +3,7 @@ package recover
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -97,6 +98,27 @@ func TestCollectRecoveryInfo(t *testing.T) {
 	}
 	if len(info.FilesChanged) == 0 {
 		t.Fatal("expected file hints from action payload")
+	}
+}
+
+func TestCollectRecoveryInfoFallsBackToStderrReason(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	sessionID := "cook-a"
+	sessionDir := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		t.Fatalf("mkdir session dir: %v", err)
+	}
+	stderr := "Booting codex runtime...\nError: unable to start codex agent: missing API key\n"
+	if err := os.WriteFile(filepath.Join(sessionDir, "stderr.log"), []byte(stderr), 0o644); err != nil {
+		t.Fatalf("write stderr log: %v", err)
+	}
+
+	info, err := CollectRecoveryInfo(context.Background(), runtimeDir, sessionID)
+	if err != nil {
+		t.Fatalf("collect recovery info: %v", err)
+	}
+	if info.ExitReason != "Error: unable to start codex agent: missing API key" {
+		t.Fatalf("exit reason = %q", info.ExitReason)
 	}
 }
 

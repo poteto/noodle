@@ -3,6 +3,7 @@ package recover
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -12,6 +13,7 @@ import (
 )
 
 var recoverySuffixRegexp = regexp.MustCompile(`-recover-(\d+)$`)
+var ansiEscapePattern = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
 
 // RecoveryInfo summarizes what happened in a failed session.
 type RecoveryInfo struct {
@@ -123,10 +125,79 @@ func CollectRecoveryInfo(ctx context.Context, runtimeDir, sessionID string) (Rec
 		}
 	}
 	if strings.TrimSpace(info.ExitReason) == "" {
+		if stderrReason := readSessionStderrReason(runtimeDir, sessionID); stderrReason != "" {
+			info.ExitReason = stderrReason
+		}
+	}
+	if strings.TrimSpace(info.ExitReason) == "" {
 		info.ExitReason = "session exited without explicit reason"
 	}
 	info.FilesChanged = normalizeFiles(info.FilesChanged)
 	return info, ctx.Err()
+}
+
+func readSessionStderrReason(runtimeDir, sessionID string) string {
+	path := filepath.Join(runtimeDir, "sessions", strings.TrimSpace(sessionID), "stderr.log")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+
+	content := strings.TrimSpace(strings.ReplaceAll(string(data), "\r\n", "\n"))
+	if content == "" {
+		return ""
+	}
+	lines := strings.Split(content, "\n")
+	for index := len(lines) - 1; index >= 0; index-- {
+		line := normalizeReasonLine(lines[index])
+		if line == "" {
+			continue
+		}
+		if looksLikeFailureReason(line) {
+			return line
+		}
+	}
+	for index := len(lines) - 1; index >= 0; index-- {
+		line := normalizeReasonLine(lines[index])
+		if line != "" {
+			return line
+		}
+	}
+	return ""
+}
+
+func normalizeReasonLine(line string) string {
+	line = strings.TrimSpace(ansiEscapePattern.ReplaceAllString(line, ""))
+	if line == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(line), " ")
+}
+
+func looksLikeFailureReason(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	if lower == "" {
+		return false
+	}
+	keywords := []string{
+		"error",
+		"failed",
+		"unable",
+		"denied",
+		"unauthorized",
+		"forbidden",
+		"invalid",
+		"missing",
+		"not found",
+		"timeout",
+		"timed out",
+	}
+	for _, keyword := range keywords {
+		if strings.Contains(lower, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeFiles(paths []string) []string {
