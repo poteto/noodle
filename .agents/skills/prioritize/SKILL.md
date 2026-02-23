@@ -17,6 +17,8 @@ Operate fully autonomously. Never ask the user to choose or pause for confirmati
 
 Only schedule `execute` items that have a linked plan (`plan` field non-null in backlog entry). Skip unplanned items entirely -- note their IDs in `queue.json` under `"action_needed"` so the TUI can surface them.
 
+When scheduling an item with a plan, populate the queue item's `"plan"` array with the plan overview path(s) from the backlog entry (e.g. `["plans/15-bootstrap-onboarding/overview"]`). The TUI uses this to display plan status.
+
 ## Schedule Reading
 
 Read `task_types[].schedule` from mise to know when each task type should run. Honor these hints when placing items.
