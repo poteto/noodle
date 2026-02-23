@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Create creates a new plan directory with overview.md and phase-01-scaffold.md.
+// Create creates a new plan directory with overview.md.
 // It appends a wikilink to {plansDir}/index.md.
 // Returns the absolute path to the created plan directory.
 func Create(plansDir string, todoID int, slug string) (string, error) {
@@ -25,11 +25,6 @@ func Create(plansDir string, todoID int, slug string) (string, error) {
 	overview := fmt.Sprintf("---\nid: %d\ncreated: %s\nstatus: draft\n---\n\n# %s\n", todoID, today, title)
 	if err := os.WriteFile(filepath.Join(planDir, "overview.md"), []byte(overview), 0o644); err != nil {
 		return "", fmt.Errorf("overview.md not written: %w", err)
-	}
-
-	phase01 := fmt.Sprintf("Back to [[plans/%s/overview]]\n\n# Phase 1: Scaffold\n", dirName)
-	if err := os.WriteFile(filepath.Join(planDir, "phase-01-scaffold.md"), []byte(phase01), 0o644); err != nil {
-		return "", fmt.Errorf("phase-01-scaffold.md not written: %w", err)
 	}
 
 	if err := appendWikilink(plansDir, dirName); err != nil {

@@ -31,7 +31,7 @@ type Plan struct {
 // Phase represents a single phase file within a plan.
 type Phase struct {
 	Name     string `json:"name"`     // from heading or filename
-	Filename string `json:"filename"` // e.g., "phase-01-scaffold.md"
+	Filename string `json:"filename"` // e.g., "phase-01-research.md"
 	Status   string `json:"status"`   // pending | active | done
 }
 
@@ -294,8 +294,8 @@ func phaseNameFromFile(path, filename string) string {
 	return cleanFilename(strings.TrimSuffix(filename, ".md"))
 }
 
-// cleanFilename converts a filename like "phase-01-scaffold" to
-// "Phase 01 Scaffold".
+// cleanFilename converts a filename like "phase-01-research" to
+// "Phase 01 Research".
 func cleanFilename(name string) string {
 	name = strings.ReplaceAll(name, "-", " ")
 	words := strings.Fields(name)

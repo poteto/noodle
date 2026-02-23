@@ -46,17 +46,9 @@ func TestCreate_MakesDirectoryAndFiles(t *testing.T) {
 		t.Errorf("overview missing created date: %s", overviewStr)
 	}
 
-	// Verify phase-01-scaffold.md.
-	phase01, err := os.ReadFile(filepath.Join(created, "phase-01-scaffold.md"))
-	if err != nil {
-		t.Fatalf("phase-01-scaffold.md not found: %v", err)
-	}
-	phase01Str := string(phase01)
-	if !strings.Contains(phase01Str, "[[plans/99-test-plan/overview]]") {
-		t.Errorf("phase-01 missing back link: %s", phase01Str)
-	}
-	if !strings.Contains(phase01Str, "# Phase 1: Scaffold") {
-		t.Errorf("phase-01 missing heading: %s", phase01Str)
+	// Verify no phase-01-scaffold.md created (phases added separately via PhaseAdd).
+	if _, err := os.Stat(filepath.Join(created, "phase-01-scaffold.md")); err == nil {
+		t.Error("phase-01-scaffold.md should not be created by Create")
 	}
 
 	// Verify index.md was updated.
@@ -178,8 +170,8 @@ func TestPhaseAdd_CreatesNumberedFile(t *testing.T) {
 
 	writeFile(t, filepath.Join(planDir, "overview.md"),
 		"---\nid: 20\ncreated: 2026-02-20\nstatus: active\n---\n\n# My Plan\n")
-	writeFile(t, filepath.Join(planDir, "phase-01-scaffold.md"),
-		"# Phase 1: Scaffold\n")
+	writeFile(t, filepath.Join(planDir, "phase-01-research.md"),
+		"# Phase 1: Research\n")
 
 	created, err := PhaseAdd(plansDir, 20, "Implementation")
 	if err != nil {
