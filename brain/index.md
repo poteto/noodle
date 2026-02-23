@@ -42,6 +42,7 @@
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
 - [[codebase/fixture-frontmatter-contract]]
+- [[codebase/loop-test-overlap-matrix]]
 - [[codebase/plan-phase-discipline]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
