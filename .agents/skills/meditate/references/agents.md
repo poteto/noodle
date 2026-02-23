@@ -31,51 +31,41 @@ Prompt spec:
   - **Duplicated in brain**: Entries that duplicate brain note content
 - Produce a report with brain, CLAUDE.md, and memory findings separated. Each item: what's flagged, why, and suggested action (update, merge, condense, or delete).
 
-## Synthesizer
+## Reviewer
 
-**Inputs:** brain snapshot, auditor report.
+**Inputs:** brain snapshot, skills snapshot (`/tmp/skills-snapshot.md`), auditor report, `brain/principles.md`.
+
+Single agent that combines synthesis, distillation, and skill review in one pass. Produces three report sections.
 
 Prompt spec:
 
-- Read `/tmp/brain-snapshot.md` (skip notes the auditor flagged for deletion)
-- **Connect**: Propose missing `[[wikilinks]]` between notes that reference the same concepts
-- **Tensions**: Flag principles that appear to conflict; propose how to resolve or clarify the boundary
-- **Clarify**: Propose rewording where a note's relationship to a principle is unclear
+- Read both snapshots and the auditor report. Skip notes the auditor flagged for deletion.
+
+**Section 1 — Synthesis:**
+- Propose missing `[[wikilinks]]` between notes that reference the same concepts
+- Flag principles that appear to conflict; propose how to resolve or clarify the boundary
+- Propose rewording where a note's relationship to a principle is unclear
 - Do NOT propose merging principles — they are intentionally independent
-- Produce a report with proposed connections, tensions, and clarifications
 
-## Distiller
-
-**Inputs:** brain snapshot, auditor report.
-
-Prompt spec:
-
-- Read `/tmp/brain-snapshot.md` (skip notes the auditor flagged for deletion) — focus on codebase notes, preferences, plan retrospectives, and gotchas
-- Look for **recurring patterns** across operational notes that reveal unstated engineering principles
+**Section 2 — Distillation:**
+- Focus on codebase notes, preferences, plan retrospectives, and gotchas
+- Look for recurring patterns that reveal unstated engineering principles
 - A valid new principle must be: (1) genuinely independent — not derivable from existing principles, (2) evidenced by 2+ separate notes, (3) actionable — changes how you'd approach future work
 - Do NOT propose restatements of existing principles applied to a new domain
-- Produce a report: each proposed principle with the insight, evidence (which notes), why it's independent, and suggested path under `brain/principles/`
+- Each proposed principle: insight, evidence (which notes), why independent, suggested path under `brain/principles/`
 
-## Skill Reviewer
-
-**Inputs:** brain snapshot, skills snapshot (`/tmp/skills-snapshot.md`), auditor/synthesizer/distiller reports, `brain/principles.md`.
-
-Prompt spec:
-
-- Read both snapshots
+**Section 3 — Skill review:**
 - For each skill, check against brain principles:
   - Does it contradict any principle?
-  - Does it miss a structural enforcement opportunity? (per encode-lessons-in-structure — can an instruction become a lint rule, script, metadata flag, or runtime check?)
+  - Does it miss a structural enforcement opportunity? (can an instruction become a lint rule, script, metadata flag, or runtime check?)
   - Does it duplicate instructions that a mechanism already handles?
   - Is it missing a principle that would improve reliability?
-- Cross-reference with the other reports — could a recurring pattern be encoded into a skill?
 - Audit each skill's `description` frontmatter for context bloat — cut what Claude can infer (exhaustive error types, synonym trigger lists, restated purpose). Keep only distinctive triggers and core purpose.
-- Produce a report: each finding with skill name, principle(s), gap, and concrete proposal
 - Prioritize structural enforcement over textual instructions
 
 ## Report Template
 
-Use this format when presenting the consolidated summary in Step 5:
+Use this format when presenting the consolidated summary in Step 4:
 
 ```
 ## Audit Results — Brain
