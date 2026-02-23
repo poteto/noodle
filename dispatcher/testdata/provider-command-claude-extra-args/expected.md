@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 4b48a345a0e70843dfe04d8c1585d61cdf2f32aaba996cee822a0e006ee678ab
+source_hash: cb27ed00dc71c2c101cb8754f303cfb0ff47f558a5596221a363b5e54f0289e1
 ---
 
 ## Expected
@@ -14,9 +14,9 @@ source_hash: 4b48a345a0e70843dfe04d8c1585d61cdf2f32aaba996cee822a0e006ee678ab
     "'--output-format' 'stream-json'",
     "'--permission-mode' 'bypassPermissions'",
     "'--model' 'claude-sonnet-4-6'",
-    "'--max-turns' '5'",
-    "'--max-budget-usd' '2.50'",
     "'--append-system-prompt' 'skill-system'",
+    "'--dangerously-skip-permissions'",
+    "'--verbose'",
     "< '/tmp/prompt.txt'",
     "2>&1"
   ],

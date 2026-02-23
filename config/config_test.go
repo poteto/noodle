@@ -55,8 +55,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Concurrency.MaxCooks != 4 {
 		t.Fatalf("concurrency.max_cooks default = %d", config.Concurrency.MaxCooks)
 	}
-	if config.Agents.ClaudeDir != "" || config.Agents.CodexDir != "" {
-		t.Fatalf("agent dir defaults should be empty: %#v", config.Agents)
+	if config.Agents.Claude.Path != "" || config.Agents.Codex.Path != "" {
+		t.Fatalf("agent path defaults should be empty: %#v", config.Agents)
 	}
 
 	backlog, ok := config.Adapters["backlog"]
@@ -313,7 +313,7 @@ func TestValidationClassification(t *testing.T) {
 			"sync": "/definitely/missing/backlog-sync",
 		},
 	}
-	config.Agents.ClaudeDir = "/definitely/missing/claude"
+	config.Agents.Claude.Path = "/definitely/missing/claude"
 
 	result := Validate(config)
 	if result.CanSpawn() {
@@ -339,7 +339,7 @@ func TestValidationClassification(t *testing.T) {
 
 	foundFatal := false
 	for _, diagnostic := range result.Fatals() {
-		if diagnostic.FieldPath == "agents.claude_dir" {
+		if diagnostic.FieldPath == "agents.claude.path" {
 			foundFatal = true
 			if diagnostic.Fix == "" {
 				t.Fatal("fatal diagnostic should include fix instructions")
@@ -350,7 +350,7 @@ func TestValidationClassification(t *testing.T) {
 		}
 	}
 	if !foundFatal {
-		t.Fatal("missing expected fatal agents.claude_dir diagnostic")
+		t.Fatal("missing expected fatal agents.claude.path diagnostic")
 	}
 }
 
@@ -363,8 +363,8 @@ func TestValidationRepairablesOnlyCanSpawn(t *testing.T) {
 	t.Cleanup(func() { statPath = oldStatPath })
 
 	config := DefaultConfig()
-	config.Agents.ClaudeDir = ""
-	config.Agents.CodexDir = ""
+	config.Agents.Claude.Path = ""
+	config.Agents.Codex.Path = ""
 
 	result := Validate(config)
 	if !result.CanSpawn() {

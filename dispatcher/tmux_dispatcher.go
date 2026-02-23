@@ -22,43 +22,49 @@ type commandRunner func(
 	args ...string,
 ) ([]byte, error)
 
-// AgentDirs holds optional CLI binary directories by provider.
-type AgentDirs struct {
-	ClaudeDir string
-	CodexDir  string
+// ProviderConfig holds optional CLI binary directory and extra flags by provider.
+type ProviderConfig struct {
+	Path string
+	Args []string
+}
+
+// ProviderConfigs holds per-provider configuration.
+type ProviderConfigs struct {
+	Claude ProviderConfig
+	Codex  ProviderConfig
 }
 
 // TmuxDispatcherConfig configures a tmux dispatcher.
 type TmuxDispatcherConfig struct {
-	ProjectDir     string
-	RuntimeDir     string
-	NoodleBin      string
-	SkillResolver  skill.Resolver
-	AgentDirs      AgentDirs
-	RuntimeDefault string // command template from config, empty = built-in
+	ProjectDir      string
+	RuntimeDir      string
+	NoodleBin       string
+	SkillResolver   skill.Resolver
+	ProviderConfigs ProviderConfigs
+	RuntimeDefault  string // command template from config, empty = built-in
 }
 
 // TmuxDispatcher dispatches provider sessions in detached tmux sessions.
 type TmuxDispatcher struct {
-	projectDir     string
-	runtimeDir     string
-	noodleBin      string
-	skillResolver  skill.Resolver
-	agentDirs      AgentDirs
-	runtimeDefault string
-	run            commandRunner
+	projectDir      string
+	runtimeDir      string
+	noodleBin       string
+	skillResolver   skill.Resolver
+	providerConfigs ProviderConfigs
+	runtimeDefault  string
+	run             commandRunner
 }
 
 // NewTmuxDispatcher constructs a dispatcher from config.
 func NewTmuxDispatcher(config TmuxDispatcherConfig) *TmuxDispatcher {
 	return &TmuxDispatcher{
-		projectDir:     strings.TrimSpace(config.ProjectDir),
-		runtimeDir:     strings.TrimSpace(config.RuntimeDir),
-		noodleBin:      strings.TrimSpace(config.NoodleBin),
-		skillResolver:  config.SkillResolver,
-		agentDirs:      config.AgentDirs,
-		runtimeDefault: strings.TrimSpace(config.RuntimeDefault),
-		run:            defaultRunner,
+		projectDir:      strings.TrimSpace(config.ProjectDir),
+		runtimeDir:      strings.TrimSpace(config.RuntimeDir),
+		noodleBin:       strings.TrimSpace(config.NoodleBin),
+		skillResolver:   config.SkillResolver,
+		providerConfigs: config.ProviderConfigs,
+		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
+		run:             defaultRunner,
 	}
 }
 
@@ -134,7 +140,8 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 		pipeline = buildPipelineCommand(resolved, s.noodleBin, stampedPath, canonicalPath)
 	} else {
 		agentBinary := s.resolveAgentBinary(req.Provider)
-		providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath)
+		extraArgs := s.resolveExtraArgs(req.Provider)
+		providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath, extraArgs)
 		pipeline = buildPipelineCommand(providerCommand, s.noodleBin, stampedPath, canonicalPath)
 	}
 
@@ -193,7 +200,7 @@ func resolveTemplateVars(tmpl string, vars map[string]string) string {
 func (s *TmuxDispatcher) resolveAgentBinary(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "codex":
-		if path := strings.TrimSpace(s.agentDirs.CodexDir); path != "" {
+		if path := strings.TrimSpace(s.providerConfigs.Codex.Path); path != "" {
 			candidate := filepath.Join(path, "codex")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
@@ -201,13 +208,22 @@ func (s *TmuxDispatcher) resolveAgentBinary(provider string) string {
 		}
 		return "codex"
 	default:
-		if path := strings.TrimSpace(s.agentDirs.ClaudeDir); path != "" {
+		if path := strings.TrimSpace(s.providerConfigs.Claude.Path); path != "" {
 			candidate := filepath.Join(path, "claude")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}
 		}
 		return "claude"
+	}
+}
+
+func (s *TmuxDispatcher) resolveExtraArgs(provider string) []string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "codex":
+		return s.providerConfigs.Codex.Args
+	default:
+		return s.providerConfigs.Claude.Args
 	}
 }
 

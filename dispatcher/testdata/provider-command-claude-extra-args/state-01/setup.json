@@ -1,0 +1,13 @@
+{
+  "request": {
+    "name": "cook-c",
+    "prompt": "Say ok",
+    "provider": "claude",
+    "model": "claude-sonnet-4-6",
+    "worktreepath": ".worktrees/phase-06-spawner"
+  },
+  "prompt_file": "/tmp/prompt.txt",
+  "agent_binary": "claude",
+  "system_prompt": "skill-system",
+  "extra_args": ["--dangerously-skip-permissions", "--verbose"]
+}

@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	DefaultConfigPath = "noodle.toml"
+	DefaultConfigPath = ".noodle.toml"
 )
 
-// Config is the top-level noodle.toml contract for runtime wiring.
+// Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
 	Phases      map[string]string        `toml:"phases"`
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
@@ -75,9 +75,14 @@ type ConcurrencyConfig struct {
 	MaxCooks int `toml:"max_cooks"`
 }
 
+type ProviderConfig struct {
+	Path string   `toml:"path"`
+	Args []string `toml:"args"`
+}
+
 type AgentsConfig struct {
-	ClaudeDir string `toml:"claude_dir"`
-	CodexDir  string `toml:"codex_dir"`
+	Claude ProviderConfig `toml:"claude"`
+	Codex  ProviderConfig `toml:"codex"`
 }
 
 // RuntimeConfig controls the default runtime for spawned cook sessions.
@@ -174,10 +179,7 @@ func DefaultConfig() Config {
 		Concurrency: ConcurrencyConfig{
 			MaxCooks: 4,
 		},
-		Agents: AgentsConfig{
-			ClaudeDir: "",
-			CodexDir:  "",
-		},
+		Agents: AgentsConfig{},
 	}
 }
 
@@ -213,12 +215,12 @@ func Load(path string) (Config, ValidationResult, error) {
 	return config, Validate(config), nil
 }
 
-// Parse parses a noodle.toml payload and applies omitted-field defaults.
+// Parse parses a .noodle.toml payload and applies omitted-field defaults.
 func Parse(data []byte) (Config, error) {
 	var config Config
 	metadata, err := toml.Decode(string(data), &config)
 	if err != nil {
-		return Config{}, fmt.Errorf("parse noodle.toml: %w", err)
+		return Config{}, fmt.Errorf("parse .noodle.toml: %w", err)
 	}
 
 	applyDefaultsFromMetadata(&config, metadata)
@@ -406,7 +408,7 @@ func Validate(config Config) ValidationResult {
 			FieldPath: "routing.defaults",
 			Message:   "provider and model must both be configured",
 			Severity:  DiagnosticSeverityFatal,
-			Fix:       "Set routing.defaults.provider and routing.defaults.model in noodle.toml.",
+			Fix:       "Set routing.defaults.provider and routing.defaults.model in .noodle.toml.",
 			Code:      DiagnosticCodeRoutingDefaultsMissing,
 		})
 	}
@@ -440,8 +442,8 @@ func Validate(config Config) ValidationResult {
 			},
 		})
 	}
-	appendAgentDirDiagnostic("agents.claude_dir", config.Agents.ClaudeDir)
-	appendAgentDirDiagnostic("agents.codex_dir", config.Agents.CodexDir)
+	appendAgentDirDiagnostic("agents.claude.path", config.Agents.Claude.Path)
+	appendAgentDirDiagnostic("agents.codex.path", config.Agents.Codex.Path)
 
 	for adapterName, adapter := range config.Adapters {
 		if adapter.Skill == "" {
@@ -449,7 +451,7 @@ func Validate(config Config) ValidationResult {
 				FieldPath: fmt.Sprintf("adapters.%s.skill", adapterName),
 				Message:   "skill is not configured",
 				Severity:  DiagnosticSeverityRepairable,
-				Fix:       fmt.Sprintf("Set adapters.%s.skill in noodle.toml.", adapterName),
+				Fix:       fmt.Sprintf("Set adapters.%s.skill in .noodle.toml.", adapterName),
 				Code:      DiagnosticCodeAdapterSkillMissing,
 				Meta: map[string]string{
 					"adapter": adapterName,

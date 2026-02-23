@@ -48,10 +48,10 @@ func TestReportConfigDiagnosticsFailsStartOnFatal(t *testing.T) {
 	validation := config.ValidationResult{
 		Diagnostics: []config.ConfigDiagnostic{
 			{
-				FieldPath: "agents.claude_dir",
+				FieldPath: "agents.claude.path",
 				Message:   "directory not found",
 				Severity:  config.DiagnosticSeverityFatal,
-				Fix:       "Set agents.claude_dir in noodle.toml.",
+				Fix:       "Set agents.claude.path in .noodle.toml.",
 			},
 		},
 	}

@@ -47,8 +47,8 @@ func TestRunDispatchBuildsRequestFromDefaults(t *testing.T) {
 	app.Config.Routing.Defaults.Provider = "codex"
 	app.Config.Routing.Defaults.Model = "gpt-5.3-codex"
 	app.Config.Skills.Paths = []string{"skills", "~/.noodle/skills"}
-	app.Config.Agents.ClaudeDir = "/tmp/claude-bin"
-	app.Config.Agents.CodexDir = "/tmp/codex-bin"
+	app.Config.Agents.Claude.Path = "/tmp/claude-bin"
+	app.Config.Agents.Codex.Path = "/tmp/codex-bin"
 
 	var err error
 	_ = captureStdout(t, func() {

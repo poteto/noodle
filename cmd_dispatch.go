@@ -127,21 +127,27 @@ func runDispatch(ctx context.Context, app *App, args dispatchArgs) error {
 	}
 
 	var resolver skill.Resolver
-	var agentDirs dispatcher.AgentDirs
+	var providerConfigs dispatcher.ProviderConfigs
 	if app != nil {
 		resolver = skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-		agentDirs = dispatcher.AgentDirs{
-			ClaudeDir: app.Config.Agents.ClaudeDir,
-			CodexDir:  app.Config.Agents.CodexDir,
+		providerConfigs = dispatcher.ProviderConfigs{
+			Claude: dispatcher.ProviderConfig{
+				Path: app.Config.Agents.Claude.Path,
+				Args: app.Config.Agents.Claude.Args,
+			},
+			Codex: dispatcher.ProviderConfig{
+				Path: app.Config.Agents.Codex.Path,
+				Args: app.Config.Agents.Codex.Args,
+			},
 		}
 	}
 
 	s := newDispatchCommandDispatcher(dispatcher.TmuxDispatcherConfig{
-		ProjectDir:    cwd,
-		RuntimeDir:    runtimeDir,
-		NoodleBin:     noodleBin,
-		SkillResolver: resolver,
-		AgentDirs:     agentDirs,
+		ProjectDir:      cwd,
+		RuntimeDir:      runtimeDir,
+		NoodleBin:       noodleBin,
+		SkillResolver:   resolver,
+		ProviderConfigs: providerConfigs,
 	})
 	session, err := s.Dispatch(ctx, dispatcher.DispatchRequest{
 		Name:           args.name,

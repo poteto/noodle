@@ -17,21 +17,22 @@ func buildProviderCommand(
 	agentBinary string,
 	systemPrompt string,
 	stderrFile string,
+	extraArgs []string,
 ) string {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	if provider == "codex" {
-		return buildCodexCommand(req, promptFile, agentBinary, stderrFile)
+		return buildCodexCommand(req, promptFile, agentBinary, stderrFile, extraArgs)
 	}
-	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile)
+	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile, extraArgs)
 }
 
-func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string) string {
+func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string, extraArgs []string) string {
 	args := []string{
 		agentBinary,
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
-		"--permission-mode", "dontAsk",
+		"--permission-mode", "bypassPermissions",
 	}
 	if req.MaxTurns > 0 {
 		args = append(args, "--max-turns", strconv.Itoa(req.MaxTurns))
@@ -48,6 +49,7 @@ func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemProm
 	if strings.TrimSpace(systemPrompt) != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
+	args = append(args, extraArgs...)
 	command := shellCommandWithInput(args, promptFile, true)
 	if strings.TrimSpace(stderrFile) != "" {
 		command += " 2> " + shellQuote(stderrFile)
@@ -55,7 +57,7 @@ func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemProm
 	return command
 }
 
-func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string) string {
+func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string, extraArgs []string) string {
 	args := []string{
 		agentBinary,
 		"--ask-for-approval", "never",
@@ -67,6 +69,7 @@ func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile 
 	if strings.TrimSpace(req.Model) != "" {
 		args = append(args, "--model", req.Model)
 	}
+	args = append(args, extraArgs...)
 	// Codex writes non-JSON progress banners to stderr even with --json.
 	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
 	command := shellCommandWithInput(args, promptFile, false)

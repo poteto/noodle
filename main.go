@@ -195,7 +195,7 @@ func writeRepairPromptBlock(w io.Writer, prompt string) {
 func buildRepairPrompt(missing []missingScriptDiagnostic) string {
 	var builder strings.Builder
 	builder.WriteString("Repair Noodle adapter script configuration so `noodle start` no longer reports missing script paths.\n")
-	builder.WriteString("Fix each missing entry by either creating an executable script at that path or updating noodle.toml to a valid executable path.\n")
+	builder.WriteString("Fix each missing entry by either creating an executable script at that path or updating .noodle.toml to a valid executable path.\n")
 	builder.WriteString("Keep the fix minimal and avoid broad refactors.\n\n")
 	builder.WriteString("Missing adapter scripts:\n")
 	for _, item := range missing {
@@ -278,16 +278,22 @@ func startRepairSession(
 	}
 	runtimeDir := filepath.Join(worktreeApp.Root, ".noodle")
 	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-	agentDirs := dispatcher.AgentDirs{
-		ClaudeDir: app.Config.Agents.ClaudeDir,
-		CodexDir:  app.Config.Agents.CodexDir,
+	providerConfigs := dispatcher.ProviderConfigs{
+		Claude: dispatcher.ProviderConfig{
+			Path: app.Config.Agents.Claude.Path,
+			Args: app.Config.Agents.Claude.Args,
+		},
+		Codex: dispatcher.ProviderConfig{
+			Path: app.Config.Agents.Codex.Path,
+			Args: app.Config.Agents.Codex.Args,
+		},
 	}
 	d := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
-		ProjectDir:    worktreeApp.Root,
-		RuntimeDir:    runtimeDir,
-		NoodleBin:     noodleBin,
-		SkillResolver: resolver,
-		AgentDirs:     agentDirs,
+		ProjectDir:      worktreeApp.Root,
+		RuntimeDir:      runtimeDir,
+		NoodleBin:       noodleBin,
+		SkillResolver:   resolver,
+		ProviderConfigs: providerConfigs,
 	})
 	request := dispatcher.DispatchRequest{
 		Name:         name,

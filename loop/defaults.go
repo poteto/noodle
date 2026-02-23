@@ -27,9 +27,15 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		NoodleBin:      noodleBin,
 		SkillResolver:  resolver,
 		RuntimeDefault: cfg.Runtime.Default,
-		AgentDirs: dispatcher.AgentDirs{
-			ClaudeDir: cfg.Agents.ClaudeDir,
-			CodexDir:  cfg.Agents.CodexDir,
+		ProviderConfigs: dispatcher.ProviderConfigs{
+			Claude: dispatcher.ProviderConfig{
+				Path: cfg.Agents.Claude.Path,
+				Args: cfg.Agents.Claude.Args,
+			},
+			Codex: dispatcher.ProviderConfig{
+				Path: cfg.Agents.Codex.Path,
+				Args: cfg.Agents.Codex.Args,
+			},
 		},
 	})
 	wtApp, _ := worktree.NewApp()

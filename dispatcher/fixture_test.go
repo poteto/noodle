@@ -10,10 +10,11 @@ import (
 
 type providerCommandFixtureSetup struct {
 	Request      DispatchRequest `json:"request"`
-	PromptFile   string       `json:"prompt_file"`
-	AgentBinary  string       `json:"agent_binary"`
-	SystemPrompt string       `json:"system_prompt"`
-	StderrFile   string       `json:"stderr_file"`
+	PromptFile   string          `json:"prompt_file"`
+	AgentBinary  string          `json:"agent_binary"`
+	SystemPrompt string          `json:"system_prompt"`
+	StderrFile   string          `json:"stderr_file"`
+	ExtraArgs    []string        `json:"extra_args"`
 }
 
 type providerCommandFixtureExpected struct {
@@ -39,6 +40,7 @@ func TestBuildProviderCommandDirectoryFixtures(t *testing.T) {
 				setup.AgentBinary,
 				setup.SystemPrompt,
 				setup.StderrFile,
+				setup.ExtraArgs,
 			)
 
 			for _, want := range expected.Contains {
