@@ -52,6 +52,9 @@ func (m Model) renderLayout() string {
 	pane := tabBar + "\n\n" + tabContent
 	layout := joinLayout(rail, pane)
 
+	if m.taskEditor.open {
+		layout += "\n\n" + m.taskEditor.Render(paneWidth)
+	}
 	if m.steerOpen {
 		layout += "\n\n" + keybarStyle.Render("[steer] ") +
 			dimStyle.Render("type @target instruction · enter sends · esc closes")
@@ -76,6 +79,7 @@ func renderHelp() string {
 	return sectionStyle.Render("Keys") + "\n" +
 		dimStyle.Render("1-4") + " switch tabs  " +
 		dimStyle.Render("`") + " steer  " +
+		dimStyle.Render("n") + " new task  " +
 		dimStyle.Render("p") + " pause/resume  " +
 		dimStyle.Render("m") + " merge  " +
 		dimStyle.Render("x") + " reject  " +

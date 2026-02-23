@@ -1,0 +1,244 @@
+package tui
+
+import (
+	"strings"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/poteto/noodle/loop"
+	"github.com/poteto/noodle/tui/components"
+)
+
+// TaskEditor is the inline task creator/editor overlay.
+type TaskEditor struct {
+	open bool
+
+	// nil = create mode, non-nil = edit mode.
+	editItemID *string
+
+	title    string
+	taskType int
+	model    int
+	provider int
+	skill    string
+	priority int
+	field    int // active field index (0-5)
+}
+
+var (
+	taskTypes = []string{"execute", "plan", "quality", "reflect", "prioritize"}
+	models    = []string{"claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5", "gpt-5.3-codex"}
+	providers = []string{"claude", "codex"}
+	priorities = []string{"normal", "high", "low"}
+)
+
+const (
+	fieldTitle    = 0
+	fieldType     = 1
+	fieldModel    = 2
+	fieldProvider = 3
+	fieldSkill    = 4
+	fieldPriority = 5
+	fieldCount    = 6
+)
+
+// OpenNew opens the task editor in create mode.
+func (e *TaskEditor) OpenNew() {
+	e.open = true
+	e.editItemID = nil
+	e.title = ""
+	e.taskType = 0
+	e.model = 0
+	e.provider = 0
+	e.skill = ""
+	e.priority = 0
+	e.field = 0
+}
+
+// OpenEdit opens the task editor in edit mode with prefilled values.
+func (e *TaskEditor) OpenEdit(item QueueItem) {
+	e.open = true
+	e.editItemID = &item.ID
+	e.title = item.Title
+	e.taskType = indexOf(taskTypes, item.Skill, 0)
+	e.model = indexOf(models, item.Model, 0)
+	e.provider = indexOf(providers, item.Provider, 0)
+	e.skill = item.Skill
+	e.priority = 0
+	e.field = 0
+}
+
+// Close closes the editor without submitting.
+func (e *TaskEditor) Close() {
+	e.open = false
+}
+
+// HandleKey processes key events when the editor is open.
+func (e *TaskEditor) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+	switch msg.Type {
+	case tea.KeyEsc:
+		e.Close()
+		return nil, true
+	case tea.KeyTab:
+		e.field = (e.field + 1) % fieldCount
+		return nil, true
+	case tea.KeyShiftTab:
+		e.field = (e.field - 1 + fieldCount) % fieldCount
+		return nil, true
+	case tea.KeyLeft:
+		e.cyclePrev()
+		return nil, true
+	case tea.KeyRight:
+		e.cycleNext()
+		return nil, true
+	case tea.KeyBackspace, tea.KeyCtrlH:
+		if e.field == fieldTitle {
+			e.title = dropLastRune(e.title)
+		} else if e.field == fieldSkill {
+			e.skill = dropLastRune(e.skill)
+		}
+		return nil, true
+	case tea.KeyRunes:
+		if e.field == fieldTitle {
+			e.title += string(msg.Runes)
+		} else if e.field == fieldSkill {
+			e.skill += string(msg.Runes)
+		}
+		return nil, true
+	case tea.KeySpace:
+		if e.field == fieldTitle {
+			e.title += " "
+		} else if e.field == fieldSkill {
+			e.skill += " "
+		}
+		return nil, true
+	}
+	return nil, false
+}
+
+func (e *TaskEditor) cyclePrev() {
+	switch e.field {
+	case fieldType:
+		e.taskType = (e.taskType - 1 + len(taskTypes)) % len(taskTypes)
+	case fieldModel:
+		e.model = (e.model - 1 + len(models)) % len(models)
+	case fieldProvider:
+		e.provider = (e.provider - 1 + len(providers)) % len(providers)
+	case fieldPriority:
+		e.priority = (e.priority - 1 + len(priorities)) % len(priorities)
+	}
+}
+
+func (e *TaskEditor) cycleNext() {
+	switch e.field {
+	case fieldType:
+		e.taskType = (e.taskType + 1) % len(taskTypes)
+	case fieldModel:
+		e.model = (e.model + 1) % len(models)
+	case fieldProvider:
+		e.provider = (e.provider + 1) % len(providers)
+	case fieldPriority:
+		e.priority = (e.priority + 1) % len(priorities)
+	}
+}
+
+// Submit creates the control command for the task.
+func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
+	title := strings.TrimSpace(e.title)
+	if title == "" {
+		return nil
+	}
+
+	action := "enqueue"
+	if e.editItemID != nil {
+		action = "edit-item"
+	}
+
+	cmd := loop.ControlCommand{
+		Action: action,
+		Prompt: title,
+		Target: taskTypes[e.taskType],
+	}
+	if e.editItemID != nil {
+		cmd.Item = *e.editItemID
+	}
+
+	e.Close()
+	return sendControlCmd(runtimeDir, now, cmd)
+}
+
+// Render renders the task editor overlay.
+func (e *TaskEditor) Render(width int) string {
+	t := components.DefaultTheme
+	if width < 30 {
+		width = 30
+	}
+	innerWidth := width - 4
+
+	var mode string
+	if e.editItemID != nil {
+		mode = "Edit Task"
+	} else {
+		mode = "New Task"
+	}
+
+	header := lipgloss.NewStyle().
+		Foreground(t.Brand).
+		Bold(true).
+		Render(mode)
+
+	fields := []struct {
+		label string
+		value string
+		editable bool
+	}{
+		{"Title", e.title, true},
+		{"Type", taskTypes[e.taskType], false},
+		{"Model", models[e.model], false},
+		{"Provider", providers[e.provider], false},
+		{"Skill", e.skill, true},
+		{"Priority", priorities[e.priority], false},
+	}
+
+	var rows []string
+	for i, f := range fields {
+		label := lipgloss.NewStyle().Foreground(t.Dim).Width(10).Render(f.label)
+		value := f.value
+		if value == "" && f.editable {
+			value = "(empty)"
+		}
+		if !f.editable {
+			value = "← " + value + " →"
+		}
+		if i == e.field {
+			value = lipgloss.NewStyle().Foreground(t.Brand).Bold(true).Render(value)
+		} else {
+			value = lipgloss.NewStyle().Foreground(t.Secondary).Render(value)
+		}
+		rows = append(rows, label+" "+value)
+	}
+
+	body := strings.Join(rows, "\n")
+	footer := dimStyle.Render("tab: next field · ←→: cycle · enter: submit · esc: cancel")
+
+	card := &components.Card{
+		Title:       header,
+		Body:        body,
+		Footer:      footer,
+		BorderColor: t.Brand,
+	}
+
+	_ = innerWidth
+	return card.Render(width)
+}
+
+func indexOf(items []string, target string, fallback int) int {
+	target = strings.ToLower(strings.TrimSpace(target))
+	for i, item := range items {
+		if strings.ToLower(item) == target {
+			return i
+		}
+	}
+	return fallback
+}

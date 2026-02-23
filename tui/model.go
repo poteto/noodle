@@ -57,6 +57,7 @@ type Model struct {
 	steerMentionStart int
 	statusLine        string
 
+	taskEditor   TaskEditor
 	quitPending  bool
 	quitDeadline time.Time
 }
@@ -217,6 +218,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return quitResetMsg{}
 		})
 	case tea.KeyEsc:
+		if m.taskEditor.open {
+			m.taskEditor.Close()
+			return m, nil
+		}
 		if m.steerOpen {
 			if m.steerMentionOpen {
 				m.closeSteerMentions()
@@ -239,6 +244,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if m.steerOpen {
 		return m.handleSteerKey(msg)
+	}
+	if m.taskEditor.open {
+		return m.handleTaskEditorKey(msg)
 	}
 	if m.helpOpen {
 		if strings.ToLower(msg.String()) == "?" {
@@ -282,6 +290,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.helpOpen = true
 	case "`":
 		return m, m.openSteer()
+	case "n":
+		m.taskEditor.OpenNew()
+		return m, nil
 	case "j", "down":
 		if m.activeTab == TabFeed {
 			m.feedTab.ScrollDown(3)
@@ -351,6 +362,21 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		return m, nil
 	}
+}
+
+func (m Model) handleTaskEditorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.Type == tea.KeyEnter {
+		cmd := m.taskEditor.Submit(m.runtimeDir, m.now)
+		if cmd != nil {
+			return m, cmd
+		}
+		return m, nil
+	}
+	cmd, handled := m.taskEditor.HandleKey(msg)
+	if handled {
+		return m, cmd
+	}
+	return m, nil
 }
 
 func (m Model) contentWidth() int {

@@ -317,6 +317,120 @@ func TestSteerSpacebarWorks(t *testing.T) {
 	}
 }
 
+func TestTaskEditorCreateOpensEmpty(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+
+	m = pressRune(t, m, 'n')
+	if !m.taskEditor.open {
+		t.Fatal("expected task editor to open after n")
+	}
+	if m.taskEditor.title != "" {
+		t.Fatalf("expected empty title, got %q", m.taskEditor.title)
+	}
+	if m.taskEditor.editItemID != nil {
+		t.Fatal("expected create mode (nil editItemID)")
+	}
+}
+
+func TestTaskEditorTabCyclesFields(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.taskEditor.OpenNew()
+
+	if m.taskEditor.field != 0 {
+		t.Fatalf("initial field = %d, want 0", m.taskEditor.field)
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyTab})
+	if m.taskEditor.field != 1 {
+		t.Fatalf("field after tab = %d, want 1", m.taskEditor.field)
+	}
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyTab})
+	if m.taskEditor.field != 2 {
+		t.Fatalf("field after 2 tabs = %d, want 2", m.taskEditor.field)
+	}
+}
+
+func TestTaskEditorArrowCyclesOptions(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.taskEditor.OpenNew()
+	m.taskEditor.field = fieldType // type field
+
+	initial := m.taskEditor.taskType
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyRight})
+	if m.taskEditor.taskType == initial {
+		t.Fatal("expected task type to change after right arrow")
+	}
+}
+
+func TestTaskEditorEscCancels(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.taskEditor.OpenNew()
+	m.taskEditor.title = "some task"
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.taskEditor.open {
+		t.Fatal("expected task editor to close after esc")
+	}
+}
+
+func TestTaskEditorSubmitWritesEnqueue(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
+
+	m := NewModel(Options{
+		RuntimeDir:      runtimeDir,
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.taskEditor.OpenNew()
+	m.taskEditor.title = "Fix the tests"
+
+	cmd := m.taskEditor.Submit(m.runtimeDir, m.now)
+	if cmd == nil {
+		t.Fatal("expected submit command")
+	}
+	msg := cmd()
+	result, ok := msg.(controlResultMsg)
+	if !ok {
+		t.Fatalf("command msg type = %T, want controlResultMsg", msg)
+	}
+	if result.err != nil {
+		t.Fatalf("submit failed: %v", result.err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	var wrote loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &wrote); err != nil {
+		t.Fatalf("parse control command: %v", err)
+	}
+	if wrote.Action != "enqueue" {
+		t.Fatalf("action = %q, want enqueue", wrote.Action)
+	}
+	if wrote.Prompt != "Fix the tests" {
+		t.Fatalf("prompt = %q, want 'Fix the tests'", wrote.Prompt)
+	}
+}
+
 func TestSteerOpensWithBacktick(t *testing.T) {
 	m := NewModel(Options{
 		RuntimeDir:      t.TempDir(),
