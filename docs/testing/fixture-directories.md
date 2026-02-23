@@ -8,12 +8,12 @@ This repository uses directory-native test fixtures.
 <package>/testdata/
   <fixture-name>/
     expected.md                  # source-of-truth + metadata
-    noodle.toml                  # optional fixture-level base config
+    .noodle.toml                  # optional fixture-level base config
     state-01/
       input.ndjson               # package-specific state input (optional)
       input.json                 # package-specific state input (optional)
       .noodle/...                # optional runtime snapshot files
-      noodle.toml                # optional state override config
+      .noodle.toml                # optional state override config
     state-02/
     state-03/
 ```
@@ -41,8 +41,8 @@ Rules:
 Config is resolved with strict precedence:
 
 1. `config.DefaultConfig()`
-2. optional fixture-level `noodle.toml`
-3. optional state-level `state-XX/noodle.toml`
+2. optional fixture-level `.noodle.toml`
+3. optional state-level `state-XX/.noodle.toml`
 
 State-level config always wins over fixture-level config for that state.
 

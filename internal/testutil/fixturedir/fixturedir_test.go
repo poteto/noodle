@@ -30,9 +30,9 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 		"```",
 	)
 	writeExpected(t, filepath.Join(root, "alpha"), alphaExpected)
-	writeFile(t, filepath.Join(root, "alpha", "noodle.toml"), "[routing.defaults]\nprovider = \"claude\"\n")
+	writeFile(t, filepath.Join(root, "alpha", ".noodle.toml"), "[routing.defaults]\nprovider = \"claude\"\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-01", "input.ndjson"), "line-1\n")
-	writeFile(t, filepath.Join(root, "alpha", "state-02", "noodle.toml"), "[routing.defaults]\nprovider = \"codex\"\n")
+	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle.toml"), "[routing.defaults]\nprovider = \"codex\"\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle", "queue.json"), "{}\n")
 
 	betaExpected := md(

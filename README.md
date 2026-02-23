@@ -46,7 +46,7 @@ Architecture details: [Open-Source Architecture Overview](brain/plans/01-noodle-
 
 ## Configuration
 
-Noodle reads `noodle.toml` at project root.
+Noodle reads `.noodle.toml` at project root.
 
 Minimal baseline:
 
@@ -61,9 +61,13 @@ skill = "prioritize"
 [skills]
 paths = [".agents/skills"]
 
-[agents]
-claude_dir = ""
-codex_dir = ""
+[agents.claude]
+path = ""
+args = []
+
+[agents.codex]
+path = ""
+args = []
 ```
 
 Schema reference: `config/config.go`
@@ -73,16 +77,16 @@ Schema reference: `config/config.go`
 Skills are the only extension point.
 
 - Project skills: `.agents/skills/` (default resolver path)
-- Resolver order is configured by your `noodle.toml`.
+- Resolver order is configured by your `.noodle.toml`.
 
 ## Adapters
 
 Adapters bridge your backlog/plan system to Noodle using:
 
 1. A skill that teaches semantics (`backlog`, `plans`, or custom)
-2. Scripts declared in `noodle.toml` (`sync`, `add`, `done`, `edit`, etc.)
+2. Scripts declared in `.noodle.toml` (`sync`, `add`, `done`, `edit`, etc.)
 
-Script templates are project-defined in `noodle.toml`.
+Script templates are project-defined in `.noodle.toml`.
 
 ## CLI Reference
 

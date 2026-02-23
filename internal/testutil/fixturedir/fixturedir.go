@@ -273,7 +273,7 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 					})
 					continue
 				}
-				stateConfigPath := filepath.Join(path, "noodle.toml")
+				stateConfigPath := filepath.Join(path, ".noodle.toml")
 				if _, statErr := os.Stat(stateConfigPath); statErr != nil {
 					stateConfigPath = ""
 				}
@@ -296,13 +296,13 @@ func resolveLayout(fixturePath string) (FixtureLayout, []FixtureValidationIssue)
 		switch name {
 		case "expected.md":
 			layout.ExpectedPath = path
-		case "noodle.toml":
+		case ".noodle.toml":
 			layout.BaseConfigPath = path
 		default:
 			issues = append(issues, FixtureValidationIssue{
 				Path:     filepath.ToSlash(path),
 				Severity: "error",
-				Message:  "unexpected file; allowed files are expected.md and optional noodle.toml",
+				Message:  "unexpected file; allowed files are expected.md and optional .noodle.toml",
 			})
 		}
 	}

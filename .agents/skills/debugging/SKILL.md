@@ -21,9 +21,9 @@ Read [[principles/fix-root-causes]] before starting. Every debugging session fol
 2. **Read the error.** The error message, stack trace, and line numbers are data. Read all of it before forming hypotheses. Most bugs tell you exactly where they are.
 
 3. **Suspect state before code.** Before debugging code, check persistent state — especially on restart bugs or environment drift. See [[principles/suspect-state-before-code]].
-   - **Noodle state**: `.noodle/queue.json` (stale items?), `.noodle/sessions/` (orphaned?), `noodle.toml` (valid?)
+   - **Noodle state**: `.noodle/queue.json` (stale items?), `.noodle/sessions/` (orphaned?), `.noodle.toml` (valid?)
    - **Environment**: tmux sessions (`tmux ls`), lock files, cached artifacts
-   - **Config**: `noodle.toml` validation (`noodle start` reports diagnostics), skill frontmatter parse errors
+   - **Config**: `.noodle.toml` validation (`noodle start` reports diagnostics), skill frontmatter parse errors
    - **Persistent files**: brain/ notes, plan files, todos — check for corruption or stale references
 
 4. **Isolate.** Narrow the scope. Which file? Which function? Which line? Use binary search: comment out half, see if it still fails, repeat.
@@ -44,8 +44,8 @@ When debugging Noodle infrastructure failures:
 | Symptom | Check first |
 |---------|-------------|
 | Cook won't start | `tmux ls`, `.noodle/queue.json` validity, skill resolver paths |
-| Queue stuck | `.noodle/queue.json` for stale items, `noodle.toml` adapter config |
-| Missing skill | `noodle.toml` `[skills]` paths, `.agents/skills/<name>/SKILL.md` exists |
+| Queue stuck | `.noodle/queue.json` for stale items, `.noodle.toml` adapter config |
+| Missing skill | `.noodle.toml` `[skills]` paths, `.agents/skills/<name>/SKILL.md` exists |
 | Stale mise | `.noodle/mise.json` `generated_at` timestamp, backlog sync script |
 | Session orphaned | `.noodle/sessions/<id>/meta.json` status, `tmux ls` for zombie sessions |
 

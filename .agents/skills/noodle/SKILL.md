@@ -1,6 +1,6 @@
 ---
 name: noodle
-description: Document and operate the Noodle CLI. Use when listing/explaining Noodle commands, finding command flags, or creating/editing the Noodle config file at noodle.toml (project root).
+description: Document and operate the Noodle CLI. Use when listing/explaining Noodle commands, finding command flags, or creating/editing the Noodle config file at .noodle.toml (project root).
 ---
 
 # Noodle
@@ -15,7 +15,7 @@ Use this skill to answer command questions about Noodle and to safely create or 
    - For subcommands: `noodle <command> <subcommand> --help`
 2. If behavior looks inconsistent, verify against `main.go` and the corresponding `cmd_*.go` file.
 3. Read `references/config.md` before creating or editing config.
-4. If the user says `.noodlerc`, correct to `noodle.toml` (project root).
+4. If the user says `.noodlerc`, correct to `.noodle.toml` (project root).
 
 ## Command Lookup
 
@@ -24,9 +24,9 @@ Use this skill to answer command questions about Noodle and to safely create or 
 
 ## Config Workflow
 
-1. Confirm file path: `noodle.toml` in the project root.
+1. Confirm file path: `.noodle.toml` in the project root.
 2. If editing existing config, back it up first:
-   - `cp noodle.toml noodle.toml.bak.$(date +%Y%m%d-%H%M%S)`
+   - `cp .noodle.toml .noodle.toml.bak.$(date +%Y%m%d-%H%M%S)`
 3. Edit key/value lines using the schema in `references/config.md`.
 4. Keep TOML syntax strict:
    - Use tables for grouped config (for example `[routing]`, `[prioritize]`, `[concurrency]`)

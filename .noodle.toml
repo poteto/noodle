@@ -5,9 +5,12 @@ model = "claude-opus-4-6"
 [skills]
 paths = [".agents/skills", "skills"]
 
-[agents]
-claude_dir = "/Users/lauren/code/noodle/.claude"
-codex_dir = "/Users/lauren/code/noodle/.codex"
+[agents.claude]
+path = "/Users/lauren/code/noodle/.claude"
+args = ["--dangerously-skip-permissions", "--verbose"]
+
+[agents.codex]
+path = "/Users/lauren/code/noodle/.codex"
 
 [adapters.backlog]
 skill = "todo"
