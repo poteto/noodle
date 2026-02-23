@@ -196,7 +196,7 @@ default = ""  # empty = built-in provider command
 - Each skill SKILL.md has: frontmatter, purpose, principles, contract, process, verification
 - Old role-based skills (CEO, CTO, Director, Manager, Operator) are deleted
 - No remaining references to `sous-chef` in Go code or config
-- Verify and plan task types removed from registry
+- Verify, plan, review, and cook task types removed from registry and loop code
 - `noodle plan create/done/phase-add` commands work
 - No `[adapters.plans]` in config
 - Mise brief includes plan metadata and quality verdict history

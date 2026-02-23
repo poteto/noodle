@@ -56,6 +56,7 @@ Tests (`skill/frontmatter_test.go`):
 - Parse complete frontmatter with all `noodle:` fields → `IsTaskType() == true`
 - Parse frontmatter without `noodle:` block → `IsTaskType() == false`, `Noodle == nil`
 - Parse with partial `noodle:` (only `schedule`) → `Blocking` defaults false
+- Parse with `noodle:` but missing `schedule` → returns error (schedule is required for task types)
 - No frontmatter (no `---`) returns zero struct and full body
 - Invalid YAML returns error
 - `StripFrontmatter` preserves body, strips header
