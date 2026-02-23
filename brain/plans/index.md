@@ -6,3 +6,4 @@
 
 - [ ] [[plans/25-tui-revamp/overview]]
 - [ ] [[plans/26-context-usage-tracking/overview]]
+- [ ] [[plans/15-bootstrap-onboarding/overview]]
