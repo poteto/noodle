@@ -291,3 +291,44 @@ func TestTmuxSessionEmitsDroppedEventSummary(t *testing.T) {
 		t.Fatalf("dropped_events = %d, want > 0", payload.DroppedEvents)
 	}
 }
+
+func TestTmuxSessionEmitsDroppedSummaryWhenBufferFullAtShutdown(t *testing.T) {
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		"",
+		"",
+		nil,
+		nil,
+		nil,
+	)
+
+	for i := 0; i < cap(session.events); i++ {
+		session.events <- SessionEvent{
+			Type:      "action",
+			Message:   "seed",
+			Timestamp: time.Date(2026, 2, 23, 3, 0, i, 0, time.UTC),
+		}
+	}
+	session.publish(SessionEvent{
+		Type:      "action",
+		Message:   "newest",
+		Timestamp: time.Date(2026, 2, 23, 3, 1, 0, 0, time.UTC),
+	})
+
+	session.markDone("completed")
+	session.closeEventsWhenDone()
+
+	foundWarning := false
+	for event := range session.Events() {
+		if event.Type == "warning" && strings.Contains(event.Message, "dropped") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Fatal("expected dropped-events warning when buffer is full on shutdown")
+	}
+}

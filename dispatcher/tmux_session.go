@@ -420,13 +420,24 @@ func (s *tmuxSession) emitDroppedEventSummary() {
 		"dropped %d live session event(s) because the consumer was slow",
 		dropped,
 	)
-	select {
-	case s.events <- SessionEvent{
+	summary := SessionEvent{
 		Type:      "warning",
 		Message:   message,
 		Timestamp: timestamp,
-	}:
+	}
+	select {
+	case s.events <- summary:
 	default:
+		// Shutdown summary should be observable. If the buffer is full,
+		// sacrifice one oldest buffered event to make room.
+		select {
+		case <-s.events:
+		default:
+		}
+		select {
+		case s.events <- summary:
+		default:
+		}
 	}
 	if s.eventWriter == nil {
 		return
