@@ -1,0 +1,59 @@
+{
+  "now": "2026-02-22T16:00:00Z",
+  "observations": {
+    "cook-a": {
+      "session_id": "cook-a",
+      "alive": true,
+      "log_mtime": "2026-02-22T15:59:30Z",
+      "log_size": 100
+    },
+    "cook-b": {
+      "session_id": "cook-b",
+      "alive": false,
+      "log_mtime": "2026-02-22T15:56:00Z",
+      "log_size": 80
+    }
+  },
+  "claims": {
+    "cook-a": {
+      "session_id": "cook-a",
+      "has_events": true,
+      "provider": "claude",
+      "first_event_at": "2026-02-22T15:57:00Z",
+      "last_event_at": "2026-02-22T15:59:30Z",
+      "last_action": "apply patch",
+      "total_cost_usd": 0.2
+    },
+    "cook-b": {
+      "session_id": "cook-b",
+      "has_events": true,
+      "provider": "codex",
+      "first_event_at": "2026-02-22T15:50:00Z",
+      "last_event_at": "2026-02-22T15:56:00Z",
+      "last_action": "run tests",
+      "total_cost_usd": 0.05
+    }
+  },
+  "ticket_events": {
+    "cook-a": [
+      {
+        "type": "ticket_claim",
+        "timestamp": "2099-01-01T00:00:00Z",
+        "payload": {
+          "target": "task-1",
+          "target_type": "backlog_item"
+        }
+      }
+    ],
+    "cook-b": [
+      {
+        "type": "ticket_claim",
+        "timestamp": "2099-01-01T00:00:00Z",
+        "payload": {
+          "target": "task-2",
+          "target_type": "backlog_item"
+        }
+      }
+    ]
+  }
+}
