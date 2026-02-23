@@ -86,16 +86,12 @@ func TestResolveByExplicitTaskKey(t *testing.T) {
 	}
 }
 
-func TestResolveByIDPrefix(t *testing.T) {
+func TestResolveByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := testLoopRegistry()
-	tt, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	if _, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
 		ID: "prioritize-20260222-123456",
-	})
-	if !ok {
-		t.Fatal("expected id-prefix resolution")
-	}
-	if tt.Key != "prioritize" {
-		t.Fatalf("task key = %q, want prioritize", tt.Key)
+	}); ok {
+		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
 	}
 }
 

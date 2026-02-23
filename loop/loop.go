@@ -104,7 +104,7 @@ func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, e
 
 func (l *Loop) Run(ctx context.Context) error {
 	if strings.TrimSpace(l.projectDir) == "" {
-		return fmt.Errorf("project directory is required")
+		return fmt.Errorf("project directory not set")
 	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)

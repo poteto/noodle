@@ -70,7 +70,7 @@ func (r Registry) ByKey(taskKey string) (TaskType, bool) {
 }
 
 // ResolveQueueItem resolves a queue item to its task type.
-// Resolution order: task_key → skill name → id → id prefix before "-".
+// Resolution order: task_key → skill name → exact id match.
 func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
 	if taskKey := normalize(item.TaskKey); taskKey != "" {
 		if tt, ok := r.byKey[taskKey]; ok {
@@ -92,11 +92,6 @@ func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
 	}
 	if tt, ok := r.byKey[id]; ok {
 		return tt, true
-	}
-	if head, _, ok := strings.Cut(id, "-"); ok {
-		if tt, exists := r.byKey[head]; exists {
-			return tt, true
-		}
 	}
 	return TaskType{}, false
 }

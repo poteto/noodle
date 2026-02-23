@@ -74,7 +74,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 			req.WorktreePath = s.projectDir
 		}
 		if strings.TrimSpace(req.WorktreePath) == "" {
-			return nil, fmt.Errorf("project directory is required")
+			return nil, fmt.Errorf("project directory not set")
 		}
 	} else {
 		validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
@@ -85,10 +85,10 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	}
 
 	if s.runtimeDir == "" {
-		return nil, fmt.Errorf("runtime directory is required")
+		return nil, fmt.Errorf("runtime directory not set")
 	}
 	if s.noodleBin == "" {
-		return nil, fmt.Errorf("noodle binary path is required")
+		return nil, fmt.Errorf("noodle binary path not set")
 	}
 
 	sessionID, err := generateSessionID(req.Name)

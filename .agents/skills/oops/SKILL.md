@@ -28,6 +28,12 @@ Run the failing command. Capture exact error output. If intermittent, run multip
 4. **Persistent files** — lock files, temp files, incomplete writes
 5. **Code** — only after ruling out state and environment
 
+### Principles
+
+- [[fix-root-causes]]
+- [[suspect-state-before-code]]
+- [[observe-directly]]
+
 Noodle-internal checklist:
 - `.noodle/` state files: corrupt, stale, or inconsistent?
 - Queue state: orphaned tasks, stuck sessions?

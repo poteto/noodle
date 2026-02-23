@@ -66,3 +66,9 @@ Write `.noodle/debates/<task-id>/verdict.json`:
 ```
 
 Non-convergence: set `consensus: false` and populate `open_questions` with unresolved critiques.
+
+## Principles
+
+- [[foundational-thinking]]
+- [[subtract-before-you-add]]
+- [[verify-runtime]]

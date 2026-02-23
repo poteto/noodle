@@ -87,11 +87,10 @@ func TestResolveQueueItemBySkill(t *testing.T) {
 	}
 }
 
-func TestResolveQueueItemByIDPrefix(t *testing.T) {
+func TestResolveQueueItemByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ResolveQueueItem(QueueItemInput{ID: "prioritize-20260222-123456-1"})
-	if !ok || tt.Key != "prioritize" {
-		t.Fatalf("resolve by id prefix = %+v, %v", tt, ok)
+	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "prioritize-20260222-123456-1"}); ok {
+		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
 	}
 }
 

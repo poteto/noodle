@@ -28,28 +28,28 @@ type DispatchRequest struct {
 // Validate ensures required request fields are set at the boundary.
 func (r DispatchRequest) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
-		return fmt.Errorf("session name is required")
+		return fmt.Errorf("session name not set")
 	}
 	if strings.TrimSpace(r.Prompt) == "" {
-		return fmt.Errorf("prompt is required")
+		return fmt.Errorf("prompt not set")
 	}
 	provider := strings.ToLower(strings.TrimSpace(r.Provider))
 	switch provider {
 	case "claude", "codex":
 	default:
-		return fmt.Errorf("provider must be claude or codex")
+		return fmt.Errorf("provider not recognized")
 	}
 	if strings.TrimSpace(r.Model) == "" {
-		return fmt.Errorf("model is required")
+		return fmt.Errorf("model not set")
 	}
 	if strings.TrimSpace(r.WorktreePath) == "" {
-		return fmt.Errorf("worktree path is required")
+		return fmt.Errorf("worktree path not set")
 	}
 	if r.MaxTurns < 0 {
-		return fmt.Errorf("max turns cannot be negative")
+		return fmt.Errorf("max turns is negative")
 	}
 	if r.BudgetCap < 0 {
-		return fmt.Errorf("budget cap cannot be negative")
+		return fmt.Errorf("budget cap is negative")
 	}
 	return nil
 }
