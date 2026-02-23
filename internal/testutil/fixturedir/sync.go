@@ -57,7 +57,7 @@ func SyncExpectedMarkdown(root string, checkOnly bool) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("render %s: %w", expectedPath, err)
 		}
-		if renderedExpected == normalizeFixtureMarkdown(string(expectedData)) {
+		if renderedExpected == NormalizeFixtureMarkdown(string(expectedData)) {
 			continue
 		}
 		if checkOnly {
@@ -76,17 +76,8 @@ func SyncExpectedMarkdown(root string, checkOnly bool) ([]string, error) {
 	return changed, nil
 }
 
-func normalizeFixtureMarkdown(content string) string {
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	content = strings.TrimRight(content, "\n")
-	if content == "" {
-		return "\n"
-	}
-	return content + "\n"
-}
-
 func renderExpectedMarkdownWithSourceHash(expected string, sourceHash string) (string, error) {
-	normalizedExpected := normalizeFixtureMarkdown(expected)
+	normalizedExpected := NormalizeFixtureMarkdown(expected)
 	metadata, _, _, err := parseExpectedDocument([]byte(normalizedExpected))
 	if err != nil {
 		return "", err
@@ -111,7 +102,7 @@ func renderExpectedMarkdownWithSourceHash(expected string, sourceHash string) (s
 		out.WriteString("\n")
 		out.WriteString(body)
 	}
-	return normalizeFixtureMarkdown(out.String()), nil
+	return NormalizeFixtureMarkdown(out.String()), nil
 }
 
 func computeFixtureInputHash(fixtureRoot string) (string, error) {

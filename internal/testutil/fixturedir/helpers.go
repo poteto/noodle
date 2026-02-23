@@ -82,3 +82,43 @@ func NonEmptyLines(tb testing.TB, data []byte, label string) []string {
 	}
 	return lines
 }
+
+func ParseJSONLines[T any](tb testing.TB, data []byte, label string) []T {
+	tb.Helper()
+
+	lines := NonEmptyLines(tb, data, label)
+	out := make([]T, 0, len(lines))
+	for index, line := range lines {
+		lineLabel := fmt.Sprintf("%s line %d", label, index+1)
+		out = append(out, ParseJSON[T](tb, []byte(line), lineLabel))
+	}
+	return out
+}
+
+func RequireSingleState(tb testing.TB, fixtureCase FixtureCase) FixtureState {
+	tb.Helper()
+	if len(fixtureCase.States) != 1 {
+		tb.Fatalf(
+			"fixture %s must have exactly 1 state, got %d",
+			fixtureCase.Name,
+			len(fixtureCase.States),
+		)
+	}
+	return fixtureCase.States[0]
+}
+
+func ForEachState(tb testing.TB, fixtureCase FixtureCase, fn func(index int, state FixtureState)) {
+	tb.Helper()
+	for index, state := range fixtureCase.States {
+		fn(index, state)
+	}
+}
+
+func NormalizeFixtureMarkdown(content string) string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.TrimRight(content, "\n")
+	if content == "" {
+		return "\n"
+	}
+	return content + "\n"
+}

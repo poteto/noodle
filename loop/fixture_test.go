@@ -435,11 +435,11 @@ func writeRuntimeDumpSection(expectedPath string, dump loopFixtureRuntimeDump) e
 		out.WriteString(strings.TrimSpace(expectedErrorJSON))
 		out.WriteString("\n```\n")
 	}
-	return os.WriteFile(expectedPath, []byte(normalizeFixtureMarkdown(out.String())), 0o644)
+	return os.WriteFile(expectedPath, []byte(fixturedir.NormalizeFixtureMarkdown(out.String())), 0o644)
 }
 
 func splitExpectedMarkdown(content string) (string, string, error) {
-	content = normalizeFixtureMarkdown(content)
+	content = fixturedir.NormalizeFixtureMarkdown(content)
 	lines := strings.Split(content, "\n")
 	if len(lines) < 3 || strings.TrimSpace(lines[0]) != "---" {
 		return "", "", fmt.Errorf("expected.md must start with frontmatter delimited by ---")
@@ -472,13 +472,4 @@ func extractJSONSection(body string, heading string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(matches[1]), true
-}
-
-func normalizeFixtureMarkdown(content string) string {
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	content = strings.TrimRight(content, "\n")
-	if content == "" {
-		return "\n"
-	}
-	return content + "\n"
 }
