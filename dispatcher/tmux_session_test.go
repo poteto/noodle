@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -205,5 +206,88 @@ func TestTerminalStatusWithCompleteEventIsCompleted(t *testing.T) {
 	)
 	if got := session.terminalStatus(); got != "completed" {
 		t.Fatalf("terminal status = %q, want completed", got)
+	}
+}
+
+func TestTmuxSessionEmitsDroppedEventSummary(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	writer, err := event.NewEventWriter(runtimeDir, "session-a")
+	if err != nil {
+		t.Fatalf("new event writer: %v", err)
+	}
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		"",
+		"",
+		writer,
+		nil,
+		nil,
+	)
+
+	for i := 0; i < cap(session.events); i++ {
+		session.events <- SessionEvent{
+			Type:      "action",
+			Message:   "seed",
+			Timestamp: time.Date(2026, 2, 23, 2, 0, i, 0, time.UTC),
+		}
+	}
+	session.publish(SessionEvent{
+		Type:      "action",
+		Message:   "newest",
+		Timestamp: time.Date(2026, 2, 23, 2, 1, 0, 0, time.UTC),
+	})
+
+	drained := make([]SessionEvent, 0, cap(session.events)+2)
+	done := make(chan struct{})
+	go func() {
+		for event := range session.Events() {
+			drained = append(drained, event)
+		}
+		close(done)
+	}()
+
+	session.markDone("completed")
+	go session.closeEventsWhenDone()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("events channel did not close")
+	}
+
+	foundWarning := false
+	for _, event := range drained {
+		if event.Type == "warning" && strings.Contains(event.Message, "dropped") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Fatalf("expected dropped-events warning, got %#v", drained)
+	}
+
+	reader := event.NewEventReader(runtimeDir)
+	records, err := reader.ReadSession("session-a", event.EventFilter{})
+	if err != nil {
+		t.Fatalf("read event log: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("event log count = %d, want 1", len(records))
+	}
+	var payload struct {
+		Action        string `json:"action"`
+		DroppedEvents int64  `json:"dropped_events"`
+	}
+	if err := json.Unmarshal(records[0].Payload, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.Action != "events_dropped" {
+		t.Fatalf("action = %q, want events_dropped", payload.Action)
+	}
+	if payload.DroppedEvents <= 0 {
+		t.Fatalf("dropped_events = %d, want > 0", payload.DroppedEvents)
 	}
 }

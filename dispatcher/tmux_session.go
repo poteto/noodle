@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/poteto/noodle/event"
@@ -31,6 +33,7 @@ type tmuxSession struct {
 	wg       sync.WaitGroup
 	eventsMu sync.Once
 	events   chan SessionEvent
+	dropped  atomic.Uint64
 
 	startWarnings []string
 	promptLogged  bool
@@ -368,9 +371,14 @@ func (s *tmuxSession) publish(event SessionEvent) {
 		return
 	default:
 		// Keep stream flowing under burst output by dropping one oldest event.
+		dropped := false
 		select {
 		case <-s.events:
+			dropped = true
 		default:
+		}
+		if dropped {
+			s.dropped.Add(1)
 		}
 		select {
 		case <-s.done:
@@ -396,7 +404,46 @@ func (s *tmuxSession) markDone(status string) {
 func (s *tmuxSession) closeEventsWhenDone() {
 	<-s.done
 	s.wg.Wait()
+	s.emitDroppedEventSummary()
 	s.eventsMu.Do(func() {
 		close(s.events)
+	})
+}
+
+func (s *tmuxSession) emitDroppedEventSummary() {
+	dropped := s.dropped.Load()
+	if dropped == 0 {
+		return
+	}
+	timestamp := nowUTC()
+	message := fmt.Sprintf(
+		"dropped %d live session event(s) because the consumer was slow",
+		dropped,
+	)
+	select {
+	case s.events <- SessionEvent{
+		Type:      "warning",
+		Message:   message,
+		Timestamp: timestamp,
+	}:
+	default:
+	}
+	if s.eventWriter == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"tool":           "session",
+		"action":         "events_dropped",
+		"message":        message,
+		"dropped_events": dropped,
+	})
+	if err != nil {
+		return
+	}
+	_ = s.eventWriter.Append(context.Background(), event.Event{
+		Type:      event.EventAction,
+		Payload:   payload,
+		Timestamp: timestamp,
+		SessionID: s.id,
 	})
 }
