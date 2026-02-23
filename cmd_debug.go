@@ -71,11 +71,10 @@ func newDebugCmd(app *App) *cobra.Command {
 }
 
 func runDebug(app *App) error {
-	cwd, err := os.Getwd()
+	runtimeDir, err := app.RuntimeDir()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return err
 	}
-	runtimeDir := filepath.Join(cwd, ".noodle")
 
 	cfg := config.DefaultConfig()
 	if app != nil {

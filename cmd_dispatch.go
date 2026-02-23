@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/poteto/noodle/dispatcher"
-	"github.com/poteto/noodle/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -115,39 +113,26 @@ func runDispatch(ctx context.Context, app *App, args dispatchArgs) error {
 		args.model = defaultModel
 	}
 
-	cwd, err := os.Getwd()
+	cwd, err := app.ProjectDir()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return err
 	}
-	runtimeDir := filepath.Join(cwd, ".noodle")
-
-	noodleBin, err := os.Executable()
+	runtimeDir, err := app.RuntimeDir()
 	if err != nil {
-		return fmt.Errorf("resolve executable path: %w", err)
+		return err
 	}
 
-	var resolver skill.Resolver
-	var providerConfigs dispatcher.ProviderConfigs
-	if app != nil {
-		resolver = skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-		providerConfigs = dispatcher.ProviderConfigs{
-			Claude: dispatcher.ProviderConfig{
-				Path: app.Config.Agents.Claude.Path,
-				Args: app.Config.Agents.Claude.Args,
-			},
-			Codex: dispatcher.ProviderConfig{
-				Path: app.Config.Agents.Codex.Path,
-				Args: app.Config.Agents.Codex.Args,
-			},
-		}
+	noodleBin, err := app.NoodleBinaryPath()
+	if err != nil {
+		return err
 	}
 
 	s := newDispatchCommandDispatcher(dispatcher.TmuxDispatcherConfig{
 		ProjectDir:      cwd,
 		RuntimeDir:      runtimeDir,
 		NoodleBin:       noodleBin,
-		SkillResolver:   resolver,
-		ProviderConfigs: providerConfigs,
+		SkillResolver:   app.SkillResolver(),
+		ProviderConfigs: app.ProviderConfigs(),
 	})
 	session, err := s.Dispatch(ctx, dispatcher.DispatchRequest{
 		Name:           args.name,

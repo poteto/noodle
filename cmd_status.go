@@ -18,23 +18,23 @@ type statusSummary struct {
 	LoopState   string
 }
 
-func newStatusCmd(_ *App) *cobra.Command {
+func newStatusCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show compact runtime status",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runStatus()
+			return runStatus(app)
 		},
 	}
 }
 
-func runStatus() error {
-	cwd, err := os.Getwd()
+func runStatus(app *App) error {
+	runtimeDir, err := app.RuntimeDir()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return err
 	}
-	summary, err := readStatusSummary(filepath.Join(cwd, ".noodle"))
+	summary, err := readStatusSummary(runtimeDir)
 	if err != nil {
 		return err
 	}

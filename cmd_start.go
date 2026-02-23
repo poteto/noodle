@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,15 +41,18 @@ func newStartCmd(app *App) *cobra.Command {
 }
 
 func runStart(ctx context.Context, app *App, once bool) error {
-	cwd, err := os.Getwd()
+	cwd, err := app.ProjectDir()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return err
 	}
-	noodleBin, err := os.Executable()
+	noodleBin, err := app.NoodleBinaryPath()
 	if err != nil {
-		return fmt.Errorf("resolve executable path: %w", err)
+		return err
 	}
-	runtimeDir := filepath.Join(cwd, ".noodle")
+	runtimeDir, err := app.RuntimeDir()
+	if err != nil {
+		return err
+	}
 
 	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config)
 	if once {

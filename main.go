@@ -14,7 +14,6 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/loop"
-	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -271,23 +270,14 @@ func startRepairSession(
 	}
 	worktreePath := filepath.Join(worktreeApp.Root, ".worktrees", name)
 
-	noodleBin, err := os.Executable()
+	noodleBin, err := app.NoodleBinaryPath()
 	if err != nil {
 		_ = worktreeApp.Cleanup(name, true)
-		return repairLaunchResult{}, fmt.Errorf("resolve executable path: %w", err)
+		return repairLaunchResult{}, err
 	}
 	runtimeDir := filepath.Join(worktreeApp.Root, ".noodle")
-	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
-	providerConfigs := dispatcher.ProviderConfigs{
-		Claude: dispatcher.ProviderConfig{
-			Path: app.Config.Agents.Claude.Path,
-			Args: app.Config.Agents.Claude.Args,
-		},
-		Codex: dispatcher.ProviderConfig{
-			Path: app.Config.Agents.Codex.Path,
-			Args: app.Config.Agents.Codex.Args,
-		},
-	}
+	resolver := app.SkillResolver()
+	providerConfigs := app.ProviderConfigs()
 	d := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
 		ProjectDir:      worktreeApp.Root,
 		RuntimeDir:      runtimeDir,

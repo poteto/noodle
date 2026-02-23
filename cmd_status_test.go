@@ -21,7 +21,7 @@ func TestRunStatusNoActiveCooks(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runStatus(); err != nil {
+		if err := runStatus(&App{}); err != nil {
 			t.Fatalf("runStatus: %v", err)
 		}
 	})
@@ -81,7 +81,7 @@ func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runStatus(); err != nil {
+		if err := runStatus(&App{}); err != nil {
 			t.Fatalf("runStatus: %v", err)
 		}
 	})

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/poteto/noodle/mise"
-	"github.com/poteto/noodle/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -22,13 +21,13 @@ func newMiseCmd(app *App) *cobra.Command {
 }
 
 func runMise(ctx context.Context, app *App) error {
-	cwd, err := os.Getwd()
+	cwd, err := app.ProjectDir()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return err
 	}
 
 	builder := mise.NewBuilder(cwd, app.Config)
-	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
+	resolver := app.SkillResolver()
 	if taskTypeSkills, discoverErr := resolver.DiscoverTaskTypes(); discoverErr == nil {
 		summaries := make([]mise.TaskTypeSummary, len(taskTypeSkills))
 		for i, s := range taskTypeSkills {
