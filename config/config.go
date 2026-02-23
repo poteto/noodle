@@ -192,15 +192,6 @@ func defaultAdapters() map[string]AdapterConfig {
 				"edit": ".noodle/adapters/backlog-edit",
 			},
 		},
-		"plans": {
-			Skill: "plans",
-			Scripts: map[string]string{
-				"sync":      ".noodle/adapters/plans-sync",
-				"create":    ".noodle/adapters/plan-create",
-				"done":      ".noodle/adapters/plan-done",
-				"phase-add": ".noodle/adapters/plan-phase-add",
-			},
-		},
 	}
 }
 

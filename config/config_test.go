@@ -67,13 +67,6 @@ func TestDefaultConfigValues(t *testing.T) {
 		t.Fatalf("backlog sync default = %q", backlog.Scripts["sync"])
 	}
 
-	plans, ok := config.Adapters["plans"]
-	if !ok {
-		t.Fatal("default plans adapter missing")
-	}
-	if plans.Scripts["phase-add"] != ".noodle/adapters/plan-phase-add" {
-		t.Fatalf("plans phase-add default = %q", plans.Scripts["phase-add"])
-	}
 }
 
 func TestLoadMissingFileUsesDefaults(t *testing.T) {

@@ -88,18 +88,6 @@ func TestReportConfigDiagnosticsGroupsMissingScripts(t *testing.T) {
 					"path":    ".noodle/adapters/backlog-sync",
 				},
 			},
-			{
-				FieldPath: "adapters.plans.scripts.create",
-				Message:   `script path ".noodle/adapters/plan-create" not found`,
-				Severity:  config.DiagnosticSeverityRepairable,
-				Fix:       "Create .noodle/adapters/plan-create or update adapters.plans.scripts.create.",
-				Code:      config.DiagnosticCodeAdapterScriptMissing,
-				Meta: map[string]string{
-					"adapter": "plans",
-					"action":  "create",
-					"path":    ".noodle/adapters/plan-create",
-				},
-			},
 		},
 	}
 
@@ -120,10 +108,10 @@ func TestReportConfigDiagnosticsGroupsMissingScripts(t *testing.T) {
 	}
 
 	output := stderr.String()
-	if !strings.Contains(output, "config repairable: 2 adapter script path(s) are missing.") {
+	if !strings.Contains(output, "config repairable: 1 adapter script path(s) are missing.") {
 		t.Fatalf("expected grouped summary in output: %q", output)
 	}
-	if !strings.Contains(output, "backlog:") || !strings.Contains(output, "plans:") {
+	if !strings.Contains(output, "backlog:") {
 		t.Fatalf("expected adapter grouping in output: %q", output)
 	}
 	if !strings.Contains(output, "config repair prompt:") {

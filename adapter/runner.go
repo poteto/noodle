@@ -89,14 +89,6 @@ func (r *Runner) SyncBacklog(ctx context.Context) ([]BacklogItem, error) {
 	return ParseBacklogItems(output)
 }
 
-func (r *Runner) SyncPlans(ctx context.Context) ([]PlanItem, error) {
-	output, err := r.Run(ctx, "plans", "sync", RunOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return ParsePlanItems(output)
-}
-
 func commandWithArgs(command string, args []string) string {
 	if len(args) == 0 {
 		return command

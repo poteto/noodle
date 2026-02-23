@@ -7,6 +7,22 @@ import (
 	"github.com/poteto/noodle/event"
 )
 
+// PlanSummary is the plan entry in the mise brief (replaces adapter.PlanItem).
+type PlanSummary struct {
+	ID        int            `json:"id"`
+	Title     string         `json:"title"`
+	Status    string         `json:"status"`
+	Directory string         `json:"directory"` // slug
+	Phases    []PhaseSummary `json:"phases"`
+}
+
+// PhaseSummary describes one phase within a plan summary.
+type PhaseSummary struct {
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+	Status   string `json:"status"`
+}
+
 type ActiveCook struct {
 	ID        string  `json:"id"`
 	Target    string  `json:"target,omitempty"`
@@ -51,12 +67,13 @@ type TaskTypeSummary struct {
 type Brief struct {
 	GeneratedAt    time.Time             `json:"generated_at"`
 	Backlog        []adapter.BacklogItem `json:"backlog"`
-	Plans          []adapter.PlanItem    `json:"plans"`
+	Plans          []PlanSummary         `json:"plans"`
 	ActiveCooks    []ActiveCook          `json:"active_cooks"`
 	Tickets        []event.Ticket        `json:"tickets"`
 	Resources      ResourceSnapshot      `json:"resources"`
 	RecentHistory  []HistoryItem         `json:"recent_history"`
 	Routing        RoutingSnapshot       `json:"routing"`
-	TaskTypes      []TaskTypeSummary     `json:"task_types,omitempty"`
-	Warnings       []string              `json:"warnings,omitempty"`
+	TaskTypes        []TaskTypeSummary     `json:"task_types,omitempty"`
+	QualityVerdicts  []QualityVerdict      `json:"quality_verdicts,omitempty"`
+	Warnings         []string              `json:"warnings,omitempty"`
 }

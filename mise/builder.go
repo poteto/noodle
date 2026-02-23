@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/plan"
 )
 
 type Builder struct {
@@ -38,7 +39,7 @@ func NewBuilder(projectDir string, cfg config.Config) *Builder {
 func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
-	plans := make([]adapter.PlanItem, 0)
+	plans := make([]PlanSummary, 0)
 
 	if _, ok := b.config.Adapters["backlog"]; ok {
 		if strings.TrimSpace(b.config.Adapters["backlog"].Scripts["sync"]) == "" {
@@ -57,21 +58,13 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		}
 	}
 
-	if _, ok := b.config.Adapters["plans"]; ok {
-		if strings.TrimSpace(b.config.Adapters["plans"].Scripts["sync"]) == "" {
-			warnings = append(warnings, "plans sync script missing; returning empty plans")
-		} else {
-			items, err := b.runner.SyncPlans(ctx)
-			if err != nil {
-				if isMissingSyncScriptError(err) {
-					warnings = append(warnings, "plans sync script missing; returning empty plans")
-				} else {
-					return Brief{}, warnings, err
-				}
-			} else {
-				plans = filterActivePlans(items)
-			}
-		}
+	// Plans: native reader (replaces adapter sync)
+	plansDir := filepath.Join(b.projectDir, "brain", "plans")
+	nativePlans, planErr := plan.ReadAll(plansDir)
+	if planErr != nil {
+		warnings = append(warnings, "plan reading failed: "+planErr.Error())
+	} else {
+		plans = toPlanSummaries(nativePlans)
 	}
 
 	activeCooks, recentHistory, err := b.readSessionState()
@@ -103,17 +96,24 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		routing.Tags[tag] = RoutingPolicy{Provider: policy.Provider, Model: policy.Model}
 	}
 
+	// Quality verdicts
+	verdicts, verdictErr := readQualityVerdicts(b.runtimeDir)
+	if verdictErr != nil {
+		warnings = append(warnings, "quality verdict reading failed: "+verdictErr.Error())
+	}
+
 	brief := Brief{
-		GeneratedAt:   b.now().UTC(),
-		Backlog:       backlog,
-		Plans:         plans,
-		ActiveCooks:   activeCooks,
-		Tickets:       tickets,
-		Resources:     resources,
-		RecentHistory: recentHistory,
-		Routing:       routing,
-		TaskTypes:     b.TaskTypes,
-		Warnings:      warnings,
+		GeneratedAt:     b.now().UTC(),
+		Backlog:         backlog,
+		Plans:           plans,
+		ActiveCooks:     activeCooks,
+		Tickets:         tickets,
+		Resources:       resources,
+		RecentHistory:   recentHistory,
+		Routing:         routing,
+		TaskTypes:       b.TaskTypes,
+		QualityVerdicts: verdicts,
+		Warnings:        warnings,
 	}
 
 	if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
@@ -133,15 +133,26 @@ func filterActiveBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {
 	return filtered
 }
 
-func filterActivePlans(items []adapter.PlanItem) []adapter.PlanItem {
-	filtered := make([]adapter.PlanItem, 0, len(items))
-	for _, item := range items {
-		if item.Status == adapter.PlanStatusDone {
-			continue
+func toPlanSummaries(plans []plan.Plan) []PlanSummary {
+	summaries := make([]PlanSummary, 0, len(plans))
+	for _, p := range plans {
+		phases := make([]PhaseSummary, 0, len(p.Phases))
+		for _, ph := range p.Phases {
+			phases = append(phases, PhaseSummary{
+				Name:     ph.Name,
+				Filename: ph.Filename,
+				Status:   ph.Status,
+			})
 		}
-		filtered = append(filtered, item)
+		summaries = append(summaries, PlanSummary{
+			ID:        p.Meta.ID,
+			Title:     p.Title,
+			Status:    p.Meta.Status,
+			Directory: p.Slug,
+			Phases:    phases,
+		})
 	}
-	return filtered
+	return summaries
 }
 
 func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {

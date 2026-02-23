@@ -81,6 +81,12 @@ func CommandCatalog() []Command {
 			Category:    "internal",
 			Run:         runMiseCommand,
 		},
+		{
+			Name:        "plan",
+			Description: "Manage plans (create, done, phase-add, list)",
+			Category:    "core",
+			Run:         runPlanCommand,
+		},
 	}
 }
 

@@ -49,16 +49,29 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 		t.Fatalf("write tickets: %v", err)
 	}
 
+	// Set up native plan files in brain/plans/
+	plansDir := filepath.Join(projectDir, "brain", "plans", "03-auth-refactor")
+	if err := os.MkdirAll(plansDir, 0o755); err != nil {
+		t.Fatalf("mkdir plans: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "brain", "plans", "index.md"),
+		[]byte("# Plans\n\n- [[plans/03-auth-refactor/overview]]\n"), 0o644); err != nil {
+		t.Fatalf("write plans index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "overview.md"),
+		[]byte("---\nid: 3\ncreated: 2026-02-20\nstatus: active\n---\n\n# Auth Refactor\n\n- [ ] [[plans/03-auth-refactor/phase-01-implement]] -- Implement\n"), 0o644); err != nil {
+		t.Fatalf("write plan overview: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "phase-01-implement.md"),
+		[]byte("# Implement\n\nPhase details.\n"), 0o644); err != nil {
+		t.Fatalf("write plan phase: %v", err)
+	}
+
 	cfg := config.DefaultConfig()
 	cfg.Adapters = map[string]config.AdapterConfig{
 		"backlog": {
 			Scripts: map[string]string{
 				"sync": "printf '%s\\n' '{\"id\":\"42\",\"title\":\"Fix login\",\"status\":\"open\"}' '{\"id\":\"43\",\"title\":\"Done item\",\"status\":\"done\"}'",
-			},
-		},
-		"plans": {
-			Scripts: map[string]string{
-				"sync": "printf '%s\\n' '{\"id\":\"03\",\"title\":\"Auth refactor\",\"status\":\"active\",\"phases\":[{\"name\":\"implement\",\"status\":\"active\"}]}'",
 			},
 		},
 	}
@@ -80,7 +93,22 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 		t.Fatalf("backlog id = %q", brief.Backlog[0].ID)
 	}
 	if len(brief.Plans) != 1 {
-		t.Fatalf("plans count = %d", len(brief.Plans))
+		t.Fatalf("plans count = %d, want 1", len(brief.Plans))
+	}
+	if brief.Plans[0].ID != 3 {
+		t.Fatalf("plan id = %d, want 3", brief.Plans[0].ID)
+	}
+	if brief.Plans[0].Title != "Auth Refactor" {
+		t.Fatalf("plan title = %q, want %q", brief.Plans[0].Title, "Auth Refactor")
+	}
+	if brief.Plans[0].Status != "active" {
+		t.Fatalf("plan status = %q, want %q", brief.Plans[0].Status, "active")
+	}
+	if len(brief.Plans[0].Phases) != 1 {
+		t.Fatalf("plan phase count = %d, want 1", len(brief.Plans[0].Phases))
+	}
+	if brief.Plans[0].Phases[0].Status != "active" {
+		t.Fatalf("phase status = %q, want %q", brief.Plans[0].Phases[0].Status, "active")
 	}
 	if len(brief.ActiveCooks) != 1 {
 		t.Fatalf("active cooks = %d", len(brief.ActiveCooks))

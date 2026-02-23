@@ -71,12 +71,3 @@ func TestParseBacklogItemsOptionalDefaults(t *testing.T) {
 	}
 }
 
-func TestParsePlanItemsValidation(t *testing.T) {
-	_, err := ParsePlanItems(`{"id":"p1","title":"Plan","status":"active","phases":[]}`)
-	if err == nil {
-		t.Fatal("expected missing phases error")
-	}
-	if !strings.Contains(err.Error(), "missing required field phases") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}

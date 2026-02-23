@@ -30,36 +30,6 @@ type BacklogItem struct {
 	Estimate    Estimate      `json:"estimate,omitempty"`
 }
 
-type PlanStatus string
-
-const (
-	PlanStatusDraft  PlanStatus = "draft"
-	PlanStatusActive PlanStatus = "active"
-	PlanStatusDone   PlanStatus = "done"
-)
-
-type PlanPhaseStatus string
-
-const (
-	PlanPhasePending PlanPhaseStatus = "pending"
-	PlanPhaseActive  PlanPhaseStatus = "active"
-	PlanPhaseDone    PlanPhaseStatus = "done"
-	PlanPhaseSkipped PlanPhaseStatus = "skipped"
-)
-
-type PlanPhase struct {
-	Name   string          `json:"name"`
-	Status PlanPhaseStatus `json:"status"`
-}
-
-type PlanItem struct {
-	ID     string     `json:"id"`
-	Title  string     `json:"title"`
-	Status PlanStatus `json:"status"`
-	Phases []PlanPhase `json:"phases"`
-	Tags   []string   `json:"tags,omitempty"`
-}
-
 func isValidBacklogStatus(status BacklogStatus) bool {
 	switch status {
 	case BacklogStatusOpen, BacklogStatusInProgress, BacklogStatusDone:
@@ -75,24 +45,6 @@ func isValidEstimate(estimate Estimate) bool {
 	}
 	switch estimate {
 	case EstimateSmall, EstimateMedium, EstimateLarge:
-		return true
-	default:
-		return false
-	}
-}
-
-func isValidPlanStatus(status PlanStatus) bool {
-	switch status {
-	case PlanStatusDraft, PlanStatusActive, PlanStatusDone:
-		return true
-	default:
-		return false
-	}
-}
-
-func isValidPlanPhaseStatus(status PlanPhaseStatus) bool {
-	switch status {
-	case PlanPhasePending, PlanPhaseActive, PlanPhaseDone, PlanPhaseSkipped:
 		return true
 	default:
 		return false
