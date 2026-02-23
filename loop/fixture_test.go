@@ -29,6 +29,7 @@ type loopFixtureSetup struct {
 	WorktreeCreateErrorNames      []string          `json:"worktree_create_error_names"`
 	FailedTargets                 map[string]string `json:"failed_targets"`
 	Phases                        map[string]string `json:"phases"`
+	RecoveryMaxRetries            *int              `json:"recovery_max_retries"`
 	RunningRuntimeRepairSessionID string            `json:"running_runtime_repair_session_id"`
 }
 
@@ -268,6 +269,9 @@ func applySetupConfig(cfg *config.Config, setup loopFixtureSetup) {
 	}
 	for key, value := range setup.Phases {
 		cfg.Phases[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+	if setup.RecoveryMaxRetries != nil {
+		cfg.Recovery.MaxRetries = *setup.RecoveryMaxRetries
 	}
 }
 
