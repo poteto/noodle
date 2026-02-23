@@ -38,8 +38,10 @@ func loadVerdicts(runtimeDir string) []Verdict {
 }
 
 // renderVerdictCard renders a verdict as a feed card with action pills.
-func renderVerdictCard(v Verdict, width int, now time.Time, showActions bool) string {
+// Optional selected flag highlights the border.
+func renderVerdictCard(v Verdict, width int, now time.Time, showActions bool, selected ...bool) string {
 	t := components.DefaultTheme
+	isSelected := len(selected) > 0 && selected[0]
 
 	var verdictLabel string
 	var borderColor lipgloss.Color
@@ -49,6 +51,9 @@ func renderVerdictCard(v Verdict, width int, now time.Time, showActions bool) st
 	} else {
 		verdictLabel = components.VerdictBadge("REJECT")
 		borderColor = t.Error
+	}
+	if isSelected {
+		borderColor = t.Brand
 	}
 
 	targetName := v.TargetID

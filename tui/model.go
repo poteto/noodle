@@ -41,9 +41,9 @@ type Model struct {
 	width  int
 	height int
 
-	activeTab Tab
-	steerOpen bool
-	helpOpen  bool
+	activeTab     Tab
+	steerOpen     bool
+	detailSession string // session ID shown in actor detail view
 
 	snapshot  Snapshot
 	feedTab   FeedTab
@@ -248,8 +248,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.closeSteer()
 			return m, nil
 		}
-		if m.helpOpen {
-			m.helpOpen = false
+		if m.detailSession != "" {
+			m.detailSession = ""
 			return m, nil
 		}
 		if m.activeTab == TabBrain && m.brainTab.preview {
@@ -266,10 +266,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.taskEditor.open {
 		return m.handleTaskEditorKey(msg)
 	}
-	if m.helpOpen {
-		if strings.ToLower(msg.String()) == "?" {
-			m.helpOpen = false
-		}
+	if m.detailSession != "" {
+		// Only esc exits detail (handled above); ignore other keys.
 		return m, nil
 	}
 
@@ -305,7 +303,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "4":
 		m.activeTab = TabConfig
 	case "?":
-		m.helpOpen = true
+		// reserved
 	case "`":
 		return m, m.openSteer()
 	case "n":
@@ -314,7 +312,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "j", "down":
 		switch m.activeTab {
 		case TabFeed:
-			m.feedTab.ScrollDown(3)
+			m.feedTab.SelectDown()
 		case TabQueue:
 			m.queueTab.table.MoveDown(1)
 		case TabBrain:
@@ -325,12 +323,26 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "k", "up":
 		switch m.activeTab {
 		case TabFeed:
-			m.feedTab.ScrollUp(3)
+			m.feedTab.SelectUp()
 		case TabQueue:
 			m.queueTab.table.MoveUp(1)
 		case TabBrain:
 			if m.brainTab.selected > 0 {
 				m.brainTab.selected--
+			}
+		}
+	case "enter":
+		switch m.activeTab {
+		case TabFeed:
+			if sid := m.feedTab.SelectedSessionID(); sid != "" {
+				m.detailSession = sid
+			}
+		case TabQueue:
+			if queueID := m.queueTab.SelectedSessionID(); queueID != "" {
+				// Find session whose ID starts with the queue item ID.
+				if sid := m.findSessionForQueueItem(queueID); sid != "" {
+					m.detailSession = sid
+				}
 			}
 		}
 	case "m":
@@ -509,6 +521,16 @@ func (m Model) steerTargets() []string {
 	}
 	sort.Strings(targets[1:])
 	return targets
+}
+
+func (m *Model) findSessionForQueueItem(queueItemID string) string {
+	// Session IDs are prefixed with the queue item ID (e.g., "execute-1-fix-bug-...").
+	for _, s := range m.snapshot.Sessions {
+		if strings.HasPrefix(s.ID, queueItemID+"-") || s.ID == queueItemID {
+			return s.ID
+		}
+	}
+	return ""
 }
 
 func (m *Model) isActionable(targetID string) bool {

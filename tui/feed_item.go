@@ -35,8 +35,10 @@ type FeedItem struct {
 }
 
 // renderFeedItem renders a single feed item as a Card component.
-func renderFeedItem(item FeedItem, width int, now time.Time) string {
+// When selected is true, the border is highlighted with the brand color.
+func renderFeedItem(item FeedItem, width int, now time.Time, selected ...bool) string {
 	t := components.DefaultTheme
+	isSelected := len(selected) > 0 && selected[0]
 
 	var title string
 	var borderColor lipgloss.Color
@@ -52,6 +54,10 @@ func renderFeedItem(item FeedItem, width int, now time.Time) string {
 		borderColor = taskTypeBorderColor(item.TaskType)
 		badge := components.TaskTypeBadge(item.TaskType)
 		title = badge + " " + item.AgentName
+	}
+	if isSelected {
+		borderColor = t.Brand
+		title = "▸ " + title
 	}
 
 	age := components.AgeLabel(now, item.StartedAt)

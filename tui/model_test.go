@@ -72,23 +72,6 @@ func TestTabSwitching(t *testing.T) {
 	}
 }
 
-func TestHelpToggle(t *testing.T) {
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             time.Now,
-	})
-
-	m = pressRune(t, m, '?')
-	if !m.helpOpen {
-		t.Fatal("expected helpOpen after ?")
-	}
-	m = pressRune(t, m, '?')
-	if m.helpOpen {
-		t.Fatal("expected helpOpen=false after ? toggle")
-	}
-}
-
 func TestSteerSubmitWritesControlCommand(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)

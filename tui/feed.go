@@ -71,10 +71,52 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 
 	f.items = items
 
-	// Auto-scroll to newest (top) unless user has scrolled away.
-	if !f.userScroll {
-		f.scroll = 0
+	// Clamp selection to visible range.
+	total := f.cardCount()
+	if f.selection >= total {
+		f.selection = total - 1
 	}
+	if f.selection < 0 {
+		f.selection = 0
+	}
+}
+
+// cardCount returns the total selectable cards (verdicts + feed items).
+func (f *FeedTab) cardCount() int {
+	return len(f.verdicts) + len(f.items)
+}
+
+// SelectDown moves selection to the next card.
+func (f *FeedTab) SelectDown() {
+	total := f.cardCount()
+	if f.selection < total-1 {
+		f.selection++
+	}
+}
+
+// SelectUp moves selection to the previous card.
+func (f *FeedTab) SelectUp() {
+	if f.selection > 0 {
+		f.selection--
+	}
+}
+
+// SelectedSessionID returns the session ID of the currently selected card.
+func (f *FeedTab) SelectedSessionID() string {
+	sel := f.selection
+
+	// Verdicts come first.
+	if sel < len(f.verdicts) {
+		return f.verdicts[sel].SessionID
+	}
+	sel -= len(f.verdicts)
+
+	// Feed items are rendered newest-first.
+	idx := len(f.items) - 1 - sel
+	if idx >= 0 && idx < len(f.items) {
+		return f.items[idx].SessionID
+	}
+	return ""
 }
 
 // Render renders the feed tab content for the given dimensions.
@@ -85,16 +127,17 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 	}
 
 	var cards []string
+	cardIdx := 0
 
 	// Verdict cards appear at the top (most actionable).
 	canAct := f.autonomy != "full"
 	for _, v := range f.verdicts {
 		_, actionable := f.actionNeeded[v.TargetID]
-		cards = append(cards, renderVerdictCard(v, width, now, canAct && actionable))
+		cards = append(cards, renderVerdictCard(v, width, now, canAct && actionable, cardIdx == f.selection))
+		cardIdx++
 	}
 
 	// Show a limited number of recent cards based on terminal height.
-	// Each card is ~4 lines (border + title + events + spacing).
 	maxCards := height / 4
 	if maxCards < 3 {
 		maxCards = 3
@@ -106,8 +149,8 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 	// Render items in reverse-chronological order (newest first).
 	shown := 0
 	for i := len(f.items) - 1; i >= 0 && shown < maxCards; i-- {
-		card := renderFeedItem(f.items[i], width, now)
-		cards = append(cards, card)
+		cards = append(cards, renderFeedItem(f.items[i], width, now, cardIdx == f.selection))
+		cardIdx++
 		shown++
 	}
 
