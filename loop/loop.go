@@ -78,18 +78,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 }
 
 func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, error) {
-	paths := make([]string, 0, len(cfg.Skills.Paths))
-	for _, p := range cfg.Skills.Paths {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(projectDir, p)
-		}
-		paths = append(paths, p)
-	}
-	resolver := skill.Resolver{SearchPaths: paths}
+	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
 	skills, err := resolver.DiscoverTaskTypes()
 	if err != nil {
 		return taskreg.NewFromSkills(nil), fmt.Errorf("task type discovery failed: %w", err)
