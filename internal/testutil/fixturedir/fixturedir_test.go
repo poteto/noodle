@@ -2,6 +2,7 @@ package fixturedir
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -269,6 +270,47 @@ func TestDiscoverRejectsOutOfDateExpectedMarkdown(t *testing.T) {
 	_, err := Discover(root)
 	if err == nil || !strings.Contains(err.Error(), "expected.md is out of date") {
 		t.Fatalf("discover err = %v", err)
+	}
+}
+
+func TestDiscoverIgnoresGitIgnoredStateRuntimeArtifacts(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, ".gitignore"), "**/.noodle/\n")
+	writeExpected(t, filepath.Join(root, "sample"), md(
+		"---",
+		"schema_version: 1",
+		"expected_failure: false",
+		"bug: false",
+		"source_hash: pending",
+		"---",
+		"",
+		"## Runtime Dump",
+		"",
+		"```json",
+		`{"states":{}}`,
+		"```",
+	))
+	writeFile(t, filepath.Join(root, "sample", "state-01", "input.json"), "{\"mise_result\":{\"backlog\":[]}}\n")
+
+	runGit(t, root, "init")
+	runGit(t, root, "add", ".")
+	syncFixtures(t, root)
+
+	writeFile(t, filepath.Join(root, "sample", "state-01", ".noodle", "queue.json"), "{\"items\":[]}\n")
+
+	inventory, err := Discover(root)
+	if err != nil {
+		t.Fatalf("discover: %v", err)
+	}
+	state := inventory.Cases[0].States[0]
+	for _, rel := range state.FileOrder {
+		if strings.Contains(filepath.ToSlash(rel), ".noodle/") {
+			t.Fatalf("unexpected gitignored runtime file in state file order: %s", rel)
+		}
 	}
 }
 

@@ -348,7 +348,25 @@ func loadStateFiles(statePath string) (map[string]string, []string, error) {
 	files := map[string]string{}
 	ordered := make([]string, 0)
 
-	err := filepath.WalkDir(statePath, func(path string, d os.DirEntry, walkErr error) error {
+	paths, gitScoped, err := listGitVisibleFiles(statePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	if gitScoped {
+		for _, path := range paths {
+			relPath, relErr := filepath.Rel(statePath, path)
+			if relErr != nil {
+				return nil, nil, fmt.Errorf("compute relative path: %w", relErr)
+			}
+			normalized := filepath.ToSlash(filepath.Clean(relPath))
+			files[normalized] = path
+			ordered = append(ordered, normalized)
+		}
+		sort.Strings(ordered)
+		return files, ordered, nil
+	}
+
+	err = filepath.WalkDir(statePath, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}

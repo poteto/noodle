@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -121,7 +120,7 @@ func computeFixtureInputHash(fixtureRoot string) (string, error) {
 		return "", fmt.Errorf("fixture root is required")
 	}
 
-	paths, gitScoped, err := listGitVisibleFixtureInputs(fixtureRoot)
+	paths, gitScoped, err := listGitVisibleFiles(fixtureRoot)
 	if err != nil {
 		return "", err
 	}
@@ -135,6 +134,9 @@ func computeFixtureInputHash(fixtureRoot string) (string, error) {
 
 	hash := sha256.New()
 	for _, path := range paths {
+		if strings.EqualFold(strings.TrimSpace(filepath.Base(path)), "expected.md") {
+			continue
+		}
 		relPath, err := filepath.Rel(fixtureRoot, path)
 		if err != nil {
 			return "", fmt.Errorf("relative path for %s: %w", path, err)
@@ -180,36 +182,4 @@ func listAllFixtureInputs(fixtureRoot string) ([]string, error) {
 		return nil, fmt.Errorf("walk fixture inputs %s: %w", fixtureRoot, err)
 	}
 	return paths, nil
-}
-
-func listGitVisibleFixtureInputs(fixtureRoot string) ([]string, bool, error) {
-	cmd := exec.Command("git", "-C", fixtureRoot, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, false, nil
-	}
-	lines := strings.Split(strings.ReplaceAll(string(output), "\r\n", "\n"), "\n")
-	paths := make([]string, 0, len(lines))
-	for _, line := range lines {
-		relPath := strings.TrimSpace(line)
-		if relPath == "" {
-			continue
-		}
-		absPath := filepath.Join(fixtureRoot, filepath.FromSlash(relPath))
-		info, statErr := os.Stat(absPath)
-		if statErr != nil {
-			if os.IsNotExist(statErr) {
-				continue
-			}
-			return nil, true, fmt.Errorf("stat fixture input %s: %w", absPath, statErr)
-		}
-		if info.IsDir() {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(filepath.Base(absPath)), "expected.md") {
-			continue
-		}
-		paths = append(paths, absPath)
-	}
-	return paths, true, nil
 }
