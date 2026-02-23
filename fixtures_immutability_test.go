@@ -17,28 +17,11 @@ func TestFixtureSuitesDoNotMutateFixtureFiles(t *testing.T) {
 		t.Skip("skipping fixture immutability check in short mode")
 	}
 
-	roots := []string{
-		"parse/testdata",
-		"adapter/testdata",
-		"stamp/testdata",
-		"event/testdata",
-		"monitor/testdata",
-		"dispatcher/testdata",
-		"loop/testdata",
-	}
+	roots := discoverFixtureRoots(t)
 	before := snapshotFixtureFiles(t, roots)
 
-	cmd := exec.Command(
-		"go",
-		"test",
-		"./parse",
-		"./adapter",
-		"./stamp",
-		"./event",
-		"./monitor",
-		"./dispatcher",
-		"./loop",
-	)
+	goArgs := append([]string{"test"}, fixturePackageTargets(roots)...)
+	cmd := exec.Command("go", goArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("run fixture suites: %v\n%s", err, strings.TrimSpace(string(out)))
@@ -75,6 +58,48 @@ func snapshotFixtureFiles(t *testing.T, roots []string) map[string]string {
 		}
 	}
 	return snapshot
+}
+
+func discoverFixtureRoots(t *testing.T) []string {
+	t.Helper()
+
+	matches, err := filepath.Glob("*" + string(filepath.Separator) + "testdata")
+	if err != nil {
+		t.Fatalf("discover fixture roots: %v", err)
+	}
+	roots := make([]string, 0, len(matches))
+	for _, match := range matches {
+		info, statErr := os.Stat(match)
+		if statErr != nil {
+			t.Fatalf("stat fixture root %s: %v", match, statErr)
+		}
+		if !info.IsDir() {
+			continue
+		}
+		roots = append(roots, filepath.ToSlash(filepath.Clean(match)))
+	}
+	sort.Strings(roots)
+	if len(roots) == 0 {
+		t.Fatal("no fixture roots found")
+	}
+	return roots
+}
+
+func fixturePackageTargets(roots []string) []string {
+	targetsSet := make(map[string]struct{}, len(roots))
+	for _, root := range roots {
+		pkg := filepath.ToSlash(filepath.Dir(filepath.Clean(root)))
+		if strings.TrimSpace(pkg) == "" || pkg == "." {
+			continue
+		}
+		targetsSet["./"+pkg] = struct{}{}
+	}
+	targets := make([]string, 0, len(targetsSet))
+	for target := range targetsSet {
+		targets = append(targets, target)
+	}
+	sort.Strings(targets)
+	return targets
 }
 
 func diffSnapshots(before, after map[string]string) string {
