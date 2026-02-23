@@ -100,6 +100,7 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		Active:          active,
 		Recent:          recent,
 		Queue:           qr.Items,
+		ActiveQueueIDs:  qr.Active,
 		ActionNeeded:    qr.ActionNeeded,
 		EventsBySession: eventsBySession,
 		FeedEvents:      feedEvents,
@@ -159,6 +160,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 
 type queueResult struct {
 	Items        []QueueItem
+	Active       []string
 	ActionNeeded []string
 }
 
@@ -182,6 +184,7 @@ func readQueue(path string) (queueResult, error) {
 	}
 	return queueResult{
 		Items:        items,
+		Active:       queue.Active,
 		ActionNeeded: queue.ActionNeeded,
 	}, nil
 }

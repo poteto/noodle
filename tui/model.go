@@ -74,6 +74,7 @@ type Snapshot struct {
 	Recent   []Session
 	Queue    []QueueItem
 
+	ActiveQueueIDs  []string
 	ActionNeeded    []string
 	EventsBySession map[string][]EventLine
 	FeedEvents      []FeedEvent
@@ -186,11 +187,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = nil
 		m.snapshot = msg.snapshot
 		m.feedTab.SetSnapshot(m.snapshot)
-		activeIDs := make([]string, 0, len(m.snapshot.Active))
-		for _, s := range m.snapshot.Active {
-			activeIDs = append(activeIDs, s.ID)
-		}
-		m.queueTab.SetQueue(m.snapshot.Queue, activeIDs, m.snapshot.ActionNeeded)
+		m.queueTab.SetQueue(m.snapshot.Queue, m.snapshot.ActiveQueueIDs, m.snapshot.ActionNeeded)
 		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
 		m.configTab.SetAutonomy(m.snapshot.Autonomy)
 		return m, nil

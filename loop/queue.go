@@ -1,6 +1,8 @@
 package loop
 
 import (
+	"sort"
+
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/queuex"
@@ -52,7 +54,7 @@ func toQueueX(queue Queue) queuex.Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
+	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded}
 }
 
 func fromQueueX(queue queuex.Queue) Queue {
@@ -69,5 +71,21 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
+	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded}
+}
+
+// stampActiveIDs writes the current active queue item IDs into queue.json
+// so the TUI can derive "cooking" status without mapping session IDs.
+func (l *Loop) stampActiveIDs() error {
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return err
+	}
+	active := make([]string, 0, len(l.activeByTarget))
+	for targetID := range l.activeByTarget {
+		active = append(active, targetID)
+	}
+	sort.Strings(active)
+	queue.Active = active
+	return writeQueueAtomic(l.deps.QueueFile, queue)
 }

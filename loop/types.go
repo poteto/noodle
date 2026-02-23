@@ -23,6 +23,7 @@ const (
 type Queue struct {
 	GeneratedAt  time.Time   `json:"generated_at"`
 	Items        []QueueItem `json:"items"`
+	Active       []string    `json:"active,omitempty"`
 	ActionNeeded []string    `json:"action_needed,omitempty"`
 }
 
