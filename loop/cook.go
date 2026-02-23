@@ -11,6 +11,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/recover"
 )
 
@@ -381,12 +382,98 @@ func (l *Loop) steer(target string, prompt string) error {
 		if cook.worktreeName != target && cook.session.ID() != target {
 			continue
 		}
+		// Build resume context before killing — the new session needs
+		// to know what the old one was doing.
+		resumeCtx := buildSteerResumeContext(l.runtimeDir, cook.session.ID())
+		steerPrompt := strings.TrimSpace(prompt)
+		if resumeCtx != "" {
+			steerPrompt = "Resume context: " + resumeCtx + "\n\nChef steering: " + steerPrompt
+		}
+
 		if err := cook.session.Kill(); err != nil {
 			return err
 		}
 		delete(l.activeByID, cook.session.ID())
 		delete(l.activeByTarget, cook.queueItem.ID)
-		return l.spawnCook(context.Background(), cook.queueItem, cook.attempt, strings.TrimSpace(prompt))
+		return l.spawnCook(context.Background(), cook.queueItem, cook.attempt, steerPrompt)
 	}
 	return errors.New("session not found")
+}
+
+// buildSteerResumeContext reads a session's event log and extracts a progress
+// summary so the respawned session doesn't start from scratch.
+func buildSteerResumeContext(runtimeDir string, sessionID string) string {
+	reader := event.NewEventReader(runtimeDir)
+	events, err := reader.ReadSession(sessionID, event.EventFilter{})
+	if err != nil || len(events) == 0 {
+		return ""
+	}
+
+	files := make(map[string]struct{})
+	var lastActions []string
+	var ticketProgress []string
+
+	for _, ev := range events {
+		switch ev.Type {
+		case event.EventAction:
+			var action struct {
+				Tool    string `json:"tool"`
+				Path    string `json:"path"`
+				Summary string `json:"summary"`
+			}
+			_ = json.Unmarshal(ev.Payload, &action)
+			tool := strings.ToLower(strings.TrimSpace(action.Tool))
+			if path := strings.TrimSpace(action.Path); path != "" {
+				switch tool {
+				case "read", "edit", "write":
+					files[path] = struct{}{}
+				}
+			}
+			summary := strings.TrimSpace(action.Summary)
+			if summary == "" {
+				summary = strings.TrimSpace(action.Tool)
+			}
+			if summary != "" {
+				lastActions = append(lastActions, summary)
+			}
+		case event.EventTicketProgress, event.EventTicketDone:
+			var payload struct {
+				Summary string `json:"summary"`
+				Outcome string `json:"outcome"`
+			}
+			_ = json.Unmarshal(ev.Payload, &payload)
+			if s := strings.TrimSpace(payload.Summary); s != "" {
+				ticketProgress = append(ticketProgress, s)
+			} else if s := strings.TrimSpace(payload.Outcome); s != "" {
+				ticketProgress = append(ticketProgress, s)
+			}
+		}
+	}
+
+	var parts []string
+	if len(files) > 0 {
+		fileList := make([]string, 0, len(files))
+		for f := range files {
+			fileList = append(fileList, f)
+		}
+		if len(fileList) > 10 {
+			fileList = fileList[:10]
+		}
+		parts = append(parts, fmt.Sprintf("Files touched: %s", strings.Join(fileList, ", ")))
+	}
+	if len(ticketProgress) > 0 {
+		if len(ticketProgress) > 3 {
+			ticketProgress = ticketProgress[len(ticketProgress)-3:]
+		}
+		parts = append(parts, fmt.Sprintf("Progress: %s", strings.Join(ticketProgress, "; ")))
+	}
+	if len(lastActions) > 0 {
+		tail := lastActions
+		if len(tail) > 5 {
+			tail = tail[len(tail)-5:]
+		}
+		parts = append(parts, fmt.Sprintf("Recent actions: %s", strings.Join(tail, " → ")))
+	}
+
+	return strings.Join(parts, ". ")
 }
