@@ -149,6 +149,8 @@ func toPlanSummaries(plans []plan.Plan) []PlanSummary {
 			ID:        p.Meta.ID,
 			Title:     p.Title,
 			Status:    p.Meta.Status,
+			Provider:  p.Meta.Provider,
+			Model:     p.Meta.Model,
 			Directory: p.Slug,
 			Phases:    phases,
 		})

@@ -52,6 +52,8 @@ var schemaTargets = []targetSpec{
 			"plans[].id":                    {Type: "number", Description: "plan ID"},
 			"plans[].title":                 {Description: "plan title"},
 			"plans[].status":                {Type: "string (draft|active|done)", Description: "plan status"},
+			"plans[].provider":              {Description: "optional plan-level provider hint"},
+			"plans[].model":                 {Description: "optional plan-level model hint"},
 			"plans[].directory":             {Description: "plan directory slug"},
 			"plans[].phases[].name":         {Description: "phase display name"},
 			"plans[].phases[].filename":     {Description: "phase file basename"},

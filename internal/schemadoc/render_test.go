@@ -51,6 +51,19 @@ func TestRenderPromptJSONQueue(t *testing.T) {
 	}
 }
 
+func TestRenderPromptJSONMiseIncludesPlanRoutingHints(t *testing.T) {
+	out, err := RenderPromptJSON("mise")
+	if err != nil {
+		t.Fatalf("render mise prompt schema: %v", err)
+	}
+	if !strings.Contains(out, `"provider": "string (optional) - optional plan-level provider hint"`) {
+		t.Fatalf("missing plans[].provider hint in mise prompt schema: %q", out)
+	}
+	if !strings.Contains(out, `"model": "string (optional) - optional plan-level model hint"`) {
+		t.Fatalf("missing plans[].model hint in mise prompt schema: %q", out)
+	}
+}
+
 func TestRenderUnknownTargetReturnsError(t *testing.T) {
 	_, err := RenderMarkdown("does-not-exist")
 	if err == nil {

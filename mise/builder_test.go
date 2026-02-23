@@ -20,16 +20,16 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	}
 
 	meta := map[string]any{
-		"session_id":        "cook-a",
-		"status":            "running",
-		"provider":          "claude",
-		"model":             "claude-sonnet-4-6",
-		"total_cost_usd":    0.22,
-		"duration_seconds":  80,
-		"updated_at":        "2026-02-22T16:00:00Z",
-		"current_action":    "write tests",
-		"last_activity":     "2026-02-22T16:00:00Z",
-		"idle_seconds":      0,
+		"session_id":               "cook-a",
+		"status":                   "running",
+		"provider":                 "claude",
+		"model":                    "claude-sonnet-4-6",
+		"total_cost_usd":           0.22,
+		"duration_seconds":         80,
+		"updated_at":               "2026-02-22T16:00:00Z",
+		"current_action":           "write tests",
+		"last_activity":            "2026-02-22T16:00:00Z",
+		"idle_seconds":             0,
 		"context_window_usage_pct": 4.0,
 	}
 	metaBytes, _ := json.Marshal(meta)
@@ -59,7 +59,7 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 		t.Fatalf("write plans index: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(plansDir, "overview.md"),
-		[]byte("---\nid: 3\ncreated: 2026-02-20\nstatus: active\n---\n\n# Auth Refactor\n\n- [ ] [[plans/03-auth-refactor/phase-01-implement]] -- Implement\n"), 0o644); err != nil {
+		[]byte("---\nid: 3\ncreated: 2026-02-20\nstatus: active\nprovider: codex\nmodel: gpt-5.3-codex\n---\n\n# Auth Refactor\n\n- [ ] [[plans/03-auth-refactor/phase-01-implement]] -- Implement\n"), 0o644); err != nil {
 		t.Fatalf("write plan overview: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(plansDir, "phase-01-implement.md"),
@@ -103,6 +103,12 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	}
 	if brief.Plans[0].Status != "active" {
 		t.Fatalf("plan status = %q, want %q", brief.Plans[0].Status, "active")
+	}
+	if brief.Plans[0].Provider != "codex" {
+		t.Fatalf("plan provider = %q, want %q", brief.Plans[0].Provider, "codex")
+	}
+	if brief.Plans[0].Model != "gpt-5.3-codex" {
+		t.Fatalf("plan model = %q, want %q", brief.Plans[0].Model, "gpt-5.3-codex")
 	}
 	if len(brief.Plans[0].Phases) != 1 {
 		t.Fatalf("plan phase count = %d, want 1", len(brief.Plans[0].Phases))

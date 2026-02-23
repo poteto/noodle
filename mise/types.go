@@ -12,6 +12,8 @@ type PlanSummary struct {
 	ID        int            `json:"id"`
 	Title     string         `json:"title"`
 	Status    string         `json:"status"`
+	Provider  string         `json:"provider,omitempty"`
+	Model     string         `json:"model,omitempty"`
 	Directory string         `json:"directory"` // slug
 	Phases    []PhaseSummary `json:"phases"`
 }
@@ -65,15 +67,15 @@ type TaskTypeSummary struct {
 }
 
 type Brief struct {
-	GeneratedAt    time.Time             `json:"generated_at"`
-	Backlog        []adapter.BacklogItem `json:"backlog"`
-	Plans          []PlanSummary         `json:"plans"`
-	ActiveCooks    []ActiveCook          `json:"active_cooks"`
-	Tickets        []event.Ticket        `json:"tickets"`
-	Resources      ResourceSnapshot      `json:"resources"`
-	RecentHistory  []HistoryItem         `json:"recent_history"`
-	Routing        RoutingSnapshot       `json:"routing"`
-	TaskTypes        []TaskTypeSummary     `json:"task_types,omitempty"`
-	QualityVerdicts  []QualityVerdict      `json:"quality_verdicts,omitempty"`
-	Warnings         []string              `json:"warnings,omitempty"`
+	GeneratedAt     time.Time             `json:"generated_at"`
+	Backlog         []adapter.BacklogItem `json:"backlog"`
+	Plans           []PlanSummary         `json:"plans"`
+	ActiveCooks     []ActiveCook          `json:"active_cooks"`
+	Tickets         []event.Ticket        `json:"tickets"`
+	Resources       ResourceSnapshot      `json:"resources"`
+	RecentHistory   []HistoryItem         `json:"recent_history"`
+	Routing         RoutingSnapshot       `json:"routing"`
+	TaskTypes       []TaskTypeSummary     `json:"task_types,omitempty"`
+	QualityVerdicts []QualityVerdict      `json:"quality_verdicts,omitempty"`
+	Warnings        []string              `json:"warnings,omitempty"`
 }

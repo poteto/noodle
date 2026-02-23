@@ -40,6 +40,12 @@ func TestReadAll_Basic(t *testing.T) {
 	if p.Meta.Status != "active" {
 		t.Errorf("expected status active, got %q", p.Meta.Status)
 	}
+	if p.Meta.Provider != "" {
+		t.Errorf("expected empty provider, got %q", p.Meta.Provider)
+	}
+	if p.Meta.Model != "" {
+		t.Errorf("expected empty model, got %q", p.Meta.Model)
+	}
 	if p.Title != "My Great Plan" {
 		t.Errorf("expected title %q, got %q", "My Great Plan", p.Title)
 	}
@@ -355,7 +361,7 @@ func TestCleanFilename(t *testing.T) {
 }
 
 func TestParseFrontmatter(t *testing.T) {
-	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: draft\n---\n\n# Title\n\nBody text.\n"
+	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: draft\nprovider: codex\nmodel: gpt-5.3-codex\n---\n\n# Title\n\nBody text.\n"
 	meta, body, ok := parseFrontmatter(content)
 	if !ok {
 		t.Fatal("expected ok=true")
@@ -365,6 +371,12 @@ func TestParseFrontmatter(t *testing.T) {
 	}
 	if meta.Status != "draft" {
 		t.Errorf("expected status draft, got %q", meta.Status)
+	}
+	if meta.Provider != "codex" {
+		t.Errorf("expected provider codex, got %q", meta.Provider)
+	}
+	if meta.Model != "gpt-5.3-codex" {
+		t.Errorf("expected model gpt-5.3-codex, got %q", meta.Model)
 	}
 	if !contains(body, "# Title") {
 		t.Errorf("expected body to contain heading, got %q", body)
