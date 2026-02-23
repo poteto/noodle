@@ -49,6 +49,7 @@ The prioritize agent receives a `reason` in its input that explains _why_ it was
 | `startup` | Fresh boot, no queue exists | Yes — nothing can run until the first queue is built | Full survey — read all backlog items, all plan states, build queue from scratch |
 | `backlog_changed` | Todo added, edited, or completed via adapter | No — existing queue items can continue executing in parallel | Incremental — slot the change into the existing queue, don't rebuild everything |
 | `plan_created` | A plan skill produced new phases | No — existing queue items can continue executing in parallel | Schedule new phases relative to existing queue items |
+| `quality_rejected` | Quality rejected a cook after max retries | No — existing queue items can continue | Rescope the item, deprioritize, or surface to chef for review |
 
 The reason and any associated context (e.g. which todo changed, which plan was created) are included in the mise brief so the agent can focus its judgment appropriately.
 
@@ -58,7 +59,7 @@ When the backlog adapter reports mutations (new items, edits, completions), the 
 
 ## Data Structures
 
-- Input: `.noodle/mise.json` — structured brief with backlog state, resource state, active sessions, recent history, **reason** (startup | backlog_changed | plan_created), and reason context
+- Input: `.noodle/mise.json` — structured brief with backlog state, resource state, active sessions, recent history, **reason** (startup | backlog_changed | plan_created | quality_rejected), and reason context
 - Output: `.noodle/queue.json` — `{ generated_at, items: [{ id, task_key, title, provider, model, skill, review, rationale }] }`
 
 ## Verification

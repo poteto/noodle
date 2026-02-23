@@ -47,7 +47,7 @@ From **Manager** (for phases that need delegation):
   6. Commit with conventional message
 - Include delegation heuristics: when to self-execute vs spawn sub-agents
 - Include scope discipline: only change what the phase specifies, flag anything else
-- The execute skill provides _methodology_ (how to work) and is loaded alongside the adapter-configured skill (which provides _what_ to work on). Do not replace the adapter skill wiring — the execute skill is additive.
+- The execute skill provides _methodology_ (how to work) alongside the adapter-configured skill (which provides _what_ to work on). The current `TaskType` struct has a single `Skill` field — this phase must add a `Skills []string` field (or `MethodologySkill` field) to support loading both the adapter skill and the execute methodology skill for the same task type. Update `spawner/skill_bundle.go:loadSkillBundle()` to compose prompts from multiple skills.
 
 ## Data Structures
 

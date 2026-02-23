@@ -43,6 +43,11 @@ The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.
 - The prioritize skill uses this to determine: needs planning, ready for execution, or in-progress
 - Association source: plan overview frontmatter `id` field + todo wikilinks to `[[plans/...]]`
 
+### Push-based backlog change detection
+- Add diff-based change detection to the loop: after each backlog adapter sync, compare the result against the previous sync output
+- When changes are detected (new items, edits, completions), automatically insert a prioritize task at the top of the queue with reason `backlog_changed`
+- This is the Go infrastructure that Phase 1's push-based notification depends on
+
 ### Config update
 - Remove `[adapters.plans]` section from `noodle.toml` and `config/config.go`
 - Plans are always `brain/plans/` — no config needed

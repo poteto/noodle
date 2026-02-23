@@ -23,9 +23,10 @@ The core job is two things: (1) prune stale/redundant brain notes, and (2) find 
 
 - Rewrite `.agents/skills/meditate/SKILL.md` — **use the `skill-creator` skill**
 - Cook-session-first: streamlined process that a single agent can execute without spawning 4 sub-agents
-- Focus on two core activities:
+- Focus on three core activities:
   1. **Prune**: flag and remove stale, redundant, low-value, verbose brain notes
   2. **Extract**: find patterns across multiple learnings that reveal unstated principles
+  3. **Housekeep**: clean up stale `.noodle/` state (e.g. old debate directories in `.noodle/debates/` for completed/abandoned tasks)
 - Quality bar: high-signal, high-frequency, or high-impact — everything else is noise
 - Drop the early-exit gate (cook sessions should always do useful work)
 - Keep agent-team approach for interactive mode (where cost is less constrained)

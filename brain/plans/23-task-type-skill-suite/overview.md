@@ -30,7 +30,6 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - Add interactive TUI planning session (chef chats with sous-chef)
 - Fix stale CLI references across all existing skills
 - Delete old role-based skills after extraction
-- Optionally update `skills/` lean stubs to be consistent with the new designs
 
 **Out of scope:**
 - Review skill — the Chef (human) does review via the TUI, not an LLM agent
@@ -97,12 +96,9 @@ Patterns worth preserving from the old role-based skills:
 3. [[plans/23-task-type-skill-suite/phase-03-reflect]] — Cook-session-first learning from mistakes and corrections
 4. [[plans/23-task-type-skill-suite/phase-04-meditate]] — Cook-session-first brain cleanup and principle extraction
 5. [[plans/23-task-type-skill-suite/phase-05-oops]] — User-project infrastructure fix skill
+6. [[plans/23-task-type-skill-suite/phase-06-debugging]] — Root-cause diagnosis utility (invoked by oops/execute/repair, not a task type)
 7. [[plans/23-task-type-skill-suite/phase-07-debate]] — Structured debate with per-task state in `.noodle/debates/<task-id>/`
 8. [[plans/23-task-type-skill-suite/phase-08-execute]] — Implementation methodology skill (worktrees, delegation, verification)
-
-### Utility skills (invoked by other skills, not scheduled as tasks)
-
-6. [[plans/23-task-type-skill-suite/phase-06-debugging]] — Root-cause diagnosis methodology, used by oops/execute/repair
 
 ### First-class planning
 
@@ -120,7 +116,8 @@ Patterns worth preserving from the old role-based skills:
 - Each skill SKILL.md has: frontmatter, purpose, autonomous session mode, principles, contract, process, verification
 - Skill resolver finds each skill: `go test ./skill/...`
 - Old role-based skills (CEO, CTO, Director, Manager, Operator) are deleted
-- `skills/sous-chef/` renamed to `skills/prioritize/`
+- No remaining references to `sous-chef` in Go code or config
+- Verify task type removed from `internal/taskreg/registry.go`
 - `noodle plan create/done/phase-add` commands work
 - No `[adapters.plans]` in config
 - Mise brief includes many-to-many todo↔plan associations

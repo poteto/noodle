@@ -19,19 +19,17 @@ Remove these directories entirely:
 
 These have been fully extracted — all valuable patterns are now encoded in the new task-type skills (Phases 1–9).
 
-### Rename sous-chef to prioritize
+### Remove verify task type from registry
 
-- Rename `skills/sous-chef/` → `skills/prioritize/`
-- The task type registry already defaults to skill name `"prioritize"`, so this aligns them
-- Update any references to `sous-chef` in config files or documentation
+The verify task type (`internal/taskreg/registry.go`) is no longer needed — the execute skill handles its own verification (tests, lint, plan completeness check). Remove:
+- `TaskKeyVerify` constant and its registry entry
+- Any verify-related stage transitions in `loop/prioritize.go`
+- Any verify references in `config/config.go`
 
-### Update skills/ stubs (optional — defer if low value)
+### Rename sous-chef references to prioritize
 
-The `skills/` directory contains Noodle default stubs for users who don't have `.agents/skills/` overrides. Since `.agents/skills/` is the primary extension point, stub updates are lower priority. If done, stubs should:
-- Have matching frontmatter (name, description)
-- Summarize the skill's purpose in 3–5 lines
-- Reference the same contract (input/output format)
-- NOT duplicate the full process — that's in `.agents/skills/`
+- Update any references to `sous-chef` in config files, documentation, or Go code
+- The task type registry already defaults to skill name `"prioritize"`, so this aligns naming
 
 ### Update todos
 
@@ -43,9 +41,9 @@ Mark todo items as done:
 ## Verification
 
 - Old skill directories are gone: `ls .agents/skills/{ceo,cto,director,manager,operator}` all fail
-- `skills/sous-chef/` no longer exists → `skills/prioritize/` exists
+- No remaining references to `sous-chef` in Go code or config
 - Go code compiles: `go build ./...`
 - Go tests pass: `go test ./...`
 - `go vet ./...` passes
-- Skill resolver finds "quality": `go run . skills list`
-- All `skills/` stubs have matching names to their `.agents/skills/` counterparts
+- No `TaskKeyVerify` in `internal/taskreg/registry.go`
+- Skill resolver finds all new skills: `go run . skills list`
