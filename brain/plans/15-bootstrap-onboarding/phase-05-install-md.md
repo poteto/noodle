@@ -22,7 +22,9 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 
 - **`README.md`** — update Getting Started to point at `INSTALL.md` with the one-liner: `brew install poteto/tap/noodle && noodle start`
 
-**Use the `humanizer` skill when writing this file** — the writing should sound like a person wrote it, not an AI. No "serves as," no "pivotal," no sterile prose. Opinions, personality, varied rhythm.
+**Use the `skill-creator` skill when writing this file** — INSTALL.md is structured like a skill: it's agent-readable instructions that guide an agent through a workflow. Use skill-creator for the structure and progressive disclosure.
+
+**Use the `humanizer` skill for the prose** — the vision sections especially should sound like a person wrote them. No "serves as," no "pivotal," no sterile prose. Opinions, personality, varied rhythm.
 
 ## Routing
 
