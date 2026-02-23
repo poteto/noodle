@@ -11,6 +11,7 @@ import (
 
 type worktreeCommandApp interface {
 	Create(name string) error
+	Exec(name string, args []string) error
 	Merge(name string) error
 	Cleanup(name string, force bool) error
 	List() error
@@ -36,6 +37,7 @@ func newWorktreeCmd(_ *App) *cobra.Command {
 	cmd.AddCommand(
 		newWorktreeHookCmd(),
 		newWorktreeCreateCmd(),
+		newWorktreeExecCmd(),
 		newWorktreeMergeCmd(),
 		newWorktreeCleanupCmd(),
 		newWorktreeListCmd(),
@@ -66,6 +68,22 @@ func newWorktreeCreateCmd() *cobra.Command {
 				return err
 			}
 			return wApp.Create(strings.TrimSpace(args[0]))
+		},
+	}
+}
+
+func newWorktreeExecCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "exec <name> <command...>",
+		Short:              "Run command inside worktree (CWD-safe)",
+		Args:               cobra.MinimumNArgs(2),
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.Exec(strings.TrimSpace(args[0]), args[1:])
 		},
 	}
 }

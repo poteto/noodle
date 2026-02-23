@@ -92,6 +92,8 @@ func TestWorktreeHookBypassesAppFactory(t *testing.T) {
 
 type fakeWorktreeCommandApp struct {
 	createName   string
+	execName     string
+	execArgs     []string
 	mergeName    string
 	cleanupName  string
 	cleanupForce bool
@@ -101,6 +103,12 @@ type fakeWorktreeCommandApp struct {
 
 func (f *fakeWorktreeCommandApp) Create(name string) error {
 	f.createName = name
+	return nil
+}
+
+func (f *fakeWorktreeCommandApp) Exec(name string, args []string) error {
+	f.execName = name
+	f.execArgs = args
 	return nil
 }
 
