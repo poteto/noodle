@@ -62,17 +62,17 @@ func TestReadQueuePreservesTaskMetadata(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	items, err := readQueue(path)
+	qr, err := readQueue(path)
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(items) != 1 {
-		t.Fatalf("item count = %d", len(items))
+	if len(qr.Items) != 1 {
+		t.Fatalf("item count = %d", len(qr.Items))
 	}
-	if items[0].TaskKey != "verify" {
-		t.Fatalf("task key = %q", items[0].TaskKey)
+	if qr.Items[0].TaskKey != "verify" {
+		t.Fatalf("task key = %q", qr.Items[0].TaskKey)
 	}
-	if items[0].Rationale != "post-execute gate" {
-		t.Fatalf("rationale = %q", items[0].Rationale)
+	if qr.Items[0].Rationale != "post-execute gate" {
+		t.Fatalf("rationale = %q", qr.Items[0].Rationale)
 	}
 }

@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/poteto/noodle/internal/stringx"
+	"github.com/poteto/noodle/loop"
 )
 
 func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
@@ -19,7 +22,7 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	queue, err := readQueue(filepath.Join(runtimeDir, "queue.json"))
+	qr, err := readQueue(filepath.Join(runtimeDir, "queue.json"))
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -65,15 +68,32 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		return recent[i].LastActivity.After(recent[j].LastActivity)
 	})
 
+	feedEvents := buildFeedEvents(sessions, eventsBySession)
+	steerEvents := readSteerEvents(filepath.Join(runtimeDir, "control.ndjson"))
+	feedEvents = append(feedEvents, steerEvents...)
+	sort.SliceStable(feedEvents, func(i, j int) bool {
+		return feedEvents[i].At.Before(feedEvents[j].At)
+	})
+	const maxFeedEvents = 500
+	if len(feedEvents) > maxFeedEvents {
+		feedEvents = feedEvents[len(feedEvents)-maxFeedEvents:]
+	}
+
+	brainDir := filepath.Join(filepath.Dir(runtimeDir), "brain")
+	brainActivity := scanBrainActivity(brainDir)
+
 	return Snapshot{
 		UpdatedAt:       now.UTC(),
 		LoopState:       loopState,
 		Sessions:        sessions,
 		Active:          active,
 		Recent:          recent,
-		Queue:           queue,
+		Queue:           qr.Items,
+		ActionNeeded:    qr.ActionNeeded,
 		EventsBySession: eventsBySession,
+		FeedEvents:      feedEvents,
 		TotalCostUSD:    totalCost,
+		BrainActivity:   brainActivity,
 	}, nil
 }
 
@@ -122,10 +142,15 @@ func readSessions(runtimeDir string) ([]Session, error) {
 	return sessions, nil
 }
 
-func readQueue(path string) ([]QueueItem, error) {
+type queueResult struct {
+	Items        []QueueItem
+	ActionNeeded []string
+}
+
+func readQueue(path string) (queueResult, error) {
 	queue, err := queuex.Read(path)
 	if err != nil {
-		return nil, err
+		return queueResult{}, err
 	}
 	items := make([]QueueItem, 0, len(queue.Items))
 	for _, item := range queue.Items {
@@ -140,7 +165,10 @@ func readQueue(path string) ([]QueueItem, error) {
 			Rationale: item.Rationale,
 		})
 	}
-	return items, nil
+	return queueResult{
+		Items:        items,
+		ActionNeeded: queue.ActionNeeded,
+	}, nil
 }
 
 func mapEventLines(events []event.Event) []EventLine {
