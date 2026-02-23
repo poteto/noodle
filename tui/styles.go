@@ -124,6 +124,49 @@ func eventLabel(label string) string {
 	}
 }
 
+// wrapText wraps s to maxWidth using word boundaries. Long words that exceed
+// maxWidth are broken at the width boundary. Returns a slice of lines.
+func wrapText(s string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{s}
+	}
+	var lines []string
+	for _, paragraph := range strings.Split(s, "\n") {
+		if strings.TrimSpace(paragraph) == "" {
+			lines = append(lines, "")
+			continue
+		}
+		words := strings.Fields(paragraph)
+		var line string
+		for _, word := range words {
+			// Break long words.
+			for len(word) > maxWidth {
+				if line != "" {
+					lines = append(lines, line)
+					line = ""
+				}
+				lines = append(lines, word[:maxWidth])
+				word = word[maxWidth:]
+			}
+			if line == "" {
+				line = word
+			} else if len(line)+1+len(word) <= maxWidth {
+				line += " " + word
+			} else {
+				lines = append(lines, line)
+				line = word
+			}
+		}
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) == 0 {
+		lines = []string{""}
+	}
+	return lines
+}
+
 // renderEmptyState renders the noodle bowl art with a message, centered
 // horizontally and vertically within the given dimensions.
 // Falls back to text-only when the viewport is too short for the bowl art.

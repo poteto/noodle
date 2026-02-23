@@ -41,9 +41,12 @@ type Model struct {
 	width  int
 	height int
 
-	activeTab     Tab
-	steerOpen     bool
-	detailSession string // session ID shown in actor detail view
+	activeTab        Tab
+	steerOpen        bool
+	detailSession    string // session ID shown in actor detail view
+	detailScroll     int    // line offset for actor detail scroll
+	detailAutoScroll bool   // true when auto-scrolling to newest events
+	detailTotalLines int    // total rendered lines (set during render)
 
 	snapshot  Snapshot
 	feedTab   FeedTab
@@ -176,6 +179,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.detailSession != "" {
+			m.detailTotalLines = m.countDetailLines()
+		}
 		return m, nil
 	case tickMsg:
 		return m, tea.Batch(refreshSnapshotCmd(m.runtimeDir, m.now), tickCmd(m.refreshInterval))
@@ -190,6 +196,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.queueTab.SetQueue(m.snapshot.Queue, m.snapshot.ActiveQueueIDs, m.snapshot.ActionNeeded)
 		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
 		m.configTab.SetAutonomy(m.snapshot.Autonomy)
+		if m.detailSession != "" {
+			m.detailTotalLines = m.countDetailLines()
+		}
 		return m, nil
 	case brainPreviewMsg:
 		if msg.err != nil {
@@ -267,7 +276,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleTaskEditorKey(msg)
 	}
 	if m.detailSession != "" {
-		// Only esc exits detail (handled above); ignore other keys.
+		key := strings.ToLower(msg.String())
+		switch key {
+		case "j", "down":
+			m.detailScroll++
+			if m.detailTotalLines > 0 {
+				maxScroll := m.detailTotalLines - m.detailVisibleHeight()
+				if maxScroll < 0 {
+					maxScroll = 0
+				}
+				if m.detailScroll >= maxScroll {
+					m.detailScroll = maxScroll
+					m.detailAutoScroll = true
+				}
+			}
+		case "k", "up":
+			m.detailScroll--
+			if m.detailScroll < 0 {
+				m.detailScroll = 0
+			}
+			m.detailAutoScroll = false
+		}
 		return m, nil
 	}
 
@@ -335,13 +364,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.activeTab {
 		case TabFeed:
 			if sid := m.feedTab.SelectedSessionID(); sid != "" {
-				m.detailSession = sid
+				m.openDetail(sid)
 			}
 		case TabQueue:
 			if queueID := m.queueTab.SelectedSessionID(); queueID != "" {
-				// Find session whose ID starts with the queue item ID.
 				if sid := m.findSessionForQueueItem(queueID); sid != "" {
-					m.detailSession = sid
+					m.openDetail(sid)
 				}
 			}
 		}
@@ -521,6 +549,55 @@ func (m Model) steerTargets() []string {
 	}
 	sort.Strings(targets[1:])
 	return targets
+}
+
+func (m *Model) openDetail(sessionID string) {
+	m.detailSession = sessionID
+	m.detailScroll = 0
+	m.detailAutoScroll = true
+	m.detailTotalLines = 0
+}
+
+func (m Model) detailVisibleHeight() int {
+	// Matches contentHeight calculation in renderLayout minus header (3 lines).
+	bottomReserve := 2
+	layoutHeight := m.height - bottomReserve
+	if layoutHeight < 6 {
+		layoutHeight = 6
+	}
+	contentHeight := layoutHeight - 4
+	if contentHeight < 4 {
+		contentHeight = 4
+	}
+	return contentHeight - 3
+}
+
+// countDetailLines estimates the total rendered lines for the current detail
+// session events, accounting for word-wrap at the current width.
+func (m Model) countDetailLines() int {
+	events := m.snapshot.EventsBySession[m.detailSession]
+	if len(events) == 0 {
+		return 0
+	}
+	compact := m.width < 80
+	effectiveRailWidth := railWidth
+	if compact {
+		effectiveRailWidth = 8
+	}
+	paneWidth := m.width - effectiveRailWidth - 1
+	if paneWidth < 20 {
+		paneWidth = 20
+	}
+	const prefixWidth = 8 + 2 + 10 + 2 // ts + gap + label + gap
+	msgWidth := paneWidth - prefixWidth
+	if msgWidth < 20 {
+		msgWidth = 20
+	}
+	total := 0
+	for _, ev := range events {
+		total += len(wrapText(ev.Body, msgWidth))
+	}
+	return total
 }
 
 func (m *Model) findSessionForQueueItem(queueItemID string) string {

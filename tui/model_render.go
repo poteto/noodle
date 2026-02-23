@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // renderLayout composes the split layout: left rail + tabbed right pane + keybar.
@@ -73,7 +71,7 @@ func (m Model) renderLayout() string {
 	}
 
 	// Persistent keybar.
-	layout += "\n" + renderKeybar(m.activeTab, m.detailSession != "")
+	layout += "\n" + renderKeybar(m.activeTab, m.detailSession != "", m.detailAutoScroll)
 
 	// Status / error line.
 	var bottom string
@@ -90,9 +88,18 @@ func (m Model) renderLayout() string {
 }
 
 // renderKeybar returns a single-line context-sensitive shortcut bar.
-func renderKeybar(tab Tab, inDetail bool) string {
+func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 	if inDetail {
-		return dimStyle.Render("esc") + " back"
+		parts := []string{
+			dimStyle.Render("esc") + " back",
+			dimStyle.Render("j/k") + " scroll",
+		}
+		if autoScroll {
+			parts = append(parts, successStyle.Render("auto-scroll"))
+		} else {
+			parts = append(parts, warnStyle.Render("manual"))
+		}
+		return strings.Join(parts, "  ")
 	}
 
 	var parts []string
@@ -131,11 +138,12 @@ func renderKeybar(tab Tab, inDetail bool) string {
 	return strings.Join(parts, "  ")
 }
 
-// renderActorDetail renders the session detail (actor) view.
+// renderActorDetail renders the session detail (actor) view with a scrollable
+// column layout. Events are chronological (oldest first) with word-wrapped
+// bodies. Supports auto-scroll to newest and manual scroll via j/k.
 func (m Model) renderActorDetail(width, height int) string {
 	sid := m.detailSession
 
-	// Find the session in snapshot.
 	var session *Session
 	for i := range m.snapshot.Sessions {
 		if m.snapshot.Sessions[i].ID == sid {
@@ -147,14 +155,12 @@ func (m Model) renderActorDetail(width, height int) string {
 		return dimStyle.Render(fmt.Sprintf("session %q not found", sid))
 	}
 
-	var b strings.Builder
-
+	// Header: name + metadata (fixed, 3 lines).
 	name := session.DisplayName
 	if name == "" {
 		name = session.ID
 	}
-	b.WriteString(titleStyle.Render(name))
-	b.WriteString("\n")
+	header := titleStyle.Render(name) + "\n"
 
 	meta := []string{
 		statusLabel(session.Status),
@@ -167,37 +173,70 @@ func (m Model) renderActorDetail(width, height int) string {
 	if session.ContextWindowUsagePct > 0 {
 		meta = append(meta, dimStyle.Render(fmt.Sprintf("ctx %.0f%%", session.ContextWindowUsagePct*100)))
 	}
-	b.WriteString(strings.Join(meta, "  "))
-	b.WriteString("\n\n")
+	header += strings.Join(meta, "  ") + "\n"
 
-	b.WriteString(sectionStyle.Render("Events"))
-	b.WriteString("\n")
+	// Event area height.
+	eventHeight := height - 3
+	if eventHeight < 3 {
+		eventHeight = 3
+	}
 
 	events := m.snapshot.EventsBySession[sid]
 	if len(events) == 0 {
-		b.WriteString(dimStyle.Render("(no events)"))
-	} else {
-		// Show events newest-first, limited to fit.
-		maxEvents := height - 5
-		if maxEvents < 3 {
-			maxEvents = 3
-		}
-		start := 0
-		if len(events) > maxEvents {
-			start = len(events) - maxEvents
-		}
-		innerWidth := width - 2
-		for i := len(events) - 1; i >= start; i-- {
-			ev := events[i]
-			label := eventLabel(ev.Label)
-			body := ev.Body
-			if lipgloss.Width(body) > innerWidth-lipgloss.Width(ev.Label)-2 {
-				body = body[:innerWidth-lipgloss.Width(ev.Label)-4] + "…"
-			}
-			b.WriteString(label + " " + dimStyle.Render(body))
-			b.WriteString("\n")
+		return header + "\n" + dimStyle.Render("(no events)")
+	}
+
+	// Column layout: HH:MM:SS  LABEL     body text
+	//                                     continuation
+	const tsWidth = 8
+	const labelWidth = 10
+	const gap = 2
+	prefixWidth := tsWidth + gap + labelWidth + gap
+	msgWidth := width - prefixWidth
+	if msgWidth < 20 {
+		msgWidth = 20
+	}
+	indent := strings.Repeat(" ", prefixWidth)
+
+	// Render all events into lines.
+	var allLines []string
+	for _, ev := range events {
+		ts := dimStyle.Render(ev.At.Format("15:04:05"))
+		label := fmt.Sprintf("%-*s", labelWidth, ev.Label)
+		label = eventLabel(label)
+
+		wrapped := wrapText(ev.Body, msgWidth)
+		first := ts + strings.Repeat(" ", gap) + label + strings.Repeat(" ", gap) + dimStyle.Render(wrapped[0])
+		allLines = append(allLines, first)
+		for _, cont := range wrapped[1:] {
+			allLines = append(allLines, indent+dimStyle.Render(cont))
 		}
 	}
 
-	return b.String()
+	totalLines := len(allLines)
+
+	// Compute effective scroll offset.
+	scroll := m.detailScroll
+	if m.detailAutoScroll {
+		scroll = totalLines - eventHeight
+	}
+	maxScroll := totalLines - eventHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if scroll > maxScroll {
+		scroll = maxScroll
+	}
+	if scroll < 0 {
+		scroll = 0
+	}
+
+	// Slice visible window.
+	end := scroll + eventHeight
+	if end > totalLines {
+		end = totalLines
+	}
+	visible := allLines[scroll:end]
+
+	return header + "\n" + strings.Join(visible, "\n")
 }

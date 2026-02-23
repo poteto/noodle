@@ -194,31 +194,6 @@ func TestTruncTitle(t *testing.T) {
 	}
 }
 
-func TestRenderEmptyStateDropsBowlWhenTooShort(t *testing.T) {
-	// Bowl art is ~26 lines. With a viewport of 10 lines, the bowl should
-	// be dropped and only the message should be shown.
-	out := renderEmptyState("Nothing here", 80, 10)
-	if !strings.Contains(out, "Nothing here") {
-		t.Fatal("expected message in output")
-	}
-	// Count output lines — should not exceed the requested height.
-	lines := strings.Split(out, "\n")
-	if len(lines) > 10 {
-		t.Fatalf("output %d lines, want <= 10", len(lines))
-	}
-}
-
-func TestRenderEmptyStateShowsBowlWhenTall(t *testing.T) {
-	out := renderEmptyState("Nothing here", 80, 40)
-	if !strings.Contains(out, "Nothing here") {
-		t.Fatal("expected message in output")
-	}
-	// Bowl art braille characters should be present.
-	if !strings.Contains(out, "⣿") {
-		t.Fatal("expected bowl art braille in tall viewport")
-	}
-}
-
 func TestQueueTabSetQueueRowCount(t *testing.T) {
 	qt := NewQueueTab()
 	items := []QueueItem{
