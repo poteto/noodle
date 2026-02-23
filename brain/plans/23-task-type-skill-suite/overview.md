@@ -46,6 +46,8 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - **Context injection bridges core and skills.** The Go core surfaces data as files, but agents need to know those files exist and what they mean. Two layers handle this: (1) a **Noodle context preamble** injected by the spawner into every cook session — a lean map of `.noodle/` state files and their purpose, and (2) **skill-specific schemas** in each skill's `references/` directory documenting the exact data that skill reads and writes. The preamble says "here's what exists"; the skill references say "here's how to use it."
 - All skills live in `.agents/skills/`. No `skills/` stubs directory — users who want to scaffold skills can reference the Noodle repo directly.
 - Cook sessions are autonomous by default — Noodle passes flags to disable interactive prompts (e.g. `--no-input` for Claude, equivalent for Codex). Skills don't need to handle this themselves.
+- **Subtract before adding.** Delete code, tests, and schemas that no longer serve a purpose after changes. Redesign from first principles — don't bolt new behavior onto old structures.
+- **No backwards compatibility.** The project hasn't launched. Remove schema versioning (e.g. in loop fixture tests), compatibility shims, and any other complexity that only exists for migration. Build for the current design, not previous iterations.
 - Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
 - Use the `skill-creator` skill when writing each skill to ensure quality and consistency.
 
