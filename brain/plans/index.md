@@ -5,3 +5,4 @@
 - [ ] [[plans/23-task-type-skill-suite/overview]]
 
 - [ ] [[plans/25-tui-revamp/overview]]
+- [ ] [[plans/26-context-usage-tracking/overview]]
