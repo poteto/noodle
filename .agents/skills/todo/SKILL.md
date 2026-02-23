@@ -14,7 +14,7 @@ All mutations go through the CLI to ensure consistent ID allocation and format v
 ### Add an item
 
 ```bash
-go -C noodle run . todo add --section "Section Name" "Item description"
+noodle todo add --section "Section Name" "Item description"
 ```
 
 Omit `--section` to append to the last section. The CLI auto-assigns the next available ID and prints it.
@@ -22,7 +22,7 @@ Omit `--section` to append to the last section. The CLI auto-assigns the next av
 ### Mark an item done
 
 ```bash
-go -C noodle run . todo done ID
+noodle todo done ID
 ```
 
 Wraps the item in `~~strikethrough~~`. The item remains in the file for history.
@@ -30,13 +30,13 @@ Wraps the item in `~~strikethrough~~`. The item remains in the file for history.
 ### Move an item to another section
 
 ```bash
-go -C noodle run . todo move --section "Target Section" ID
+noodle todo move --section "Target Section" ID
 ```
 
 ### Edit an item's description
 
 ```bash
-go -C noodle run . todo edit ID "New description"
+noodle todo edit ID "New description"
 ```
 
 Preserves wikilinks if included in the new description.
@@ -44,7 +44,7 @@ Preserves wikilinks if included in the new description.
 ### List all items
 
 ```bash
-go -C noodle run . todo list
+noodle todo list
 ```
 
 Shows active items grouped by section with their IDs.

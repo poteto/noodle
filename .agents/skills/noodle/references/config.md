@@ -2,16 +2,7 @@
 
 ## File Names and Locations
 
-Noodle loads config in this precedence order:
-
-1. Global: `~/.noodle/config.toml`
-2. Project: `<project>/.noodle/config.toml`
-
-Later files override earlier files (`project` overrides `global`).
-
-Legacy fallback is supported for both locations:
-- `~/.noodle/config`
-- `<project>/.noodle/config`
+Noodle loads config from `noodle.toml` in the project root. There is no global config file.
 
 There is no `.noodlerc` file in Noodle.
 
@@ -223,7 +214,7 @@ Full matrix spec:
 ## Example
 
 ```toml
-# ~/.noodle/config.toml
+# noodle.toml
 [cook]
 autonomy = "standard"
 audit_interval = "72h"
@@ -276,7 +267,7 @@ reasoning_level = "high"
 
 1. `mkdir -p ~/.noodle`
 2. Backup if the file exists.
-3. Edit `~/.noodle/config.toml`.
+3. Edit `noodle.toml`.
 4. For project-only overrides, edit `<project>/.noodle/config.toml`.
 5. Validate with: `cd noodle && go run . help`
 6. Parse-test with `cook.LoadConfig("$HOME/.noodle/config.toml")`.

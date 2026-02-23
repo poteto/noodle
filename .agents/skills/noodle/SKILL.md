@@ -1,6 +1,6 @@
 ---
 name: noodle
-description: Document and operate the Noodle CLI. Use when listing/explaining Noodle commands, finding command flags, or creating/editing the Noodle config file at ~/.noodle/config.toml (often misremembered as .noodlerc).
+description: Document and operate the Noodle CLI. Use when listing/explaining Noodle commands, finding command flags, or creating/editing the Noodle config file at noodle.toml (project root).
 ---
 
 # Noodle
@@ -10,36 +10,31 @@ Use this skill to answer command questions about Noodle and to safely create or 
 ## Workflow
 
 1. Query the CLI directly first:
-   - `go run -C noodle . commands --json`
-   - For one command: `go run -C noodle . commands --json --command cook`
-2. If behavior looks inconsistent, verify against `noodle/main.go` and the corresponding `noodle/cmd_*.go` file.
+   - `noodle commands --json`
+   - For one command: `noodle commands --json --command cook`
+2. If behavior looks inconsistent, verify against `main.go` and the corresponding `cmd_*.go` file.
 3. Read `references/config.md` before creating or editing config.
-4. If the user says `.noodlerc`, correct to `~/.noodle/config.toml` (legacy `~/.noodle/config` is still supported).
+4. If the user says `.noodlerc`, correct to `noodle.toml` (project root).
 
 ## Command Lookup
 
-- Use `go run -C noodle . commands --json` as the source of truth.
-- Use `go run -C noodle . commands --json --command \"cook log\"` for focused lookup.
-- For exact flags in the current code, run `cd noodle && go run . <command> -h`.
-- For cook log/status, use:
-  - `cd noodle && go run . cook status`
-  - `cd noodle && go run . cook log -h`
+- Use `noodle commands --json` as the source of truth.
+- Use `noodle commands --json --command "cook log"` for focused lookup.
+- For exact flags in the current code, run `noodle <command> -h`.
 
 ## Config Workflow
 
-1. Confirm file path: `~/.noodle/config.toml` (project overrides: `<project>/.noodle/config.toml`).
-2. Ensure directory exists: `mkdir -p ~/.noodle`.
-3. If editing existing config, back it up first:
-   - `cp ~/.noodle/config.toml ~/.noodle/config.toml.bak.$(date +%Y%m%d-%H%M%S)`
-4. Edit key/value lines using the schema in `references/config.md`.
-5. Keep TOML syntax strict:
-   - Use tables for grouped config (for example `[model]`, `[entity.ceo]`, `[task.execute]`)
+1. Confirm file path: `noodle.toml` in the project root.
+2. If editing existing config, back it up first:
+   - `cp noodle.toml noodle.toml.bak.$(date +%Y%m%d-%H%M%S)`
+3. Edit key/value lines using the schema in `references/config.md`.
+4. Keep TOML syntax strict:
+   - Use tables for grouped config (for example `[routing]`, `[prioritize]`, `[concurrency]`)
    - `#` starts a comment
    - Quote strings (`"safe"`, `"/path"`, `"30s"`)
    - Leave numbers and booleans unquoted (`50`, `20.0`, `true`)
-6. If asked to validate, parse with Noodle’s loader by running a short Go snippet from the `noodle/` module.
+5. If asked to validate, run `noodle start` — it reports diagnostics.
 
 ## References
 
-- `references/commands.md`
 - `references/config.md`
