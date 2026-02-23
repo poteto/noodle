@@ -30,7 +30,6 @@ func (c *Card) Render(width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
-		Background(t.CardBG).
 		Foreground(t.Text).
 		Padding(0, 1).
 		Width(width - 2) // subtract border
