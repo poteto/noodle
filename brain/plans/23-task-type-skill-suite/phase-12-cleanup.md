@@ -1,6 +1,6 @@
 Back to [[plans/23-task-type-skill-suite/overview]]
 
-# Phase 13: Cleanup — Delete Old Skills, Rename, Go Code, Update Stubs
+# Phase 12: Cleanup — Delete Old Skills, Rename, Go Code
 
 ## Goal
 
@@ -17,7 +17,7 @@ Remove these directories entirely:
 - `.agents/skills/manager/`
 - `.agents/skills/operator/`
 
-These have been fully extracted — all valuable patterns are now encoded in the new task-type skills (Phases 1–9).
+These have been fully extracted — all valuable patterns are now encoded in the new task-type skills (Phases 1–8).
 
 ### Remove verify task type from registry
 
@@ -35,7 +35,7 @@ The verify task type (`internal/taskreg/registry.go`) is no longer needed — th
 
 Mark todo items as done:
 - #11 (Remove old role-based skills)
-- #12 (Update worktree skill — done in Phase 12)
+- #12 (Update worktree skill — done in Phase 11)
 - #14 (Evaluate interactive skill overlap — addressed by the dual-mode pattern)
 
 ## Verification

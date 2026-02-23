@@ -9,7 +9,7 @@ Rewrite `.agents/skills/prioritize/SKILL.md` to incorporate CEO scheduling judgm
 ## Current State
 
 - `.agents/skills/prioritize/SKILL.md` — functional queue builder but lacks scheduling judgment framework, rationale depth, and principle grounding
-- `skills/sous-chef/` — old name (renamed in Phase 13)
+- `skills/sous-chef/` — old name (renamed in Phase 12)
 
 ## Patterns to Incorporate
 
@@ -42,16 +42,23 @@ From **CEO**:
 - Include `references/mise-schema.md` documenting the mise brief fields (backlog items, plans, sessions, history, resources, routing) so the agent knows exactly what data is available
 - Include `references/queue-schema.md` documenting the queue.json output format the agent must produce
 
+### Plans as precondition
+
+The prioritize skill only schedules execution for backlog items that have a linked plan. Unplanned items are excluded from the queue — they require user action first. The skill should note which items were skipped and why, so the TUI can surface "action needed" indicators.
+
+This means the prioritize skill needs plan data in the mise brief to check for plan linkage. The mise brief already includes plan metadata (Phase 9); the skill cross-references backlog items against plans to determine which are executable.
+
 ### Situational awareness
 
-The prioritize agent doesn't need an explicit "reason" passed by Go infrastructure. Instead, it infers context from the mise brief data:
+The prioritize agent infers context from the mise brief data — no explicit "reason" passed by Go infrastructure:
 
 - **Empty queue + no active sessions** → startup: full survey, build from scratch
 - **Quality rejection in recent history** → rescope the item, deprioritize, or surface to chef
-- **New backlog items not in queue** → slot them into the existing queue
+- **New backlog items not in queue** → slot them into the existing queue (if they have plans)
 - **New plan phases not yet scheduled** → schedule phases relative to existing items
+- **Unplanned backlog items** → skip, note as needing user action
 
-The mise brief already contains backlog state, active sessions, recent history, and plan data. The skill reads these files and makes its own judgment — no Go-level change detection or reason routing needed. This keeps the Go core as a thin data assembler and lets the skill handle all scheduling intelligence.
+The mise brief already contains backlog state, active sessions, recent history, and plan data. The skill reads these files and makes its own judgment — no Go-level change detection or reason routing needed.
 
 ## Data Structures
 
@@ -68,3 +75,4 @@ The mise brief already contains backlog state, active sessions, recent history, 
   - Failed items are flagged for rescoping, not blindly retried
   - Model routing uses cheapest viable option
   - Agent infers context from brief state (empty queue → full survey, quality rejections → rescoping)
+  - Unplanned backlog items are excluded from the queue (plans-as-precondition)

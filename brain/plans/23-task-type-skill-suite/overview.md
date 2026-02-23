@@ -26,7 +26,7 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - Make planning native: remove plan adapter, add minimal Go reader for `brain/plans/` metadata, add `noodle plan` CLI commands
 - Add model routing recommendations to plan phase files
 - Plan skill updates backlog item to link back to created plan
-- Add interactive TUI planning session (chef chats with sous-chef)
+- Plans as precondition: prioritize skill only schedules items that have plans, TUI shows "action needed" for unplanned items
 - Add Noodle context preamble to cook session spawner (state model map for agents)
 - Each skill includes relevant `.noodle/` schemas in `references/` directory
 - Fix stale CLI references across all existing skills
@@ -46,6 +46,7 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - **Context injection bridges core and skills.** The Go core surfaces data as files, but agents need to know those files exist and what they mean. Two layers handle this: (1) a **Noodle context preamble** injected by the spawner into every cook session — a lean map of `.noodle/` state files and their purpose, and (2) **skill-specific schemas** in each skill's `references/` directory documenting the exact data that skill reads and writes. The preamble says "here's what exists"; the skill references say "here's how to use it."
 - All skills live in `.agents/skills/`. No `skills/` stubs directory — users who want to scaffold skills can reference the Noodle repo directly.
 - Cook sessions are autonomous by default — Noodle passes flags to disable interactive prompts (e.g. `--no-input` for Claude, equivalent for Codex). Skills don't need to handle this themselves.
+- **Plans are the user's responsibility.** Noodle never auto-plans. The user creates plans outside Noodle (using their own agent + the plan skill) before running `noodle cook`. The prioritize skill only schedules execution for backlog items that have a linked plan. Unplanned items are surfaced in the TUI as "action needed" — Noodle shows the gap but doesn't try to fill it.
 - **Subtract before adding.** Delete code, tests, and schemas that no longer serve a purpose after changes. Redesign from first principles — don't bolt new behavior onto old structures.
 - **No backwards compatibility.** The project hasn't launched. Remove schema versioning (e.g. in loop fixture tests), compatibility shims, and any other complexity that only exists for migration. Build for the current design, not previous iterations.
 - Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
@@ -111,12 +112,11 @@ Patterns worth preserving from the old role-based skills:
 
 9. [[plans/23-task-type-skill-suite/phase-09-native-planning]] — Remove plan adapter, minimal Go reader + CLI commands
 10. [[plans/23-task-type-skill-suite/phase-10-plan-skill]] — Update plan skill for native commands + model routing + backlog link-back
-11. [[plans/23-task-type-skill-suite/phase-11-tui-planning]] — Interactive TUI planning session (chef chats with sous-chef)
 
 ### Cleanup
 
-12. [[plans/23-task-type-skill-suite/phase-12-stale-references]] — Fix stale CLI references across remaining skills
-13. [[plans/23-task-type-skill-suite/phase-13-cleanup]] — Delete old skills, rename sous-chef→prioritize, Go code updates
+11. [[plans/23-task-type-skill-suite/phase-11-stale-references]] — Fix stale CLI references across remaining skills
+12. [[plans/23-task-type-skill-suite/phase-12-cleanup]] — Delete old skills, rename sous-chef→prioritize, Go code updates
 
 ## Verification
 
@@ -133,6 +133,7 @@ Patterns worth preserving from the old role-based skills:
 - Execute skill is loaded alongside adapter-configured skill for execute task type
 - Noodle context preamble is injected into all cook sessions (agents can locate `.noodle/` state files)
 - Skills that read/write `.noodle/` state include schema docs in `references/` (prioritize, quality, debate)
-- TUI planning session produces valid plans
+- Prioritize skill skips unplanned backlog items (plans-as-precondition)
+- TUI shows "action needed" indicator for unplanned items
 - No remaining references to stale CLI commands
 - `go vet ./...` and `go test ./...` pass

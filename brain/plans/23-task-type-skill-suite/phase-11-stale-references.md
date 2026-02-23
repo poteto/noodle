@@ -1,6 +1,6 @@
 Back to [[plans/23-task-type-skill-suite/overview]]
 
-# Phase 12: Fix Stale References Across Remaining Skills
+# Phase 11: Fix Stale References Across Remaining Skills
 
 ## Goal
 
@@ -19,7 +19,7 @@ Update all existing skills (other than plan, which was updated in Phase 10) that
 
 ### `.agents/skills/reflect/SKILL.md`
 - References old role-based skills in routing examples: "update `.agents/skills/manager/SKILL.md`", "update `.agents/skills/director/SKILL.md`"
-- These skills are deleted in Phase 13
+- These skills are deleted in Phase 12
 
 ### `.agents/skills/worktree/SKILL.md`
 - References `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree` (old binary path)
