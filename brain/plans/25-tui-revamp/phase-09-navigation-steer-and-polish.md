@@ -36,18 +36,28 @@ Fix: add `buildResumeContext(runtimeDir, sessionID)` in `loop/cook.go` that read
 
 **UI polish:** Show the steer overlay as a bottom drawer (not full modal). The active tab content stays visible above, steer input renders below with mention dropdown above the input line.
 
-### `tui/task_creator.go` — New file: inline task creator
+### `tui/task_editor.go` — New file: inline task creator/editor
 
-Opens with `n` from any tab. A bottom drawer overlay (like steer) with fields:
-- **Title** — text input for the task description
-- **Type** — cycle through task types (Execute, Plan, Quality, Reflect, etc.)
-- **Priority** — optional hint for the prioritize agent (high/normal/low)
+Dual-purpose UI — creates new tasks (`n` from any tab) and edits existing ones (`e` on selected queue item). Same bottom drawer overlay as steer. Fields map to `QueueItem`:
 
-On submit: writes an `enqueue` control command (added in Phase 7) with title, type, and priority. The loop handles the adapter call — the TUI never calls adapters directly. The prioritize agent picks it up on the next cycle.
+- **Title** — text input (`bubbles/textinput`)
+- **Type** — cycle through task types (Execute, Plan, Quality, Reflect, Prioritize, etc.)
+- **Model** — cycle through available models (reads routing config for options, e.g. `claude-opus-4-6`, `claude-sonnet-4-6`, `gpt-5.3-codex`)
+- **Provider** — cycle through providers (`claude`, `codex`). Auto-set when model changes.
+- **Skill** — text input for skill name override (optional, defaults from task type)
+- **Priority** — cycle (high/normal/low), hint for prioritize agent
 
-Key type: `TaskCreator` struct with `bubbles/textinput` for title, selected type, selected priority. Methods: `Open()`, `Close()`, `Submit() tea.Cmd`, `Render(width) string`.
+**Create mode** (`n`): all fields empty/default. On submit: writes `enqueue` control command (added in Phase 7) with all field values. The loop handles the adapter call — the TUI never calls adapters directly.
+
+**Edit mode** (`e` on queue item): fields prefilled from the selected `QueueItem`. On submit: writes `edit-item` control command with item ID and updated fields. The loop patches the queue item in place.
+
+Key type: `TaskEditor` struct with text inputs for title/skill, cycle selectors for type/model/provider/priority, optional item ID (nil = create, set = edit). Methods: `OpenNew()`, `OpenEdit(item QueueItem)`, `Close()`, `Submit() tea.Cmd`, `Render(width) string`.
 
 Tab cycles between fields. Enter submits. Esc cancels.
+
+### `loop/control.go` — Add `edit-item` control action
+
+Extends the control protocol (Phase 7 additions) with `edit-item`: takes item ID + field updates, patches the item in `queue.json`. Only works for items not currently cooking.
 
 ### `loop/cook.go` — Steer resume context (non-TUI change)
 
@@ -83,7 +93,10 @@ Replace static help with overlay showing keybindings for current tab. Use `bubbl
 - Steer: spacebar works after autocomplete
 - Steer: @mention works mid-message (e.g., "focus on tests @cook-001 and keep it clean")
 - Steer: opens from any tab with backtick
-- Task creator: opens, tab cycles fields, enter submits, esc cancels
+- Task editor create: `n` opens empty, tab cycles all 6 fields, ←→ cycles options, enter submits
+- Task editor edit: `e` on queue item opens prefilled, fields match item, enter saves changes
+- Task editor: esc cancels without changes
+- Edit-item control action patches queue item, rejects edit on cooking items
 - Help shows correct keys per tab
 - Rail renders at narrow widths
 
@@ -102,7 +115,8 @@ Replace static help with overlay showing keybindings for current tab. Use `bubbl
 ### Runtime
 - Full keyboard walkthrough: tabs, scroll, expand, steer, task creator, help, quit
 - Steer: type `` ` ``, type "@cook" → autocomplete appears, select, press space → space works, type more text with another @mention → autocomplete triggers again
-- Task creator: press `n`, type title, tab to type, tab to priority, enter submits, verify item appears in queue on next refresh
+- Task editor create: press `n`, tab through all fields (title, type, model, provider, skill, priority), ←→ cycles options, enter submits, verify item appears in queue
+- Task editor edit: select queue item, press `e`, verify fields prefilled, change model to sonnet, enter saves, verify queue updated
 - Double ctrl+c: first press shows message, second quits. Wait 2s, need to press twice again
 - Shimmer visible when agents active
 - Narrow (< 80): rail collapses

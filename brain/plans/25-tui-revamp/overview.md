@@ -25,7 +25,7 @@ This plan redesigns the TUI as a **command center**: persistent left rail (agent
 - Review flow: quality verdicts as actionable feed cards (non-full autonomy only)
 - Reusable components: cards, pills/buttons, tab bar, autonomy slider
 - Steer: backtick (`` ` ``) opens steer overlay from any tab, fix spacebar bug and mid-message @mentions
-- Task creation: `n` opens inline task creator for manual queue additions
+- Task editor: `n` creates new task, `e` edits selected queue item. Same overlay, all QueueItem fields (title, type, model, provider, skill, priority)
 - `glamour` integration for rendering brain notes and plans in-TUI
 
 **Out of scope:**
@@ -130,7 +130,7 @@ The human chose **4B: Command Center with Tabs** for the balance of overview (ra
                         └────┴──────────────┴──────────────────┴───────────┘
                                                               48 more ↓
 
-  j/k navigate · enter detail · n new task · ` steer
+  j/k navigate · enter detail · e edit · n new task · ` steer
 ```
 
 ### Brain Tab
@@ -230,32 +230,32 @@ The human chose **4B: Command Center with Tabs** for the balance of overview (ra
 
 ```
 
-### Task Creator Overlay (bottom drawer, from any tab)
+### Task Editor Overlay (bottom drawer — create or edit)
 
 ```
   noodle cooking                                          stable · $1.24
 
- ┌─ Agents ─────────┐   Feed   Queue   Brain   Config
- │                   │         ─────
+ ┌─ Agents ─────────┐   Feed  Queue   Brain   Config
+ │                   │        ─────
  │  ● quality-001    │
- │    opus · 2m14s   │   3/62 cooked  ████░░░░░░░░░░░░░░░░ 5%
- │                   │
- │  ● verify-002     │  ┌────┬──────────────┬──────────────────┬───────────┐
- │    codex · 1m08s  │  │  # │ Type         │ Item             │ Status    │
- │                   │  ├────┼──────────────┼──────────────────┼───────────┤
- │  ✓ reflect-003    │  │  1 │ Execute      │ Arrow bindings   │ reviewing │
- │    done · 42s     │  │  2 │ Execute      │ AI canvas        │ reviewing │
- │                   │  │  3 │ Execute      │ AI-suggested r…  │ cooking   │
- │                   │  └────┴──────────────┴──────────────────┴───────────┘
- ├───────────────────┤
- │  3 active         │  ─────────────────────────────────────────────
- │  59 queued        │   New Task
- │  $1.24 / $50      │   ╌╌╌╌╌╌╌╌
- │  $0.82/hr         │   Title     Fix auth session expiry handling|
- └───────────────────┘   Type      ◀ Execute ▶
-                         Priority  ◀ normal  ▶
+ │    opus · 2m14s   │  ┌────┬──────────────┬──────────────────┬───────────┐
+ │                   │  │  # │ Type         │ Item             │ Status    │
+ │  ● verify-002     │  ├────┼──────────────┼──────────────────┼───────────┤
+ │    codex · 1m08s  │  │▸ 1 │ Execute      │ Arrow bindings   │ reviewing │
+ │                   │  │  2 │ Execute      │ AI canvas        │ reviewing │
+ │  ✓ reflect-003    │  └────┴──────────────┴──────────────────┴───────────┘
+ │    done · 42s     │
+ │                   │  ─────────────────────────────────────────────
+ │                   │   Edit Task #1                         (e to edit)
+ ├───────────────────┤   ╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │  3 active         │   Title     Arrow key bindings for canvas|
+ │  59 queued        │   Type      ◀ Execute  ▶
+ │  $1.24 / $50      │   Model     ◀ claude-opus-4-6  ▶
+ │  $0.82/hr         │   Provider  ◀ claude  ▶
+ └───────────────────┘   Skill     execute
+                         Priority  ◀ high  ▶
 
-  tab cycle fields · enter submit · esc cancel
+  tab cycle · ←→ adjust · enter save · esc cancel
 ```
 
 ## Color Palette
@@ -315,6 +315,7 @@ The queue never stops. In `review` mode, completed work sits in worktrees awaiti
 |-----|--------|
 | `j/k` | Navigate rows |
 | `enter` | Show item detail (plan phases, rationale) |
+| `e` | Edit selected item (opens task editor prefilled) |
 | `g` | Grab / reorder (future) |
 
 ### Brain tab
@@ -344,12 +345,13 @@ The queue never stops. In `review` mode, completed work sits in worktrees awaiti
 | `enter` | Select mention / submit instruction |
 | `esc` | Close mentions → close steer |
 
-### Task creator overlay
+### Task editor overlay (create & edit)
 
 | Key | Action |
 |-----|--------|
-| `tab` | Cycle between fields (title, type, priority) |
-| `enter` | Submit task to queue |
+| `tab` | Cycle between fields (title, type, model, provider, skill, priority) |
+| `←/→` | Cycle options on selector fields (type, model, provider, priority) |
+| `enter` | Submit (create new / save edit) |
 | `esc` | Cancel and close |
 
 ## Phases
@@ -374,5 +376,5 @@ The queue never stops. In `review` mode, completed work sits in worktrees awaiti
 - Keyboard navigation works across all tabs
 - Autonomy dial changes feed behavior in real-time
 - Steer: @mention works mid-message, spacebar works after autocomplete, steered session includes resume context from event log
-- Task creator: submitted task appears in queue
+- Task editor: create submits new task to queue, edit prefills and saves changes
 - Double ctrl+c quit confirmation works
