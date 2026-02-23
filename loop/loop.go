@@ -518,11 +518,16 @@ func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
 	nextAttempt := cook.attempt + 1
+	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
+	if err != nil {
+		info = recover.RecoveryInfo{SessionID: cook.session.ID(), ExitReason: reason}
+	}
+	resolvedReason := retryFailureReason(reason, info)
 	if nextAttempt > l.config.Recovery.MaxRetries {
 		if isPrioritizeItem(cook.queueItem) {
-			return fmt.Errorf("prioritize failed after retries: %s", strings.TrimSpace(reason))
+			return fmt.Errorf("prioritize failed after retries: %s", resolvedReason)
 		}
-		if err := l.markFailed(cook.queueItem.ID, reason); err != nil {
+		if err := l.markFailed(cook.queueItem.ID, resolvedReason); err != nil {
 			return err
 		}
 		_ = l.skipQueueItem(cook.queueItem.ID)
@@ -531,18 +536,34 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		}
 		return nil
 	}
-	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
-	if err != nil {
-		info = recover.RecoveryInfo{SessionID: cook.session.ID(), ExitReason: reason}
-	}
 	if strings.TrimSpace(info.ExitReason) == "" {
-		info.ExitReason = reason
+		info.ExitReason = resolvedReason
 	}
 	resume := recover.BuildResumeContext(info, nextAttempt, l.config.Recovery.MaxRetries)
 	if strings.TrimSpace(cook.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}
 	return l.spawnCook(ctx, cook.queueItem, nextAttempt, resume.Summary)
+}
+
+func retryFailureReason(base string, info recover.RecoveryInfo) string {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		base = "cook failed"
+	}
+
+	exitReason := strings.TrimSpace(info.ExitReason)
+	if exitReason == "" {
+		return base
+	}
+	if strings.EqualFold(exitReason, "session exited without explicit reason") {
+		return base
+	}
+
+	if strings.HasPrefix(strings.ToLower(base), "cook exited with status") {
+		return exitReason
+	}
+	return base
 }
 
 func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) {

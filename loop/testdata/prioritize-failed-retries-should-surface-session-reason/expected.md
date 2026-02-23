@@ -97,7 +97,7 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
       }
     },
     "state-05": {
-      "cycle_error": "runtime issue unresolved after 3 repair attempt(s) (loop.collect): prioritize failed after retries: cook exited with status failed",
+      "cycle_error": "runtime issue unresolved after 3 repair attempt(s) (loop.collect): prioritize failed after retries: agent failed to start: missing auth token",
       "transition": "paused",
       "runtime_repair_in_flight": false,
       "repair_task_scheduled": true,
