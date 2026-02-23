@@ -14,7 +14,7 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
   3. Generate minimal `.noodle.toml` if missing — just enough to start: `[routing.defaults]` with provider/model, `[skills]` with default paths, `[autonomy]` set to `"review"`. Adapter config left empty — the agent sets this up later guided by the noodle skill.
   4. Log what was created so the user/agent can see what happened
 
-- **`cmd_start.go`** (or equivalent) — call `EnsureProjectStructure` before the existing config load and validation. If anything was scaffolded, log it and continue normally.
+- **`root.go`** — call `EnsureProjectStructure` in `PersistentPreRunE` before `config.Load`. The root pre-run is where config loading happens (`root.go:25`), so scaffolding must run there to ensure `.noodle.toml` exists before the loader reads it. Gate on the `start` command only — other commands (e.g., `skills list`, `debug`) should not scaffold.
 
 **Idempotency**: every check is "if not exists, create." Safe to run on already-configured projects — no-op.
 

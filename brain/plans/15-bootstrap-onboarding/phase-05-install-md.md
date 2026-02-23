@@ -10,7 +10,7 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 
 - **`INSTALL.md`** (new, repo root) — structured for agents to follow sequentially:
   1. **Prerequisites** — tmux, Claude Code or Codex CLI
-  2. **Install binary** — `brew install poteto/tap/noodle` for macOS, `go install` as fallback
+  2. **Install binary** — `brew install poteto/tap/noodle` for macOS (only supported method at launch; `go install` deferred to todo #7)
   3. **What is Noodle** — high-level vision (2-3 paragraphs):
      - Everything is a file: queue.json, mise.json, verdicts, control.ndjson — no hidden state
      - Skills are the single extension point — they drive everything, they're how you customize Noodle

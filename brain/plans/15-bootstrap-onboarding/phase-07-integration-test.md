@@ -8,18 +8,26 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
 
 ## Changes
 
-- **`startup/firstrun_test.go`** (new, or extend existing) — integration test:
+- **`startup/firstrun_test.go`** (new, or extend existing) — unit test for `EnsureProjectStructure`:
   1. Create a temp directory
-  2. Run `EnsureProjectStructure` (from Phase 3)
+  2. Run `EnsureProjectStructure`
   3. Assert: `brain/`, `.noodle/`, `.noodle.toml` all created with expected content
   4. Run `config.Load` + `config.Validate` on the generated config
   5. Assert: no fatal diagnostics (repairable diagnostics for missing adapters/skills are expected and fine)
   6. Deliberately delete a required directory, re-run `EnsureProjectStructure`
   7. Assert: directory recreated (idempotency)
 
+- **CLI integration test** (new) — test the real command path, not just the library function:
+  1. Build the `noodle` binary to a temp path
+  2. Run `noodle start --once` in a fresh temp directory (no existing config, no brain, no skills)
+  3. Assert: `PersistentPreRunE` in `root.go` triggers scaffolding before `config.Load`
+  4. Assert: exit code is 0 (or expected non-fatal), scaffolded files exist
+  5. Run again — assert idempotent (no files recreated, same output)
+  This tests the boundary path where `PersistentPreRunE` gates the `start` command, not just the library function in isolation.
+
 - **`generate/skill_noodle_test.go`** — verify the snapshot test from Phase 4 is part of CI. If the noodle skill is out of date, CI fails.
 
-- **CI workflow** (`.github/workflows/test.yml` or equivalent) — ensure both the integration test and the skill snapshot test run on every PR.
+- **CI workflow** (`.github/workflows/test.yml` or equivalent) — ensure the unit test, CLI integration test, and skill snapshot test all run on every PR.
 
 ## Routing
 

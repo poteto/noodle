@@ -11,8 +11,11 @@ Use the `skill-creator` skill when implementing this phase.
 ## Changes
 
 - **`generate/skill_noodle.go`** (new) — generator that produces `SKILL.md` content from:
-  1. **Config schema** — reflect over `config.Config` struct, extract field names, types, defaults, TOML keys, and doc comments. Render as a config reference table.
-  2. **CLI commands** — extract from command registrations (cobra or equivalent). Render as a command reference table.
+  1. **Config schema** — two sources required:
+     - **Field metadata** (TOML keys, types, section nesting): use `reflect` on `config.Config` struct tags.
+     - **Doc comments and descriptions**: use `go/ast` + `go/parser` to parse `config/config.go` source and extract comments on struct fields. Reflection alone cannot recover comments.
+     - **Defaults**: read from `config.DefaultConfig()` return value (not from struct tags). Some defaults are also applied in `Parse()` via metadata-based fill logic (`config.go:240`); document both sources.
+  2. **CLI commands** — extract from cobra command tree (`root.Commands()`). Render as a command reference table.
   3. **Prose sections** — stored as Go template strings in the generator. These are human-authored but live in Go code so the generator is the single source:
      - Adapter deep dive: skill+scripts pattern, NDJSON contract, guides for markdown, GitHub Issues, Linear
      - Hook installation: brain injection script, auto-index script, how to add to `.claude/settings.json`

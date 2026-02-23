@@ -9,7 +9,7 @@ Users on macOS can install Noodle with `brew install poteto/tap/noodle`. This is
 ## Changes
 
 - **New repo: `poteto/homebrew-tap`** — Homebrew tap repository with a `noodle.rb` formula.
-- **`.goreleaser.yml`** (new, repo root) — GoReleaser config to build cross-platform binaries and publish to the tap on GitHub release.
+- **`.goreleaser.yml`** (new, repo root) — GoReleaser config to build Darwin (amd64 + arm64) binaries and publish to the tap on GitHub release. Limit to macOS for launch; add Linux/Windows targets when those package managers ship.
 - **`.github/workflows/release.yml`** (new) — GitHub Actions workflow: on tag push, run GoReleaser, which builds binaries and updates the Homebrew formula.
 - **`README.md`** — update Quick Start to show `brew install poteto/tap/noodle`.
 

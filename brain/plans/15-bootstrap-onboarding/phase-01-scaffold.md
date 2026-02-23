@@ -4,7 +4,7 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 
 ## Goal
 
-Remove the stale Plan 1 Phase 14 bootstrap plan artifact. That design (bootstrap-as-skill) was superseded by the `noodle init` approach in this plan.
+Remove the stale Plan 1 Phase 14 bootstrap plan artifact. That design (bootstrap-as-skill) was superseded by the `noodle start` first-run approach in this plan.
 
 ## Changes
 
