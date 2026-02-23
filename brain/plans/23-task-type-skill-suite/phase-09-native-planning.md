@@ -50,6 +50,7 @@ The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.
 
 ### Config update
 - Remove `[adapters.plans]` section from `noodle.toml` and `config/config.go`
+- Remove plan adapter entries from `config.defaultAdapters()`
 - Plans are always `brain/plans/` — no config needed
 
 ## Data Structures

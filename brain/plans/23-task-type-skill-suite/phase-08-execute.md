@@ -32,6 +32,7 @@ From **Manager** (for phases that need delegation):
 - [[principles/trust-the-output-not-the-report]] — inspect artifacts (git diff --stat ALL files), not sub-agent summaries
 - [[principles/cost-aware-delegation]] — use sub-agents when beneficial, self-execute when simpler
 - [[principles/guard-the-context-window]] — delegate large reads to sub-agents
+- [[principles/boundary-discipline]] — only change what the phase specifies, flag anything else
 - [[principles/outcome-oriented-execution]] — optimize for the end state, not smooth intermediate steps
 
 ## Changes

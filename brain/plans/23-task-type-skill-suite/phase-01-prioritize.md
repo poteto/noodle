@@ -53,9 +53,13 @@ The prioritize agent receives a `reason` in its input that explains _why_ it was
 
 The reason and any associated context (e.g. which todo changed, which plan was created) are included in the mise brief so the agent can focus its judgment appropriately.
 
+### Go infrastructure: Brief.Reason field
+
+The `mise/types.go:Brief` struct currently has no `Reason` field. Add a `Reason string` field (and optional `ReasonContext` for associated data like which todo changed) so the mise builder can pass the prioritize reason through to the skill via `mise.json`.
+
 ### Push-based backlog notification (Go infrastructure)
 
-When the backlog adapter reports mutations (new items, edits, completions), the loop should automatically insert a prioritize task at the top of the queue with reason `backlog_changed`. This is a Go code change in the loop — not in the skill itself. The loop detects backlog changes by diffing the adapter sync output against the previous state.
+When the backlog adapter reports mutations (new items, edits, completions), the loop should automatically insert a prioritize task at the top of the queue with reason `backlog_changed`. This is a Go code change in the loop — not in the skill itself. The loop detects backlog changes by diffing the adapter sync output against the previous state. See Phase 9 for the full push-based change detection implementation.
 
 ## Data Structures
 

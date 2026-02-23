@@ -62,8 +62,9 @@ Patterns worth preserving from the old role-based skills:
 | CTO | Advocate, don't block — preserve momentum | quality |
 | Manager | "Claims are promises, not proof" — verify artifacts | quality, execute |
 | Manager | git diff --stat ALL files, not just claimed | quality, execute |
-| Operator | Decompose → Implement → Verify → Commit flow | execute |
-| Operator | Worktree isolation, lint-before-commit | execute |
+| Operator | Decompose → Implement → Verify → Commit flow | execute, oops |
+| Operator | Worktree isolation, lint-before-commit | execute, oops |
+| Operator | Brain update on fix — capture novel gotchas | debugging |
 | Manager | Parallel by default — sub-agents for independent work | execute |
 | Manager | Minimal-context workers — front-load context | execute |
 
@@ -84,7 +85,7 @@ Patterns worth preserving from the old role-based skills:
 | subtract-before-you-add | meditate, prioritize |
 | exhaust-the-design-space | debate |
 | boundary-discipline | execute |
-| outcome-oriented-execution | quality, execute |
+| outcome-oriented-execution | quality, execute, debate |
 | redesign-from-first-principles | meditate |
 
 ## Phases
