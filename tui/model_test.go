@@ -251,6 +251,85 @@ func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 	}
 }
 
+func TestDoubleCtrlCQuits(t *testing.T) {
+	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+
+	// First ctrl+c sets pending.
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	m = updated.(Model)
+	if !m.quitPending {
+		t.Fatal("expected quitPending after first ctrl+c")
+	}
+	if cmd == nil {
+		t.Fatal("expected timer command after first ctrl+c")
+	}
+
+	// Second ctrl+c within deadline should quit.
+	updated, cmd = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	m = updated.(Model)
+	_ = m
+	// tea.Quit returns a quit msg; we verify by checking cmd is non-nil.
+	if cmd == nil {
+		t.Fatal("expected quit command after second ctrl+c")
+	}
+}
+
+func TestDoubleCtrlCResetsAfterTimeout(t *testing.T) {
+	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+
+	// First ctrl+c.
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	m = updated.(Model)
+	if !m.quitPending {
+		t.Fatal("expected quitPending")
+	}
+
+	// Simulate timeout.
+	updated, _ = m.Update(quitResetMsg{})
+	m = updated.(Model)
+	if m.quitPending {
+		t.Fatal("expected quitPending to reset after timeout")
+	}
+}
+
+func TestSteerSpacebarWorks(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+	m.steerOpen = true
+	m.steerInput = "hello"
+
+	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeySpace})
+	if m.steerInput != "hello " {
+		t.Fatalf("steerInput after space = %q, want %q", m.steerInput, "hello ")
+	}
+}
+
+func TestSteerOpensWithBacktick(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+
+	m = pressRune(t, m, '`')
+	if !m.steerOpen {
+		t.Fatal("expected steerOpen after backtick")
+	}
+}
+
 func TestVerdictCardShowsActionsInReviewMode(t *testing.T) {
 	now := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
 	v := Verdict{

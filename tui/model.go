@@ -56,6 +56,9 @@ type Model struct {
 	steerMentionIndex int
 	steerMentionStart int
 	statusLine        string
+
+	quitPending  bool
+	quitDeadline time.Time
 }
 
 type Snapshot struct {
@@ -114,6 +117,7 @@ type EventLine struct {
 }
 
 type tickMsg time.Time
+type quitResetMsg struct{}
 
 type snapshotMsg struct {
 	snapshot Snapshot
@@ -187,6 +191,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.statusLine = fmt.Sprintf("%s command sent", msg.action)
 		return m, nil
+	case quitResetMsg:
+		m.quitPending = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	default:
@@ -201,7 +208,14 @@ func (m Model) View() string {
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyCtrlC:
-		return m, tea.Quit
+		if m.quitPending && m.now().Before(m.quitDeadline) {
+			return m, tea.Quit
+		}
+		m.quitPending = true
+		m.quitDeadline = m.now().Add(2 * time.Second)
+		return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+			return quitResetMsg{}
+		})
 	case tea.KeyEsc:
 		if m.steerOpen {
 			if m.steerMentionOpen {
@@ -266,7 +280,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.activeTab = TabConfig
 	case "?":
 		m.helpOpen = true
-	case "s":
+	case "`":
 		return m, m.openSteer()
 	case "j", "down":
 		if m.activeTab == TabFeed {
@@ -324,6 +338,10 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyBackspace, tea.KeyCtrlH:
 		m.steerInput = dropLastRune(m.steerInput)
+		m.refreshSteerMentions()
+		return m, nil
+	case tea.KeySpace:
+		m.steerInput += " "
 		m.refreshSteerMentions()
 		return m, nil
 	case tea.KeyRunes:

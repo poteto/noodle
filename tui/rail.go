@@ -61,6 +61,36 @@ func renderRail(snap Snapshot, now time.Time, height int) string {
 	return railStyle.Width(railWidth - 2).Height(h).Render(content)
 }
 
+// renderCompactRail renders a narrow icon-only rail for terminals < 80 cols.
+func renderCompactRail(snap Snapshot, height int) string {
+	var b strings.Builder
+	for _, s := range snap.Active {
+		b.WriteString(healthDot(s.Health))
+		b.WriteString("\n")
+	}
+	limit := 2
+	if len(snap.Recent) < limit {
+		limit = len(snap.Recent)
+	}
+	for i := 0; i < limit; i++ {
+		b.WriteString(successStyle.Render("✓"))
+		b.WriteString("\n")
+	}
+	b.WriteString(dimStyle.Render("─"))
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("%d", len(snap.Active)))
+	b.WriteString("\n")
+	b.WriteString(costStyle.Render(fmt.Sprintf("$%.0f", snap.TotalCostUSD)))
+	b.WriteString("\n")
+
+	content := b.String()
+	h := height - 2
+	if h < 4 {
+		h = 4
+	}
+	return railStyle.Width(6).Height(h).Render(content)
+}
+
 func shortModelName(model string) string {
 	short := map[string]string{
 		"claude-opus-4-6":      "opus",

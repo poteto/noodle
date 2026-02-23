@@ -6,12 +6,23 @@ func (m Model) renderLayout() string {
 		return titleStyle.Render("noodle") + " " + dimStyle.Render("loading...")
 	}
 
-	paneWidth := m.width - railWidth - 1
+	compact := m.width < 80
+	effectiveRailWidth := railWidth
+	if compact {
+		effectiveRailWidth = 8
+	}
+
+	paneWidth := m.width - effectiveRailWidth - 1
 	if paneWidth < 20 {
 		paneWidth = 20
 	}
 
-	rail := renderRail(m.snapshot, m.now(), m.height)
+	var rail string
+	if compact {
+		rail = renderCompactRail(m.snapshot, m.height)
+	} else {
+		rail = renderRail(m.snapshot, m.now(), m.height)
+	}
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
 	// Tab bar takes ~2 lines; steer/help/status take ~3 at most.
@@ -54,6 +65,9 @@ func (m Model) renderLayout() string {
 	if m.err != nil {
 		layout += "\n" + errorStyle.Render("error: "+m.err.Error())
 	}
+	if m.quitPending {
+		layout += "\n" + dimStyle.Render("press ctrl+c again to quit")
+	}
 
 	return layout
 }
@@ -61,7 +75,7 @@ func (m Model) renderLayout() string {
 func renderHelp() string {
 	return sectionStyle.Render("Keys") + "\n" +
 		dimStyle.Render("1-4") + " switch tabs  " +
-		dimStyle.Render("s") + " steer  " +
+		dimStyle.Render("`") + " steer  " +
 		dimStyle.Render("p") + " pause/resume  " +
 		dimStyle.Render("m") + " merge  " +
 		dimStyle.Render("x") + " reject  " +
