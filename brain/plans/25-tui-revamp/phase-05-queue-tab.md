@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 4: Queue Tab
+# Phase 5: Queue Tab
 
 ## Goal
 

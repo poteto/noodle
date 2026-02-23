@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 1: Scaffold — Layout Framework and Pastel Palette
+# Phase 2: Scaffold — Layout Framework and Pastel Palette
 
 ## Goal
 

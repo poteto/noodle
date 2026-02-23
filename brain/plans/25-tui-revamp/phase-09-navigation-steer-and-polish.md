@@ -43,7 +43,7 @@ Opens with `n` from any tab. A bottom drawer overlay (like steer) with fields:
 - **Type** — cycle through task types (Execute, Plan, Quality, Reflect, etc.)
 - **Priority** — optional hint for the prioritize agent (high/normal/low)
 
-On submit: writes a new item to the backlog via the backlog adapter (same mechanism the prioritize agent uses). The sous chef picks it up on the next cycle.
+On submit: writes an `enqueue` control command (added in Phase 7) with title, type, and priority. The loop handles the adapter call — the TUI never calls adapters directly. The prioritize agent picks it up on the next cycle.
 
 Key type: `TaskCreator` struct with `bubbles/textinput` for title, selected type, selected priority. Methods: `Open()`, `Close()`, `Submit() tea.Cmd`, `Render(width) string`.
 

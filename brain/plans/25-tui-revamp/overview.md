@@ -45,6 +45,9 @@ This plan redesigns the TUI as a **command center**: persistent left rail (agent
 - **Cache rendered output.** Cards, table rows, and list items cache their rendered string keyed by width.
 - **Use bubbles components.** `table` for Queue, `viewport` for Feed/Brain scrolling, `progress` for budget bar, `help` for keybindings, `spinner` for active agents. No tabs component exists in bubbles — build a simple tab bar.
 - **Use glamour for markdown.** Brain tab previews render plans/notes with `charmbracelet/glamour`. Width-constrained to right pane.
+- **Loop changes before UI.** The autonomy dial, merge/reject actions, and task creation all require loop-level changes (new control actions, pending-review state machine, `review.enabled` → `autonomy` migration). These loop changes are prerequisites baked into phases 7-9, not separate plan items — but they must land before the TUI features that depend on them.
+- **Replace `review.enabled`, don't add alongside.** The current `config.ReviewConfig.Enabled` bool becomes the `autonomy` field. Migration: `enabled: true` → `"review"`, `enabled: false` → `"full"`. No dual source of truth.
+- **Incremental snapshot ingestion.** The snapshot refresh (every 2s) must not re-read all session events from scratch. Feed uses cursor-based tailing (track last-read offset per session). Brain scans are bounded by mtime. Cap feed history to a reasonable window (e.g. last 500 events).
 
 ## Applicable Skills
 

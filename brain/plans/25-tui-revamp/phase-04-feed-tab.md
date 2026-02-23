@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 3: Feed Tab
+# Phase 4: Feed Tab
 
 ## Goal
 
@@ -28,9 +28,9 @@ Route snapshot updates to feed. Auto-scroll to newest unless user has scrolled u
 
 ### `tui/model_snapshot.go` — Extend snapshot
 
-Add `FeedEvents []FeedEvent` merging events across all sessions into chronological stream.
+Add `FeedEvents []FeedEvent` merging events across all sessions into chronological stream. **Use cursor-based tailing** — track last-read byte offset per session file. On each tick, seek to the offset and read only new lines. Cap total feed history to 500 events (oldest drop off).
 
-Key type: `FeedEvent` struct: `SessionID`, `AgentName`, `TaskType`, `At`, `Label`, `Body`, `Category`.
+Key type: `FeedEvent` struct: `SessionID`, `AgentName`, `TaskType`, `At`, `Label`, `Body`, `Category`. Add `feedCursors map[string]int64` to snapshot state for offset tracking.
 
 Category includes `"steer"` — sourced from control commands. When a steer command is written, it becomes a FeedEvent with Category `"steer"`, the human's message as Body, and the target agent name.
 

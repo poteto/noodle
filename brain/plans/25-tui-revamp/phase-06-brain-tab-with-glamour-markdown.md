@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 5: Brain Tab with Glamour Markdown
+# Phase 6: Brain Tab with Glamour Markdown
 
 ## Goal
 
@@ -24,7 +24,7 @@ Key function: `RenderMarkdown(content string, width int) (string, error)`.
 
 ### `tui/model_snapshot.go` — Brain activity tracking
 
-Add `BrainActivity []BrainActivity` to Snapshot. Scan `brain/` for files modified since loop started, sorted by mtime descending. Infer agent from session events mentioning brain file writes.
+Add `BrainActivity []BrainActivity` to Snapshot. Scan `brain/` for files modified since loop started, sorted by mtime descending. **Bounded scan**: track last-seen mtime, only stat files with mtime > last scan. Cap to 100 recent entries. Infer agent from session events mentioning brain file writes.
 
 ### `go.mod` — Add glamour dependency
 

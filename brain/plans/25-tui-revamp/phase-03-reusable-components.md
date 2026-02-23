@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 2: Reusable Components
+# Phase 3: Reusable Components
 
 ## Goal
 

@@ -1,6 +1,6 @@
 Back to [[plans/25-tui-revamp/overview]]
 
-# Phase 7: Review Flow and Verdict Actions
+# Phase 8: Review Flow and Verdict Actions
 
 ## Goal
 
@@ -20,7 +20,7 @@ Reads `.noodle/quality/` verdict files. Each contains: session ID, verdict, comm
 
 Key type: `Verdict` struct, `LoadVerdicts(runtimeDir) ([]Verdict, error)`.
 
-Merge: writes `action: "merge"` control command. Reject: writes `action: "reject"`.
+Merge: writes `merge` control command (added in Phase 7's control protocol extension) with session ID. Reject: writes `reject` control command. These actions were added to the loop in Phase 7 — this phase wires them into the TUI.
 
 ### `tui/model.go` — Wire verdict actions
 
