@@ -728,6 +728,49 @@ func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
 	}
 }
 
+func TestRunTasterCancelsSpawnedSessionOnContextDone(t *testing.T) {
+	projectDir := t.TempDir()
+	queuePath := filepath.Join(projectDir, ".noodle", "queue.json")
+	if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	sp := &fakeSpawner{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Spawner:   sp,
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	cook := &activeCook{
+		queueItem: QueueItem{
+			ID:       "42",
+			Provider: "claude",
+			Model:    "claude-sonnet-4-6",
+		},
+		worktreeName: "42-worktree",
+		worktreePath: filepath.Join(projectDir, ".worktrees", "42-worktree"),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	accepted, feedback := l.runTaster(ctx, cook)
+	if accepted {
+		t.Fatal("expected canceled taster run to be rejected")
+	}
+	if !strings.Contains(strings.ToLower(feedback), "canceled") {
+		t.Fatalf("feedback = %q", feedback)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("taster spawn sessions = %d", len(sp.sessions))
+	}
+	if sp.sessions[0].status != "killed" {
+		t.Fatalf("expected canceled taster session to be killed, got %q", sp.sessions[0].status)
+	}
+}
+
 func TestTmuxSessionNameMatchesSanitizedLength(t *testing.T) {
 	sessionID := strings.Repeat("A", 80) + "-with spaces"
 	name := tmuxSessionName(sessionID)

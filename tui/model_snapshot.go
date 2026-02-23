@@ -129,12 +129,14 @@ func readQueue(path string) ([]QueueItem, error) {
 	items := make([]QueueItem, 0, len(queue.Items))
 	for _, item := range queue.Items {
 		items = append(items, QueueItem{
-			ID:       item.ID,
-			Title:    item.Title,
-			Provider: item.Provider,
-			Model:    item.Model,
-			Skill:    item.Skill,
-			Review:   item.Review,
+			ID:        item.ID,
+			TaskKey:   item.TaskKey,
+			Title:     item.Title,
+			Provider:  item.Provider,
+			Model:     item.Model,
+			Skill:     item.Skill,
+			Review:    item.Review,
+			Rationale: item.Rationale,
 		})
 	}
 	return items, nil

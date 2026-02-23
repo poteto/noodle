@@ -2,6 +2,8 @@ package tui
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -38,5 +40,39 @@ func TestMapEventLinesPromptAction(t *testing.T) {
 	}
 	if lines[0].Body != "line one\nline two" {
 		t.Fatalf("body = %q", lines[0].Body)
+	}
+}
+
+func TestReadQueuePreservesTaskMetadata(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "queue.json")
+	payload := `{
+  "items": [
+    {
+      "id": "verify-1",
+      "task_key": "verify",
+      "title": "Run CI checks",
+      "provider": "claude",
+      "model": "claude-sonnet-4-6",
+      "skill": "verify",
+      "rationale": "post-execute gate"
+    }
+  ]
+}`
+	if err := os.WriteFile(path, []byte(payload), 0o644); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	items, err := readQueue(path)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("item count = %d", len(items))
+	}
+	if items[0].TaskKey != "verify" {
+		t.Fatalf("task key = %q", items[0].TaskKey)
+	}
+	if items[0].Rationale != "post-execute gate" {
+		t.Fatalf("rationale = %q", items[0].Rationale)
 	}
 }

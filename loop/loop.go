@@ -560,6 +560,7 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 	}
 	select {
 	case <-ctx.Done():
+		_ = session.Kill()
 		return false, ctx.Err().Error()
 	case <-session.Done():
 	}
