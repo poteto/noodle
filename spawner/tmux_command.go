@@ -58,9 +58,9 @@ func buildClaudeCommand(req SpawnRequest, promptFile, agentBinary, systemPrompt,
 func buildCodexCommand(req SpawnRequest, promptFile, agentBinary, stderrFile string) string {
 	args := []string{
 		agentBinary,
+		"--ask-for-approval", "never",
 		"exec",
 		"--skip-git-repo-check",
-		"--ask-for-approval", "never",
 		"--sandbox", "workspace-write",
 		"--json",
 	}
