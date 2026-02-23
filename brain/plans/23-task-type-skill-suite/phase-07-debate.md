@@ -24,6 +24,7 @@ Expand `skills/debate/SKILL.md` from a basic protocol into a full skill with pri
 - Add role instructions: reviewer must be specific and testable (no vague "this could be better"), responder must address each critique directly
 - Add debate directory structure and file naming
 - Add verdict contract with decision summary
+- Include `references/debate-state-schema.md` documenting the `.noodle/debates/` directory structure, `config.json` fields, `defaults.json` format, round file naming, and `verdict.json` schema
 
 ### Per-task debate state via `.noodle/debates/<task-id>/`
 

@@ -39,6 +39,7 @@ From **Manager**:
 - **Rejection handling** — on rejection, the quality agent writes its verdict to `.noodle/quality/<session-id>/verdict.json`. The loop retries normally (same retry mechanism as crash retries). The prioritize skill sees quality rejection history in the mise brief and decides whether to retry, rescope, or surface to the chef — no special Go escalation logic needed.
 - Include scope-violation detection — flag files changed that weren't part of the task
 - **Create todos from findings** — when the quality agent identifies issues that don't warrant rejection (e.g. minor code smells, missing tests for edge cases, documentation gaps), it creates backlog items via the configured backlog adapter with a severity rating (high/medium/low). This feeds back into the prioritize cycle.
+- Include `references/verdict-schema.md` documenting the verdict JSON format, `.noodle/quality/` directory structure, and what fields the loop reads from the verdict
 
 ## Data Structures
 

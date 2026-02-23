@@ -50,6 +50,36 @@ From **Manager** (for phases that need delegation):
 - Include scope discipline: only change what the phase specifies, flag anything else
 - The execute skill provides _methodology_ (how to work) alongside the adapter-configured skill (which provides _what_ to work on). The current `TaskType` struct has a single `Skill` field — this phase must add a `Skills []string` field (or `MethodologySkill` field) to support loading both the adapter skill and the execute methodology skill for the same task type. Update `spawner/skill_bundle.go:loadSkillBundle()` to compose prompts from multiple skills.
 
+### Noodle context preamble
+
+The spawner currently injects no context about Noodle's state model into cook sessions. The agent must discover `.noodle/` files by exploring the filesystem. Add a **Noodle context preamble** — a lean document injected into every cook session's system prompt that maps the state model:
+
+- `.noodle/mise.json` — current system state snapshot (backlog, plans, sessions, history)
+- `.noodle/queue.json` — work queue the session was scheduled from
+- `.noodle/tickets.json` — claimed resources and concurrency locks
+- `.noodle/debates/<task-id>/` — debate state per task
+- `.noodle/quality/<session-id>/` — quality verdicts
+- `brain/plans/` — plan files the agent can read for phase details
+- `brain/todos.md` — backlog items
+
+The preamble is a map, not a schema — it says "here's what exists and why" so the agent knows where to look. Detailed schemas live in each skill's `references/` directory. This is a small Go change in the spawner, not a new package.
+
+### Skill-specific schema references
+
+Each task-type skill must include `references/` files documenting the schemas it reads and writes:
+
+| Skill | References |
+|-------|------------|
+| prioritize | `mise-schema.md`, `queue-schema.md` |
+| quality | `verdict-schema.md` |
+| debate | `debate-state-schema.md` |
+| execute | (none — reads plan files directly, no Noodle-specific schema) |
+| oops | (none — reads error context from cook prompt) |
+| reflect | (none — reads/writes brain files) |
+| meditate | (none — reads/writes brain files) |
+
+This ensures each agent gets exactly the schema documentation it needs — no more, no less.
+
 ## Data Structures
 
 - Input: cook prompt (backlog item ID + rationale) + plan phase file (if exists)
@@ -58,6 +88,8 @@ From **Manager** (for phases that need delegation):
 ## Verification
 
 - Static: SKILL.md has frontmatter, principles, execution flow, delegation heuristics, scope discipline
+- Static: Noodle context preamble is injected into cook session system prompts
+- Static: Skills that read/write `.noodle/` state include relevant schema docs in `references/`
 - Runtime: Spawn an execute cook session for a plan phase. Confirm:
   - Agent reads the plan phase file
   - Agent works in a worktree
@@ -65,3 +97,4 @@ From **Manager** (for phases that need delegation):
   - Agent checks all plan phase requirements are addressed before committing
   - Commit message references the backlog item
   - Only files listed in the phase's Changes section are modified (scope discipline)
+  - Agent can locate `.noodle/` state files without filesystem exploration (preamble works)
