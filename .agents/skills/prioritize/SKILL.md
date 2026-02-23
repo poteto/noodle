@@ -22,13 +22,14 @@ Read `task_types[].schedule` from mise to know when each task type should run. H
 
 ## Workflow Order
 
-Hard constraints:
+Read `task_types` from mise to discover available task types and their `schedule` hints. Hard constraints:
 
-1. **Plan** -> **Review** (blocking -- no other work until review clears)
-2. **Execute** -> **Verify** -> **Reflect**
-3. **Meditate** after ~3 completed Reflects (check `recent_history` + current queue)
+1. **Execute** -> **Quality** (blocking — no other work until quality clears)
+2. **Quality rejection** -> re-queue the item for retry with feedback
+3. **Reflect** periodically after completed work (check `recent_history`)
+4. **Meditate** after ~3 completed Reflects (check `recent_history` + current queue)
 
-When a blocking review is pending, emit only review items. Do not mix execute/verify/reflect/meditate into the same queue generation.
+When any item has `"review": true`, it must be the only item type in the queue (blocking). Do not mix other task types into the same queue generation.
 
 ## Situational Awareness
 

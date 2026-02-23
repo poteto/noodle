@@ -21,8 +21,9 @@ const (
 )
 
 type Queue struct {
-	GeneratedAt time.Time   `json:"generated_at"`
-	Items       []QueueItem `json:"items"`
+	GeneratedAt  time.Time   `json:"generated_at"`
+	Items        []QueueItem `json:"items"`
+	ActionNeeded []string    `json:"action_needed,omitempty"`
 }
 
 type QueueItem struct {
@@ -100,8 +101,9 @@ type Loop struct {
 	projectDir string
 	runtimeDir string
 	config     config.Config
-	registry   taskreg.Registry
-	deps       Dependencies
+	registry    taskreg.Registry
+	registryErr error
+	deps        Dependencies
 
 	state State
 

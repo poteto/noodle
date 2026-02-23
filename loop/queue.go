@@ -52,7 +52,7 @@ func toQueueX(queue Queue) queuex.Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items}
+	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
 }
 
 func fromQueueX(queue queuex.Queue) Queue {
@@ -69,5 +69,5 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return Queue{GeneratedAt: queue.GeneratedAt, Items: items}
+	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
 }

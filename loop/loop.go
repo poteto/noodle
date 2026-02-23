@@ -59,8 +59,9 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 
 	registry := deps.Registry
+	var registryErr error
 	if len(registry.All()) == 0 {
-		registry = discoverRegistry(projectDir, cfg)
+		registry, registryErr = discoverRegistry(projectDir, cfg)
 	}
 	if builder, ok := deps.Mise.(*mise.Builder); ok {
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
@@ -71,6 +72,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		runtimeDir:            runtimeDir,
 		config:                cfg,
 		registry:              registry,
+		registryErr:           registryErr,
 		deps:                  deps,
 		state:                 StateRunning,
 		activeByTarget:        map[string]*activeCook{},
@@ -83,7 +85,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 }
 
-func discoverRegistry(projectDir string, cfg config.Config) taskreg.Registry {
+func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, error) {
 	paths := make([]string, 0, len(cfg.Skills.Paths))
 	for _, p := range cfg.Skills.Paths {
 		p = strings.TrimSpace(p)
@@ -98,14 +100,17 @@ func discoverRegistry(projectDir string, cfg config.Config) taskreg.Registry {
 	resolver := skill.Resolver{SearchPaths: paths}
 	skills, err := resolver.DiscoverTaskTypes()
 	if err != nil {
-		return taskreg.NewFromSkills(nil)
+		return taskreg.NewFromSkills(nil), fmt.Errorf("task type discovery failed: %w", err)
 	}
-	return taskreg.NewFromSkills(skills)
+	return taskreg.NewFromSkills(skills), nil
 }
 
 func (l *Loop) Run(ctx context.Context) error {
 	if strings.TrimSpace(l.projectDir) == "" {
 		return fmt.Errorf("project directory is required")
+	}
+	if l.registryErr != nil {
+		return l.registryErr
 	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
@@ -626,8 +631,18 @@ func (l *Loop) runQuality(ctx context.Context, cook *activeCook) (bool, string) 
 	case <-session.Done():
 	}
 
-	verdict, found, err := readQualityVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson"))
-	if err == nil && found {
+	// Primary: read the structured verdict file the quality skill writes.
+	verdictPath := filepath.Join(l.runtimeDir, "quality", session.ID()+".json")
+	if verdict, err := readQualityVerdictFile(verdictPath); err == nil {
+		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
+		if verdict.Accept {
+			return true, verdict.Feedback
+		}
+		return false, verdict.Feedback
+	}
+
+	// Fallback: parse verdict from canonical session output.
+	if verdict, found, err := readQualityVerdict(filepath.Join(l.runtimeDir, "sessions", session.ID(), "canonical.ndjson")); err == nil && found {
 		_ = l.writeDebateVerdict(cook, verdict.Accept, verdict.Feedback)
 		if verdict.Accept {
 			return true, verdict.Feedback
@@ -846,6 +861,20 @@ func (l *Loop) steer(target string, prompt string) error {
 type qualityVerdict struct {
 	Accept   bool   `json:"accept"`
 	Feedback string `json:"feedback,omitempty"`
+}
+
+// readQualityVerdictFile reads the structured JSON verdict file the quality
+// skill writes to .noodle/quality/<session-id>.json.
+func readQualityVerdictFile(path string) (qualityVerdict, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return qualityVerdict{}, err
+	}
+	var v qualityVerdict
+	if err := json.Unmarshal(data, &v); err != nil {
+		return qualityVerdict{}, err
+	}
+	return v, nil
 }
 
 var verdictJSONRegexp = regexp.MustCompile(`\{[^{}]*"accept"\s*:\s*(true|false)[^{}]*\}`)

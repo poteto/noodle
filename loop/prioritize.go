@@ -98,7 +98,7 @@ func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, re
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
-		"You may synthesize new queue items that are not present in mise.json when enforcing stage transitions (for example, Plan -> Review, Execute -> Verify, Verify -> Reflect).",
+		"You may synthesize queue items for non-execute task types (e.g. quality, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		queueSchemaPrompt,
 		taskTypesPrompt,
 	}

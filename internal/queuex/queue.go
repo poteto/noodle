@@ -15,8 +15,9 @@ import (
 
 // Queue is the canonical queue.json contract.
 type Queue struct {
-	GeneratedAt time.Time `json:"generated_at"`
-	Items       []Item    `json:"items"`
+	GeneratedAt  time.Time `json:"generated_at"`
+	Items        []Item    `json:"items"`
+	ActionNeeded []string  `json:"action_needed,omitempty"`
 }
 
 // Item is one queue entry.

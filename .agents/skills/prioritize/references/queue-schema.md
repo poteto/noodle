@@ -25,6 +25,7 @@ Output of the prioritize skill. Consumed by the dispatcher.
 
 ## Constraints
 
-- Items must respect workflow order: plan -> review -> execute -> verify -> reflect.
+- Items must respect workflow order: execute -> quality (blocking) -> reflect.
 - When any item has `"review": true`, it must be the only item type in the queue (blocking).
+- Task keys must match a `task_types[].key` from mise. Unknown keys are rejected at validation.
 - Each `rationale` must name a specific principle or scheduling rule.

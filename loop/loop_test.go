@@ -441,7 +441,7 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	}
 	if !strings.Contains(
 		sp.calls[0].Prompt,
-		"You may synthesize new queue items that are not present in mise.json when enforcing stage transitions",
+		"You may synthesize queue items for non-execute task types",
 	) {
 		t.Fatalf("spawn prompt missing synthesized-item guidance: %q", sp.calls[0].Prompt)
 	}
