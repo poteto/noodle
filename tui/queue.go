@@ -68,7 +68,7 @@ func queueTableStyles() table.Styles {
 	s.Cell = lipgloss.NewStyle().
 		Foreground(t.Text)
 	s.Selected = lipgloss.NewStyle().
-		Foreground(t.Text).
+		Foreground(t.Brand).
 		Background(lipgloss.Color("#2a2a40")).
 		Bold(true)
 	return s
@@ -198,6 +198,16 @@ func truncTitle(title, id string) string {
 		return title
 	}
 	return id
+}
+
+// SelectedSessionID returns the queue item ID of the currently selected row.
+// This is used as a prefix match against session IDs to open the actor view.
+func (q *QueueTab) SelectedSessionID() string {
+	cursor := q.table.Cursor()
+	if cursor < 0 || cursor >= len(q.items) {
+		return ""
+	}
+	return q.items[cursor].ID
 }
 
 // StatusStyle returns the appropriate style for a queue status.
