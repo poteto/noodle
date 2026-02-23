@@ -278,6 +278,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.detailSession != "" {
 		key := strings.ToLower(msg.String())
 		switch key {
+		case "1", "2", "3", "4":
+			m.detailSession = ""
+			// Fall through to tab switching below.
 		case "j", "down":
 			m.detailScroll++
 			if m.detailTotalLines > 0 {
@@ -290,18 +293,23 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.detailAutoScroll = true
 				}
 			}
+			return m, nil
 		case "k", "up":
 			m.detailScroll--
 			if m.detailScroll < 0 {
 				m.detailScroll = 0
 			}
 			m.detailAutoScroll = false
+			return m, nil
 		case "h", "left":
 			m.navigateActor(-1)
+			return m, nil
 		case "l", "right":
 			m.navigateActor(1)
+			return m, nil
+		default:
+			return m, nil
 		}
-		return m, nil
 	}
 
 	// Brain tab navigation

@@ -17,7 +17,7 @@
 8. [ ] Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.
 9. [x] ~~Autonomy dial~~ — completed. Three modes implemented: `full` (auto-merge, no human in loop), `review` (quality gate runs, auto-merge on APPROVE, default), `approve` (quality gate runs, human confirms merge via TUI). Wired through config, loop gating, runtime control commands, and TUI verdict cards. Pre-spawn gating was dropped in favor of post-completion approval.
 10. [x] ~~TUI as default terminal mode~~ — completed. `noodle start` now launches the TUI in interactive terminals and keeps headless behavior in non-interactive mode.
-25. [ ] TUI revamp — 4B command center: left rail (agents + stats) + tabbed right pane (Feed, Queue, Brain, Config). Pastel color palette, lipgloss-inspired styling, autonomy dial (approve/review/full), quality verdicts as actionable feed cards, glamour markdown preview in Brain tab. [[plans/25-tui-revamp/overview]]
+11. [x] TUI revamp — 4B command center: left rail (agents + stats) + tabbed right pane (Feed, Queue, Brain, Config). Pastel color palette, lipgloss-inspired styling, autonomy dial (approve/review/full), quality verdicts as actionable feed cards, glamour markdown preview in Brain tab. [[plans/25-tui-revamp/overview]]
 
 ## Skill Cleanup
 
