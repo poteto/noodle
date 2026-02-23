@@ -1,0 +1,124 @@
+package tui
+
+import (
+	"strings"
+	"time"
+)
+
+const maxFeedItems = 100
+
+// FeedTab manages the feed view state.
+type FeedTab struct {
+	items      []FeedItem
+	selection  int
+	scroll     int
+	userScroll bool // true when user has scrolled up manually
+}
+
+// SetSnapshot rebuilds feed items from the snapshot's FeedEvents.
+// Consecutive events from the same session are grouped into one card.
+func (f *FeedTab) SetSnapshot(snap Snapshot) {
+	events := snap.FeedEvents
+	if len(events) == 0 {
+		f.items = nil
+		return
+	}
+
+	items := make([]FeedItem, 0, len(events))
+	var current *FeedItem
+
+	for _, ev := range events {
+		// Group consecutive events from same session + same category.
+		if current != nil && current.SessionID == ev.SessionID && current.Category == ev.Category {
+			current.Events = append(current.Events, ev)
+			continue
+		}
+		// Flush current group.
+		if current != nil {
+			items = append(items, *current)
+		}
+		item := FeedItem{
+			SessionID: ev.SessionID,
+			AgentName: ev.AgentName,
+			TaskType:  ev.TaskType,
+			Category:  ev.Category,
+			Events:    []FeedEvent{ev},
+			StartedAt: ev.At,
+		}
+		if ev.Category == "steer" {
+			item.SteerTarget = ev.AgentName
+			item.SteerPrompt = ev.Body
+		}
+		current = &item
+	}
+	if current != nil {
+		items = append(items, *current)
+	}
+
+	// Cap items.
+	if len(items) > maxFeedItems {
+		items = items[len(items)-maxFeedItems:]
+	}
+
+	f.items = items
+
+	// Auto-scroll to newest (top) unless user has scrolled away.
+	if !f.userScroll {
+		f.scroll = 0
+	}
+}
+
+// Render renders the feed tab content for the given dimensions.
+// Items are displayed newest first (reverse chronological).
+func (f *FeedTab) Render(width, height int, now time.Time) string {
+	if len(f.items) == 0 {
+		return dimStyle.Render("No events yet. Waiting for activity...")
+	}
+
+	// Render items in reverse-chronological order (newest first).
+	var cards []string
+	for i := len(f.items) - 1; i >= 0; i-- {
+		card := renderFeedItem(f.items[i], width, now)
+		cards = append(cards, card)
+	}
+
+	all := strings.Join(cards, "\n")
+	allLines := strings.Split(all, "\n")
+
+	// Apply scroll offset.
+	start := f.scroll
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(allLines) {
+		start = len(allLines) - 1
+	}
+	if start < 0 {
+		start = 0
+	}
+
+	end := start + height
+	if end > len(allLines) {
+		end = len(allLines)
+	}
+
+	visible := allLines[start:end]
+	return strings.Join(visible, "\n")
+}
+
+// ScrollUp scrolls the feed view up (toward older content).
+// Disengages auto-scroll.
+func (f *FeedTab) ScrollUp(lines int) {
+	f.scroll += lines
+	f.userScroll = true
+}
+
+// ScrollDown scrolls the feed view down (toward newest content).
+// Re-engages auto-scroll if back at top.
+func (f *FeedTab) ScrollDown(lines int) {
+	f.scroll -= lines
+	if f.scroll <= 0 {
+		f.scroll = 0
+		f.userScroll = false
+	}
+}
