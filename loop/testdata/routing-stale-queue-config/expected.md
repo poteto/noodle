@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 361d46fb18cbfedf87bbf59fc3ccdd1a371557cd1db3c9c3a0f6a5d3fdddc3ec
+source_hash: 6a15f94c4584dc52d36225467a877fe32e7e8cfdc76794ef5d4456d7130c046f
 ---
 
 ## Runtime Dump
@@ -19,12 +19,12 @@ source_hash: 361d46fb18cbfedf87bbf59fc3ccdd1a371557cd1db3c9c3a0f6a5d3fdddc3ec
       "spawn_calls": 1,
       "runtime_repair_spawn_calls": 0,
       "normal_spawn_calls": 1,
-      "created_worktrees": 1,
+      "created_worktrees": 0,
       "first_spawn": {
-        "name": "10",
-        "skill": "backlog",
-        "provider": "claude",
-        "model": "claude-opus-4-6"
+        "name": "prioritize",
+        "skill": "prioritize",
+        "provider": "codex",
+        "model": "gpt-5.3-codex"
       }
     }
   }

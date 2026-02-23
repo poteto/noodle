@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: dace5849d5aaf595f23e15d27fcbe463526263a439cd3fdc18ceaf3168e7e26e
+source_hash: f217117c013350bc1f6f3f00268a4ebf088600de98106aa68b9d73bdc5f748b1
 ---
 
 ## Runtime Dump
@@ -36,12 +36,12 @@ source_hash: dace5849d5aaf595f23e15d27fcbe463526263a439cd3fdc18ceaf3168e7e26e
       "spawn_calls": 2,
       "runtime_repair_spawn_calls": 1,
       "normal_spawn_calls": 1,
-      "created_worktrees": 2,
+      "created_worktrees": 1,
       "first_spawn": {
-        "name": "42",
-        "skill": "backlog",
-        "provider": "codex",
-        "model": "gpt-5.3-codex"
+        "name": "prioritize",
+        "skill": "prioritize",
+        "provider": "claude",
+        "model": "claude-sonnet-4-6"
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",

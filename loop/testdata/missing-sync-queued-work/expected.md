@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: d265bfb10878b1efc9e2511e3eec4c72f983f68b9f42d46d504287c8f12a79bd
+source_hash: 321b4f97442976039320961132a5cd946c2c55491b3779a64f771e05dc331b16
 ---
 
 ## Runtime Dump
@@ -11,18 +11,18 @@ source_hash: d265bfb10878b1efc9e2511e3eec4c72f983f68b9f42d46d504287c8f12a79bd
 {
   "states": {
     "state-01": {
-      "transition": "running",
-      "runtime_repair_in_flight": false,
-      "repair_task_scheduled": false,
+      "transition": "paused",
+      "runtime_repair_in_flight": true,
+      "repair_task_scheduled": true,
       "oops_task_scheduled": false,
-      "normal_task_scheduled": true,
+      "normal_task_scheduled": false,
       "spawn_calls": 1,
-      "runtime_repair_spawn_calls": 0,
-      "normal_spawn_calls": 1,
+      "runtime_repair_spawn_calls": 1,
+      "normal_spawn_calls": 0,
       "created_worktrees": 1,
-      "first_spawn": {
-        "name": "42",
-        "skill": "backlog",
+      "runtime_repair_spawn": {
+        "name": "repair-runtime-*",
+        "skill": "debugging",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }

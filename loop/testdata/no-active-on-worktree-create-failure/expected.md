@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: cd3cac533b6fc0ed78e38ba81aeefb3faee03c5ad82f930a353bf58546b0cf47
+source_hash: 148140850c1d4e36343e767baf50273503ecdb0b605a9dc3d6383cb8460f9c62
 ---
 
 ## Runtime Dump
@@ -11,18 +11,18 @@ source_hash: cd3cac533b6fc0ed78e38ba81aeefb3faee03c5ad82f930a353bf58546b0cf47
 {
   "states": {
     "state-01": {
-      "transition": "paused",
-      "runtime_repair_in_flight": true,
-      "repair_task_scheduled": true,
+      "transition": "running",
+      "runtime_repair_in_flight": false,
+      "repair_task_scheduled": false,
       "oops_task_scheduled": false,
-      "normal_task_scheduled": false,
+      "normal_task_scheduled": true,
       "spawn_calls": 1,
-      "runtime_repair_spawn_calls": 1,
-      "normal_spawn_calls": 0,
-      "created_worktrees": 2,
-      "runtime_repair_spawn": {
-        "name": "repair-runtime-*",
-        "skill": "debugging",
+      "runtime_repair_spawn_calls": 0,
+      "normal_spawn_calls": 1,
+      "created_worktrees": 0,
+      "first_spawn": {
+        "name": "prioritize",
+        "skill": "prioritize",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }
