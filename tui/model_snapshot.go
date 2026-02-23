@@ -182,6 +182,7 @@ func readQueue(path string) (queueResult, error) {
 			Provider:  item.Provider,
 			Model:     item.Model,
 			Skill:     item.Skill,
+			Plan:      item.Plan,
 			Review:    item.Review,
 			Rationale: item.Rationale,
 		})

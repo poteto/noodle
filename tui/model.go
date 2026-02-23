@@ -108,14 +108,15 @@ type Session struct {
 }
 
 type QueueItem struct {
-	ID        string `json:"id"`
-	TaskKey   string `json:"task_key,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Provider  string `json:"provider"`
-	Model     string `json:"model"`
-	Skill     string `json:"skill,omitempty"`
-	Review    *bool  `json:"review,omitempty"`
-	Rationale string `json:"rationale,omitempty"`
+	ID        string   `json:"id"`
+	TaskKey   string   `json:"task_key,omitempty"`
+	Title     string   `json:"title,omitempty"`
+	Provider  string   `json:"provider"`
+	Model     string   `json:"model"`
+	Skill     string   `json:"skill,omitempty"`
+	Plan      []string `json:"plan,omitempty"`
+	Review    *bool    `json:"review,omitempty"`
+	Rationale string   `json:"rationale,omitempty"`
 }
 
 type EventLine struct {

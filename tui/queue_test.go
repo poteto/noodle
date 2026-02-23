@@ -28,7 +28,7 @@ func TestDeriveQueueStatusReviewing(t *testing.T) {
 }
 
 func TestDeriveQueueStatusPlanned(t *testing.T) {
-	item := QueueItem{ID: "task-3", TaskKey: "execute", Review: boolPtr(true)}
+	item := QueueItem{ID: "task-3", TaskKey: "execute", Plan: []string{"plans/15-bootstrap/overview"}}
 	active := map[string]struct{}{}
 	action := map[string]struct{}{}
 	got := deriveQueueStatus(item, active, action)
@@ -123,8 +123,8 @@ func TestQueueStatusAllLifecycleStates(t *testing.T) {
 			want:   QueueStatusReviewing,
 		},
 		{
-			name: "planned — has review",
-			item: QueueItem{ID: "c", TaskKey: "execute", Review: boolPtr(false)},
+			name: "planned — has plan",
+			item: QueueItem{ID: "c", TaskKey: "execute", Plan: []string{"plans/15-bootstrap/overview"}},
 			want: QueueStatusPlanned,
 		},
 		{

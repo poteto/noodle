@@ -112,6 +112,7 @@ var schemaTargets = []targetSpec{
 			"items[].provider":  {Description: "provider used for this task"},
 			"items[].model":     {Description: "model used for this task"},
 			"items[].skill":     {Description: "skill name to load"},
+			"items[].plan[]":    {Description: "linked plan path(s), e.g. plans/15-bootstrap-onboarding/overview"},
 			"items[].review":    {Type: "boolean", Description: "true when this item requires blocking review"},
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
 			"active[]":          {Description: "queue item IDs currently being cooked"},

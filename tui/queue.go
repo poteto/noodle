@@ -185,8 +185,8 @@ func deriveQueueStatus(item QueueItem, activeIDs map[string]struct{}, actionNeed
 		return QueueStatusReady
 	}
 
-	// Execute tasks: check if review exists (has a plan) or not
-	if item.Review != nil {
+	// Items with linked plans are ready to execute.
+	if len(item.Plan) > 0 {
 		return QueueStatusPlanned
 	}
 
