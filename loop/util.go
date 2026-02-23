@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -20,11 +21,7 @@ func buildCookPrompt(item QueueItem, resumePrompt string) string {
 }
 
 func nonEmpty(value, fallback string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return strings.TrimSpace(fallback)
-	}
-	return value
+	return stringx.NonEmpty(value, fallback)
 }
 
 func sanitizeName(value string) string {

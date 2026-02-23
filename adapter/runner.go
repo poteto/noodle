@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/shellx"
 )
 
 type RunOptions struct {
@@ -98,13 +99,9 @@ func commandWithArgs(command string, args []string) string {
 	b.WriteString(command)
 	for _, arg := range args {
 		b.WriteByte(' ')
-		b.WriteString(shellQuote(arg))
+		b.WriteString(shellx.Quote(arg))
 	}
 	return b.String()
-}
-
-func shellQuote(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func runtimeDir(projectDir string) string {

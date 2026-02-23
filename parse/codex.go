@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 type CodexAdapter struct{}
@@ -119,7 +121,7 @@ func parseCodexTurnContext(payload json.RawMessage, ts time.Time) ([]CanonicalEv
 	}
 	return []CanonicalEvent{{
 		Type:      EventAction,
-		Message:   "turn " + firstNonEmpty(turnID, model),
+		Message:   "turn " + stringx.FirstNonEmpty(turnID, model),
 		Timestamp: ts,
 	}}, nil
 }
@@ -181,7 +183,7 @@ func parseCodexEventMsg(payload json.RawMessage, ts time.Time) ([]CanonicalEvent
 	case "task_complete", "complete", "session.complete":
 		return []CanonicalEvent{{
 			Type:      EventComplete,
-			Message:   firstNonEmpty(event.Message, "task complete"),
+			Message:   stringx.FirstNonEmpty(event.Message, "task complete"),
 			Timestamp: ts,
 			CostUSD:   event.Cost,
 			TokensIn:  event.TokensIn,
@@ -190,7 +192,7 @@ func parseCodexEventMsg(payload json.RawMessage, ts time.Time) ([]CanonicalEvent
 	case "error":
 		return []CanonicalEvent{{
 			Type:      EventError,
-			Message:   firstNonEmpty(event.Error, event.Message, "codex error"),
+			Message:   stringx.FirstNonEmpty(event.Error, event.Message, "codex error"),
 			Timestamp: ts,
 		}}, nil
 	case "agent_message":
@@ -236,7 +238,7 @@ func parseCodexEventMsg(payload json.RawMessage, ts time.Time) ([]CanonicalEvent
 			Timestamp: ts,
 		}}, nil
 	case "turn_aborted":
-		reason := strings.TrimSpace(firstNonEmpty(event.Reason, event.Message))
+		reason := strings.TrimSpace(stringx.FirstNonEmpty(event.Reason, event.Message))
 		if reason == "" {
 			reason = "aborted"
 		}
@@ -287,7 +289,7 @@ func parseCodexItem(envType string, raw json.RawMessage, ts time.Time) ([]Canoni
 		}
 		return nil, nil
 	case "agent_message":
-		text := strings.TrimSpace(firstNonEmpty(item.Text, item.AggregatedOutput))
+		text := strings.TrimSpace(stringx.FirstNonEmpty(item.Text, item.AggregatedOutput))
 		if text == "" {
 			return nil, nil
 		}
@@ -306,7 +308,7 @@ func parseCodexItem(envType string, raw json.RawMessage, ts time.Time) ([]Canoni
 		if status != "failed" && status != "error" && status != "cancelled" {
 			return nil, nil
 		}
-		errText := firstNonEmpty(strings.TrimSpace(item.Text), strings.TrimSpace(item.AggregatedOutput))
+		errText := stringx.FirstNonEmpty(strings.TrimSpace(item.Text), strings.TrimSpace(item.AggregatedOutput))
 		if errText == "" {
 			for _, state := range item.AgentsStates {
 				if msg := strings.TrimSpace(state.Message); msg != "" {

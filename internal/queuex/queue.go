@@ -10,6 +10,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 )
 
@@ -210,27 +211,18 @@ func applyItemRoutingDefaults(item Item, reg taskreg.Registry, cfg config.Config
 	}
 
 	if strings.TrimSpace(item.Provider) == "" {
-		provider := firstNonEmpty(tagProvider, defaultProvider)
+		provider := stringx.FirstNonEmpty(tagProvider, defaultProvider)
 		if provider != "" {
 			item.Provider = provider
 			changed = true
 		}
 	}
 	if strings.TrimSpace(item.Model) == "" {
-		model := firstNonEmpty(tagModel, defaultModel)
+		model := stringx.FirstNonEmpty(tagModel, defaultModel)
 		if model != "" {
 			item.Model = model
 			changed = true
 		}
 	}
 	return item, changed
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
 }

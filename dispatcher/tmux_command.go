@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/poteto/noodle/internal/shellx"
 )
 
 const codexSkillRefsLimitBytes = 50 * 1024
@@ -52,7 +54,7 @@ func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemProm
 	args = append(args, extraArgs...)
 	command := shellCommandWithInput(args, promptFile, true)
 	if strings.TrimSpace(stderrFile) != "" {
-		command += " 2> " + shellQuote(stderrFile)
+		command += " 2> " + shellx.Quote(stderrFile)
 	}
 	return command
 }
@@ -74,7 +76,7 @@ func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile 
 	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
 	command := shellCommandWithInput(args, promptFile, false)
 	if strings.TrimSpace(stderrFile) != "" {
-		command += " 2> " + shellQuote(stderrFile)
+		command += " 2> " + shellx.Quote(stderrFile)
 	}
 	return command
 }
@@ -83,9 +85,9 @@ func buildPipelineCommand(providerCmd, noodleBin, stampedPath, canonicalPath str
 	return fmt.Sprintf(
 		"%s | %s stamp --output %s --events %s",
 		providerCmd,
-		shellQuote(noodleBin),
-		shellQuote(stampedPath),
-		shellQuote(canonicalPath),
+		shellx.Quote(noodleBin),
+		shellx.Quote(stampedPath),
+		shellx.Quote(canonicalPath),
 	)
 }
 
@@ -95,58 +97,22 @@ func shellCommandWithInput(args []string, inputPath string, includeStderr bool) 
 		if i > 0 {
 			builder.WriteByte(' ')
 		}
-		builder.WriteString(shellQuote(arg))
+		builder.WriteString(shellx.Quote(arg))
 	}
 	builder.WriteString(" < ")
-	builder.WriteString(shellQuote(inputPath))
+	builder.WriteString(shellx.Quote(inputPath))
 	if includeStderr {
 		builder.WriteString(" 2>&1")
 	}
 	return builder.String()
 }
 
-func shellQuote(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
-}
-
 func tmuxSessionName(sessionID, fallbackName string) string {
 	name := strings.TrimSpace(sessionID)
 	if name == "" {
-		name = sanitizeToken(fallbackName, "cook")
+		name = shellx.SanitizeToken(fallbackName, "cook")
 	}
-	return "noodle-" + sanitizeToken(name, "cook")
-}
-
-func sanitizeToken(value, fallback string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	if value == "" {
-		value = fallback
-	}
-	var out strings.Builder
-	lastHyphen := false
-	for _, r := range value {
-		isAlphaNum := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
-		if isAlphaNum {
-			out.WriteRune(r)
-			lastHyphen = false
-			continue
-		}
-		if !lastHyphen {
-			out.WriteByte('-')
-			lastHyphen = true
-		}
-	}
-	result := strings.Trim(out.String(), "-")
-	if result == "" {
-		result = fallback
-	}
-	if len(result) > 48 {
-		result = strings.Trim(result[:48], "-")
-	}
-	if result == "" {
-		return fallback
-	}
-	return result
+	return "noodle-" + shellx.SanitizeToken(name, "cook")
 }
 
 func generateSessionID(name string) (string, error) {
@@ -154,7 +120,7 @@ func generateSessionID(name string) (string, error) {
 	if _, err := rand.Read(randBytes); err != nil {
 		return "", err
 	}
-	base := sanitizeToken(name, "cook")
+	base := shellx.SanitizeToken(name, "cook")
 	timestamp := time.Now().UTC().Format("20060102-150405")
 	return fmt.Sprintf("%s-%s-%x", base, timestamp, randBytes), nil
 }

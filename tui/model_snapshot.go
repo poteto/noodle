@@ -11,6 +11,7 @@ import (
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
@@ -96,7 +97,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 
 		sessions = append(sessions, Session{
 			ID:                    sessionID,
-			Status:                nonEmpty(status, "running"),
+			Status:                stringx.NonEmpty(status, "running"),
 			Provider:              strings.TrimSpace(meta.Provider),
 			Model:                 strings.TrimSpace(meta.Model),
 			TotalCostUSD:          meta.TotalCostUSD,
@@ -229,7 +230,7 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 	}
 	_ = json.Unmarshal(payload, &action)
 
-	tool := strings.ToLower(strings.TrimSpace(nonEmpty(action.Tool, action.Action)))
+	tool := strings.ToLower(strings.TrimSpace(stringx.NonEmpty(action.Tool, action.Action)))
 	switch tool {
 	case "read":
 		label = "Read"
@@ -258,7 +259,7 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 		category = traceFilterThink
 	}
 
-	body = firstNonEmpty(
+	body = stringx.FirstNonEmpty(
 		strings.TrimSpace(action.Summary),
 		strings.TrimSpace(action.Message),
 		strings.TrimSpace(action.Command),
@@ -530,16 +531,6 @@ func splitAtRuneWidth(value string, width int) (head string, tail string) {
 	return string(runes[:width]), string(runes[width:])
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func parseTime(value string) time.Time {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -553,9 +544,5 @@ func parseTime(value string) time.Time {
 }
 
 func nonEmpty(value, fallback string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return fallback
-	}
-	return value
+	return stringx.NonEmpty(value, fallback)
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/spf13/cobra"
 )
 
@@ -129,7 +130,7 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 			Phases: phases,
 		},
 		Runtime: debugRuntime{
-			LoopState:       firstNonEmpty(loopState, "running"),
+			LoopState:       stringx.FirstNonEmpty(loopState, "running"),
 			Queue:           queue,
 			Sessions:        sessions,
 			FailedTargets:   failedTargets,
@@ -266,14 +267,4 @@ func countAckLines(path string) (int, error) {
 		}
 	}
 	return count, nil
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			return value
-		}
-	}
-	return ""
 }

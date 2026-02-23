@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 type ClaudeAdapter struct{}
@@ -56,7 +58,7 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 				Timestamp: ts,
 			}}, nil
 		case "api_error":
-			message := firstNonEmpty(
+			message := stringx.FirstNonEmpty(
 				extractFlexibleMessage(payload.Error),
 				extractFlexibleMessage(payload.Result),
 				"provider API error",
@@ -116,7 +118,7 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		isError := parseFlexibleBool(payload.IsError) || parseFlexibleBool(payload.IsErrorV2)
 		if subType == "error" || isError {
 			event.Type = EventError
-			event.Message = firstNonEmpty(
+			event.Message = stringx.FirstNonEmpty(
 				extractFlexibleMessage(payload.Error),
 				extractFlexibleMessage(payload.Result),
 				"turn failed",
@@ -296,14 +298,4 @@ func looksLikeErrorText(text string) bool {
 	return strings.Contains(lower, "error") ||
 		strings.Contains(lower, "failed") ||
 		strings.Contains(lower, "exit code")
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed != "" {
-			return trimmed
-		}
-	}
-	return ""
 }
