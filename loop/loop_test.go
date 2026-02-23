@@ -919,7 +919,7 @@ func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Review.Enabled = true
+	cfg.Autonomy = "review"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: &fakeDispatcher{},
 		Worktree:  &fakeWorktree{},
