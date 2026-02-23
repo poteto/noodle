@@ -40,6 +40,10 @@ The Go core stays lean: it reads plan files and exposes them as data. All schedu
 
 Remove `TaskKeyPlan` from the registry (`internal/taskreg/registry.go`). Planning is not a Noodle-spawned task — the user creates plans outside of Noodle using their own agent and the plan skill. The loop never spawns plan sessions, so the task type is dead code.
 
+### Mise builder: add quality verdict data
+
+The mise builder should include quality verdict history in the brief so the prioritize skill can see rejection patterns. Read `.noodle/quality/` directories and include verdict summaries (accept/reject, session ID, feedback) in the brief's `RecentHistory` or a new `QualityVerdicts` field. This closes the data path: quality writes verdicts → mise builder reads them → prioritize skill sees them.
+
 ### Config update
 - Remove `[adapters.plans]` section from `noodle.toml` and `config/config.go`
 - Remove plan adapter entries from `config.defaultAdapters()`

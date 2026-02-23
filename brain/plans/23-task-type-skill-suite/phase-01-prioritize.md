@@ -9,7 +9,6 @@ Rewrite `.agents/skills/prioritize/SKILL.md` to incorporate CEO scheduling judgm
 ## Current State
 
 - `.agents/skills/prioritize/SKILL.md` — functional queue builder but lacks scheduling judgment framework, rationale depth, and principle grounding
-- `skills/sous-chef/` — old name (renamed in Phase 12)
 
 ## Patterns to Incorporate
 

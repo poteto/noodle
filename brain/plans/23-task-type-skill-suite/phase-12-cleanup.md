@@ -42,8 +42,6 @@ Mark todo items as done:
 
 - Old skill directories are gone: `ls .agents/skills/{ceo,cto,director,manager,operator}` all fail
 - No remaining references to `sous-chef` in Go code or config
-- Go code compiles: `go build ./...`
-- Go tests pass: `go test ./...`
-- `go vet ./...` passes
+- `make ci` passes (test, vet, lintarch, fixtures)
 - No `TaskKeyVerify` in `internal/taskreg/registry.go`
 - Skill resolver finds all new skills: `go run . skills list`

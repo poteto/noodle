@@ -10,7 +10,7 @@ Update all existing skills (other than plan, which was updated in Phase 10) that
 
 ### `.agents/skills/todo/SKILL.md`
 - References `noodle todo` CLI commands throughout (`go -C noodle run . todo add`, etc.)
-- These commands don't exist — the `commands` catalog only has: start, commands, skills, status, debug, tui, worktree, stamp, spawn, mise
+- These commands don't exist yet — after Phase 9 the catalog will include `plan create/done/phase-add`, but `todo` commands still route through the backlog adapter
 - Should use backlog adapter scripts
 
 ### `.agents/skills/noodle/SKILL.md` + `references/config.md`

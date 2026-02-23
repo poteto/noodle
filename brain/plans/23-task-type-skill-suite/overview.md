@@ -52,6 +52,15 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
 - Use the `skill-creator` skill when writing each skill to ensure quality and consistency.
 
+### Execution contract
+
+Each phase must follow this workflow:
+1. **Work in a worktree** — never the primary checkout
+2. **Minimum one commit per phase** — atomic, conventional commit messages
+3. **`make ci` must pass** before merging — test, vet, lintarch, fixtures
+4. **Rebase on main** after commits if main has advanced
+5. **Merge to main** at the end of the phase
+
 ## Old Skill Extraction Map
 
 Patterns worth preserving from the old role-based skills:
@@ -136,4 +145,4 @@ Patterns worth preserving from the old role-based skills:
 - Prioritize skill skips unplanned backlog items (plans-as-precondition)
 - TUI shows "action needed" indicator for unplanned items
 - No remaining references to stale CLI commands
-- `go vet ./...` and `go test ./...` pass
+- `make ci` passes (test, vet, lintarch, fixtures-loop, fixtures-hash)
