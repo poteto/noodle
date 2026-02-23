@@ -29,7 +29,7 @@ func TestBuildQueueTaskTypesPromptIncludesKeyAndDescription(t *testing.T) {
 
 func TestBuildQueueTaskTypesPromptEmpty(t *testing.T) {
 	prompt := buildQueueTaskTypesPrompt(nil)
-	if !strings.Contains(prompt, "Task types you may schedule (from loop/task_types.go):") {
+	if !strings.Contains(prompt, "Task types you may schedule:") {
 		t.Fatalf("missing prompt header: %q", prompt)
 	}
 	if !strings.Contains(prompt, "- (none configured)") {

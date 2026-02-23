@@ -113,7 +113,7 @@ func buildSousChefPrompt(skillName, taskTypesPrompt string, item QueueItem, resu
 
 func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 	var b strings.Builder
-	b.WriteString("Task types you may schedule (from loop/task_types.go):")
+	b.WriteString("Task types you may schedule:")
 	if len(taskTypes) == 0 {
 		b.WriteString("\n- (none configured)")
 		return b.String()

@@ -420,7 +420,7 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule (from loop/task_types.go):") {
+	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "- plan: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
