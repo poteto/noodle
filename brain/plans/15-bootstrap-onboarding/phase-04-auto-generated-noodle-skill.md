@@ -15,7 +15,7 @@ Use the `skill-creator` skill when implementing this phase.
      - **Field metadata** (TOML keys, types, section nesting): use `reflect` on `config.Config` struct tags.
      - **Doc comments and descriptions**: use `go/ast` + `go/parser` to parse `config/config.go` source and extract comments on struct fields. Reflection alone cannot recover comments.
      - **Defaults**: read from `config.DefaultConfig()` return value (not from struct tags). Some defaults are also applied in `Parse()` via metadata-based fill logic (`config.go:240`); document both sources.
-  2. **CLI commands** — extract from cobra command tree (`root.Commands()`). Render as a command reference table.
+  2. **CLI commands** — the command tree lives in `package main` (root.go), so the generator can't import it directly. Introduce a shared `cmdmeta` package that defines command metadata (name, short description, flags) used by both root command wiring and the generator. The generator reads `cmdmeta.Commands()`, not `root.Commands()`. Render as a command reference table.
   3. **Prose sections** — stored as Go template strings in the generator. These are human-authored but live in Go code so the generator is the single source:
      - Adapter deep dive: skill+scripts pattern, NDJSON contract, guides for markdown, GitHub Issues, Linear
      - Hook installation: brain injection script, auto-index script, how to add to `.claude/settings.json`

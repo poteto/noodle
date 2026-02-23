@@ -12,8 +12,8 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
   1. Create a temp directory
   2. Run `EnsureProjectStructure`
   3. Assert: `brain/`, `.noodle/`, `.noodle.toml` all created with expected content
-  4. Run `config.Load` + `config.Validate` on the generated config
-  5. Assert: no fatal diagnostics and no repairable diagnostics (scaffolded config has no adapter entries, so no adapter diagnostics are expected)
+  4. Run `config.Load` + `config.Validate` on the generated config. Stub environment to ensure tmux is on PATH (e.g., prepend a temp dir with a fake `tmux` binary to `$PATH`) so the test is deterministic regardless of host.
+  5. Assert: no fatal diagnostics and no repairable diagnostics (scaffolded config has no adapter entries, so no adapter diagnostics; tmux is stubbed, so no runtime.tmux fatal)
   6. Deliberately delete a required directory, re-run `EnsureProjectStructure`
   7. Assert: directory recreated (idempotency)
 

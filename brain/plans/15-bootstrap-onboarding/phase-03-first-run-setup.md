@@ -11,7 +11,7 @@ Back to [[plans/15-bootstrap-onboarding/overview]]
 - **`startup/firstrun.go`** (new) — `EnsureProjectStructure(projectDir string) error`
   1. Create `brain/` directory structure if missing: `brain/index.md`, `brain/todos.md` (starter template with section headers and `<!-- next-id: 1 -->`), `brain/principles.md` (empty index), `brain/plans/index.md`
   2. Create `.noodle/` directory if missing (runtime state directory)
-  3. Generate minimal `.noodle.toml` if missing — just enough to start. No adapter entries — the agent sets those up later guided by the noodle skill. Canonical scaffold:
+  3. Generate minimal `.noodle.toml` if missing — just enough to start. No adapter entries — the agent sets those up later guided by the noodle skill. **Prerequisite**: todo #16 must be resolved first — `config.DefaultConfig()` should default to `claude-opus-4-6` so the scaffold and runtime defaults are consistent. Canonical scaffold:
      ```toml
      autonomy = "review"
 
