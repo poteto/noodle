@@ -574,3 +574,154 @@ func parseTime(value string) time.Time {
 func nonEmpty(value, fallback string) string {
 	return stringx.NonEmpty(value, fallback)
 }
+
+// buildFeedEvents converts per-session EventLines into a flat feed timeline.
+func buildFeedEvents(sessions []Session, eventsBySession map[string][]EventLine) []FeedEvent {
+	feed := make([]FeedEvent, 0, 64)
+	for _, session := range sessions {
+		lines, ok := eventsBySession[session.ID]
+		if !ok {
+			continue
+		}
+		agentName := session.ID
+		taskType := inferTaskType(session.ID)
+		for _, line := range lines {
+			feed = append(feed, FeedEvent{
+				SessionID: session.ID,
+				AgentName: agentName,
+				TaskType:  taskType,
+				At:        line.At,
+				Label:     line.Label,
+				Body:      line.Body,
+				Category:  string(line.Category),
+			})
+		}
+	}
+	return feed
+}
+
+// readSteerEvents reads control.ndjson and extracts steer commands as feed events.
+func readSteerEvents(controlPath string) []FeedEvent {
+	file, err := os.Open(controlPath)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	var events []FeedEvent
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var cmd loop.ControlCommand
+		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+			continue
+		}
+		if !strings.EqualFold(cmd.Action, "steer") {
+			continue
+		}
+		target := strings.TrimSpace(cmd.Target)
+		prompt := strings.TrimSpace(cmd.Prompt)
+		if target == "" && prompt == "" {
+			continue
+		}
+		at := cmd.At
+		if at.IsZero() {
+			at = time.Now().UTC()
+		}
+		events = append(events, FeedEvent{
+			SessionID: "chef",
+			AgentName: target,
+			At:        at,
+			Label:     "Steer",
+			Body:      prompt,
+			Category:  "steer",
+		})
+	}
+	return events
+}
+
+// inferTaskType extracts a task type from a session ID convention.
+func inferTaskType(sessionID string) string {
+	known := []string{"execute", "plan", "quality", "reflect", "prioritize"}
+	lower := strings.ToLower(sessionID)
+	for _, prefix := range known {
+		if strings.HasPrefix(lower, prefix) {
+			return prefix
+		}
+	}
+	return ""
+}
+
+const brainScanLimit = 100
+
+// scanBrainActivity walks the brain directory and returns recently modified
+// markdown files sorted by mtime descending, capped to brainScanLimit.
+func scanBrainActivity(brainDir string) []BrainActivity {
+	info, err := os.Stat(brainDir)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+
+	type entry struct {
+		path  string
+		mtime time.Time
+	}
+	var entries []entry
+
+	_ = filepath.Walk(brainDir, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(fi.Name(), ".md") {
+			return nil
+		}
+		rel, err := filepath.Rel(brainDir, path)
+		if err != nil {
+			return nil
+		}
+		entries = append(entries, entry{path: rel, mtime: fi.ModTime()})
+		return nil
+	})
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].mtime.After(entries[j].mtime)
+	})
+
+	if len(entries) > brainScanLimit {
+		entries = entries[:brainScanLimit]
+	}
+
+	activities := make([]BrainActivity, 0, len(entries))
+	for _, e := range entries {
+		tag := inferBrainTag(e.mtime)
+		desc := inferDescription(e.path)
+		activities = append(activities, BrainActivity{
+			Agent:       "unknown",
+			At:          e.mtime,
+			Tag:         tag,
+			FilePath:    e.path,
+			Description: desc,
+		})
+	}
+	return activities
+}
+
+func inferBrainTag(mtime time.Time) string {
+	if time.Since(mtime) < time.Hour {
+		return "new"
+	}
+	return "edit"
+}
+
+func inferDescription(relPath string) string {
+	base := strings.TrimSuffix(filepath.Base(relPath), ".md")
+	base = strings.ReplaceAll(base, "-", " ")
+	return base
+}

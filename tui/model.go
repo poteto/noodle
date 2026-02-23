@@ -46,6 +46,8 @@ type Model struct {
 	helpOpen  bool
 
 	snapshot Snapshot
+	feedTab  FeedTab
+	brainTab BrainTab
 	err      error
 
 	steerInput        string
@@ -65,8 +67,11 @@ type Snapshot struct {
 	Recent   []Session
 	Queue    []QueueItem
 
+	ActionNeeded    []string
 	EventsBySession map[string][]EventLine
+	FeedEvents      []FeedEvent
 	TotalCostUSD    float64
+	BrainActivity   []BrainActivity
 }
 
 type Session struct {
@@ -116,6 +121,11 @@ type controlResultMsg struct {
 	err    error
 }
 
+type brainPreviewMsg struct {
+	content string
+	err     error
+}
+
 func NewModel(opts Options) Model {
 	runtimeDir := strings.TrimSpace(opts.RuntimeDir)
 	if runtimeDir == "" {
@@ -156,6 +166,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.err = nil
 		m.snapshot = msg.snapshot
+		m.feedTab.SetSnapshot(m.snapshot)
+		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
+		return m, nil
+	case brainPreviewMsg:
+		if msg.err != nil {
+			m.brainTab.previewMD = errorStyle.Render("render failed: " + msg.err.Error())
+		} else {
+			m.brainTab.previewMD = msg.content
+		}
 		return m, nil
 	case controlResultMsg:
 		if msg.err != nil {
@@ -192,6 +211,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.helpOpen = false
 			return m, nil
 		}
+		if m.activeTab == TabBrain && m.brainTab.preview {
+			m.brainTab.preview = false
+			m.brainTab.previewMD = ""
+			return m, nil
+		}
 		return m, nil
 	}
 
@@ -203,6 +227,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.helpOpen = false
 		}
 		return m, nil
+	}
+
+	// Brain tab navigation
+	if m.activeTab == TabBrain && !m.brainTab.preview {
+		switch msg.Type {
+		case tea.KeyUp:
+			if m.brainTab.selected > 0 {
+				m.brainTab.selected--
+			}
+			return m, nil
+		case tea.KeyDown:
+			if m.brainTab.selected < len(m.brainTab.items)-1 {
+				m.brainTab.selected++
+			}
+			return m, nil
+		case tea.KeyEnter:
+			if len(m.brainTab.items) > 0 {
+				return m, m.enterBrainPreview()
+			}
+			return m, nil
+		}
 	}
 
 	key := strings.ToLower(msg.String())
@@ -219,6 +264,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.helpOpen = true
 	case "s":
 		return m, m.openSteer()
+	case "j", "down":
+		if m.activeTab == TabFeed {
+			m.feedTab.ScrollDown(3)
+		}
+	case "k", "up":
+		if m.activeTab == TabFeed {
+			m.feedTab.ScrollUp(3)
+		}
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
@@ -275,6 +328,29 @@ func (m Model) contentWidth() int {
 		return 40
 	}
 	return width
+}
+
+func (m *Model) enterBrainPreview() tea.Cmd {
+	if m.brainTab.selected < 0 || m.brainTab.selected >= len(m.brainTab.items) {
+		return nil
+	}
+	m.brainTab.preview = true
+	m.brainTab.previewMD = ""
+	item := m.brainTab.items[m.brainTab.selected]
+	brainDir := filepath.Join(filepath.Dir(m.runtimeDir), "brain")
+	fullPath := filepath.Join(brainDir, item.FilePath)
+	width := m.contentWidth()
+	return func() tea.Msg {
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			return brainPreviewMsg{err: err}
+		}
+		rendered, err := RenderMarkdown(string(data), width)
+		if err != nil {
+			return brainPreviewMsg{err: err}
+		}
+		return brainPreviewMsg{content: rendered}
+	}
 }
 
 func (m *Model) openSteer() tea.Cmd {

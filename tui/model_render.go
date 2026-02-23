@@ -14,14 +14,26 @@ func (m Model) renderLayout() string {
 	rail := renderRail(m.snapshot, m.now(), m.height)
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
+	// Tab bar takes ~2 lines; steer/help/status take ~3 at most.
+	contentHeight := m.height - 7
+	if contentHeight < 4 {
+		contentHeight = 4
+	}
+
 	var tabContent string
 	switch m.activeTab {
 	case TabFeed:
-		tabContent = dimStyle.Render("(feed — coming soon)")
+		tabContent = m.feedTab.Render(paneWidth, contentHeight, m.now())
 	case TabQueue:
-		tabContent = dimStyle.Render("(queue — coming soon)")
+		qt := NewQueueTab()
+		activeIDs := make([]string, 0, len(m.snapshot.Active))
+		for _, s := range m.snapshot.Active {
+			activeIDs = append(activeIDs, s.ID)
+		}
+		qt.SetQueue(m.snapshot.Queue, activeIDs, m.snapshot.ActionNeeded)
+		tabContent = qt.Render(paneWidth, contentHeight)
 	case TabBrain:
-		tabContent = dimStyle.Render("(brain — coming soon)")
+		tabContent = m.brainTab.Render(paneWidth, contentHeight)
 	case TabConfig:
 		tabContent = dimStyle.Render("(config — coming soon)")
 	}
