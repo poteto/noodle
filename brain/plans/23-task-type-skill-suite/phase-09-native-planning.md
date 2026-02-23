@@ -4,9 +4,9 @@ Back to [[plans/23-task-type-skill-suite/overview]]
 
 ## Goal
 
-Make planning a first-class Noodle concept. Replace the plan adapter abstraction with native Go code that reads and writes `brain/plans/` directly. The plan format (`overview.md` with YAML frontmatter, phase files, `index.md`) becomes Noodle-owned — not a user-configurable adapter.
+Make planning a first-class Noodle concept. Replace the plan adapter abstraction with minimal Go code that reads `brain/plans/` and surfaces plan data in the mise brief. The plan format (`overview.md` with YAML frontmatter, phase files, `index.md`) becomes Noodle-owned — not a user-configurable adapter.
 
-The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.). Only plans become native.
+The Go core stays lean: it reads plan files and exposes them as data. All scheduling intelligence (associations, phase ordering, status interpretation) stays in the prioritize skill. The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.). Only plans become native.
 
 ## Current State
 
@@ -22,8 +22,8 @@ The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.
 - Create a Go package that reads `brain/plans/` directly:
   - Parse `brain/plans/index.md` for plan discovery (wikilink format)
   - Parse `overview.md` YAML frontmatter (id, status, created)
-  - Parse phase checkbox lists from overview for phase status
-  - Return `[]adapter.PlanItem` (reuse existing type)
+  - List phase files in each plan directory
+  - Return minimal plan metadata for the mise brief — the prioritize skill reads the actual plan files for deeper analysis (phase status, associations, ordering)
 
 ### Native plan commands
 - Move plan mutation logic from `.noodle/adapters/main.go` into the Go binary
@@ -36,18 +36,6 @@ The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.
 - Remove `adapter.Runner.SyncPlans()` — replaced by native reader
 - Update `mise/builder.go` to call native reader instead of adapter sync
 
-### Mise many-to-many association
-- Compute todo↔plan associations in the mise brief
-- A single todo can map to multiple plans (e.g. one backlog item spawns sequential plan phases)
-- Multiple todos can map to a single plan (e.g. one plan addresses several related items)
-- The prioritize skill uses this to determine: needs planning, ready for execution, or in-progress
-- Association source: plan overview frontmatter `id` field + todo wikilinks to `[[plans/...]]`
-
-### Push-based backlog change detection
-- Add diff-based change detection to the loop: after each backlog adapter sync, compare the result against the previous sync output
-- When changes are detected (new items, edits, completions), automatically insert a prioritize task at the top of the queue with reason `backlog_changed`
-- This is the Go infrastructure that Phase 1's push-based notification depends on
-
 ### Config update
 - Remove `[adapters.plans]` section from `noodle.toml` and `config/config.go`
 - Remove plan adapter entries from `config.defaultAdapters()`
@@ -55,15 +43,16 @@ The backlog adapter stays (backlogs can be external: GitHub Issues, Linear, etc.
 
 ## Data Structures
 
-- `PlanItem` type stays as-is (or moves from `adapter/` to a more appropriate package)
+- Plan metadata in mise brief: `{ id, status, created, directory, phase_files: ["phase-01-foo.md", ...] }`
 - Plan format unchanged: `brain/plans/NN-slug/overview.md` + phase files
+- The prioritize skill reads plan files directly for deeper analysis — Go just surfaces what exists
 
 ## Verification
 
 - `go build ./...` compiles with native plan reader
-- `go test ./...` passes — plan parsing tests cover: index parsing, frontmatter parsing, phase status extraction
+- `go test ./...` passes — plan parsing tests cover: index parsing, frontmatter extraction
 - `noodle plan create` creates a plan directory with overview and phase-01 scaffold
 - `noodle plan done <ID>` sets status to done in frontmatter
-- `noodle mise` produces a mise brief with plans (no adapter sync)
-- Mise brief includes todo↔plan associations (many-to-many)
+- `noodle mise` produces a mise brief with plan metadata (no adapter sync)
 - No `[adapters.plans]` in config schema
+- Prioritize skill can read plan files and compute associations from brief data

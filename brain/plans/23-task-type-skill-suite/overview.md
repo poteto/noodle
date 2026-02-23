@@ -23,8 +23,7 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 - Extract valuable patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
 - Ground each skill in engineering principles from `brain/principles/`
 - Design cook-session-first: autonomous mode is primary, interactive features are additive
-- Make planning native: remove plan adapter, add Go parser for `brain/plans/`, add `noodle plan` CLI commands
-- Compute many-to-many todo↔plan association in mise brief
+- Make planning native: remove plan adapter, add minimal Go reader for `brain/plans/` metadata, add `noodle plan` CLI commands
 - Add model routing recommendations to plan phase files
 - Plan skill updates backlog item to link back to created plan
 - Add interactive TUI planning session (chef chats with sous-chef)
@@ -40,6 +39,8 @@ Several existing skills also reference CLI commands that no longer exist (`noodl
 
 ## Constraints
 
+- **Lean core, smart skills.** Noodle's Go core is a thin orchestration layer: process lifecycle, concurrency, file I/O, and data assembly. All scheduling intelligence, quality judgment, and task semantics live in skills. The Go core surfaces data (mise brief, plan metadata, session history); skills read that data and make decisions. This keeps the core extensible — users customize behavior by writing skills, not by modifying Go code.
+- **Everything is a file.** Skills, brain notes, plans, `.noodle/` state — all are files the agent reads directly. This makes agents powerful (full filesystem access) and the tool extensible (users modify files, not config APIs).
 - All skills live in `.agents/skills/` (project overrides). `skills/` keeps lean stubs for other Noodle users.
 - Each skill uses the "Autonomous Session Mode" pattern: cook-session behavior is primary, interactive features are gated by context.
 - Skills should be lean — guard the context window. Every line must earn its place in a cook session's system prompt.
@@ -103,7 +104,7 @@ Patterns worth preserving from the old role-based skills:
 
 ### First-class planning
 
-9. [[plans/23-task-type-skill-suite/phase-09-native-planning]] — Remove plan adapter, native Go parser + CLI commands + mise many-to-many
+9. [[plans/23-task-type-skill-suite/phase-09-native-planning]] — Remove plan adapter, minimal Go reader + CLI commands
 10. [[plans/23-task-type-skill-suite/phase-10-plan-skill]] — Update plan skill for native commands + model routing + backlog link-back
 11. [[plans/23-task-type-skill-suite/phase-11-tui-planning]] — Interactive TUI planning session (chef chats with sous-chef)
 
@@ -121,7 +122,7 @@ Patterns worth preserving from the old role-based skills:
 - Verify task type removed from `internal/taskreg/registry.go`
 - `noodle plan create/done/phase-add` commands work
 - No `[adapters.plans]` in config
-- Mise brief includes many-to-many todo↔plan associations
+- Mise brief includes plan metadata (prioritize skill computes associations)
 - Plan skill updates backlog item to link back to created plan
 - Plan phases include Routing sections with provider/model
 - Execute skill is loaded alongside adapter-configured skill for execute task type

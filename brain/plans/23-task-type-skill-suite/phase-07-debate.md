@@ -20,7 +20,7 @@ Expand `skills/debate/SKILL.md` from a basic protocol into a full skill with pri
 - Create `.agents/skills/debate/SKILL.md` — **use the `skill-creator` skill**
 - Add Principles section
 - Add convergence criteria: what counts as consensus, when to stop even without consensus
-- **Non-convergence escalation** — when max rounds are reached without consensus, the verdict is written with `consensus: false` and `open_questions`. The debate agent surfaces this to the chef via the prioritize skill (reason: `quality_rejected` or a new `debate_inconclusive` reason). The chef can then resolve the open questions directly or adjust the debate parameters and re-run.
+- **Non-convergence escalation** — when max rounds are reached without consensus, the verdict is written with `consensus: false` and `open_questions` in `.noodle/debates/<task-id>/verdict.json`. The prioritize skill sees the inconclusive verdict when it next reads the debate state files, and can surface it to the chef or adjust parameters. No Go-level escalation — the skill reads the files and decides.
 - Add role instructions: reviewer must be specific and testable (no vague "this could be better"), responder must address each critique directly
 - Add debate directory structure and file naming
 - Add verdict contract with decision summary

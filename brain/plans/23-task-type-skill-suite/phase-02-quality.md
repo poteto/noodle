@@ -36,7 +36,7 @@ From **Manager**:
 - **Read brain principles** — the quality agent reads `brain/principles.md` and follows all linked principle files at the start of every review. Findings must be anchored to specific principles.
 - Define assessment sections: Scope Check, Code Quality, Principle Compliance, Test Evidence, Runtime Verification
 - Define accept/reject contract with actionable feedback on rejection
-- **Rejection escalation** — quality rejections have their own retry limit (separate from crash retries). After repeated rejections (e.g. 2), the item is escalated: the prioritize skill receives a `quality_rejected` reason with the rejection history, and can rescope the item or surface it to the chef instead of blindly retrying.
+- **Rejection handling** — on rejection, the quality agent writes its verdict to `.noodle/quality/<session-id>/verdict.json`. The loop retries normally (same retry mechanism as crash retries). The prioritize skill sees quality rejection history in the mise brief and decides whether to retry, rescope, or surface to the chef — no special Go escalation logic needed.
 - Include scope-violation detection — flag files changed that weren't part of the task
 - **Create todos from findings** — when the quality agent identifies issues that don't warrant rejection (e.g. minor code smells, missing tests for edge cases, documentation gaps), it creates backlog items via the configured backlog adapter with a severity rating (high/medium/low). This feeds back into the prioritize cycle.
 

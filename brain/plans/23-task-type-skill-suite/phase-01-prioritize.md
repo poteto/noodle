@@ -40,30 +40,20 @@ From **CEO**:
 - Add timebox guidance — items that have failed repeatedly should be rescoped, not retried
 - This skill is autonomous-only — no AskUserQuestion, no interactive sections
 
-### Prioritize reasons
+### Situational awareness
 
-The prioritize agent receives a `reason` in its input that explains _why_ it was invoked. Different reasons produce different behavior:
+The prioritize agent doesn't need an explicit "reason" passed by Go infrastructure. Instead, it infers context from the mise brief data:
 
-| Reason | When | Blocking | Agent focus |
-|--------|------|----------|-------------|
-| `startup` | Fresh boot, no queue exists | Yes — nothing can run until the first queue is built | Full survey — read all backlog items, all plan states, build queue from scratch |
-| `backlog_changed` | Todo added, edited, or completed via adapter | No — existing queue items can continue executing in parallel | Incremental — slot the change into the existing queue, don't rebuild everything |
-| `plan_created` | A plan skill produced new phases | No — existing queue items can continue executing in parallel | Schedule new phases relative to existing queue items |
-| `quality_rejected` | Quality rejected a cook after max retries | No — existing queue items can continue | Rescope the item, deprioritize, or surface to chef for review |
+- **Empty queue + no active sessions** → startup: full survey, build from scratch
+- **Quality rejection in recent history** → rescope the item, deprioritize, or surface to chef
+- **New backlog items not in queue** → slot them into the existing queue
+- **New plan phases not yet scheduled** → schedule phases relative to existing items
 
-The reason and any associated context (e.g. which todo changed, which plan was created) are included in the mise brief so the agent can focus its judgment appropriately.
-
-### Go infrastructure: Brief.Reason field
-
-The `mise/types.go:Brief` struct currently has no `Reason` field. Add a `Reason string` field (and optional `ReasonContext` for associated data like which todo changed) so the mise builder can pass the prioritize reason through to the skill via `mise.json`.
-
-### Push-based backlog notification (Go infrastructure)
-
-When the backlog adapter reports mutations (new items, edits, completions), the loop should automatically insert a prioritize task at the top of the queue with reason `backlog_changed`. This is a Go code change in the loop — not in the skill itself. The loop detects backlog changes by diffing the adapter sync output against the previous state. See Phase 9 for the full push-based change detection implementation.
+The mise brief already contains backlog state, active sessions, recent history, and plan data. The skill reads these files and makes its own judgment — no Go-level change detection or reason routing needed. This keeps the Go core as a thin data assembler and lets the skill handle all scheduling intelligence.
 
 ## Data Structures
 
-- Input: `.noodle/mise.json` — structured brief with backlog state, resource state, active sessions, recent history, **reason** (startup | backlog_changed | plan_created | quality_rejected), and reason context
+- Input: `.noodle/mise.json` — structured brief with backlog state, plan state, resource state, active sessions, recent history
 - Output: `.noodle/queue.json` — `{ generated_at, items: [{ id, task_key, title, provider, model, skill, review, rationale }] }`
 
 ## Verification
@@ -75,5 +65,4 @@ When the backlog adapter reports mutations (new items, edits, completions), the 
   - Rationale cites specific ordering principles
   - Failed items are flagged for rescoping, not blindly retried
   - Model routing uses cheapest viable option
-  - Reason is included in the input and influences agent behavior (startup = full survey, backlog_changed = incremental)
-  - Startup prioritize is blocking (loop waits); backlog_changed and plan_created are non-blocking (cooks continue in parallel)
+  - Agent infers context from brief state (empty queue → full survey, quality rejections → rescoping)
