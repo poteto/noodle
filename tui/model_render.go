@@ -36,13 +36,7 @@ func (m Model) renderLayout() string {
 	case TabFeed:
 		tabContent = m.feedTab.Render(paneWidth, contentHeight, m.now())
 	case TabQueue:
-		qt := NewQueueTab()
-		activeIDs := make([]string, 0, len(m.snapshot.Active))
-		for _, s := range m.snapshot.Active {
-			activeIDs = append(activeIDs, s.ID)
-		}
-		qt.SetQueue(m.snapshot.Queue, activeIDs, m.snapshot.ActionNeeded)
-		tabContent = qt.Render(paneWidth, contentHeight)
+		tabContent = m.queueTab.Render(paneWidth, contentHeight)
 	case TabBrain:
 		tabContent = m.brainTab.Render(paneWidth, contentHeight)
 	case TabConfig:
@@ -91,8 +85,7 @@ func renderHelp(tab Tab) string {
 			dimStyle.Render("x") + " reject  " +
 			dimStyle.Render("a") + " merge all approved"
 	case TabQueue:
-		tabKeys = dimStyle.Render("j/k") + " navigate  " +
-			dimStyle.Render("enter") + " detail"
+		tabKeys = dimStyle.Render("j/k") + " navigate"
 	case TabBrain:
 		tabKeys = dimStyle.Render("j/k") + " navigate  " +
 			dimStyle.Render("enter") + " preview  " +

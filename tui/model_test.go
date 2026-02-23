@@ -331,9 +331,6 @@ func TestTaskEditorCreateOpensEmpty(t *testing.T) {
 	if m.taskEditor.title != "" {
 		t.Fatalf("expected empty title, got %q", m.taskEditor.title)
 	}
-	if m.taskEditor.editItemID != nil {
-		t.Fatal("expected create mode (nil editItemID)")
-	}
 }
 
 func TestTaskEditorTabCyclesFields(t *testing.T) {
@@ -429,6 +426,9 @@ func TestTaskEditorSubmitWritesEnqueue(t *testing.T) {
 	if wrote.Prompt != "Fix the tests" {
 		t.Fatalf("prompt = %q, want 'Fix the tests'", wrote.Prompt)
 	}
+	if wrote.Item == "" {
+		t.Fatal("expected item to be set on enqueue command")
+	}
 }
 
 func TestSteerOpensWithBacktick(t *testing.T) {
@@ -479,7 +479,7 @@ func TestMergeWritesControlCommand(t *testing.T) {
 		Now:             func() time.Time { return fixed },
 	})
 	m.snapshot.Verdicts = []Verdict{
-		{SessionID: "cook-a", Accept: true},
+		{SessionID: "cook-a", TargetID: "execute-1", Accept: true},
 	}
 	m.activeTab = TabFeed
 
@@ -507,8 +507,8 @@ func TestMergeWritesControlCommand(t *testing.T) {
 	if wrote.Action != "merge" {
 		t.Fatalf("action = %q, want merge", wrote.Action)
 	}
-	if wrote.Target != "cook-a" {
-		t.Fatalf("target = %q, want cook-a", wrote.Target)
+	if wrote.Item != "execute-1" {
+		t.Fatalf("item = %q, want execute-1", wrote.Item)
 	}
 }
 
@@ -539,9 +539,9 @@ func TestMergeAllApprovedSkipsRejected(t *testing.T) {
 		Now:             func() time.Time { return fixed },
 	})
 	m.snapshot.Verdicts = []Verdict{
-		{SessionID: "cook-a", Accept: true},
-		{SessionID: "cook-b", Accept: false},
-		{SessionID: "cook-c", Accept: true},
+		{SessionID: "cook-a", TargetID: "execute-1", Accept: true},
+		{SessionID: "cook-b", TargetID: "execute-2", Accept: false},
+		{SessionID: "cook-c", TargetID: "execute-3", Accept: true},
 	}
 
 	cmd := m.mergeAllApproved()
@@ -578,8 +578,11 @@ func TestMergeAllApprovedSkipsRejected(t *testing.T) {
 		if cmd.Action != "merge" {
 			t.Fatalf("action = %q, want merge", cmd.Action)
 		}
-		if cmd.Target == "cook-b" {
-			t.Fatal("expected cook-b (rejected) to be skipped")
+		if cmd.Item == "" {
+			t.Fatal("expected item to be set on merge command")
+		}
+		if cmd.Item == "execute-2" {
+			t.Fatal("expected execute-2 (rejected) to be skipped")
 		}
 	}
 }

@@ -47,6 +47,7 @@ type Model struct {
 
 	snapshot Snapshot
 	feedTab  FeedTab
+	queueTab QueueTab
 	brainTab BrainTab
 	err      error
 
@@ -155,6 +156,7 @@ func NewModel(opts Options) Model {
 		refreshInterval: interval,
 		now:             now,
 		activeTab:       TabFeed,
+		queueTab:        NewQueueTab(),
 	}
 }
 
@@ -182,6 +184,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = nil
 		m.snapshot = msg.snapshot
 		m.feedTab.SetSnapshot(m.snapshot)
+		activeIDs := make([]string, 0, len(m.snapshot.Active))
+		for _, s := range m.snapshot.Active {
+			activeIDs = append(activeIDs, s.ID)
+		}
+		m.queueTab.SetQueue(m.snapshot.Queue, activeIDs, m.snapshot.ActionNeeded)
 		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
 		return m, nil
 	case brainPreviewMsg:
@@ -305,12 +312,26 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.taskEditor.OpenNew()
 		return m, nil
 	case "j", "down":
-		if m.activeTab == TabFeed {
+		switch m.activeTab {
+		case TabFeed:
 			m.feedTab.ScrollDown(3)
+		case TabQueue:
+			m.queueTab.table.MoveDown(1)
+		case TabBrain:
+			if m.brainTab.selected < len(m.brainTab.items)-1 {
+				m.brainTab.selected++
+			}
 		}
 	case "k", "up":
-		if m.activeTab == TabFeed {
+		switch m.activeTab {
+		case TabFeed:
 			m.feedTab.ScrollUp(3)
+		case TabQueue:
+			m.queueTab.table.MoveUp(1)
+		case TabBrain:
+			if m.brainTab.selected > 0 {
+				m.brainTab.selected--
+			}
 		}
 	case "m":
 		if m.activeTab == TabFeed && len(m.snapshot.Verdicts) > 0 {
@@ -488,7 +509,7 @@ func (m *Model) mergeSelectedVerdict() tea.Cmd {
 	v := m.snapshot.Verdicts[0]
 	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
 		Action: "merge",
-		Target: v.SessionID,
+		Item:   v.TargetID,
 	})
 }
 
@@ -499,7 +520,7 @@ func (m *Model) rejectSelectedVerdict() tea.Cmd {
 	v := m.snapshot.Verdicts[0]
 	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
 		Action: "reject",
-		Target: v.SessionID,
+		Item:   v.TargetID,
 	})
 }
 
@@ -509,7 +530,7 @@ func (m *Model) mergeAllApproved() tea.Cmd {
 		if v.Accept {
 			cmds = append(cmds, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
 				Action: "merge",
-				Target: v.SessionID,
+				Item:   v.TargetID,
 			}))
 		}
 	}

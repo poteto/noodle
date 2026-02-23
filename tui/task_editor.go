@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,9 +14,6 @@ import (
 // TaskEditor is the inline task creator/editor overlay.
 type TaskEditor struct {
 	open bool
-
-	// nil = create mode, non-nil = edit mode.
-	editItemID *string
 
 	title    string
 	taskType int
@@ -46,25 +44,11 @@ const (
 // OpenNew opens the task editor in create mode.
 func (e *TaskEditor) OpenNew() {
 	e.open = true
-	e.editItemID = nil
 	e.title = ""
 	e.taskType = 0
 	e.model = 0
 	e.provider = 0
 	e.skill = ""
-	e.priority = 0
-	e.field = 0
-}
-
-// OpenEdit opens the task editor in edit mode with prefilled values.
-func (e *TaskEditor) OpenEdit(item QueueItem) {
-	e.open = true
-	e.editItemID = &item.ID
-	e.title = item.Title
-	e.taskType = indexOf(taskTypes, item.Skill, 0)
-	e.model = indexOf(models, item.Model, 0)
-	e.provider = indexOf(providers, item.Provider, 0)
-	e.skill = item.Skill
 	e.priority = 0
 	e.field = 0
 }
@@ -150,18 +134,11 @@ func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
 		return nil
 	}
 
-	action := "enqueue"
-	if e.editItemID != nil {
-		action = "edit-item"
-	}
-
+	itemID := fmt.Sprintf("%s-%d", taskTypes[e.taskType], now().UnixMilli())
 	cmd := loop.ControlCommand{
-		Action: action,
+		Action: "enqueue",
 		Prompt: title,
-		Target: taskTypes[e.taskType],
-	}
-	if e.editItemID != nil {
-		cmd.Item = *e.editItemID
+		Item:   itemID,
 	}
 
 	e.Close()
@@ -176,12 +153,7 @@ func (e *TaskEditor) Render(width int) string {
 	}
 	innerWidth := width - 4
 
-	var mode string
-	if e.editItemID != nil {
-		mode = "Edit Task"
-	} else {
-		mode = "New Task"
-	}
+	mode := "New Task"
 
 	header := lipgloss.NewStyle().
 		Foreground(t.Brand).
@@ -231,14 +203,4 @@ func (e *TaskEditor) Render(width int) string {
 
 	_ = innerWidth
 	return card.Render(width)
-}
-
-func indexOf(items []string, target string, fallback int) int {
-	target = strings.ToLower(strings.TrimSpace(target))
-	for i, item := range items {
-		if strings.ToLower(item) == target {
-			return i
-		}
-	}
-	return fallback
 }
