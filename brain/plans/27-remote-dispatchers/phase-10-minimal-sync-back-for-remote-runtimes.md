@@ -44,22 +44,28 @@ After session completes (EOF on stream, backend not alive), check if backend imp
 After terminal status reached, check if backend implements `PollingSyncBacker`. If so, call `SyncBack(ctx, remoteID)` and store the `SyncResult` in session metadata.
 
 **`loop/cook.go`**
-Update `handleCompletion` — sync-back artifacts flow through the existing completion pipeline, not around it:
+Thread `sessionID` through merge APIs. Currently `mergeCook(ctx, item, worktreeName)` has no way to find session metadata. Change signature to `mergeCook(ctx, item, worktreeName, sessionID)`. Update all call sites: `handleCompletion` (has `cook.session.ID()`), `pendingReviewCook` (already stores sessionID), and `control.go` merge path.
+
+Update `mergeCook` — sync-back artifacts flow through the existing completion pipeline:
 1. Quality gate and pending-approval checks run first (unchanged)
-2. In `mergeCook`, read `SyncResult` from session metadata (`spawn.json`)
+2. Read `SyncResult` from `spawn.json` using the threaded `sessionID`
 3. If result type is `branch`: `git fetch origin && git merge origin/noodle/<session-id>` into the integration branch, then delete the remote branch. This replaces the worktree merge for remote sessions.
-4. If result type is `pr`: store the PR URL in session metadata, mark item done without local merge
+4. If result type is `pr`: mark item as `action_needed` with the PR URL — item stays in queue until the PR is merged. Do not mark done.
 5. If no sync result (tmux): existing worktree merge path (unchanged)
-6. On merge conflict: return error, loop marks the cook as failed with a clear message. User resolves manually.
+6. On merge conflict: return a target-scoped error that the loop handles as a cook failure (same path as quality rejection / retry), not as a runtime-repair trigger. User resolves manually.
+
+**PR completion tracking:** Items with `action_needed` and a PR URL stay in the queue. A future enhancement can poll PR merge status or the user can manually mark done. For now, the prioritize agent sees the action_needed flag and skips the item.
 
 ## Verification
 
 ### Static
 - Compiles, passes vet
 - Both sync-back interfaces are optional — existing `TmuxBackend` compiles without implementing either
+- `mergeCook` signature change compiles across all call sites
 
 ### Runtime
 - Unit test: mock streaming backend implementing `StreamingSyncBacker` returns a branch → `mergeCook` calls git fetch + merge
-- Unit test: mock polling backend implementing `PollingSyncBacker` returns a PR URL → `mergeCook` records URL, skips merge
+- Unit test: mock polling backend implementing `PollingSyncBacker` returns a PR URL → item marked `action_needed`, not done
 - Unit test: backend not implementing sync-back → `mergeCook` uses existing worktree merge path
-- Unit test: git merge conflict → cook fails with descriptive error
+- Unit test: git merge conflict → cook fails with target-scoped error, does not trigger runtime-repair
+- Unit test: `mergeCook` reads spawn.json via threaded sessionID
