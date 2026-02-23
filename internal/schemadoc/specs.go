@@ -116,6 +116,7 @@ var schemaTargets = []targetSpec{
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
 			"active[]":          {Description: "queue item IDs currently being cooked"},
 			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},
+			"autonomy":          {Description: "current runtime autonomy mode (full, review, approve)"},
 		},
 		Constraints: []string{
 			"Items must respect workflow order: execute -> quality (blocking) -> reflect.",

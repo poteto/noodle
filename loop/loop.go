@@ -172,7 +172,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err := l.spawnPlannedItems(ctx, plan); err != nil {
 		return err
 	}
-	return l.stampActiveIDs()
+	return l.stampLoopState()
 }
 
 func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {

@@ -20,6 +20,7 @@ type Queue struct {
 	Items        []Item    `json:"items"`
 	Active       []string  `json:"active,omitempty"`
 	ActionNeeded []string  `json:"action_needed,omitempty"`
+	Autonomy     string    `json:"autonomy,omitempty"`
 }
 
 // Item is one queue entry.

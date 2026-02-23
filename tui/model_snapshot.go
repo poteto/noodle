@@ -91,7 +91,10 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		}
 	}
 
-	autonomy := readAutonomy(filepath.Dir(runtimeDir))
+	autonomy := qr.Autonomy
+	if autonomy == "" {
+		autonomy = config.AutonomyReview
+	}
 
 	return Snapshot{
 		UpdatedAt:       now.UTC(),
@@ -162,6 +165,7 @@ type queueResult struct {
 	Items        []QueueItem
 	Active       []string
 	ActionNeeded []string
+	Autonomy     string
 }
 
 func readQueue(path string) (queueResult, error) {
@@ -186,6 +190,7 @@ func readQueue(path string) (queueResult, error) {
 		Items:        items,
 		Active:       queue.Active,
 		ActionNeeded: queue.ActionNeeded,
+		Autonomy:     queue.Autonomy,
 	}, nil
 }
 
@@ -737,16 +742,3 @@ func inferDescription(relPath string) string {
 	return base
 }
 
-// readAutonomy reads the current autonomy mode from .noodle.toml.
-// Returns "review" as default if config cannot be read.
-func readAutonomy(projectDir string) string {
-	configPath := filepath.Join(projectDir, config.DefaultConfigPath)
-	cfg, _, err := config.Load(configPath)
-	if err != nil {
-		return config.AutonomyReview
-	}
-	if cfg.Autonomy == "" {
-		return config.AutonomyReview
-	}
-	return cfg.Autonomy
-}

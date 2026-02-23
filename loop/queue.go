@@ -54,7 +54,7 @@ func toQueueX(queue Queue) queuex.Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded}
+	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy}
 }
 
 func fromQueueX(queue queuex.Queue) Queue {
@@ -71,21 +71,44 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded}
+	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy}
 }
 
-// stampActiveIDs writes the current active queue item IDs into queue.json
-// so the TUI can derive "cooking" status without mapping session IDs.
-func (l *Loop) stampActiveIDs() error {
+// stampLoopState writes active IDs and autonomy into queue.json so the TUI
+// can derive cooking status and display the current autonomy mode.
+// Skips the write when nothing changed, avoiding fs-watcher feedback loops.
+func (l *Loop) stampLoopState() error {
 	queue, err := readQueue(l.deps.QueueFile)
 	if err != nil {
 		return err
 	}
+
 	active := make([]string, 0, len(l.activeByTarget))
 	for targetID := range l.activeByTarget {
 		active = append(active, targetID)
 	}
 	sort.Strings(active)
+
+	autonomy := l.config.Autonomy
+
+	// Skip write if nothing changed.
+	if slicesEqual(queue.Active, active) && queue.Autonomy == autonomy {
+		return nil
+	}
+
 	queue.Active = active
+	queue.Autonomy = autonomy
 	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

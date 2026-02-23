@@ -25,6 +25,7 @@ type Queue struct {
 	Items        []QueueItem `json:"items"`
 	Active       []string    `json:"active,omitempty"`
 	ActionNeeded []string    `json:"action_needed,omitempty"`
+	Autonomy     string      `json:"autonomy,omitempty"`
 }
 
 type QueueItem struct {
