@@ -19,7 +19,7 @@ Light amendments to the debugging utility skill, and update the plan skill for n
 - Add `.noodle/` state file inspection as diagnostic step
 - Add brain-update step: capture novel gotchas
 - Keep existing root-cause methodology — it's well-written
-- No `noodle:` frontmatter — this is a utility skill invoked by oops, execute, and repair
+- No `noodle:` frontmatter — this is a utility skill invoked by oops (user-project fixes), repair (Noodle-internal fixes), and execute (diagnostic steps)
 
 ### Principles
 

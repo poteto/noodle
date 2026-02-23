@@ -29,14 +29,14 @@ From **Manager**: verify artifacts not reports, scope discipline.
 - **Read brain principles** at the start of every review. Findings must be anchored to specific principles.
 - Assessment sections: Scope Check, Code Quality, Principle Compliance, Test Evidence, Runtime Verification
 - Accept/reject contract with actionable feedback on rejection
-- **Verdict files** — write verdict to `.noodle/quality/<session-id>/verdict.json`. The loop retries on rejection (same mechanism as crash retries). The prioritize skill sees rejection history in the mise brief and decides whether to retry, rescope, or surface to chef.
+- **Verdict files** — write verdict to `.noodle/quality/<session-id>.json` (flat file per session, not a subdirectory). The loop retries on rejection (same mechanism as crash retries). The prioritize skill sees rejection history in the mise brief and decides whether to retry, rescope, or surface to chef.
 - **Scope-violation detection** — flag files changed that weren't part of the task
 - **Create todos from findings** — non-blocking issues filed as backlog items via the configured backlog adapter with severity ratings (high/medium/low)
 
 ## Data Structures
 
 - Input: cook session result — task description, commit hash, changed files, test output, session log
-- Output: `.noodle/quality/<session-id>/verdict.json` — `{ accept, feedback, issues: [{ description, severity, principle }], scope_violations, todos_created }`
+- Output: `.noodle/quality/<session-id>.json` — `{ accept, feedback, issues: [{ description, severity, principle }], scope_violations, todos_created }`
 
 ## Verification
 

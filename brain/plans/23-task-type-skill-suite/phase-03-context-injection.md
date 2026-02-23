@@ -169,8 +169,9 @@ func (d *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
             "brief":   filepath.Join(d.runtimeDir, "mise.json"),
         }
         resolved := resolveTemplateVars(runtimeCmd, vars)
-        // Pipe through noodle stamp for event tracking
-        pipeline := resolved + " | " + d.noodleBin + " stamp ..."
+        // Both paths pipe through noodle stamp — the dispatcher always appends it.
+        // Runtime templates must NOT include stamp piping.
+        pipeline := buildPipelineCommand(resolved, sessionDir)
         // ... launch tmux with pipeline (same tmux logic, different command)
     }
 }

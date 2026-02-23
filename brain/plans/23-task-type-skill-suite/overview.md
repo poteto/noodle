@@ -22,7 +22,7 @@ Planning is currently a user-configurable adapter — it should be native. Plans
 
 **In scope:**
 - Dynamic task type registry via `noodle:` frontmatter convention (replaces hardcoded Go registry)
-- Create or rewrite 8 skills in `.agents/skills/` — 7 task-type skills + 1 utility skill (debugging)
+- Create or rewrite 9 skills in `.agents/skills/` — 8 task-type skills + 1 utility skill (debugging)
 - Extract patterns from old role-based skills (CEO, CTO, Director, Manager, Operator)
 - Ground each skill in engineering principles from `brain/principles/`
 - Native planning: remove plan adapter, minimal Go reader, `noodle plan` CLI commands
@@ -63,8 +63,9 @@ Each phase must follow this workflow:
 1. Work in a worktree
 2. Minimum one commit per phase with conventional messages
 3. `make ci` must pass before merging
-4. Rebase on main if it has advanced
-5. Merge to main at the end of the phase
+4. Review changes: verify scope boundaries, check for regressions, flag issues by severity (high/medium/low)
+5. Rebase on main before merging (check if main has advanced after every commit)
+6. Merge to main at the end of the phase
 
 ## User-Defined Task Types
 
@@ -98,14 +99,14 @@ The presence of `noodle:` is what makes a skill a task type. No `task: true` nee
 
 The `schedule` field goes into the mise brief so the prioritize skill knows when to schedule this task without reading every skill's full SKILL.md. Quality review is not a per-task flag — the quality skill has its own `schedule` field, and the prioritize skill decides when to run it based on session history.
 
-The `runtime` field is a command template that controls what command runs inside the tmux session. When empty (the default), the built-in provider command runs (claude/codex CLI piped to `noodle stamp`). When set, the dispatcher replaces the provider command with the resolved template — the tmux session, monitoring, and lifecycle management stay the same.
+The `runtime` field is a command template that controls what command runs inside the tmux session. When empty (the default), the built-in provider command runs (claude/codex CLI). When set, the dispatcher replaces the provider command with the resolved template — the tmux session, monitoring, and lifecycle management stay the same. The dispatcher always appends `| noodle stamp ...` piping to the command (whether built-in or custom) — runtime templates must NOT include stamp piping.
 
 ```yaml
 # Default (empty) — built-in provider command:
 #   claude -p --output-format stream-json ... | noodle stamp ...
 
 # Custom — run a different command inside the tmux session:
-runtime: "ssh gpu-box 'cd {{repo}} && claude -p < {{prompt}}' | noodle stamp ..."
+runtime: "ssh gpu-box 'cd {{repo}} && claude -p < {{prompt}}'"
 ```
 
 Template variables: `{{session}}`, `{{repo}}`, `{{prompt}}`, `{{skill}}`, `{{brief}}`. The dispatcher resolves them before execution.
@@ -180,7 +181,7 @@ default = ""  # empty = built-in provider command
 6. [[plans/23-task-type-skill-suite/phase-06-execute]] — Implementation methodology (worktrees, delegation, verification)
 7. [[plans/23-task-type-skill-suite/phase-07-reflect]] — Learning capture from mistakes and corrections
 8. [[plans/23-task-type-skill-suite/phase-08-meditate]] — Brain cleanup and principle extraction
-9. [[plans/23-task-type-skill-suite/phase-09-oops]] — User-project infrastructure fix
+9. [[plans/23-task-type-skill-suite/phase-09-oops]] — Oops (user-project) + Repair (Noodle-internal) infrastructure fix
 10. [[plans/23-task-type-skill-suite/phase-10-debate]] — Structured debate with per-task state
 
 ### Skills + cleanup

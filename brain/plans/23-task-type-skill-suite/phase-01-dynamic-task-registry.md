@@ -166,7 +166,7 @@ Add frontmatter to each built-in task type's SKILL.md (all in `.agents/skills/`)
 | reflect | false | "After a cook session completes" |
 | meditate | false | "Periodically after several reflect cycles have accumulated" |
 
-Skills that don't exist yet (quality, oops, debate) get frontmatter when created in their respective phases.
+Skills that don't exist yet (quality, oops, repair, debate) get frontmatter when created in their respective phases.
 
 All built-in tasks omit `runtime` (inherit project default). Quality review sequencing is handled by the prioritize skill — the quality skill's own `schedule` field says "After a cook session completes, before reflecting" and the prioritize skill decides when to run it.
 
