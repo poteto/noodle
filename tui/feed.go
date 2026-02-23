@@ -9,12 +9,13 @@ const maxFeedItems = 100
 
 // FeedTab manages the feed view state.
 type FeedTab struct {
-	items      []FeedItem
-	verdicts   []Verdict
-	autonomy   string
-	selection  int
-	scroll     int
-	userScroll bool // true when user has scrolled up manually
+	items        []FeedItem
+	verdicts     []Verdict
+	autonomy     string
+	actionNeeded map[string]struct{}
+	selection    int
+	scroll       int
+	userScroll   bool // true when user has scrolled up manually
 }
 
 // SetSnapshot rebuilds feed items from the snapshot's FeedEvents.
@@ -22,6 +23,10 @@ type FeedTab struct {
 func (f *FeedTab) SetSnapshot(snap Snapshot) {
 	f.verdicts = snap.Verdicts
 	f.autonomy = snap.Autonomy
+	f.actionNeeded = make(map[string]struct{}, len(snap.ActionNeeded))
+	for _, id := range snap.ActionNeeded {
+		f.actionNeeded[id] = struct{}{}
+	}
 	events := snap.FeedEvents
 	if len(events) == 0 {
 		f.items = nil
@@ -82,9 +87,10 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 	var cards []string
 
 	// Verdict cards appear at the top (most actionable).
-	showActions := f.autonomy != "full"
+	canAct := f.autonomy != "full"
 	for _, v := range f.verdicts {
-		cards = append(cards, renderVerdictCard(v, width, now, showActions))
+		_, actionable := f.actionNeeded[v.TargetID]
+		cards = append(cards, renderVerdictCard(v, width, now, canAct && actionable))
 	}
 
 	// Show a limited number of recent cards based on terminal height.

@@ -511,33 +511,43 @@ func (m Model) steerTargets() []string {
 	return targets
 }
 
-func (m *Model) mergeSelectedVerdict() tea.Cmd {
-	if len(m.snapshot.Verdicts) == 0 {
-		return nil
+func (m *Model) isActionable(targetID string) bool {
+	for _, id := range m.snapshot.ActionNeeded {
+		if id == targetID {
+			return true
+		}
 	}
-	// Merge the first pending verdict.
-	v := m.snapshot.Verdicts[0]
-	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-		Action: "merge",
-		Item:   v.TargetID,
-	})
+	return false
+}
+
+func (m *Model) mergeSelectedVerdict() tea.Cmd {
+	for _, v := range m.snapshot.Verdicts {
+		if m.isActionable(v.TargetID) {
+			return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+				Action: "merge",
+				Item:   v.TargetID,
+			})
+		}
+	}
+	return nil
 }
 
 func (m *Model) rejectSelectedVerdict() tea.Cmd {
-	if len(m.snapshot.Verdicts) == 0 {
-		return nil
+	for _, v := range m.snapshot.Verdicts {
+		if m.isActionable(v.TargetID) {
+			return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+				Action: "reject",
+				Item:   v.TargetID,
+			})
+		}
 	}
-	v := m.snapshot.Verdicts[0]
-	return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-		Action: "reject",
-		Item:   v.TargetID,
-	})
+	return nil
 }
 
 func (m *Model) mergeAllApproved() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	for _, v := range m.snapshot.Verdicts {
-		if v.Accept {
+		if v.Accept && m.isActionable(v.TargetID) {
 			cmds = append(cmds, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
 				Action: "merge",
 				Item:   v.TargetID,

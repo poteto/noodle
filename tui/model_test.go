@@ -490,6 +490,7 @@ func TestMergeWritesControlCommand(t *testing.T) {
 	m.snapshot.Verdicts = []Verdict{
 		{SessionID: "cook-a", TargetID: "execute-1", Accept: true},
 	}
+	m.snapshot.ActionNeeded = []string{"execute-1"}
 	m.activeTab = TabFeed
 
 	cmd := m.mergeSelectedVerdict()
@@ -552,6 +553,7 @@ func TestMergeAllApprovedSkipsRejected(t *testing.T) {
 		{SessionID: "cook-b", TargetID: "execute-2", Accept: false},
 		{SessionID: "cook-c", TargetID: "execute-3", Accept: true},
 	}
+	m.snapshot.ActionNeeded = []string{"execute-1", "execute-2", "execute-3"}
 
 	cmd := m.mergeAllApproved()
 	if cmd == nil {
