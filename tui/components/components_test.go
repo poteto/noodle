@@ -178,7 +178,7 @@ func TestCostLabel(t *testing.T) {
 }
 
 func TestTrimTo(t *testing.T) {
-	if got := TrimTo("hello world", 5); got != "he..." {
+	if got := TrimTo("hello world", 5); got != "he…ld" {
 		t.Fatalf("TrimTo = %q", got)
 	}
 	if got := TrimTo("hi", 10); got != "hi" {

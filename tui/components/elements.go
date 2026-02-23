@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 // HealthDot returns a colored dot (●) based on health status.
@@ -78,14 +79,7 @@ func CostLabel(usd float64) string {
 	return lipgloss.NewStyle().Foreground(t.Brand).Render(fmt.Sprintf("$%.2f", usd))
 }
 
-// TrimTo truncates a string to the given width, adding "..." if needed.
+// TrimTo truncates a string using middle truncation for readability.
 func TrimTo(value string, width int) string {
-	value = strings.TrimSpace(value)
-	if width <= 0 || len(value) <= width {
-		return value
-	}
-	if width <= 3 {
-		return value[:width]
-	}
-	return value[:width-3] + "..."
+	return stringx.MiddleTruncate(strings.TrimSpace(value), width)
 }

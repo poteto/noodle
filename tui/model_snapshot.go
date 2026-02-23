@@ -476,14 +476,7 @@ func durationLabel(seconds int64) string {
 }
 
 func trimTo(value string, width int) string {
-	value = strings.TrimSpace(value)
-	if width <= 0 || len(value) <= width {
-		return value
-	}
-	if width <= 1 {
-		return value[:width]
-	}
-	return value[:width-1] + "..."
+	return stringx.MiddleTruncate(strings.TrimSpace(value), width)
 }
 
 func padRight(value string, width int) string {
