@@ -1,13 +1,12 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/poteto/noodle/worktree"
+	"github.com/spf13/cobra"
 )
 
 type worktreeCommandApp interface {
@@ -29,75 +28,123 @@ var newWorktreeCommandApp = func() (worktreeCommandApp, error) {
 
 var runWorktreeHook = worktree.RunHook
 
-func runWorktreeCommand(_ context.Context, _ *App, _ []Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("worktree subcommand is required")
+func newWorktreeCmd(_ *App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "worktree",
+		Short: "Manage linked git worktrees",
 	}
+	cmd.AddCommand(
+		newWorktreeHookCmd(),
+		newWorktreeCreateCmd(),
+		newWorktreeMergeCmd(),
+		newWorktreeCleanupCmd(),
+		newWorktreeListCmd(),
+		newWorktreePruneCmd(),
+	)
+	return cmd
+}
 
-	subcommand := strings.TrimSpace(args[0])
-	switch subcommand {
-	case "hook":
-		if len(args) != 1 {
-			return fmt.Errorf("worktree hook does not accept arguments")
-		}
-		return runWorktreeHook(os.Stdin, os.Stdout)
-	case "create", "merge", "cleanup", "list", "prune":
-		// handled below
-	default:
-		return fmt.Errorf("unknown worktree subcommand %q", subcommand)
-	}
-
-	wApp, err := newWorktreeCommandApp()
-	if err != nil {
-		return err
-	}
-
-	switch subcommand {
-	case "create":
-		name, err := requiredWorktreeName("create", args[1:])
-		if err != nil {
-			return err
-		}
-		return wApp.Create(name)
-	case "merge":
-		name, err := requiredWorktreeName("merge", args[1:])
-		if err != nil {
-			return err
-		}
-		return wApp.Merge(name)
-	case "cleanup":
-		return runWorktreeCleanupSubcommand(wApp, args[1:])
-	case "list":
-		if len(args) != 1 {
-			return fmt.Errorf("worktree list does not accept arguments")
-		}
-		return wApp.List()
-	case "prune":
-		if len(args) != 1 {
-			return fmt.Errorf("worktree prune does not accept arguments")
-		}
-		return wApp.Prune()
-	default:
-		return fmt.Errorf("unknown worktree subcommand %q", subcommand)
+func newWorktreeHookCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "hook",
+		Short: "Run worktree session hook",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runWorktreeHook(os.Stdin, os.Stdout)
+		},
 	}
 }
 
-func requiredWorktreeName(subcommand string, args []string) (string, error) {
-	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
-		return "", fmt.Errorf("worktree %s requires a name", subcommand)
+func newWorktreeCreateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create <name>",
+		Short: "Create a new linked worktree",
+		Args:  exactTrimmedArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.Create(strings.TrimSpace(args[0]))
+		},
 	}
-	return strings.TrimSpace(args[0]), nil
 }
 
-func runWorktreeCleanupSubcommand(wApp worktreeCommandApp, args []string) error {
-	flags := flag.NewFlagSet("worktree cleanup", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-	force := flags.Bool("force", false, "Remove even when unmerged commits exist")
-	if err := flags.Parse(args); err != nil {
-		return err
+func newWorktreeMergeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "merge <name>",
+		Short: "Merge a worktree branch back to main",
+		Args:  exactTrimmedArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.Merge(strings.TrimSpace(args[0]))
+		},
 	}
-	if flags.NArg() != 1 {
-		return fmt.Errorf("worktree cleanup requires a name")
+}
+
+func newWorktreeCleanupCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "cleanup <name>",
+		Short: "Remove a worktree without merging",
+		Args:  exactTrimmedArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.Cleanup(strings.TrimSpace(args[0]), force)
+		},
 	}
-	return wApp.Cleanup(strings.TrimSpace(flags.Arg(0)), *force)
+	cmd.Flags().BoolVar(&force, "force", false, "Remove even when unmerged commits exist")
+	return cmd
+}
+
+func newWorktreeListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all worktrees with merge status",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.List()
+		},
+	}
+}
+
+func newWorktreePruneCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "prune",
+		Short: "Remove merged and patch-equivalent worktrees",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			wApp, err := newWorktreeCommandApp()
+			if err != nil {
+				return err
+			}
+			return wApp.Prune()
+		},
+	}
+}
+
+// exactTrimmedArgs returns a cobra arg validator that requires exactly n
+// non-empty (after trimming) arguments.
+func exactTrimmedArgs(n int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) != n {
+			return fmt.Errorf("accepts %d arg(s), received %d", n, len(args))
+		}
+		for _, arg := range args {
+			if strings.TrimSpace(arg) == "" {
+				return fmt.Errorf("argument must not be empty")
+			}
+		}
+		return nil
+	}
 }

@@ -3,21 +3,25 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
+	"github.com/spf13/cobra"
 )
 
-func runMiseCommand(ctx context.Context, app *App, _ []Command, args []string) error {
-	flags := flag.NewFlagSet("mise", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-	if err := flags.Parse(args); err != nil {
-		return err
+func newMiseCmd(app *App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "mise",
+		Short: "Build and print the current mise brief",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runMise(cmd.Context(), app)
+		},
 	}
+}
 
+func runMise(ctx context.Context, app *App) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current directory: %w", err)

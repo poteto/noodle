@@ -23,7 +23,7 @@ cd noodle
 2. Verify and start:
 
 ```sh
-~/.noodle/bin/noodle commands
+~/.noodle/bin/noodle --help
 ~/.noodle/bin/noodle skills list
 ~/.noodle/bin/noodle status
 ~/.noodle/bin/noodle start --once
@@ -93,12 +93,12 @@ Script templates are project-defined in `noodle.toml`.
 | `noodle status` | Show compact runtime status |
 | `noodle debug` | Dump canonical runtime debug state |
 | `noodle skills list` | List resolved skills with precedence |
-| `noodle commands` | List commands |
-| `noodle commands --json` | List commands as JSON |
 | `noodle worktree <subcommand>` | Worktree operations (`create`, `merge`, `cleanup`, `list`, `prune`, `hook`) |
+| `noodle plan <subcommand>` | Plan management (`create`, `done`, `phase-add`, `list`) |
 | `noodle mise` | Build and print current mise brief (internal) |
-| `noodle spawn` | Spawn cook session in tmux (internal) |
+| `noodle dispatch` | Dispatch a cook session in tmux (internal) |
 | `noodle stamp` | Stamp NDJSON logs (internal) |
+| `noodle --help` | List all available commands |
 
 ## Contributing
 
@@ -108,7 +108,7 @@ Build and verify:
 go build ./...
 go test ./...
 go vet ./...
-go run . commands --json
+go run . --help
 ```
 
 Repository layout:

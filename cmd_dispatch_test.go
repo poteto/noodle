@@ -9,8 +9,8 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 )
 
-func TestRunDispatchCommandRequiresPrompt(t *testing.T) {
-	err := runDispatchCommand(context.Background(), nil, nil, []string{"--worktree", ".worktrees/phase-06-dispatcher"})
+func TestRunDispatchRequiresPrompt(t *testing.T) {
+	err := runDispatch(context.Background(), nil, dispatchArgs{worktree: ".worktrees/phase-06-dispatcher"})
 	if err == nil {
 		t.Fatal("expected prompt required error")
 	}
@@ -19,8 +19,8 @@ func TestRunDispatchCommandRequiresPrompt(t *testing.T) {
 	}
 }
 
-func TestRunDispatchCommandRequiresWorktree(t *testing.T) {
-	err := runDispatchCommand(context.Background(), nil, nil, []string{"--prompt", "Say ok"})
+func TestRunDispatchRequiresWorktree(t *testing.T) {
+	err := runDispatch(context.Background(), nil, dispatchArgs{prompt: "Say ok"})
 	if err == nil {
 		t.Fatal("expected worktree required error")
 	}
@@ -29,7 +29,7 @@ func TestRunDispatchCommandRequiresWorktree(t *testing.T) {
 	}
 }
 
-func TestRunDispatchCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
+func TestRunDispatchBuildsRequestFromDefaults(t *testing.T) {
 	originalFactory := newDispatchCommandDispatcher
 	t.Cleanup(func() { newDispatchCommandDispatcher = originalFactory })
 
@@ -52,20 +52,19 @@ func TestRunDispatchCommandBuildsRequestFromFlagsAndDefaults(t *testing.T) {
 
 	var err error
 	_ = captureStdout(t, func() {
-		err = runDispatchCommand(context.Background(), app, nil, []string{
-			"--name", "cook-a",
-			"--prompt", "Say ok",
-			"--skill", "debugging",
-			"--reasoning-level", "high",
-			"--worktree", ".worktrees/phase-06-dispatcher",
-			"--max-turns", "7",
-			"--budget-cap", "1.25",
-			"--env", "FOO=bar",
-			"--env", "BAR=baz",
+		err = runDispatch(context.Background(), app, dispatchArgs{
+			name:           "cook-a",
+			prompt:         "Say ok",
+			skill:          "debugging",
+			reasoningLevel: "high",
+			worktree:       ".worktrees/phase-06-dispatcher",
+			maxTurns:       7,
+			budgetCap:      1.25,
+			envVars:        map[string]string{"FOO": "bar", "BAR": "baz"},
 		})
 	})
 	if err != nil {
-		t.Fatalf("runDispatchCommand returned error: %v", err)
+		t.Fatalf("runDispatch returned error: %v", err)
 	}
 	if fake.called != 1 {
 		t.Fatalf("dispatch called %d times, expected 1", fake.called)

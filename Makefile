@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet lintarch ci reset run start status skills commands fixtures-loop fixtures-hash bugs watch watch-verbose clean
+.PHONY: help build test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -23,7 +23,6 @@ help:
 	@printf "  %-40s %s\n" "make start" "Run scheduling loop"
 	@printf "  %-40s %s\n" "make status" "Show runtime status"
 	@printf "  %-40s %s\n" "make skills" "List resolved skills"
-	@printf "  %-40s %s\n" "make commands" "List available commands"
 	@printf "  %-40s %s\n" "make fixtures-loop MODE=check|record" "Verify or regenerate loop runtime dump fixtures"
 	@printf "  %-40s %s\n" "make fixtures-hash MODE=check|sync" "Verify or sync fixture source hashes"
 	@printf "  %-40s %s\n" "make bugs" "List fixture expected.md files with bug=true"
@@ -64,10 +63,7 @@ status:
 	$(NOODLE) status
 
 skills:
-	$(NOODLE) skills
-
-commands:
-	$(NOODLE) commands --json
+	$(NOODLE) skills list
 
 fixtures-loop:
 	@mode="$${MODE:-check}"; \

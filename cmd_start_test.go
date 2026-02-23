@@ -31,7 +31,7 @@ func (f *fakeStartLoop) Run(ctx context.Context) error {
 	return f.runErr
 }
 
-func TestRunStartCommandOnceUsesLoopCycle(t *testing.T) {
+func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	projectDir := t.TempDir()
 	originalDir, err := os.Getwd()
 	if err != nil {
@@ -50,8 +50,8 @@ func TestRunStartCommandOnceUsesLoopCycle(t *testing.T) {
 	t.Cleanup(func() { newStartRuntimeLoop = originalFactory })
 
 	app := &App{Config: config.DefaultConfig()}
-	if err := runStartCommand(context.Background(), app, nil, []string{"--once"}); err != nil {
-		t.Fatalf("runStartCommand --once: %v", err)
+	if err := runStart(context.Background(), app, true); err != nil {
+		t.Fatalf("runStart --once: %v", err)
 	}
 	if fakeLoop.cycles != 1 {
 		t.Fatalf("cycle calls = %d, want 1", fakeLoop.cycles)

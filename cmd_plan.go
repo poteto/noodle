@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,27 +9,64 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/plan"
+	"github.com/spf13/cobra"
 )
 
-func runPlanCommand(_ context.Context, _ *App, _ []Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("plan subcommand is required (create, done, phase-add, list)")
+func newPlanCmd(_ *App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "plan",
+		Short: "Manage plans (create, done, phase-add, list)",
 	}
+	cmd.AddCommand(
+		newPlanCreateCmd(),
+		newPlanDoneCmd(),
+		newPlanPhaseAddCmd(),
+		newPlanListCmd(),
+	)
+	return cmd
+}
 
-	subcommand := strings.TrimSpace(args[0])
-	subArgs := args[1:]
+func newPlanCreateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create <todo-id> <slug>",
+		Short: "Create a plan from a todo",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPlanCreate(args)
+		},
+	}
+}
 
-	switch subcommand {
-	case "create":
-		return runPlanCreate(subArgs)
-	case "done":
-		return runPlanDone(subArgs)
-	case "phase-add":
-		return runPlanPhaseAdd(subArgs)
-	case "list":
-		return runPlanList(subArgs)
-	default:
-		return fmt.Errorf("unknown plan subcommand %q", subcommand)
+func newPlanDoneCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "done <plan-id>",
+		Short: "Mark a plan as done",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPlanDone(args)
+		},
+	}
+}
+
+func newPlanPhaseAddCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "phase-add <plan-id> <phase-name>",
+		Short: "Add a phase to a plan",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPlanPhaseAdd(args)
+		},
+	}
+}
+
+func newPlanListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all plans",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runPlanList()
+		},
 	}
 }
 
@@ -110,11 +146,7 @@ func runPlanPhaseAdd(args []string) error {
 	return nil
 }
 
-func runPlanList(args []string) error {
-	if len(args) != 0 {
-		return fmt.Errorf("plan list does not accept arguments")
-	}
-
+func runPlanList() error {
 	plansDir, err := resolvePlansDir()
 	if err != nil {
 		return err

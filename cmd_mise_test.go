@@ -10,7 +10,7 @@ import (
 	"github.com/poteto/noodle/config"
 )
 
-func TestRunMiseCommandOutputsJSON(t *testing.T) {
+func TestRunMiseOutputsJSON(t *testing.T) {
 	projectDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle"), 0o755); err != nil {
 		t.Fatalf("mkdir runtime dir: %v", err)
@@ -31,8 +31,8 @@ func TestRunMiseCommandOutputsJSON(t *testing.T) {
 	app.Config.Adapters = map[string]config.AdapterConfig{}
 
 	output := captureStdout(t, func() {
-		if err := runMiseCommand(context.Background(), app, nil, nil); err != nil {
-			t.Fatalf("runMiseCommand: %v", err)
+		if err := runMise(context.Background(), app); err != nil {
+			t.Fatalf("runMise: %v", err)
 		}
 	})
 

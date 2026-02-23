@@ -10,17 +10,17 @@ Use this skill to answer command questions about Noodle and to safely create or 
 ## Workflow
 
 1. Query the CLI directly first:
-   - `noodle commands --json`
-   - For one command: `noodle commands --json --command cook`
+   - `noodle --help`
+   - For one command: `noodle <command> --help`
+   - For subcommands: `noodle <command> <subcommand> --help`
 2. If behavior looks inconsistent, verify against `main.go` and the corresponding `cmd_*.go` file.
 3. Read `references/config.md` before creating or editing config.
 4. If the user says `.noodlerc`, correct to `noodle.toml` (project root).
 
 ## Command Lookup
 
-- Use `noodle commands --json` as the source of truth.
-- Use `noodle commands --json --command "cook log"` for focused lookup.
-- For exact flags in the current code, run `noodle <command> -h`.
+- Use `noodle --help` as the source of truth for available commands.
+- For exact flags in the current code, run `noodle <command> --help`.
 
 ## Config Workflow
 

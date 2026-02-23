@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/spf13/cobra"
 )
 
 type debugDump struct {
@@ -59,16 +58,18 @@ type debugSession struct {
 	TotalCostUSD float64 `json:"total_cost_usd,omitempty"`
 }
 
-func runDebugCommand(_ context.Context, app *App, _ []Command, args []string) error {
-	flags := flag.NewFlagSet("debug", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-	if err := flags.Parse(args); err != nil {
-		return err
+func newDebugCmd(app *App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "debug",
+		Short: "Dump canonical runtime debug state",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDebug(app)
+		},
 	}
-	if flags.NArg() != 0 {
-		return fmt.Errorf("debug does not accept arguments")
-	}
+}
 
+func runDebug(app *App) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current directory: %w", err)

@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-func TestRunStampCommandRequiresOutputPath(t *testing.T) {
-	err := runStampCommand(context.Background(), nil, nil, nil)
+func TestRunStampRequiresOutputPath(t *testing.T) {
+	err := runStamp(context.Background(), "", "")
 	if err == nil {
 		t.Fatal("expected missing output error")
 	}
@@ -18,7 +18,7 @@ func TestRunStampCommandRequiresOutputPath(t *testing.T) {
 	}
 }
 
-func TestRunStampCommandDoesNotTruncateOutputWhenEventsOpenFails(t *testing.T) {
+func TestRunStampDoesNotTruncateOutputWhenEventsOpenFails(t *testing.T) {
 	tempDir := t.TempDir()
 	outputPath := filepath.Join(tempDir, "stamped.ndjson")
 	if err := os.WriteFile(outputPath, []byte("keep-me"), 0o644); err != nil {
@@ -30,12 +30,7 @@ func TestRunStampCommandDoesNotTruncateOutputWhenEventsOpenFails(t *testing.T) {
 		t.Fatalf("create events directory: %v", err)
 	}
 
-	err := runStampCommand(
-		context.Background(),
-		nil,
-		nil,
-		[]string{"--output", outputPath, "--events", eventsPath},
-	)
+	err := runStamp(context.Background(), outputPath, eventsPath)
 	if err == nil {
 		t.Fatal("expected events path open error")
 	}

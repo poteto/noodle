@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,19 +10,7 @@ import (
 	"github.com/poteto/noodle/config"
 )
 
-func TestRunSkillsCommandRequiresSubcommand(t *testing.T) {
-	app := &App{Config: config.DefaultConfig()}
-
-	err := runSkillsCommand(context.Background(), app, nil, nil)
-	if err == nil {
-		t.Fatal("expected missing subcommand error")
-	}
-	if !strings.Contains(err.Error(), "subcommand is required") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestRunSkillsListCommandRespectsPrecedence(t *testing.T) {
+func TestSkillsListRespectsPrecedence(t *testing.T) {
 	project := t.TempDir()
 	user := t.TempDir()
 
@@ -40,9 +27,9 @@ func TestRunSkillsListCommandRespectsPrecedence(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := runSkillsCommand(context.Background(), app, nil, []string{"list"})
+		err := runSkillsList(app)
 		if err != nil {
-			t.Fatalf("runSkillsCommand: %v", err)
+			t.Fatalf("runSkillsList: %v", err)
 		}
 	})
 

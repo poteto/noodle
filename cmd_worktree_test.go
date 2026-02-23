@@ -3,21 +3,10 @@ package main
 import (
 	"context"
 	"io"
-	"strings"
 	"testing"
 )
 
-func TestRunWorktreeCommandRequiresSubcommand(t *testing.T) {
-	err := runWorktreeCommand(context.Background(), nil, nil, nil)
-	if err == nil {
-		t.Fatal("expected missing subcommand error")
-	}
-	if !strings.Contains(err.Error(), "subcommand is required") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestRunWorktreeCommandDispatchesCreate(t *testing.T) {
+func TestWorktreeCreateDispatches(t *testing.T) {
 	originalFactory := newWorktreeCommandApp
 	t.Cleanup(func() {
 		newWorktreeCommandApp = originalFactory
@@ -28,15 +17,19 @@ func TestRunWorktreeCommandDispatchesCreate(t *testing.T) {
 		return fake, nil
 	}
 
-	if err := runWorktreeCommand(context.Background(), nil, nil, []string{"create", "feat-a"}); err != nil {
-		t.Fatalf("runWorktreeCommand: %v", err)
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"create", "feat-a"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree create: %v", err)
 	}
 	if fake.createName != "feat-a" {
 		t.Fatalf("create name = %q", fake.createName)
 	}
 }
 
-func TestRunWorktreeCommandDispatchesCleanupWithForce(t *testing.T) {
+func TestWorktreeCleanupWithForce(t *testing.T) {
 	originalFactory := newWorktreeCommandApp
 	t.Cleanup(func() {
 		newWorktreeCommandApp = originalFactory
@@ -47,8 +40,12 @@ func TestRunWorktreeCommandDispatchesCleanupWithForce(t *testing.T) {
 		return fake, nil
 	}
 
-	if err := runWorktreeCommand(context.Background(), nil, nil, []string{"cleanup", "--force", "feat-a"}); err != nil {
-		t.Fatalf("runWorktreeCommand: %v", err)
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"cleanup", "--force", "feat-a"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree cleanup: %v", err)
 	}
 	if fake.cleanupName != "feat-a" {
 		t.Fatalf("cleanup name = %q", fake.cleanupName)
@@ -58,7 +55,7 @@ func TestRunWorktreeCommandDispatchesCleanupWithForce(t *testing.T) {
 	}
 }
 
-func TestRunWorktreeCommandDispatchesHook(t *testing.T) {
+func TestWorktreeHookBypassesAppFactory(t *testing.T) {
 	originalFactory := newWorktreeCommandApp
 	originalHook := runWorktreeHook
 	t.Cleanup(func() {
@@ -78,8 +75,12 @@ func TestRunWorktreeCommandDispatchesHook(t *testing.T) {
 		return nil
 	}
 
-	if err := runWorktreeCommand(context.Background(), nil, nil, []string{"hook"}); err != nil {
-		t.Fatalf("runWorktreeCommand: %v", err)
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"hook"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree hook: %v", err)
 	}
 	if factoryCalled {
 		t.Fatal("expected hook to bypass worktree app factory")

@@ -28,7 +28,7 @@ func TestReportConfigDiagnosticsWarnsForReadOnlyCommands(t *testing.T) {
 		context.Background(),
 		&stderr,
 		strings.NewReader(""),
-		"commands",
+		"status",
 		&App{},
 		validation,
 	); err != nil {

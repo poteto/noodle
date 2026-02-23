@@ -45,37 +45,10 @@ var (
 )
 
 func main() {
-	if err := run(context.Background(), os.Args[1:]); err != nil {
+	if err := NewRootCmd().ExecuteContext(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-func run(ctx context.Context, args []string) error {
-	catalog := CommandCatalog()
-	if len(args) == 0 {
-		return fmt.Errorf("command is required")
-	}
-
-	commandName := args[0]
-	command, ok := FindCommand(catalog, commandName)
-	if !ok {
-		return fmt.Errorf("unknown command %q", commandName)
-	}
-
-	loadedConfig, validation, err := config.Load(config.DefaultConfigPath)
-	if err != nil {
-		return err
-	}
-	app := &App{
-		Config:     loadedConfig,
-		Validation: validation,
-	}
-	if err := reportConfigDiagnostics(ctx, os.Stderr, os.Stdin, commandName, app, validation); err != nil {
-		return err
-	}
-
-	return command.Run(ctx, app, catalog, args[1:])
 }
 
 func reportConfigDiagnostics(

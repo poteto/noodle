@@ -5,23 +5,22 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/poteto/noodle/config"
 )
 
-func TestRunDebugCommandDoesNotAcceptArguments(t *testing.T) {
-	err := runDebugCommand(context.Background(), nil, nil, []string{"extra"})
-	if err == nil {
+func TestDebugRejectsExtraArguments(t *testing.T) {
+	cmd := newDebugCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"extra"})
+	if err := cmd.ExecuteContext(context.Background()); err == nil {
 		t.Fatal("expected argument rejection")
-	}
-	if !strings.Contains(err.Error(), "does not accept arguments") {
-		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestRunDebugCommandOutputsDeterministicDump(t *testing.T) {
+func TestRunDebugOutputsDeterministicDump(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", "cook-b"), 0o755); err != nil {
@@ -71,8 +70,8 @@ func TestRunDebugCommandOutputsDeterministicDump(t *testing.T) {
 
 	run := func() string {
 		return captureStdout(t, func() {
-			if err := runDebugCommand(context.Background(), &App{Config: cfg}, nil, nil); err != nil {
-				t.Fatalf("runDebugCommand: %v", err)
+			if err := runDebug(&App{Config: cfg}); err != nil {
+				t.Fatalf("runDebug: %v", err)
 			}
 		})
 	}

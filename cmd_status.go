@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +8,7 @@ import (
 
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
+	"github.com/spf13/cobra"
 )
 
 type statusSummary struct {
@@ -19,16 +18,18 @@ type statusSummary struct {
 	LoopState   string
 }
 
-func runStatusCommand(_ context.Context, _ *App, _ []Command, args []string) error {
-	flags := flag.NewFlagSet("status", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-	if err := flags.Parse(args); err != nil {
-		return err
+func newStatusCmd(_ *App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show compact runtime status",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runStatus()
+		},
 	}
-	if flags.NArg() != 0 {
-		return fmt.Errorf("status does not accept arguments")
-	}
+}
 
+func runStatus() error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current directory: %w", err)

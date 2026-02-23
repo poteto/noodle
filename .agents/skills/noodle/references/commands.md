@@ -5,18 +5,13 @@ Do not maintain a hand-written command list here.
 Use the CLI as the source of truth:
 
 - Full catalog:
-  - `noodle commands --json`
-- Single command:
-  - `noodle commands --json --command cook`
-- Single subcommand:
-  - `noodle commands --json --command "cook log"`
-
-Human-readable table:
-
-- `noodle commands`
+  - `noodle --help`
+- Single command help:
+  - `noodle <command> --help`
+- Subcommand help:
+  - `noodle <command> <subcommand> --help`
 
 Notes:
-- `noodle commands` includes both top-level commands and subcommands.
-- Each entry includes summary and usage strings that are generated from the CLI command catalog.
-- For detailed flag semantics, still run command help directly:
-  - `noodle <command> -h`
+- Noodle uses cobra for CLI. All commands support `--help` for usage, flags, and subcommands.
+- For detailed flag semantics, run command help directly:
+  - `noodle <command> --help`

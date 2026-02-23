@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestRunStatusCommandNoActiveCooks(t *testing.T) {
+func TestRunStatusNoActiveCooks(t *testing.T) {
 	projectDir := t.TempDir()
 	originalDir, err := os.Getwd()
 	if err != nil {
@@ -22,8 +21,8 @@ func TestRunStatusCommandNoActiveCooks(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runStatusCommand(context.Background(), nil, nil, nil); err != nil {
-			t.Fatalf("runStatusCommand: %v", err)
+		if err := runStatus(); err != nil {
+			t.Fatalf("runStatus: %v", err)
 		}
 	})
 
@@ -38,7 +37,7 @@ func TestRunStatusCommandNoActiveCooks(t *testing.T) {
 	}
 }
 
-func TestRunStatusCommandReadsSessionsAndQueue(t *testing.T) {
+func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 
@@ -82,8 +81,8 @@ func TestRunStatusCommandReadsSessionsAndQueue(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runStatusCommand(context.Background(), nil, nil, nil); err != nil {
-			t.Fatalf("runStatusCommand: %v", err)
+		if err := runStatus(); err != nil {
+			t.Fatalf("runStatus: %v", err)
 		}
 	})
 

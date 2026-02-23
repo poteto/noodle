@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/skill"
+	"github.com/spf13/cobra"
 )
 
 type dispatchCommandDispatcher interface {
@@ -49,35 +49,56 @@ func (e *envFlag) Set(value string) error {
 	return nil
 }
 
-func runDispatchCommand(ctx context.Context, app *App, _ []Command, args []string) error {
+func (e *envFlag) Type() string { return "KEY=VALUE" }
+
+type dispatchArgs struct {
+	name           string
+	prompt         string
+	provider       string
+	model          string
+	skill          string
+	reasoningLevel string
+	worktree       string
+	maxTurns       int
+	budgetCap      float64
+	envVars        map[string]string
+}
+
+func newDispatchCmd(app *App) *cobra.Command {
+	var (
+		args    dispatchArgs
+		envVars envFlag
+	)
+	cmd := &cobra.Command{
+		Use:   "dispatch",
+		Short: "Dispatch a cook session in tmux",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			args.envVars = envVars
+			return runDispatch(cmd.Context(), app, args)
+		},
+	}
+	cmd.Flags().StringVar(&args.name, "name", "cook", "Session name")
+	cmd.Flags().StringVar(&args.prompt, "prompt", "", "Prompt text for the dispatched session")
+	cmd.Flags().StringVar(&args.provider, "provider", "", "Provider (claude or codex)")
+	cmd.Flags().StringVar(&args.model, "model", "", "Model name")
+	cmd.Flags().StringVar(&args.skill, "skill", "", "Optional skill name to inject")
+	cmd.Flags().StringVar(&args.reasoningLevel, "reasoning-level", "", "Optional reasoning level")
+	cmd.Flags().StringVar(&args.worktree, "worktree", "", "Linked worktree path")
+	cmd.Flags().IntVar(&args.maxTurns, "max-turns", 0, "Optional max turns")
+	cmd.Flags().Float64Var(&args.budgetCap, "budget-cap", 0, "Optional budget cap")
+	cmd.Flags().Var(&envVars, "env", "Extra env var (repeatable, KEY=VALUE)")
+	return cmd
+}
+
+func runDispatch(ctx context.Context, app *App, args dispatchArgs) error {
 	if app != nil && !app.Validation.CanSpawn() {
 		return fmt.Errorf("fatal config diagnostics prevent dispatch")
 	}
 
-	flags := flag.NewFlagSet("dispatch", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-
-	name := flags.String("name", "cook", "Session name")
-	prompt := flags.String("prompt", "", "Prompt text for the dispatched session")
-	provider := flags.String("provider", "", "Provider (claude or codex)")
-	model := flags.String("model", "", "Model name")
-	skillName := flags.String("skill", "", "Optional skill name to inject")
-	reasoningLevel := flags.String("reasoning-level", "", "Optional reasoning level")
-	worktreePath := flags.String("worktree", "", "Linked worktree path")
-	maxTurns := flags.Int("max-turns", 0, "Optional max turns")
-	budgetCap := flags.Float64("budget-cap", 0, "Optional budget cap")
-
-	var envVars envFlag
-	flags.Var(&envVars, "env", "Extra env var (repeatable, KEY=VALUE)")
-
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-
-	if strings.TrimSpace(*prompt) == "" {
+	if strings.TrimSpace(args.prompt) == "" {
 		return fmt.Errorf("prompt is required")
 	}
-	if strings.TrimSpace(*worktreePath) == "" {
+	if strings.TrimSpace(args.worktree) == "" {
 		return fmt.Errorf("worktree is required")
 	}
 
@@ -87,11 +108,11 @@ func runDispatchCommand(ctx context.Context, app *App, _ []Command, args []strin
 		defaultProvider = app.Config.Routing.Defaults.Provider
 		defaultModel = app.Config.Routing.Defaults.Model
 	}
-	if strings.TrimSpace(*provider) == "" {
-		*provider = defaultProvider
+	if strings.TrimSpace(args.provider) == "" {
+		args.provider = defaultProvider
 	}
-	if strings.TrimSpace(*model) == "" {
-		*model = defaultModel
+	if strings.TrimSpace(args.model) == "" {
+		args.model = defaultModel
 	}
 
 	cwd, err := os.Getwd()
@@ -123,16 +144,16 @@ func runDispatchCommand(ctx context.Context, app *App, _ []Command, args []strin
 		AgentDirs:     agentDirs,
 	})
 	session, err := s.Dispatch(ctx, dispatcher.DispatchRequest{
-		Name:           *name,
-		Prompt:         *prompt,
-		Provider:       *provider,
-		Model:          *model,
-		Skill:          *skillName,
-		ReasoningLevel: *reasoningLevel,
-		WorktreePath:   *worktreePath,
-		MaxTurns:       *maxTurns,
-		EnvVars:        envVars,
-		BudgetCap:      *budgetCap,
+		Name:           args.name,
+		Prompt:         args.prompt,
+		Provider:       args.provider,
+		Model:          args.model,
+		Skill:          args.skill,
+		ReasoningLevel: args.reasoningLevel,
+		WorktreePath:   args.worktree,
+		MaxTurns:       args.maxTurns,
+		EnvVars:        args.envVars,
+		BudgetCap:      args.budgetCap,
 	})
 	if err != nil {
 		return err

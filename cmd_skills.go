@@ -1,27 +1,34 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/poteto/noodle/skill"
+	"github.com/spf13/cobra"
 )
 
-func runSkillsCommand(_ context.Context, app *App, _ []Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("skills subcommand is required")
+func newSkillsCmd(app *App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "skills",
+		Short: "List resolved skills",
 	}
+	cmd.AddCommand(newSkillsListCmd(app))
+	return cmd
+}
 
-	switch args[0] {
-	case "list":
-		return runSkillsListCommand(app)
-	default:
-		return fmt.Errorf("unknown skills subcommand %q", args[0])
+func newSkillsListCmd(app *App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all resolved skills",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runSkillsList(app)
+		},
 	}
 }
 
-func runSkillsListCommand(app *App) error {
+func runSkillsList(app *App) error {
 	resolver := skill.Resolver{SearchPaths: app.Config.Skills.Paths}
 	infos, err := resolver.List()
 	if err != nil {
