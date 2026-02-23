@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/poteto/noodle/tui/components"
 )
 
 const railWidth = 21
 
 // renderRail renders the left rail showing agents and stats.
-func renderRail(snap Snapshot, now time.Time, height int) string {
+func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) string {
 	w := railWidth - 4 // border (2) + padding (2)
 
 	var b strings.Builder
-	b.WriteString(sectionStyle.Render("Agents"))
+	if len(snap.Active) > 0 {
+		b.WriteString(renderShimmerTitle("noodle cooking", shimmerIndex))
+	} else {
+		b.WriteString(sectionStyle.Render("noodle"))
+	}
 	b.WriteString("\n\n")
 
 	if len(snap.Active) == 0 && len(snap.Recent) == 0 {
@@ -89,6 +96,21 @@ func renderCompactRail(snap Snapshot, height int) string {
 		h = 4
 	}
 	return railStyle.Width(6).Height(h).Render(content)
+}
+
+// renderShimmerTitle renders the title with a character-by-character yellow shimmer.
+func renderShimmerTitle(text string, index int) string {
+	t := components.DefaultTheme
+	var b strings.Builder
+	runes := []rune(text)
+	for i, r := range runes {
+		if i == index%len(runes) {
+			b.WriteString(lipgloss.NewStyle().Foreground(t.Brand).Bold(true).Render(string(r)))
+		} else {
+			b.WriteString(lipgloss.NewStyle().Foreground(t.Dim).Render(string(r)))
+		}
+	}
+	return b.String()
 }
 
 func shortModelName(model string) string {

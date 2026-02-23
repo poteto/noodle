@@ -21,7 +21,7 @@ func (m Model) renderLayout() string {
 	if compact {
 		rail = renderCompactRail(m.snapshot, m.height)
 	} else {
-		rail = renderRail(m.snapshot, m.now(), m.height)
+		rail = renderRail(m.snapshot, m.now(), m.height, m.shimmerIndex)
 	}
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
@@ -60,7 +60,7 @@ func (m Model) renderLayout() string {
 			dimStyle.Render("type @target instruction · enter sends · esc closes")
 	}
 	if m.helpOpen {
-		layout += "\n\n" + renderHelp()
+		layout += "\n\n" + renderHelp(m.activeTab)
 	}
 	if m.statusLine != "" {
 		layout += "\n" + dimStyle.Render("status: "+m.statusLine)
@@ -75,15 +75,36 @@ func (m Model) renderLayout() string {
 	return layout
 }
 
-func renderHelp() string {
-	return sectionStyle.Render("Keys") + "\n" +
-		dimStyle.Render("1-4") + " switch tabs  " +
+func renderHelp(tab Tab) string {
+	global := dimStyle.Render("1-4") + " switch tabs  " +
 		dimStyle.Render("`") + " steer  " +
 		dimStyle.Render("n") + " new task  " +
 		dimStyle.Render("p") + " pause/resume  " +
-		dimStyle.Render("m") + " merge  " +
-		dimStyle.Render("x") + " reject  " +
-		dimStyle.Render("a") + " merge all approved  " +
 		dimStyle.Render("?") + " help  " +
-		dimStyle.Render("ctrl+c") + " quit"
+		dimStyle.Render("ctrl+c×2") + " quit"
+
+	var tabKeys string
+	switch tab {
+	case TabFeed:
+		tabKeys = dimStyle.Render("j/k") + " scroll  " +
+			dimStyle.Render("m") + " merge  " +
+			dimStyle.Render("x") + " reject  " +
+			dimStyle.Render("a") + " merge all approved"
+	case TabQueue:
+		tabKeys = dimStyle.Render("j/k") + " navigate  " +
+			dimStyle.Render("enter") + " detail"
+	case TabBrain:
+		tabKeys = dimStyle.Render("j/k") + " navigate  " +
+			dimStyle.Render("enter") + " preview  " +
+			dimStyle.Render("esc") + " back"
+	case TabConfig:
+		tabKeys = dimStyle.Render("j/k") + " navigate  " +
+			dimStyle.Render("←/→") + " dial"
+	}
+
+	result := sectionStyle.Render("Keys") + "\n" + global
+	if tabKeys != "" {
+		result += "\n" + tabKeys
+	}
+	return result
 }

@@ -60,6 +60,7 @@ type Model struct {
 	taskEditor   TaskEditor
 	quitPending  bool
 	quitDeadline time.Time
+	shimmerIndex int
 }
 
 type Snapshot struct {
@@ -119,6 +120,7 @@ type EventLine struct {
 
 type tickMsg time.Time
 type quitResetMsg struct{}
+type shimmerMsg struct{}
 
 type snapshotMsg struct {
 	snapshot Snapshot
@@ -157,7 +159,11 @@ func NewModel(opts Options) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(refreshSnapshotCmd(m.runtimeDir, m.now), tickCmd(m.refreshInterval))
+	return tea.Batch(
+		refreshSnapshotCmd(m.runtimeDir, m.now),
+		tickCmd(m.refreshInterval),
+		shimmerCmd(),
+	)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -192,6 +198,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.statusLine = fmt.Sprintf("%s command sent", msg.action)
 		return m, nil
+	case shimmerMsg:
+		if len(m.snapshot.Active) > 0 {
+			m.shimmerIndex = (m.shimmerIndex + 1) % 14 // len("noodle cooking")
+		}
+		return m, shimmerCmd()
 	case quitResetMsg:
 		m.quitPending = false
 		return m, nil
@@ -519,6 +530,12 @@ func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {
 func tickCmd(interval time.Duration) tea.Cmd {
 	return tea.Tick(interval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
+	})
+}
+
+func shimmerCmd() tea.Cmd {
+	return tea.Tick(200*time.Millisecond, func(time.Time) tea.Msg {
+		return shimmerMsg{}
 	})
 }
 
