@@ -1,6 +1,6 @@
 [routing.defaults]
 provider = "claude"
-model = "claude-opus-4.6"
+model = "claude-opus-4-6"
 
 [skills]
 paths = [".agents/skills", "skills"]
