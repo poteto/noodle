@@ -97,10 +97,10 @@ Scaffold the plan structure using the CLI, then fill in content:
 
 ```bash
 # Create the plan directory, overview with frontmatter, update index and todo
-go -C noodle run . plan create TODO-ID slug-name
+noodle plan create TODO-ID slug-name
 
 # Create each phase file (auto-numbered)
-go -C noodle run . plan phase TODO-ID add "Phase Name"
+noodle plan phase-add TODO-ID "Phase Name"
 ```
 
 The CLI creates `brain/plans/NN-slug-name/overview.md` with YAML frontmatter (id, created, status), appends to `brain/plans/index.md`, and adds the plan wikilink to the todo item. After scaffolding, fill in the overview and phase file content using Edit tools.
@@ -144,6 +144,15 @@ Each phase file must include:
 - **Goal** — what this phase accomplishes
 - **Changes** — which files are affected and what changes, described at a high level
 - **Data structures** — name the key types/schemas before logic (per foundational-thinking), but a one-line sketch is enough — don't write full definitions
+- **Routing** — provider/model recommendation for this phase's execution:
+
+| Phase type | Provider | Model | When |
+|------------|----------|-------|------|
+| Implementation | `codex` | `gpt-5.3-codex` | Coding against a clear spec |
+| Architecture / judgment | `claude` | `claude-opus-4-6` | Design decisions, complex refactoring |
+| Skill creation | `claude` | `claude-opus-4-6` | Writing skills, brain notes |
+| Scaffolding | `codex` | `gpt-5.3-codex` | Boilerplate, mechanical transforms |
+
 - **Verification** — static and runtime checks for this phase (see Step 6)
 
 **Keep plans high-level.** Describe *what* and *why*, not *how* at the code level. A phase should read like a brief to a senior engineer: goals, boundaries, key types, and verification — not code snippets or pseudocode. Trust that the executing agent can write quality code from a clear brief.
@@ -198,13 +207,13 @@ The `noodle plan create` command (Step 5) already handles both updates:
 If the todo item doesn't exist yet, create it first:
 
 ```bash
-go -C noodle run . todo add --section "Section Name" "Short description"
+noodle todo add --section "Section Name" "Short description"
 ```
 
 Then update its description with more context:
 
 ```bash
-go -C noodle run . todo edit ID "Full description — context. Existing plan: [[plans/NN-plan-name/overview]]."
+noodle todo edit ID "Full description — context. Existing plan: [[plans/NN-plan-name/overview]]."
 ```
 
 Do NOT edit `brain/index.md` — the auto-index hook maintains it automatically.
