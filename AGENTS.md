@@ -4,26 +4,19 @@ Open-source AI coding framework. Skills as the only extension point, LLM-powered
 
 ## Brain
 
-The `brain/` directory is an Obsidian vault. Use it as persistent memory:
+The `brain/` directory is an Obsidian vault — persistent memory across sessions.
 
-- **Read relevant brain files before you act.** The SessionStart hook injects the brain index — read the files that apply to your task, don't just glance at filenames.
-- **When to write:** After making a mistake, getting corrected, or learning something notable about the codebase.
-- **Structure:** One topic per file. Group in directories with index files that link via `[[wikilinks]]` — no inlined content in indexes.
-- **Maintain:** Delete outdated notes and random-named files in `brain/plans/` (stale plan-mode artifacts).
+- **Read first.** Read brain files relevant to your task before acting.
+- **Write** after mistakes, corrections, or notable codebase learnings.
+- **Structure:** One topic per file. Directories with `[[wikilink]]` indexes — no inlined content.
+- **Maintain:** Delete outdated notes and stale plan-mode artifacts in `brain/plans/`.
 
-## Task Execution
+## Workflow
 
-- **Respect user ordering:** When the user provides a bullet or numbered list, create Tasks and follow the specified order. You may suggest reordering if it would be more efficient or logical, but don't reorder silently.
+- **User ordering:** Follow bullet/numbered list order. Don't reorder silently.
+- **Isolation:** Multiple sessions run concurrently — use `Skill(worktree)` and `Skill(commit)`.
 
-## Concurrent Sessions & Commits
+## Coding
 
-- Multiple sessions run simultaneously. Default to a linked git worktree created via Skill(worktree) (usually `.worktrees/<name>`), not the primary checkout at repo root. Use Skill(worktree) and Skill(commit) for significant or autonomous work.
-
-## Coding Conventions
-
-- **Error messages**: describe failure state ("session not found"), not expectations ("session must exist").
-- **Never use haiku model** — use sonnet when a faster/cheaper model is needed.
-
-## Platform Compatibility
-
-This project targets cross-platform (macOS/Windows/Linux). Avoid bash 4+ features like `declare -A` (macOS ships bash 3.2). Prefer POSIX-compatible shell or use Go for non-trivial scripts.
+- **Error messages:** Describe failure state ("session not found"), not expectations ("session must exist").
+- **Cross-platform** (macOS/Windows/Linux): No bash 4+ features. Prefer POSIX shell or Go.
