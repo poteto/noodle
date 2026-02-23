@@ -168,6 +168,136 @@ func TestListIgnoresDirectoryWithoutSkillFile(t *testing.T) {
 	}
 }
 
+func TestDiscoverTaskTypesFiltersCorrectly(t *testing.T) {
+	dir := t.TempDir()
+
+	// Task type skill (has noodle: block)
+	mustMkdirAll(t, filepath.Join(dir, "prioritize"))
+	mustWriteFile(t, filepath.Join(dir, "prioritize", "SKILL.md"), `---
+name: prioritize
+description: Queue scheduler
+noodle:
+  blocking: true
+  schedule: "When the queue is empty"
+---
+# Prioritize
+`)
+
+	// Utility skill (no noodle: block)
+	mustMkdirAll(t, filepath.Join(dir, "debugging"))
+	mustWriteFile(t, filepath.Join(dir, "debugging", "SKILL.md"), `---
+name: debugging
+description: Systematic debugging
+---
+# Debugging
+`)
+
+	// Another task type
+	mustMkdirAll(t, filepath.Join(dir, "execute"))
+	mustWriteFile(t, filepath.Join(dir, "execute", "SKILL.md"), `---
+name: execute
+description: Implementation
+noodle:
+  schedule: "When a planned item is ready"
+---
+# Execute
+`)
+
+	resolver := Resolver{SearchPaths: []string{dir}}
+
+	taskTypes, err := resolver.DiscoverTaskTypes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(taskTypes) != 2 {
+		t.Fatalf("task types = %d, want 2", len(taskTypes))
+	}
+
+	names := map[string]bool{}
+	for _, tt := range taskTypes {
+		names[tt.Name] = true
+		if !tt.Frontmatter.IsTaskType() {
+			t.Fatalf("%s should be a task type", tt.Name)
+		}
+	}
+	if !names["prioritize"] || !names["execute"] {
+		t.Fatalf("expected prioritize and execute, got %v", names)
+	}
+}
+
+func TestResolveWithMetaParsesNoodleFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	mustMkdirAll(t, filepath.Join(dir, "deploy"))
+	mustWriteFile(t, filepath.Join(dir, "deploy", "SKILL.md"), `---
+name: deploy
+description: Deploy to production
+noodle:
+  blocking: false
+  schedule: "After successful execute"
+  runtime: "ssh host 'claude -p < {{prompt}}'"
+---
+# Deploy
+`)
+
+	resolver := Resolver{SearchPaths: []string{dir}}
+	meta, err := resolver.ResolveWithMeta("deploy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if meta.Name != "deploy" {
+		t.Fatalf("name = %q", meta.Name)
+	}
+	if !meta.Frontmatter.IsTaskType() {
+		t.Fatal("expected task type")
+	}
+	if meta.Frontmatter.Noodle.Schedule != "After successful execute" {
+		t.Fatalf("schedule = %q", meta.Frontmatter.Noodle.Schedule)
+	}
+	if meta.Frontmatter.Noodle.Runtime == "" {
+		t.Fatal("expected runtime")
+	}
+}
+
+func TestListWithMetaIncludesAllSkills(t *testing.T) {
+	dir := t.TempDir()
+
+	mustMkdirAll(t, filepath.Join(dir, "task-skill"))
+	mustWriteFile(t, filepath.Join(dir, "task-skill", "SKILL.md"), `---
+name: task-skill
+noodle:
+  schedule: "Always"
+---
+# Task
+`)
+
+	mustMkdirAll(t, filepath.Join(dir, "util-skill"))
+	mustWriteFile(t, filepath.Join(dir, "util-skill", "SKILL.md"), `---
+name: util-skill
+description: Utility
+---
+# Util
+`)
+
+	resolver := Resolver{SearchPaths: []string{dir}}
+	all, err := resolver.ListWithMeta()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("all = %d, want 2", len(all))
+	}
+
+	taskCount := 0
+	for _, m := range all {
+		if m.Frontmatter.IsTaskType() {
+			taskCount++
+		}
+	}
+	if taskCount != 1 {
+		t.Fatalf("task types = %d, want 1", taskCount)
+	}
+}
+
 func mustMkdirAll(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o755); err != nil {

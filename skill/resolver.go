@@ -136,6 +136,81 @@ func resolveSearchPath(raw string) (string, bool) {
 	return absPath, true
 }
 
+// SkillMeta is the full resolved metadata for a skill, including parsed frontmatter.
+type SkillMeta struct {
+	Name        string
+	Path        string
+	SourcePath  string
+	Frontmatter Frontmatter
+}
+
+// ResolveWithMeta resolves a skill by name and parses its frontmatter.
+func (r Resolver) ResolveWithMeta(name string) (SkillMeta, error) {
+	sp, err := r.Resolve(name)
+	if err != nil {
+		return SkillMeta{}, err
+	}
+	fm, err := readSkillFrontmatter(sp.Path)
+	if err != nil {
+		return SkillMeta{}, fmt.Errorf("skill %q: %w", name, err)
+	}
+	return SkillMeta{
+		Name:        name,
+		Path:        sp.Path,
+		SourcePath:  sp.SourcePath,
+		Frontmatter: fm,
+	}, nil
+}
+
+// ListWithMeta returns all skills with parsed frontmatter.
+func (r Resolver) ListWithMeta() ([]SkillMeta, error) {
+	infos, err := r.List()
+	if err != nil {
+		return nil, err
+	}
+	metas := make([]SkillMeta, 0, len(infos))
+	for _, info := range infos {
+		fm, err := readSkillFrontmatter(info.Path)
+		if err != nil {
+			return nil, fmt.Errorf("skill %q: %w", info.Name, err)
+		}
+		metas = append(metas, SkillMeta{
+			Name:        info.Name,
+			Path:        info.Path,
+			SourcePath:  info.SourcePath,
+			Frontmatter: fm,
+		})
+	}
+	return metas, nil
+}
+
+// DiscoverTaskTypes returns only skills with noodle: frontmatter.
+func (r Resolver) DiscoverTaskTypes() ([]SkillMeta, error) {
+	all, err := r.ListWithMeta()
+	if err != nil {
+		return nil, err
+	}
+	types := make([]SkillMeta, 0)
+	for _, m := range all {
+		if m.Frontmatter.IsTaskType() {
+			types = append(types, m)
+		}
+	}
+	return types, nil
+}
+
+func readSkillFrontmatter(skillPath string) (Frontmatter, error) {
+	data, err := os.ReadFile(filepath.Join(skillPath, "SKILL.md"))
+	if err != nil {
+		return Frontmatter{}, fmt.Errorf("read SKILL.md: %w", err)
+	}
+	fm, _, err := ParseFrontmatter(data)
+	if err != nil {
+		return Frontmatter{}, err
+	}
+	return fm, nil
+}
+
 func hasSkillFile(path string) bool {
 	info, err := os.Stat(filepath.Join(path, "SKILL.md"))
 	if err != nil {
