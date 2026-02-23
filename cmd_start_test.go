@@ -96,6 +96,37 @@ func TestRunStartWithTUIPropagatesLoopError(t *testing.T) {
 	}
 }
 
+func TestRunStartWithTUIExitsWhenLoopFailsBeforeTUIExits(t *testing.T) {
+	originalRunStartTUI := runStartTUI
+	releaseTUI := make(chan struct{})
+	runStartTUI = func(string) error {
+		<-releaseTUI
+		return nil
+	}
+	t.Cleanup(func() {
+		close(releaseTUI)
+		runStartTUI = originalRunStartTUI
+	})
+
+	loop := &fakeStartLoop{runErr: errors.New("loop failed")}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- runStartWithTUI(ctx, cancel, loop, ".noodle")
+	}()
+
+	select {
+	case err := <-errCh:
+		if err == nil || err.Error() != "loop failed" {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("runStartWithTUI did not exit after loop failure")
+	}
+}
+
 func TestRunStartWithTUIPropagatesTUIError(t *testing.T) {
 	originalRunStartTUI := runStartTUI
 	runStartTUI = func(string) error { return errors.New("tui failed") }
