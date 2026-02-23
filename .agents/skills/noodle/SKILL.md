@@ -1,6 +1,7 @@
 ---
 name: noodle
-description: Document and operate the Noodle CLI. Use when listing/explaining Noodle commands, finding command flags, or creating/editing the Noodle config file at .noodle.toml (project root).
+description: >-
+  Operate the Noodle CLI — explain commands, find flags, create/edit .noodle.toml config.
 ---
 
 # Noodle

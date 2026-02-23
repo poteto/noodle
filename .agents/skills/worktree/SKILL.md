@@ -1,11 +1,8 @@
 ---
 name: worktree
-description: >
-  Manage git worktrees for isolated branch work without disrupting the current working tree.
-  Use when the user says "worktree", "new worktree", "create a worktree", "clean up worktrees",
-  or wants to work on a separate branch in isolation. Also use when spawning agent teams that
-  need file-level isolation to work in parallel without conflicts. Also triggers on session
-  startup when CLAUDE.md requires worktree isolation for concurrent sessions.
+description: >-
+  Manage git worktrees for isolated branch work. Use for "worktree", "new worktree",
+  "clean up worktrees", or when spawning agent teams needing file-level isolation.
 ---
 
 # Worktree

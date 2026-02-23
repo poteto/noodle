@@ -1,13 +1,9 @@
 ---
 name: plan
-description: >
-  Systematic planning workflow for medium-to-large implementation tasks. Reads brain principles
-  at runtime, clarifies ambiguity, gathers context with subagents, identifies domain skills
-  (and discovers new ones via find-skills), and writes phased plans to brain/plans/ with scope,
-  constraints, and verification strategy. Does NOT implement — only produces the plan.
-  Use for new features, multi-file refactors, or architectural changes — NOT for small fixes,
-  single-file tweaks, or changes where the approach is obvious. Triggers: "plan this", "let's plan",
-  "break this down", "create a plan for", or when a task clearly needs planning before implementation.
+description: >-
+  Systematic planning for medium-to-large tasks. Gathers context, identifies domain skills,
+  writes phased plans to brain/plans/. Does NOT implement. Use for new features, multi-file
+  refactors, or architectural changes — not small fixes. Triggers: "plan this", "break this down".
 ---
 
 # Plan

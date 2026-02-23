@@ -1,13 +1,8 @@
 ---
 name: debugging
-description: >
-  Systematic debugging methodology grounded in root-cause analysis. Invoke this skill whenever
-  you encounter a technical problem: build failures, test failures, runtime errors, unexpected
-  behavior, type errors, performance issues, flaky tests, integration failures, configuration
-  problems, or any situation where something isn't working as expected. Also use when the user
-  reports a bug, asks "why is this broken", or when you need to investigate an error you
-  produced. Triggers: any error, failure, crash, unexpected output, "debug", "fix this",
-  "why doesn't this work", "investigate", "what's wrong", or when stuck on a problem.
+description: >-
+  Systematic root-cause debugging methodology. Use for any technical problem — errors, failures,
+  unexpected behavior, or when stuck. Triggers: "debug", "fix this", "what's wrong", "investigate".
 ---
 
 # Debugging

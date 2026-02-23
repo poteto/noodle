@@ -1,6 +1,8 @@
 ---
 name: refine
-description: Clarify and sharpen todo items in brain/todos.md by asking the user targeted questions about unclear entries, then rewriting them as precise, actionable prompts. Use when the user says "refine", "refine todos", "clarify todos", "sharpen my todos", or wants to make their backlog items clearer.
+description: >-
+  Sharpen todo items in brain/todos.md into precise, actionable prompts via targeted questioning.
+  Triggers: "refine", "refine todos", "clarify todos".
 ---
 
 # Refine

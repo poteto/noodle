@@ -1,11 +1,8 @@
 ---
 name: review
-description: >
-  Review plans and code changes. Loads engineering principles at runtime,
-  identifies domain-relevant skills, and walks through Architecture → Code Quality → Tests →
-  Performance sections — numbering issues and presenting tradeoff options with recommendations.
-  Use when reviewing a plan, PR, diff, code change, or when the user says
-  "review", "review this", "review my code", "code review", or "review the plan".
+description: >-
+  Review plans and code changes. Walks Architecture → Code Quality → Tests → Performance,
+  numbering issues with tradeoff options. Triggers: "review", "review this", "code review".
 ---
 
 # Review

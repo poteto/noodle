@@ -1,12 +1,8 @@
 ---
 name: ruminate
-description: >
-  Mine all past Claude Code conversations for uncaptured patterns, corrections,
-  preferences, and knowledge to add to the brain. Spawns an agent team to analyze
-  conversation history in parallel and cross-references findings with existing
-  brain content. Use when the user says "ruminate", "analyze my conversations",
-  "what am I missing in the brain", "mine my history", or wants to discover
-  high-impact brain additions from past sessions.
+description: >-
+  Mine past Claude Code conversations for uncaptured patterns, corrections, and knowledge.
+  Cross-references with existing brain content. Triggers: "ruminate", "mine my history".
 ---
 
 # Ruminate

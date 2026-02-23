@@ -1,6 +1,8 @@
 ---
 name: codex
-description: Use when the user asks to run Codex CLI (codex exec, codex resume), references OpenAI Codex for code analysis/refactoring/automated editing, or asks whether to use Spark (`gpt-5.3-codex-spark`) versus standard Codex. Triggers on "codex", "run codex", "codex exec", "codex resume", "use codex to", "codex spark", or when the user wants to delegate a task to Codex.
+description: >-
+  Run Codex CLI (exec, resume) for code analysis, refactoring, or automated editing.
+  Includes Spark vs standard guidance. Triggers: "codex", "run codex", "use codex to".
 ---
 
 # Codex

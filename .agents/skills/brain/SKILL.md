@@ -1,6 +1,8 @@
 ---
 name: brain
-description: Update the brain (Obsidian vault at brain/). Use when writing, editing, or deleting brain files — whether during reflection, planning, or any task that persists knowledge. Triggers on brain/ file modifications, "update the brain", "add to brain", "brain note", or when routing learnings to persistent memory.
+description: >-
+  Read/write brain files (Obsidian vault at brain/). Use for any task that persists knowledge —
+  reflection, planning, or direct edits. Triggers: brain/ modifications, "add to brain".
 ---
 
 # Brain

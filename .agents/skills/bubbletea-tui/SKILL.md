@@ -1,13 +1,8 @@
 ---
 name: bubbletea-tui
-description: >
-  Write high-quality Bubble Tea terminal UIs following production patterns.
-  Covers component design, styling, animations, state management, and
-  rendering. Use when building or refactoring Bubble Tea
-  TUI code — new components, views, styling, list items, animations, or when
-  reviewing TUI code quality. Triggers: "build a TUI", "bubbletea component",
-  "TUI styling", "terminal UI", "improve the TUI", "refactor the view", or
-  any Bubble Tea implementation work.
+description: >-
+  Write production-quality Bubble Tea terminal UIs — component design, styling, animations,
+  state, rendering. Use when building, refactoring, or reviewing TUI code.
 ---
 
 # Bubble Tea TUI — Production Patterns

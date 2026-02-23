@@ -1,12 +1,9 @@
 ---
 name: ast-grep
 description: >-
-  Write ast-grep rules for structural code search where code shape matters, not
-  just text. Use when the query involves relationships between code elements
-  that text search cannot express. Examples: "find async functions without error
-  handling", "find components that accept children but never render them", "find
-  all setState calls not inside useEffect", "refactor foo(a, b) to foo({ a, b
-  })". Do NOT use for simple name/string lookups; use Grep for those.
+  Structural code search via ast-grep — use when code shape and element relationships matter,
+  not just text. E.g., "find async functions without error handling", "refactor foo(a, b)
+  to foo({ a, b })". Use Grep for simple name lookups.
 ---
 
 # ast-grep
