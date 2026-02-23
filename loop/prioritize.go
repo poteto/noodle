@@ -7,28 +7,11 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/schemadoc"
 	"github.com/poteto/noodle/recover"
 )
 
 const prioritizeQueueID = "prioritize"
-
-const queueSchemaPrompt = `queue.json schema (JSON):
-{
-  "generated_at": "RFC3339 timestamp",
-  "items": [
-    {
-      "id": "string",
-      "task_key": "string — must match a task_types[].key from mise",
-      "title": "string (optional)",
-      "provider": "string",
-      "model": "string",
-      "skill": "string (optional)",
-      "review": "boolean (optional)",
-      "rationale": "string (optional)"
-    }
-  ],
-  "action_needed": ["string — backlog item IDs skipped (no linked plan, needs user attention)"]
-}`
 
 func isPrioritizeItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), prioritizeQueueID)
@@ -100,7 +83,7 @@ func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, re
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize queue items for non-execute task types (e.g. quality, reflect, meditate) based on workflow rules in the skill and the task types list below.",
-		queueSchemaPrompt,
+		queueSchemaPrompt(),
 		taskTypesPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
@@ -136,4 +119,12 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
 	queue := bootstrapPrioritizeQueue(l.config, prompt, l.deps.Now().UTC())
 	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func queueSchemaPrompt() string {
+	prompt, err := schemadoc.RenderPromptJSON("queue")
+	if err != nil {
+		return "queue.json schema (JSON):\n{}\n\nSchema generation error: " + err.Error()
+	}
+	return prompt
 }
