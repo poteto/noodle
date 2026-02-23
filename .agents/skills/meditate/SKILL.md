@@ -51,7 +51,7 @@ Spawn both as `general-purpose` subagents after the auditor completes. See `refe
 
 Spawn `general-purpose` subagent. See `references/agents.md § Skill Reviewer`. Inputs: both snapshots + all three reports + `brain/principles.md`.
 
-Cross-references every skill against brain principles. Finds contradictions, missed structural enforcement opportunities, redundant instructions, and missing principles.
+Cross-references every skill against brain principles. Finds contradictions, missed structural enforcement opportunities, redundant instructions, and missing principles. Also audits skill description frontmatters for context bloat — redundant trigger lists, error-type enumerations Claude can infer, and restated "when to use" phrasing.
 
 ### 5. Review reports
 
@@ -73,6 +73,7 @@ Apply all changes directly. The user reviews the diff.
 - **Tensions**: Reword to clarify boundaries
 - **New principles**: Only from the distiller, only if genuinely independent. Write brain files and update `brain/principles.md`
 - **Merge principles**: Look for principles that are subsets or specific applications of each other — merge the narrower into the broader and pick a name that captures the combined insight
+- **Bloated skill descriptions**: Tighten frontmatter descriptions — cut what Claude can infer, keep only distinctive triggers and purpose
 - **CLAUDE.md issues**: Rewrite or delete
 - **Stale memories**: Delete or rewrite
 

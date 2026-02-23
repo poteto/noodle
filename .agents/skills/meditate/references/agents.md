@@ -69,6 +69,7 @@ Prompt spec:
   - Does it duplicate instructions that a mechanism already handles?
   - Is it missing a principle that would improve reliability?
 - Cross-reference with the other reports — could a recurring pattern be encoded into a skill?
+- Audit each skill's `description` frontmatter for context bloat — cut what Claude can infer (exhaustive error types, synonym trigger lists, restated purpose). Keep only distinctive triggers and core purpose.
 - Produce a report: each finding with skill name, principle(s), gap, and concrete proposal
 - Prioritize structural enforcement over textual instructions
 
