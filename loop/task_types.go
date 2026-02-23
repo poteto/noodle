@@ -11,18 +11,18 @@ import (
 type TaskType = taskreg.TaskType
 
 const (
-	taskKeyPlan     = taskreg.TaskKeyPlan
-	taskKeyReview   = taskreg.TaskKeyReview
-	taskKeyExecute  = taskreg.TaskKeyExecute
-	taskKeyVerify   = taskreg.TaskKeyVerify
-	taskKeyReflect  = taskreg.TaskKeyReflect
-	taskKeyMeditate = taskreg.TaskKeyMeditate
-	taskKeyCook     = taskreg.TaskKeyCook
-	taskKeySousChef = taskreg.TaskKeySousChef
-	taskKeyTaster   = taskreg.TaskKeyTaster
-	taskKeyOops     = taskreg.TaskKeyOops
-	taskKeyRepair   = taskreg.TaskKeyRepair
-	taskKeyDebate   = taskreg.TaskKeyDebate
+	taskKeyPlan       = taskreg.TaskKeyPlan
+	taskKeyReview     = taskreg.TaskKeyReview
+	taskKeyExecute    = taskreg.TaskKeyExecute
+	taskKeyVerify     = taskreg.TaskKeyVerify
+	taskKeyReflect    = taskreg.TaskKeyReflect
+	taskKeyMeditate   = taskreg.TaskKeyMeditate
+	taskKeyCook       = taskreg.TaskKeyCook
+	taskKeyPrioritize = taskreg.TaskKeyPrioritize
+	taskKeyTaster     = taskreg.TaskKeyTaster
+	taskKeyOops       = taskreg.TaskKeyOops
+	taskKeyRepair     = taskreg.TaskKeyRepair
+	taskKeyDebate     = taskreg.TaskKeyDebate
 )
 
 func configuredTaskTypes(cfg config.Config) []TaskType {
@@ -55,8 +55,8 @@ func isBlockingQueueItem(cfg config.Config, item QueueItem) bool {
 	return ok && taskType.Blocking
 }
 
-func sousChefTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeySousChef, taskKeySousChef)
+func prioritizeTaskSkill(cfg config.Config) string {
+	return configuredTaskSkill(cfg, taskKeyPrioritize, taskKeyPrioritize)
 }
 
 func tasterTaskSkill(cfg config.Config) string {
@@ -80,15 +80,15 @@ func executeTaskKey() string {
 	return taskKeyExecute
 }
 
-// SousChefTaskKey returns the canonical steer target for the scheduler.
-func SousChefTaskKey() string {
-	return taskKeySousChef
+// PrioritizeTaskKey returns the canonical steer target for the scheduler.
+func PrioritizeTaskKey() string {
+	return taskKeyPrioritize
 }
 
-func isSousChefTarget(value string) bool {
+func isPrioritizeTarget(value string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
 	if value == "" {
 		return false
 	}
-	return strings.EqualFold(value, SousChefTaskKey())
+	return strings.EqualFold(value, PrioritizeTaskKey())
 }

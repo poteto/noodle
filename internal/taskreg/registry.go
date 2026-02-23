@@ -40,18 +40,18 @@ type aliasRule struct {
 }
 
 const (
-	TaskKeyPlan     = "plan"
-	TaskKeyReview   = "review"
-	TaskKeyExecute  = "execute"
-	TaskKeyVerify   = "verify"
-	TaskKeyReflect  = "reflect"
-	TaskKeyMeditate = "meditate"
-	TaskKeyCook     = "cook"
-	TaskKeySousChef = "sous-chef"
-	TaskKeyTaster   = "taster"
-	TaskKeyOops     = "oops"
-	TaskKeyRepair   = "repair"
-	TaskKeyDebate   = "debate"
+	TaskKeyPlan       = "plan"
+	TaskKeyReview     = "review"
+	TaskKeyExecute    = "execute"
+	TaskKeyVerify     = "verify"
+	TaskKeyReflect    = "reflect"
+	TaskKeyMeditate   = "meditate"
+	TaskKeyCook       = "cook"
+	TaskKeyPrioritize = "prioritize"
+	TaskKeyTaster     = "taster"
+	TaskKeyOops       = "oops"
+	TaskKeyRepair     = "repair"
+	TaskKeyDebate     = "debate"
 )
 
 var baseTaskTypes = []TaskType{
@@ -123,12 +123,12 @@ var baseTaskTypes = []TaskType{
 		Purpose:    "Backlog execution session spawned from queue items.",
 	},
 	{
-		Key:        TaskKeySousChef,
-		Type:       "Sous Chef",
-		ConfigPath: "[sous-chef]",
+		Key:        TaskKeyPrioritize,
+		Type:       "Prioritize",
+		ConfigPath: "[prioritize]",
 		Blocking:   false,
 		Synthetic:  true,
-		Aliases:    []string{"sous-chef", "sous chef", "scheduler", "prioritize"},
+		Aliases:    []string{"prioritize", "scheduler"},
 		Purpose:    "Queue prioritization and routing generation.",
 	},
 	{
@@ -187,7 +187,10 @@ func New(cfg config.Config) Registry {
 		}
 		skill := normalize(taskType.Skill)
 		if skill != "" {
-			reg.bySkill[skill] = taskType
+			// Preserve first-match semantics for ambiguous skill mappings.
+			if _, exists := reg.bySkill[skill]; !exists {
+				reg.bySkill[skill] = taskType
+			}
 		}
 		for _, alias := range taskType.Aliases {
 			alias = normalize(alias)
@@ -211,11 +214,11 @@ func (r Registry) ByKey(taskKey string) (TaskType, bool) {
 	return taskType, ok
 }
 
-func (r Registry) SousChefTarget() string {
-	if taskType, ok := r.ByKey(TaskKeySousChef); ok {
+func (r Registry) PrioritizeTarget() string {
+	if taskType, ok := r.ByKey(TaskKeyPrioritize); ok {
 		return taskType.Key
 	}
-	return TaskKeySousChef
+	return TaskKeyPrioritize
 }
 
 func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
@@ -251,8 +254,8 @@ func configuredTaskTypes(cfg config.Config) []TaskType {
 			out[i].Skill = adapterConfiguredSkill(cfg, "plans", "plans")
 		case TaskKeyExecute:
 			out[i].Skill = adapterConfiguredSkill(cfg, "backlog", "backlog")
-		case TaskKeySousChef:
-			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.SousChef.Skill), TaskKeySousChef)
+		case TaskKeyPrioritize:
+			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.Prioritize.Skill), TaskKeyPrioritize)
 		case TaskKeyOops:
 			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.Phases["oops"]), "oops")
 		case TaskKeyRepair:

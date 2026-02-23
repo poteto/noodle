@@ -6,17 +6,17 @@ import (
 	"github.com/poteto/noodle/config"
 )
 
-func TestRegistryByKeyAndSousChefTarget(t *testing.T) {
+func TestRegistryByKeyAndPrioritizeTarget(t *testing.T) {
 	reg := New(config.DefaultConfig())
-	taskType, ok := reg.ByKey(TaskKeySousChef)
+	taskType, ok := reg.ByKey(TaskKeyPrioritize)
 	if !ok {
-		t.Fatal("expected sous-chef task type")
+		t.Fatal("expected prioritize task type")
 	}
-	if taskType.Key != TaskKeySousChef {
+	if taskType.Key != TaskKeyPrioritize {
 		t.Fatalf("key = %q", taskType.Key)
 	}
-	if got := reg.SousChefTarget(); got != TaskKeySousChef {
-		t.Fatalf("sous-chef target = %q", got)
+	if got := reg.PrioritizeTarget(); got != TaskKeyPrioritize {
+		t.Fatalf("prioritize target = %q", got)
 	}
 }
 
@@ -28,8 +28,8 @@ func TestResolveQueueItem(t *testing.T) {
 		t.Fatalf("resolve by key = %+v, %v", byKey, ok)
 	}
 
-	bySkill, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "sous-chef", ID: "x"})
-	if !ok || bySkill.Key != TaskKeySousChef {
+	bySkill, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "prioritize", ID: "x"})
+	if !ok || bySkill.Key != TaskKeyPrioritize {
 		t.Fatalf("resolve by skill = %+v, %v", bySkill, ok)
 	}
 
