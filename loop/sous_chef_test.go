@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestBuildQueueTaskTypesPromptIncludesCanonicalFields(t *testing.T) {
+func TestBuildQueueTaskTypesPromptIncludesKeyAndDescription(t *testing.T) {
 	prompt := buildQueueTaskTypesPrompt([]TaskType{
 		{
 			Key:        "review",
@@ -19,8 +19,11 @@ func TestBuildQueueTaskTypesPromptIncludesCanonicalFields(t *testing.T) {
 		},
 	})
 
-	if !strings.Contains(prompt, "- Review | key: review | config: [review] | skill: review | blocking: true | synthetic: true | aliases: review, chef review | purpose: Blocking review gate.") {
+	if !strings.Contains(prompt, "- review: Blocking review gate.") {
 		t.Fatalf("unexpected prompt: %q", prompt)
+	}
+	if strings.Contains(prompt, "| config: ") || strings.Contains(prompt, "| synthetic: ") {
+		t.Fatalf("expected concise prompt without verbose metadata: %q", prompt)
 	}
 }
 

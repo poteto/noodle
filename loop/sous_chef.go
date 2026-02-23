@@ -119,33 +119,15 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 		return b.String()
 	}
 	for _, taskType := range taskTypes {
-		line := "- " + strings.TrimSpace(taskType.Type)
-		line += " | key: " + strings.TrimSpace(taskType.Key)
-		if cfg := strings.TrimSpace(taskType.ConfigPath); cfg != "" {
-			line += " | config: " + cfg
+		key := strings.TrimSpace(taskType.Key)
+		if key == "" {
+			continue
 		}
-		if skillName := strings.TrimSpace(taskType.Skill); skillName != "" {
-			line += " | skill: " + skillName
+		description := strings.TrimSpace(taskType.Purpose)
+		if description == "" {
+			description = strings.TrimSpace(taskType.Type)
 		}
-		line += " | blocking: "
-		if taskType.Blocking {
-			line += "true"
-		} else {
-			line += "false"
-		}
-		line += " | synthetic: "
-		if taskType.Synthetic {
-			line += "true"
-		} else {
-			line += "false"
-		}
-		if len(taskType.Aliases) > 0 {
-			line += " | aliases: "
-			line += strings.Join(taskType.Aliases, ", ")
-		}
-		if purpose := strings.TrimSpace(taskType.Purpose); purpose != "" {
-			line += " | purpose: " + purpose
-		}
+		line := "- " + key + ": " + description
 		b.WriteString("\n")
 		b.WriteString(line)
 	}
