@@ -39,14 +39,18 @@ type QueueItem struct {
 }
 
 type ControlCommand struct {
-	ID     string    `json:"id"`
-	Action string    `json:"action"`
-	Item   string    `json:"item,omitempty"`
-	Name   string    `json:"name,omitempty"`
-	Target string    `json:"target,omitempty"`
-	Prompt string    `json:"prompt,omitempty"`
-	Value  string    `json:"value,omitempty"`
-	At     time.Time `json:"at,omitempty"`
+	ID       string    `json:"id"`
+	Action   string    `json:"action"`
+	Item     string    `json:"item,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Target   string    `json:"target,omitempty"`
+	Prompt   string    `json:"prompt,omitempty"`
+	Value    string    `json:"value,omitempty"`
+	TaskKey  string    `json:"task_key,omitempty"`
+	Provider string    `json:"provider,omitempty"`
+	Model    string    `json:"model,omitempty"`
+	Skill    string    `json:"skill,omitempty"`
+	At       time.Time `json:"at,omitempty"`
 }
 
 type ControlAck struct {

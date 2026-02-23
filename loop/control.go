@@ -247,8 +247,12 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		return err
 	}
 	queue.Items = append(queue.Items, QueueItem{
-		ID:    item,
-		Title: strings.TrimSpace(cmd.Prompt),
+		ID:       item,
+		Title:    strings.TrimSpace(cmd.Prompt),
+		TaskKey:  strings.TrimSpace(cmd.TaskKey),
+		Provider: strings.TrimSpace(cmd.Provider),
+		Model:    strings.TrimSpace(cmd.Model),
+		Skill:    strings.TrimSpace(cmd.Skill),
 	})
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }

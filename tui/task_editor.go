@@ -134,11 +134,16 @@ func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
 		return nil
 	}
 
-	itemID := fmt.Sprintf("%s-%d", taskTypes[e.taskType], now().UnixMilli())
+	taskKey := taskTypes[e.taskType]
+	itemID := fmt.Sprintf("%s-%d", taskKey, now().UnixMilli())
 	cmd := loop.ControlCommand{
-		Action: "enqueue",
-		Prompt: title,
-		Item:   itemID,
+		Action:   "enqueue",
+		Item:     itemID,
+		Prompt:   title,
+		TaskKey:  taskKey,
+		Provider: providers[e.provider],
+		Model:    models[e.model],
+		Skill:    strings.TrimSpace(e.skill),
 	}
 
 	e.Close()

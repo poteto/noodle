@@ -429,6 +429,15 @@ func TestTaskEditorSubmitWritesEnqueue(t *testing.T) {
 	if wrote.Item == "" {
 		t.Fatal("expected item to be set on enqueue command")
 	}
+	if wrote.TaskKey != "execute" {
+		t.Fatalf("task_key = %q, want execute", wrote.TaskKey)
+	}
+	if wrote.Provider == "" {
+		t.Fatal("expected provider to be set on enqueue command")
+	}
+	if wrote.Model == "" {
+		t.Fatal("expected model to be set on enqueue command")
+	}
 }
 
 func TestSteerOpensWithBacktick(t *testing.T) {
