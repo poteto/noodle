@@ -2,14 +2,11 @@ package loop
 
 import (
 	"context"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/recover"
-	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/spawner"
 )
 
@@ -68,9 +65,7 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	}
 
 	skillName := nonEmpty(item.Skill, sousChefSkill(l.config))
-	taskTypesPrompt := buildQueueTaskTypesPrompt(
-		resolvedTaskTypesFromSkills(l.projectDir, l.config.Skills.Paths),
-	)
+	taskTypesPrompt := buildQueueTaskTypesPrompt(configuredTaskTypes(l.config))
 	req := spawner.SpawnRequest{
 		Name:                 name,
 		Prompt:               buildSousChefPrompt(skillName, taskTypesPrompt, item, resumePrompt),
@@ -115,62 +110,38 @@ func buildSousChefPrompt(skillName, taskTypesPrompt string, item QueueItem, resu
 	return strings.Join(parts, "\n\n")
 }
 
-func buildQueueTaskTypesPrompt(taskTypes []string) string {
+func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 	var b strings.Builder
-	b.WriteString("Task types you may schedule (resolved from skills.paths):")
+	b.WriteString("Task types you may schedule (from loop/task_types.go):")
 	if len(taskTypes) == 0 {
-		b.WriteString("\n- (none resolved)")
+		b.WriteString("\n- (none configured)")
 		return b.String()
 	}
 	for _, taskType := range taskTypes {
-		b.WriteString("\n- ")
-		b.WriteString(taskType)
+		line := "- " + strings.TrimSpace(taskType.Type)
+		if cfg := strings.TrimSpace(taskType.ConfigPath); cfg != "" {
+			line += " | config: " + cfg
+		}
+		if skillName := strings.TrimSpace(taskType.Skill); skillName != "" {
+			line += " | skill: " + skillName
+		}
+		line += " | blocking: "
+		if taskType.Blocking {
+			line += "true"
+		} else {
+			line += "false"
+		}
+		if purpose := strings.TrimSpace(taskType.Purpose); purpose != "" {
+			line += " | purpose: " + purpose
+		}
+		b.WriteString("\n")
+		b.WriteString(line)
 	}
 	return b.String()
 }
 
-func resolvedTaskTypesFromSkills(projectDir string, searchPaths []string) []string {
-	resolver := skill.Resolver{
-		SearchPaths: resolveSkillSearchPaths(projectDir, searchPaths),
-	}
-	skills, err := resolver.List()
-	if err != nil {
-		return nil
-	}
-	names := make([]string, 0, len(skills))
-	for _, info := range skills {
-		name := strings.TrimSpace(info.Name)
-		if name == "" {
-			continue
-		}
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func resolveSkillSearchPaths(projectDir string, paths []string) []string {
-	base := strings.TrimSpace(projectDir)
-	out := make([]string, 0, len(paths))
-	for _, raw := range paths {
-		path := strings.TrimSpace(raw)
-		if path == "" {
-			continue
-		}
-		if strings.HasPrefix(path, "~") || filepath.IsAbs(path) || base == "" {
-			out = append(out, path)
-			continue
-		}
-		out = append(out, filepath.Join(base, path))
-	}
-	return out
-}
-
 func sousChefSkill(cfg config.Config) string {
-	if skillName := strings.TrimSpace(cfg.SousChef.Skill); skillName != "" {
-		return skillName
-	}
-	return "sous-chef"
+	return sousChefTaskSkill(cfg)
 }
 
 func (l *Loop) reprioritizeForChefPrompt(prompt string) error {

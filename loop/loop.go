@@ -185,8 +185,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		limit = 1
 	}
 	for _, item := range queue.Items {
+		if l.hasBlockingActive(queue.Items) {
+			break
+		}
 		if len(l.activeByID)+len(l.adoptedTargets) >= limit {
 			break
+		}
+		if isBlockingQueueItem(l.config, item) && len(l.activeByID)+len(l.adoptedTargets) > 0 {
+			continue
 		}
 		if _, busy := l.activeByTarget[item.ID]; busy {
 			continue
@@ -205,6 +211,35 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (l *Loop) hasBlockingActive(queueItems []QueueItem) bool {
+	for _, cook := range l.activeByID {
+		if isBlockingQueueItem(l.config, cook.queueItem) {
+			return true
+		}
+	}
+	for targetID := range l.adoptedTargets {
+		if item, ok := findQueueItemByTarget(queueItems, targetID); ok {
+			if isBlockingQueueItem(l.config, item) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func findQueueItemByTarget(items []QueueItem, targetID string) (QueueItem, bool) {
+	targetID = strings.TrimSpace(targetID)
+	if targetID == "" {
+		return QueueItem{}, false
+	}
+	for _, item := range items {
+		if strings.TrimSpace(item.ID) == targetID {
+			return item, true
+		}
+	}
+	return QueueItem{}, false
 }
 
 func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
@@ -508,7 +543,7 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 		Prompt:       "Review completed cook work for item " + cook.queueItem.ID,
 		Provider:     l.config.Routing.Defaults.Provider,
 		Model:        l.config.Routing.Defaults.Model,
-		Skill:        "taster",
+		Skill:        tasterTaskSkill(l.config),
 		WorktreePath: cook.worktreePath,
 	}
 	session, err := l.deps.Spawner.Spawn(ctx, reviewReq)

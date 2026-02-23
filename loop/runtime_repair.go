@@ -254,13 +254,13 @@ func (l *Loop) spawnRuntimeRepair(ctx context.Context, issue runtimeIssue, attem
 }
 
 func (l *Loop) runtimeRepairSkill() string {
-	if skill := strings.TrimSpace(l.config.Phases["debugging"]); skill != "" {
-		return skill
+	if strings.TrimSpace(l.config.Phases["debugging"]) != "" {
+		return repairTaskSkill(l.config)
 	}
-	if skill := strings.TrimSpace(l.config.Phases["oops"]); skill != "" {
-		return skill
+	if strings.TrimSpace(l.config.Phases["oops"]) != "" {
+		return oopsTaskSkill(l.config)
 	}
-	return "debugging"
+	return repairTaskSkill(l.config)
 }
 
 func buildRuntimeRepairPrompt(issue runtimeIssue, attempt int) string {

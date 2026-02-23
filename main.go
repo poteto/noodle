@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/spawner"
 	"github.com/poteto/noodle/worktree"
@@ -336,7 +337,7 @@ func startRepairSession(
 		Prompt:       prompt,
 		Provider:     provider,
 		Model:        repairModelForProvider(provider, app.Config),
-		Skill:        "debugging",
+		Skill:        loop.RepairTaskSkill(app.Config),
 		WorktreePath: worktreePath,
 	}
 	session, err := spawn.Spawn(ctx, request)

@@ -392,17 +392,6 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 
 	cfg := config.DefaultConfig()
 	cfg.SousChef.Skill = "priority-chef"
-	cfg.Skills.Paths = []string{"skills"}
-
-	skillsDir := filepath.Join(projectDir, "skills")
-	for _, name := range []string{"plan", "review", "execute", "verify", "reflect", "meditate"} {
-		if err := os.MkdirAll(filepath.Join(skillsDir, name), 0o755); err != nil {
-			t.Fatalf("mkdir skill %s: %v", name, err)
-		}
-		if err := os.WriteFile(filepath.Join(skillsDir, name, "SKILL.md"), []byte("# "+name), 0o644); err != nil {
-			t.Fatalf("write skill %s: %v", name, err)
-		}
-	}
 
 	sp := &fakeSpawner{}
 	wt := &fakeWorktree{}
@@ -431,14 +420,20 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule (resolved from skills.paths):") {
+	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule (from loop/task_types.go):") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- plan") {
+	if !strings.Contains(sp.calls[0].Prompt, "\n- Plan | config: [adapters.plans]") {
 		t.Fatalf("spawn prompt missing plan task type guidance: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- verify") {
+	if !strings.Contains(sp.calls[0].Prompt, "\n- Verify | config: [review]") {
 		t.Fatalf("spawn prompt missing verify task type guidance: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "\n- Review | config: [review] | skill: review | blocking: true") {
+		t.Fatalf("spawn prompt missing review blocking guidance: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "\n- Oops | config: [phases.oops]") {
+		t.Fatalf("spawn prompt missing oops task type guidance: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", sp.calls[0].Prompt)
