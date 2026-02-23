@@ -1,0 +1,214 @@
+package queuex
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/poteto/noodle/adapter"
+	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/taskreg"
+)
+
+// Queue is the canonical queue.json contract.
+type Queue struct {
+	GeneratedAt time.Time `json:"generated_at"`
+	Items       []Item    `json:"items"`
+}
+
+// Item is one queue entry.
+type Item struct {
+	ID        string `json:"id"`
+	TaskKey   string `json:"task_key,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Provider  string `json:"provider"`
+	Model     string `json:"model"`
+	Skill     string `json:"skill,omitempty"`
+	Review    *bool  `json:"review,omitempty"`
+	Rationale string `json:"rationale,omitempty"`
+}
+
+func Read(path string) (Queue, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Queue{}, nil
+		}
+		return Queue{}, fmt.Errorf("read queue: %w", err)
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		return Queue{}, nil
+	}
+	var wrapped Queue
+	if err := json.Unmarshal(data, &wrapped); err == nil {
+		if wrapped.Items == nil {
+			wrapped.Items = []Item{}
+		}
+		return wrapped, nil
+	}
+
+	// Legacy compatibility: queue can be a bare array.
+	var items []Item
+	if err := json.Unmarshal(data, &items); err == nil {
+		return Queue{Items: items}, nil
+	}
+	return Queue{}, fmt.Errorf("parse queue: invalid JSON")
+}
+
+func WriteAtomic(path string, queue Queue) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create queue parent directory: %w", err)
+	}
+	data, err := json.MarshalIndent(queue, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode queue: %w", err)
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+		return fmt.Errorf("write queue temp file: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("rename queue file: %w", err)
+	}
+	return nil
+}
+
+func ApplyRoutingDefaults(queue Queue, reg taskreg.Registry, cfg config.Config) (Queue, bool) {
+	items := make([]Item, len(queue.Items))
+	copy(items, queue.Items)
+	changed := false
+	for i := range items {
+		updated, itemChanged := applyItemRoutingDefaults(items[i], reg, cfg)
+		if itemChanged {
+			changed = true
+			items[i] = updated
+		}
+	}
+	if !changed {
+		return queue, false
+	}
+	queue.Items = items
+	return queue, true
+}
+
+func NormalizeAndValidate(
+	queue Queue,
+	backlog []adapter.BacklogItem,
+	reg taskreg.Registry,
+	cfg config.Config,
+) (Queue, bool, error) {
+	backlogIDs := make(map[string]struct{}, len(backlog))
+	for _, item := range backlog {
+		if item.Status == adapter.BacklogStatusDone {
+			continue
+		}
+		id := strings.TrimSpace(item.ID)
+		if id == "" {
+			continue
+		}
+		backlogIDs[id] = struct{}{}
+	}
+
+	items := make([]Item, len(queue.Items))
+	copy(items, queue.Items)
+	changed := false
+	seenIDs := make(map[string]struct{}, len(items))
+	for i := range items {
+		id := strings.TrimSpace(items[i].ID)
+		if id == "" {
+			return queue, false, fmt.Errorf("queue item id is required")
+		}
+		if _, exists := seenIDs[id]; exists {
+			return queue, false, fmt.Errorf("queue item %q appears more than once", id)
+		}
+		seenIDs[id] = struct{}{}
+
+		taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+			ID:      items[i].ID,
+			TaskKey: items[i].TaskKey,
+			Title:   items[i].Title,
+			Skill:   items[i].Skill,
+		})
+		if !ok && strings.TrimSpace(items[i].TaskKey) == "" && strings.TrimSpace(items[i].Skill) == "" {
+			if resolved, found := reg.ByKey(taskreg.TaskKeyExecute); found {
+				taskType = resolved
+				ok = true
+			}
+		}
+		if !ok {
+			return queue, false, fmt.Errorf("queue item %q has unknown task type", id)
+		}
+
+		if strings.TrimSpace(items[i].TaskKey) != taskType.Key {
+			items[i].TaskKey = taskType.Key
+			changed = true
+		}
+		if strings.TrimSpace(items[i].Skill) == "" && strings.TrimSpace(taskType.Skill) != "" {
+			items[i].Skill = taskType.Skill
+			changed = true
+		}
+		if !taskType.Synthetic && len(backlogIDs) > 0 {
+			if _, exists := backlogIDs[id]; !exists {
+				return queue, false, fmt.Errorf(
+					"queue item %q uses non-synthetic task type %q but is not in backlog",
+					id,
+					taskType.Key,
+				)
+			}
+		}
+	}
+
+	if !changed {
+		return queue, false, nil
+	}
+	queue.Items = items
+	return queue, true, nil
+}
+
+func applyItemRoutingDefaults(item Item, reg taskreg.Registry, cfg config.Config) (Item, bool) {
+	changed := false
+	defaultProvider := strings.TrimSpace(cfg.Routing.Defaults.Provider)
+	defaultModel := strings.TrimSpace(cfg.Routing.Defaults.Model)
+	tagProvider := ""
+	tagModel := ""
+
+	if taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+		ID:      item.ID,
+		TaskKey: item.TaskKey,
+		Title:   item.Title,
+		Skill:   item.Skill,
+	}); ok {
+		if policy, exists := cfg.Routing.Tags[taskType.Key]; exists {
+			tagProvider = strings.TrimSpace(policy.Provider)
+			tagModel = strings.TrimSpace(policy.Model)
+		}
+	}
+
+	if strings.TrimSpace(item.Provider) == "" {
+		provider := firstNonEmpty(tagProvider, defaultProvider)
+		if provider != "" {
+			item.Provider = provider
+			changed = true
+		}
+	}
+	if strings.TrimSpace(item.Model) == "" {
+		model := firstNonEmpty(tagModel, defaultModel)
+		if model != "" {
+			item.Model = model
+			changed = true
+		}
+	}
+	return item, changed
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
