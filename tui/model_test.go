@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -42,162 +41,20 @@ func TestDeriveHealth(t *testing.T) {
 	}
 }
 
-func TestModelTransitionsBetweenSurfaces(t *testing.T) {
+func TestHelpToggle(t *testing.T) {
 	m := NewModel(Options{
 		RuntimeDir:      t.TempDir(),
 		RefreshInterval: time.Hour,
-		Now:             func() time.Time { return time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC) },
+		Now:             time.Now,
 	})
-	m.snapshot = Snapshot{
-		Sessions: []Session{
-			{ID: "cook-a", Status: "running", Health: "green", LastActivity: time.Date(2026, 2, 22, 11, 59, 0, 0, time.UTC)},
-		},
-		Active: []Session{
-			{ID: "cook-a", Status: "running", Health: "green", LastActivity: time.Date(2026, 2, 22, 11, 59, 0, 0, time.UTC)},
-		},
-		EventsBySession: map[string][]EventLine{
-			"cook-a": {
-				{Label: "Edit", Category: traceFilterTools},
-				{Label: "Think", Category: traceFilterThink},
-			},
-		},
-	}
-
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.surface != surfaceSession {
-		t.Fatalf("surface after enter = %q, want %q", m.surface, surfaceSession)
-	}
-	if m.sessionID != "cook-a" {
-		t.Fatalf("sessionID after enter = %q, want cook-a", m.sessionID)
-	}
-
-	m = pressRune(t, m, 't')
-	if m.surface != surfaceTrace {
-		t.Fatalf("surface after t = %q, want %q", m.surface, surfaceTrace)
-	}
-
-	m = pressRune(t, m, 'f')
-	if m.traceFilter != traceFilterTools {
-		t.Fatalf("trace filter after f = %q, want %q", m.traceFilter, traceFilterTools)
-	}
-
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
-	if m.surface != surfaceSession {
-		t.Fatalf("surface after esc from trace = %q, want %q", m.surface, surfaceSession)
-	}
-
-	m = pressRune(t, m, 'q')
-	if m.surface != surfaceQueue {
-		t.Fatalf("surface after q = %q, want %q", m.surface, surfaceQueue)
-	}
-
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
-	if m.surface != surfaceDashboard {
-		t.Fatalf("surface after esc = %q, want %q", m.surface, surfaceDashboard)
-	}
-
-	m.surface = surfaceSession
-	m.sessionID = "cook-a"
-	m = pressRune(t, m, 's')
-	if m.surface != surfaceSteer {
-		t.Fatalf("surface after s = %q, want %q", m.surface, surfaceSteer)
-	}
-	if m.steerInput != "" {
-		t.Fatalf("expected empty steer input, got %q", m.steerInput)
-	}
-
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
-	if m.surface != surfaceSession {
-		t.Fatalf("surface after esc from steer = %q, want %q", m.surface, surfaceSession)
-	}
 
 	m = pressRune(t, m, '?')
 	if m.surface != surfaceHelp {
 		t.Fatalf("surface after ? = %q, want %q", m.surface, surfaceHelp)
 	}
 	m = pressRune(t, m, '?')
-	if m.surface != surfaceSession {
-		t.Fatalf("surface after ? toggle = %q, want %q", m.surface, surfaceSession)
-	}
-}
-
-func TestTraceScrollUsesWrappedDisplayLines(t *testing.T) {
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             func() time.Time { return time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC) },
-	})
-	m.width = 80
-	m.height = 14
-	m.surface = surfaceTrace
-	m.sessionID = "cook-a"
-	m.traceFollow = true
-	m.snapshot = Snapshot{
-		Sessions: []Session{
-			{ID: "cook-a", Status: "running", Health: "green"},
-		},
-		EventsBySession: map[string][]EventLine{
-			"cook-a": {
-				{
-					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
-					Label:    "Prompt",
-					Body:     strings.Repeat("Use Skill(prioritize) to refresh queue. ", 40),
-					Category: traceFilterThink,
-				},
-			},
-		},
-	}
-
-	m = pressRune(t, m, 'k')
-	if m.traceFollow {
-		t.Fatal("expected trace follow to disable on manual up scroll")
-	}
-	if m.traceOffset <= 0 {
-		t.Fatalf("expected positive trace offset for wrapped long event, got %d", m.traceOffset)
-	}
-	view := m.renderTrace()
-	if !strings.Contains(view, "Skill(prioritize)") {
-		t.Fatalf("trace view missing wrapped prompt body: %q", view)
-	}
-}
-
-func TestSessionScrollUsesWrappedDisplayLines(t *testing.T) {
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             func() time.Time { return time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC) },
-	})
-	m.width = 80
-	m.height = 14
-	m.surface = surfaceSession
-	m.sessionID = "cook-a"
-	m.sessionEventsFollow = true
-	m.snapshot = Snapshot{
-		Sessions: []Session{
-			{ID: "cook-a", Status: "running", Health: "green"},
-		},
-		EventsBySession: map[string][]EventLine{
-			"cook-a": {
-				{
-					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
-					Label:    "Prompt",
-					Body:     strings.Repeat("Use Skill(prioritize) to refresh queue. ", 40),
-					Category: traceFilterThink,
-				},
-			},
-		},
-	}
-
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyUp})
-	if m.sessionEventsFollow {
-		t.Fatal("expected session event follow to disable on manual up scroll")
-	}
-	if m.sessionEventsOffset <= 0 {
-		t.Fatalf("expected positive session events offset, got %d", m.sessionEventsOffset)
-	}
-	view := m.renderSession()
-	if !strings.Contains(view, "Skill(prioritize)") {
-		t.Fatalf("session view missing wrapped prompt body: %q", view)
+	if m.surface != surfaceDashboard {
+		t.Fatalf("surface after ? toggle = %q, want %q", m.surface, surfaceDashboard)
 	}
 }
 
@@ -329,51 +186,6 @@ func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
 	}
 }
 
-func TestRenderSessionWrapsLongEventMessages(t *testing.T) {
-	now := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             func() time.Time { return now },
-	})
-	m.width = 80
-	m.height = 24
-	m.surface = surfaceSession
-	m.sessionID = "cook-a"
-	m.snapshot = Snapshot{
-		Sessions: []Session{
-			{
-				ID:              "cook-a",
-				Status:          "running",
-				Health:          "green",
-				Provider:        "codex",
-				Model:           "gpt-5.3-codex",
-				DurationSeconds: 29,
-			},
-		},
-		EventsBySession: map[string][]EventLine{
-			"cook-a": {
-				{
-					At:    now,
-					Label: "Think",
-					Body:  "this is a deliberately long event message that should wrap across multiple lines instead of being cut off with ellipsis in the session detail view",
-				},
-			},
-		},
-	}
-
-	view := m.renderSession()
-	if strings.Contains(view, "...") {
-		t.Fatalf("expected wrapped event body without truncation ellipsis, got:\n%s", view)
-	}
-	if !strings.Contains(view, "this is a deliberately long event message") {
-		t.Fatalf("expected first wrapped segment in view, got:\n%s", view)
-	}
-	if !strings.Contains(view, "detail view") {
-		t.Fatalf("expected continuation segment in view, got:\n%s", view)
-	}
-}
-
 func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 	segments := wrapPlainText("supercalifragilisticexpialidocious", 8)
 	if len(segments) < 2 {
@@ -383,62 +195,6 @@ func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 		if len([]rune(segment)) > 8 {
 			t.Fatalf("segment exceeds width: %q", segment)
 		}
-	}
-}
-
-func TestRenderDashboardShowsUpNextTitle(t *testing.T) {
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             time.Now,
-	})
-	m.width = 120
-	m.snapshot = Snapshot{
-		Queue: []QueueItem{
-			{
-				ID:       "22",
-				TaskKey:  "verify",
-				Title:    "Make planning opinionated and first-class",
-				Provider: "codex",
-				Model:    "gpt-5.3-codex",
-			},
-		},
-	}
-
-	view := m.renderDashboard()
-	if !strings.Contains(view, "Make planning opinionated and first-class") {
-		t.Fatalf("expected queue title in dashboard up next view, got:\n%s", view)
-	}
-	if !strings.Contains(view, "Verify") {
-		t.Fatalf("expected task display name in dashboard up next view, got:\n%s", view)
-	}
-	if strings.Contains(view, "gpt-5.3-codex") {
-		t.Fatalf("did not expect model in dashboard up next view, got:\n%s", view)
-	}
-}
-
-func TestRenderQueueShowsTitle(t *testing.T) {
-	m := NewModel(Options{
-		RuntimeDir:      t.TempDir(),
-		RefreshInterval: time.Hour,
-		Now:             time.Now,
-	})
-	m.width = 120
-	m.surface = surfaceQueue
-	m.snapshot = Snapshot{
-		Queue: []QueueItem{
-			{
-				ID:       "14",
-				Title:    "Implement fixture hash validation",
-				Provider: "claude",
-				Model:    "claude-opus-4-6",
-			},
-		},
-	}
-
-	view := m.renderQueue()
-	if !strings.Contains(view, "Implement fixture hash validation") {
-		t.Fatalf("expected queue title in queue view, got:\n%s", view)
 	}
 }
 

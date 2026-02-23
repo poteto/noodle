@@ -22,9 +22,6 @@ type Surface string
 
 const (
 	surfaceDashboard Surface = "dashboard"
-	surfaceSession   Surface = "session"
-	surfaceTrace     Surface = "trace"
-	surfaceQueue     Surface = "queue"
 	surfaceSteer     Surface = "steer"
 	surfaceHelp      Surface = "help"
 )
@@ -57,17 +54,6 @@ type Model struct {
 
 	snapshot Snapshot
 	err      error
-
-	selectedActive int
-	selectedQueue  int
-	sessionID      string
-
-	traceFilter TraceFilter
-	traceFollow bool
-	traceOffset int
-
-	sessionEventsFollow bool
-	sessionEventsOffset int
 
 	steerInput        string
 	steerMentionOpen  bool
@@ -125,12 +111,6 @@ type EventLine struct {
 	Category TraceFilter
 }
 
-type traceDisplayLine struct {
-	At    string
-	Label string
-	Body  string
-}
-
 type tickMsg time.Time
 
 type snapshotMsg struct {
@@ -157,13 +137,10 @@ func NewModel(opts Options) Model {
 		now = time.Now
 	}
 	return Model{
-		runtimeDir:          runtimeDir,
-		refreshInterval:     interval,
-		now:                 now,
-		surface:             surfaceDashboard,
-		traceFilter:         traceFilterAll,
-		traceFollow:         true,
-		sessionEventsFollow: true,
+		runtimeDir:      runtimeDir,
+		refreshInterval: interval,
+		now:             now,
+		surface:         surfaceDashboard,
 	}
 }
 
@@ -186,8 +163,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.err = nil
 		m.snapshot = msg.snapshot
-		m.clampSelection()
-		m.syncSessionSelection()
 		return m, nil
 	case controlResultMsg:
 		if msg.err != nil {
@@ -205,19 +180,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	var b strings.Builder
-	base := m.baseSurface()
-	b.WriteString(m.renderSurface(base))
-	switch m.surface {
-	case surfaceHelp:
-		b.WriteString("\n\n")
-		b.WriteString(renderHelp())
-	case surfaceSteer:
-		b.WriteString("\n\n")
-		b.WriteString(m.renderSteer())
-	}
+	b.WriteString(m.renderSurface())
 	if m.statusLine != "" {
-		b.WriteString("\n\n")
-		b.WriteString("status: ")
+		b.WriteString("\n\nstatus: ")
 		b.WriteString(m.statusLine)
 	}
 	if m.err != nil {
@@ -225,7 +190,6 @@ func (m Model) View() string {
 		b.WriteString(errorStyle.Render("error: "))
 		b.WriteString(m.err.Error())
 	}
-
 	content := b.String()
 	if m.width > 0 {
 		target := m.width - 2
@@ -254,16 +218,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.closeHelp()
 			return m, nil
 		}
-		if m.surface == surfaceTrace {
-			m.surface = surfaceSession
-			m.traceFollow = true
-			m.traceOffset = 0
-			return m, nil
-		}
-		if m.surface != surfaceDashboard {
-			m.surface = surfaceDashboard
-			return m, nil
-		}
 		return m, nil
 	}
 
@@ -290,145 +244,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			action = "resume"
 		}
 		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: action})
-	case "d":
-		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "drain"})
-	case "q":
-		m.surface = surfaceQueue
-		return m, nil
 	}
 
-	switch m.surface {
-	case surfaceDashboard:
-		return m.handleDashboardKey(msg)
-	case surfaceSession:
-		return m.handleSessionKey(msg)
-	case surfaceTrace:
-		return m.handleTraceKey(msg)
-	case surfaceQueue:
-		return m.handleQueueKey(msg)
-	default:
-		return m, nil
-	}
-}
-
-func (m Model) handleDashboardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch strings.ToLower(msg.String()) {
-	case "up", "k":
-		if m.selectedActive > 0 {
-			m.selectedActive--
-		}
-		return m, nil
-	case "down", "j":
-		if m.selectedActive < len(m.snapshot.Active)-1 {
-			m.selectedActive++
-		}
-		return m, nil
-	}
-
-	if msg.Type == tea.KeyEnter && len(m.snapshot.Active) > 0 {
-		m.sessionID = m.snapshot.Active[m.selectedActive].ID
-		m.surface = surfaceSession
-		m.sessionEventsFollow = true
-		m.sessionEventsOffset = 0
-	}
-	return m, nil
-}
-
-func (m Model) handleSessionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	lines := m.traceDisplayLines(m.snapshot.EventsBySession[m.sessionID])
-	maxStart := 0
-	if h := m.sessionEventsHeight(); len(lines) > h {
-		maxStart = len(lines) - h
-	}
-
-	switch strings.ToLower(msg.String()) {
-	case "t":
-		m.surface = surfaceTrace
-		m.traceFollow = true
-		m.traceOffset = 0
-		return m, nil
-	case "up":
-		if m.sessionEventsFollow {
-			m.sessionEventsFollow = false
-			m.sessionEventsOffset = maxStart
-		}
-		if m.sessionEventsOffset > 0 {
-			m.sessionEventsOffset--
-		}
-		return m, nil
-	case "down":
-		if m.sessionEventsFollow {
-			return m, nil
-		}
-		if m.sessionEventsOffset < maxStart {
-			m.sessionEventsOffset++
-		} else {
-			m.sessionEventsFollow = true
-			m.sessionEventsOffset = 0
-		}
-		return m, nil
-	case "k":
-		if m.sessionID == "" {
-			return m, nil
-		}
-		return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-			Action: "kill",
-			Name:   m.sessionID,
-		})
-	}
-	return m, nil
-}
-
-func (m Model) handleTraceKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	lines := m.traceDisplayLines(m.filteredTraceLines())
-	maxStart := 0
-	if len(lines) > m.traceHeight() {
-		maxStart = len(lines) - m.traceHeight()
-	}
-
-	switch strings.ToLower(msg.String()) {
-	case "f":
-		m.traceFilter = nextTraceFilter(m.traceFilter)
-		m.traceFollow = true
-		m.traceOffset = 0
-	case "g":
-		if strings.EqualFold(msg.String(), "G") {
-			m.traceFollow = true
-			m.traceOffset = 0
-		}
-	case "up", "k":
-		if m.traceFollow {
-			m.traceFollow = false
-			m.traceOffset = maxStart
-		}
-		if m.traceOffset > 0 {
-			m.traceOffset--
-		}
-	case "down", "j":
-		if m.traceFollow {
-			return m, nil
-		}
-		if m.traceOffset < maxStart {
-			m.traceOffset++
-		} else {
-			m.traceFollow = true
-			m.traceOffset = 0
-		}
-	}
-	return m, nil
-}
-
-func (m Model) handleQueueKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch strings.ToLower(msg.String()) {
-	case "up", "k":
-		if m.selectedQueue > 0 {
-			m.selectedQueue--
-		}
-	case "down", "j":
-		if m.selectedQueue < len(m.snapshot.Queue)-1 {
-			m.selectedQueue++
-		}
-	}
 	return m, nil
 }
 
@@ -484,45 +301,6 @@ func (m Model) contentWidth() int {
 		return 40
 	}
 	return width
-}
-
-func (m *Model) clampSelection() {
-	if m.selectedActive < 0 {
-		m.selectedActive = 0
-	}
-	if m.selectedActive >= len(m.snapshot.Active) && len(m.snapshot.Active) > 0 {
-		m.selectedActive = len(m.snapshot.Active) - 1
-	}
-	if m.selectedQueue < 0 {
-		m.selectedQueue = 0
-	}
-	if m.selectedQueue >= len(m.snapshot.Queue) && len(m.snapshot.Queue) > 0 {
-		m.selectedQueue = len(m.snapshot.Queue) - 1
-	}
-}
-
-func (m *Model) syncSessionSelection() {
-	if m.sessionID != "" {
-		if _, ok := m.sessionByID(m.sessionID); ok {
-			return
-		}
-	}
-	if len(m.snapshot.Active) > 0 {
-		m.sessionID = m.snapshot.Active[m.selectedActive].ID
-	}
-}
-
-func (m Model) sessionByID(id string) (Session, bool) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return Session{}, false
-	}
-	for _, session := range m.snapshot.Sessions {
-		if session.ID == id {
-			return session, true
-		}
-	}
-	return Session{}, false
 }
 
 func (m *Model) baseSurface() Surface {
@@ -609,87 +387,6 @@ func (m Model) steerTargets() []string {
 	}
 	sort.Strings(targets[1:])
 	return targets
-}
-
-func (m Model) filteredTraceLines() []EventLine {
-	lines := m.snapshot.EventsBySession[m.sessionID]
-	if m.traceFilter == traceFilterAll {
-		return lines
-	}
-	filtered := make([]EventLine, 0, len(lines))
-	for _, line := range lines {
-		if line.Category == m.traceFilter {
-			filtered = append(filtered, line)
-		}
-	}
-	return filtered
-}
-
-func (m Model) traceDisplayLines(lines []EventLine) []traceDisplayLine {
-	// Trace rows are wrapped to terminal width so scroll math stays aligned.
-	eventPrefixWidth := 8 + 2 + 14 + 3
-	bodyWidth := m.contentWidth() - eventPrefixWidth
-	if bodyWidth < 12 {
-		bodyWidth = 12
-	}
-
-	out := make([]traceDisplayLine, 0, len(lines))
-	for _, line := range lines {
-		label := strings.TrimSpace(line.Label)
-		if label == "" {
-			label = "-"
-		}
-		wrapped := wrapPlainText(line.Body, bodyWidth)
-		if len(wrapped) == 0 {
-			wrapped = []string{""}
-		}
-		for i, segment := range wrapped {
-			display := traceDisplayLine{
-				Body: segment,
-			}
-			if i == 0 {
-				display.At = line.At.Format("15:04:05")
-				display.Label = label
-			}
-			out = append(out, display)
-		}
-	}
-	return out
-}
-
-func (m Model) traceHeight() int {
-	if m.height <= 0 {
-		return 16
-	}
-	h := m.height - 8
-	if h < 4 {
-		return 4
-	}
-	return h
-}
-
-func (m Model) sessionEventsHeight() int {
-	if m.height <= 0 {
-		return 12
-	}
-	h := m.height - 20
-	if h < 4 {
-		return 4
-	}
-	return h
-}
-
-func nextTraceFilter(filter TraceFilter) TraceFilter {
-	switch filter {
-	case traceFilterAll:
-		return traceFilterTools
-	case traceFilterTools:
-		return traceFilterThink
-	case traceFilterThink:
-		return traceFilterTicket
-	default:
-		return traceFilterAll
-	}
 }
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {
