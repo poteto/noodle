@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/sessionmeta"
 )
 
 type statusSummary struct {
@@ -78,45 +78,18 @@ func readStatusSummary(runtimeDir string) (statusSummary, error) {
 }
 
 func readSessionSummary(sessionsDir string) (active int, totalCost float64, loopState string, _ error) {
-	entries, err := os.ReadDir(sessionsDir)
+	metas, err := sessionmeta.ReadAll(filepath.Dir(sessionsDir))
 	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, 0, "running", nil
-		}
-		return 0, 0, "", fmt.Errorf("read sessions directory: %w", err)
+		return 0, 0, "", err
 	}
-
 	loopState = "running"
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		data, err := os.ReadFile(filepath.Join(sessionsDir, entry.Name(), "meta.json"))
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return 0, 0, "", fmt.Errorf("read session meta %s: %w", entry.Name(), err)
-		}
-
-		var meta struct {
-			Status       string  `json:"status"`
-			TotalCostUSD float64 `json:"total_cost_usd"`
-			LoopState    string  `json:"loop_state"`
-		}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			return 0, 0, "", fmt.Errorf("parse session meta %s: %w", entry.Name(), err)
-		}
-
+	for _, meta := range metas {
 		totalCost += meta.TotalCostUSD
-
 		status := strings.ToLower(strings.TrimSpace(meta.Status))
 		switch status {
 		case "running", "stuck", "spawning":
 			active++
 		}
-
 		loopState = pickLoopState(loopState, meta.LoopState)
 		loopState = pickLoopState(loopState, status)
 	}

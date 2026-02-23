@@ -3,7 +3,6 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/sessionmeta"
 )
 
 func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
@@ -77,81 +77,38 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 }
 
 func readSessions(runtimeDir string) ([]Session, error) {
-	path := filepath.Join(runtimeDir, "sessions")
-	entries, err := os.ReadDir(path)
+	metas, err := sessionmeta.ReadAll(runtimeDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read sessions directory: %w", err)
+		return nil, err
 	}
 
-	sessions := make([]Session, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		sessionID := strings.TrimSpace(entry.Name())
-		if sessionID == "" {
-			continue
-		}
-		metaPath := filepath.Join(path, sessionID, "meta.json")
-		data, err := os.ReadFile(metaPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, fmt.Errorf("read session meta %s: %w", sessionID, err)
-		}
-
-		var raw struct {
-			SessionID             string  `json:"session_id"`
-			Status                string  `json:"status"`
-			Provider              string  `json:"provider"`
-			Model                 string  `json:"model"`
-			TotalCostUSD          float64 `json:"total_cost_usd"`
-			DurationSeconds       int64   `json:"duration_seconds"`
-			LastActivity          string  `json:"last_activity"`
-			CurrentAction         string  `json:"current_action"`
-			Health                string  `json:"health"`
-			ContextWindowUsagePct float64 `json:"context_window_usage_pct"`
-			RetryCount            int     `json:"retry_count"`
-			IdleSeconds           int64   `json:"idle_seconds"`
-			StuckThresholdSeconds int64   `json:"stuck_threshold_seconds"`
-			LoopState             string  `json:"loop_state"`
-		}
-		if err := json.Unmarshal(data, &raw); err != nil {
-			return nil, fmt.Errorf("parse session meta %s: %w", sessionID, err)
-		}
-
-		if strings.TrimSpace(raw.SessionID) != "" {
-			sessionID = strings.TrimSpace(raw.SessionID)
-		}
-		lastActivity := parseTime(raw.LastActivity)
-		status := strings.ToLower(strings.TrimSpace(raw.Status))
+	sessions := make([]Session, 0, len(metas))
+	for _, meta := range metas {
+		sessionID := strings.TrimSpace(meta.SessionID)
+		status := strings.ToLower(strings.TrimSpace(meta.Status))
 		health := deriveHealth(
 			status,
-			raw.Health,
-			raw.ContextWindowUsagePct,
-			raw.IdleSeconds,
-			raw.StuckThresholdSeconds,
+			meta.Health,
+			meta.ContextWindowUsagePct,
+			meta.IdleSeconds,
+			meta.StuckThresholdSeconds,
 		)
 
 		sessions = append(sessions, Session{
 			ID:                    sessionID,
 			Status:                nonEmpty(status, "running"),
-			Provider:              strings.TrimSpace(raw.Provider),
-			Model:                 strings.TrimSpace(raw.Model),
-			TotalCostUSD:          raw.TotalCostUSD,
-			DurationSeconds:       raw.DurationSeconds,
-			LastActivity:          lastActivity,
-			CurrentAction:         strings.TrimSpace(raw.CurrentAction),
+			Provider:              strings.TrimSpace(meta.Provider),
+			Model:                 strings.TrimSpace(meta.Model),
+			TotalCostUSD:          meta.TotalCostUSD,
+			DurationSeconds:       meta.DurationSeconds,
+			LastActivity:          meta.LastActivity,
+			CurrentAction:         strings.TrimSpace(meta.CurrentAction),
 			Health:                health,
-			ContextWindowUsagePct: raw.ContextWindowUsagePct,
-			RetryCount:            raw.RetryCount,
-			IdleSeconds:           raw.IdleSeconds,
-			StuckThresholdSeconds: raw.StuckThresholdSeconds,
-			LoopState:             strings.TrimSpace(raw.LoopState),
+			ContextWindowUsagePct: meta.ContextWindowUsagePct,
+			RetryCount:            meta.RetryCount,
+			IdleSeconds:           meta.IdleSeconds,
+			StuckThresholdSeconds: meta.StuckThresholdSeconds,
+			LoopState:             strings.TrimSpace(meta.LoopState),
 		})
 	}
 

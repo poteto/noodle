@@ -20,6 +20,7 @@ type Meta struct {
 	DurationSeconds       int64     `json:"duration_seconds"`
 	LastActivity          time.Time `json:"last_activity"`
 	CurrentAction         string    `json:"current_action,omitempty"`
+	LoopState             string    `json:"loop_state,omitempty"`
 	Health                string    `json:"health"`
 	ContextWindowUsagePct float64   `json:"context_window_usage_pct"`
 	RetryCount            int       `json:"retry_count"`
@@ -45,6 +46,7 @@ func Read(path string) (Meta, error) {
 	meta.Provider = strings.TrimSpace(meta.Provider)
 	meta.Model = strings.TrimSpace(meta.Model)
 	meta.CurrentAction = strings.TrimSpace(meta.CurrentAction)
+	meta.LoopState = strings.TrimSpace(meta.LoopState)
 	meta.Health = strings.ToLower(strings.TrimSpace(meta.Health))
 	return meta, nil
 }
