@@ -154,91 +154,140 @@ func (l *Loop) Run(ctx context.Context) error {
 }
 
 func (l *Loop) Cycle(ctx context.Context) error {
-	if l.registryErr != nil {
-		return l.registryErr
-	}
-	if err := l.processControlCommands(); err != nil {
-		return l.handleRuntimeIssue(ctx, "loop.control", err, nil)
-	}
-	if err := l.collectCompleted(ctx); err != nil {
-		return l.handleRuntimeIssue(ctx, "loop.collect", err, nil)
-	}
-	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
-		return l.handleRuntimeIssue(ctx, "loop.monitor", err, nil)
-	}
-	if err := l.advanceRuntimeRepair(ctx); err != nil {
+	ready, err := l.runCycleMaintenance(ctx)
+	if err != nil {
 		return err
 	}
-	if l.runtimeRepairInFlight != nil {
-		return nil
-	}
-	l.refreshAdoptedTargets()
-	brief, warnings, err := l.deps.Mise.Build(ctx)
-	if err != nil {
-		return l.handleRuntimeIssue(ctx, "mise.build", err, warnings)
-	}
-	if l.state != StateRunning {
+	if !ready {
 		return nil
 	}
 
-	queue, err := readQueue(l.deps.QueueFile)
+	brief, warnings, running, err := l.buildCycleBrief(ctx)
 	if err != nil {
 		return err
 	}
+	if !running {
+		return nil
+	}
+
+	queue, shouldContinue, err := l.prepareQueueForCycle(ctx, brief, warnings)
+	if err != nil {
+		return err
+	}
+	if !shouldContinue {
+		return nil
+	}
+
+	plan := l.planCycleSpawns(queue, brief)
+	if err := l.spawnPlannedItems(ctx, plan); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
+	if l.registryErr != nil {
+		return false, l.registryErr
+	}
+	if err := l.processControlCommands(); err != nil {
+		return false, l.handleRuntimeIssue(ctx, "loop.control", err, nil)
+	}
+	if err := l.collectCompleted(ctx); err != nil {
+		return false, l.handleRuntimeIssue(ctx, "loop.collect", err, nil)
+	}
+	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
+		return false, l.handleRuntimeIssue(ctx, "loop.monitor", err, nil)
+	}
+	if err := l.advanceRuntimeRepair(ctx); err != nil {
+		return false, err
+	}
+	if l.runtimeRepairInFlight != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {
+	l.refreshAdoptedTargets()
+	brief, warnings, err := l.deps.Mise.Build(ctx)
+	if err != nil {
+		return mise.Brief{}, warnings, false, l.handleRuntimeIssue(ctx, "mise.build", err, warnings)
+	}
+	if l.state != StateRunning {
+		return brief, warnings, false, nil
+	}
+	return brief, warnings, true, nil
+}
+
+func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warnings []string) (Queue, bool, error) {
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return Queue{}, false, err
+	}
 	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.Backlog, l.registry, l.config); err != nil {
-		return l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
+		return Queue{}, false, l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
 	} else if changed {
 		queue = normalizedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return err
+			return Queue{}, false, err
 		}
 	}
 	if shouldRecoverMissingSyncScripts(warnings, queue) &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
-		return l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
+		return Queue{}, false, l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
 	}
 	if len(queue.Items) == 0 &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
 		queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return err
+			return Queue{}, false, err
 		}
 	}
 	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.registry, l.config); changed {
 		queue = updatedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return err
+			return Queue{}, false, err
 		}
+	}
+	return queue, true, nil
+}
+
+func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
+	busyTargets := make(map[string]struct{}, len(l.activeByTarget))
+	for targetID := range l.activeByTarget {
+		busyTargets[targetID] = struct{}{}
 	}
 
-	limit := l.config.Concurrency.MaxCooks
-	if limit <= 0 {
-		limit = 1
+	failedTargets := make(map[string]struct{}, len(l.failedTargets))
+	for targetID := range l.failedTargets {
+		failedTargets[targetID] = struct{}{}
 	}
-	for _, item := range queue.Items {
-		if l.hasBlockingActive(queue.Items) {
-			break
-		}
-		if len(l.activeByID)+len(l.adoptedTargets) >= limit {
-			break
-		}
-		if isBlockingQueueItem(l.registry, item) && len(l.activeByID)+len(l.adoptedTargets) > 0 {
-			continue
-		}
-		if _, busy := l.activeByTarget[item.ID]; busy {
-			continue
-		}
-		if _, failed := l.failedTargets[item.ID]; failed {
-			continue
-		}
-		if _, adopted := l.adoptedTargets[item.ID]; adopted {
-			continue
-		}
-		if hasActiveTicket(brief, item.ID) {
-			continue
-		}
+
+	adoptedTargets := make(map[string]struct{}, len(l.adoptedTargets))
+	for targetID := range l.adoptedTargets {
+		adoptedTargets[targetID] = struct{}{}
+	}
+
+	return planSpawnItems(spawnPlanInput{
+		QueueItems:      queue.Items,
+		Capacity:        l.config.Concurrency.MaxCooks,
+		ActiveCount:     len(l.activeByID),
+		AdoptedCount:    len(l.adoptedTargets),
+		BlockingActive:  l.hasBlockingActive(queue.Items),
+		BusyTargets:     busyTargets,
+		FailedTargets:   failedTargets,
+		AdoptedTargets:  adoptedTargets,
+		TicketedTargets: activeTicketTargetSet(brief),
+		IsBlocking: func(item QueueItem) bool {
+			return isBlockingQueueItem(l.registry, item)
+		},
+	})
+}
+
+func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
+	for _, item := range items {
 		if err := l.spawnCook(ctx, item, 0, ""); err != nil {
 			return l.handleRuntimeIssue(ctx, "loop.spawn", err, nil)
 		}
