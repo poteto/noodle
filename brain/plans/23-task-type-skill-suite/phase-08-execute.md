@@ -89,6 +89,8 @@ This ensures each agent gets exactly the schema documentation it needs — no mo
 - Static: SKILL.md has frontmatter, principles, execution flow, delegation heuristics, scope discipline
 - Static: Noodle context preamble is injected into cook session system prompts
 - Static: Skills that read/write `.noodle/` state include relevant schema docs in `references/`
+- Unit tests for multi-skill prompt composition: ordering (methodology after domain skill), truncation at provider limits, single-skill fallback when no methodology skill is configured
+- Unit tests for preamble injection: preamble is prepended, content matches state model map
 - Runtime: Spawn an execute cook session for a plan phase. Confirm:
   - Agent reads the plan phase file
   - Agent works in a worktree

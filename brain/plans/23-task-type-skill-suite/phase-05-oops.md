@@ -25,7 +25,7 @@ From **Operator**:
 ## Changes
 
 - Create `.agents/skills/oops/SKILL.md` — **use the `skill-creator` skill**
--- Define the fix flow: Reproduce → Diagnose → Fix → Verify → Commit
+- Define the fix flow: Reproduce → Diagnose → Fix → Verify → Commit
 - Include suspect-state-before-code as an explicit diagnostic step
 - Include "check for the pattern" — if a bug exists in one place, grep for it elsewhere
 - Define scope boundary: user-project infrastructure only, not Noodle internals

@@ -38,7 +38,7 @@ The core job is two things: (1) prune stale/redundant brain notes, and (2) find 
 
 ## Verification
 
-- Static: SKILL.md has frontmatter, principles, streamlined two-activity process, quality bar definition
+- Static: SKILL.md has frontmatter, principles, three-activity process (prune, extract, housekeep), quality bar definition
 - Runtime: Spawn a meditate cook session. Confirm:
   - Brain notes are actually read and evaluated (not just listed)
   - At least one stale/redundant item is identified (or explicitly states vault is healthy)

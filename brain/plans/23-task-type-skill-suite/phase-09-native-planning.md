@@ -38,11 +38,7 @@ The Go core stays lean: it reads plan files and exposes them as data. All schedu
 
 ### Simplify plan task type
 
-The plan task type in the registry (`internal/taskreg/registry.go`) should be updated to reflect that Noodle never spawns plan sessions autonomously. Plans are created by the user outside of Noodle. Options:
-- Remove `TaskKeyPlan` from the registry entirely (cleanest — planning is not a Noodle task)
-- Or keep it but ensure the prioritize skill never schedules it (skill-level, not Go-level)
-
-The loop no longer needs to handle plan task lifecycle — no plan cooks are spawned.
+Remove `TaskKeyPlan` from the registry (`internal/taskreg/registry.go`). Planning is not a Noodle-spawned task — the user creates plans outside of Noodle using their own agent and the plan skill. The loop never spawns plan sessions, so the task type is dead code.
 
 ### Config update
 - Remove `[adapters.plans]` section from `noodle.toml` and `config/config.go`
