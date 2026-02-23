@@ -44,6 +44,7 @@ type ControlCommand struct {
 	Name   string    `json:"name,omitempty"`
 	Target string    `json:"target,omitempty"`
 	Prompt string    `json:"prompt,omitempty"`
+	Value  string    `json:"value,omitempty"`
 	At     time.Time `json:"at,omitempty"`
 }
 
@@ -62,6 +63,14 @@ type activeCook struct {
 	worktreePath  string
 	attempt       int
 	reviewEnabled bool
+}
+
+// pendingReviewCook is a completed cook waiting for human merge/reject.
+type pendingReviewCook struct {
+	queueItem    QueueItem
+	worktreeName string
+	worktreePath string
+	sessionID    string
 }
 
 type Dispatcher interface {
@@ -112,6 +121,7 @@ type Loop struct {
 	adoptedTargets  map[string]string
 	adoptedSessions []string
 	failedTargets   map[string]string
+	pendingReview   map[string]*pendingReviewCook
 	processedIDs    map[string]struct{}
 
 	runtimeRepairAttempts map[string]int

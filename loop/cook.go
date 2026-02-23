@@ -28,7 +28,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 			return err
 		}
 	}
-	reviewEnabled := l.config.Review.Enabled
+	reviewEnabled := l.config.ReviewEnabled()
 	if item.Review != nil {
 		reviewEnabled = *item.Review
 	}
@@ -109,20 +109,31 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 		if isPrioritizeItem(cook.queueItem) {
 			return l.skipQueueItem(cook.queueItem.ID)
 		}
-		if err := l.deps.Worktree.Merge(cook.worktreeName); err != nil {
-			return l.retryCook(ctx, cook, "merge failed: "+err.Error())
-		}
-		if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{cook.queueItem.ID}}); err != nil {
-			if !isMissingAdapter(err) {
-				return err
+		// In approve mode, park the cook for human review instead of auto-merging.
+		if l.config.PendingApproval() {
+			l.pendingReview[cook.queueItem.ID] = &pendingReviewCook{
+				queueItem:    cook.queueItem,
+				worktreeName: cook.worktreeName,
+				worktreePath: cook.worktreePath,
+				sessionID:    cook.session.ID(),
 			}
+			return nil
 		}
-		if err := l.skipQueueItem(cook.queueItem.ID); err != nil {
-			return err
-		}
-		return nil
+		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName)
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
+}
+
+func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName string) error {
+	if err := l.deps.Worktree.Merge(worktreeName); err != nil {
+		return fmt.Errorf("merge %s: %w", worktreeName, err)
+	}
+	if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{item.ID}}); err != nil {
+		if !isMissingAdapter(err) {
+			return err
+		}
+	}
+	return l.skipQueueItem(item.ID)
 }
 
 func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
@@ -206,7 +217,7 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 	if !found {
 		return nil, false, nil
 	}
-	reviewEnabled := l.config.Review.Enabled
+	reviewEnabled := l.config.ReviewEnabled()
 	if isPrioritizeItem(item) {
 		reviewEnabled = false
 	} else if item.Review != nil {

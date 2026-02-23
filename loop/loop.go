@@ -71,6 +71,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		adoptedTargets:        map[string]string{},
 		adoptedSessions:       []string{},
 		failedTargets:         map[string]string{},
+		pendingReview:         map[string]*pendingReviewCook{},
 		processedIDs:          map[string]struct{}{},
 		runtimeRepairAttempts: map[string]int{},
 	}

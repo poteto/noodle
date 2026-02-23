@@ -16,6 +16,13 @@ const (
 	DefaultConfigPath = ".noodle.toml"
 )
 
+// Autonomy modes control how much human oversight the loop requires.
+const (
+	AutonomyFull    = "full"    // auto-merge on success, no human in the loop
+	AutonomyReview  = "review"  // quality review runs, auto-merge on APPROVE
+	AutonomyApprove = "approve" // quality review runs, human must confirm merge
+)
+
 // Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
 	Phases      map[string]string        `toml:"phases"`
@@ -23,12 +30,18 @@ type Config struct {
 	Prioritize  PrioritizeConfig         `toml:"prioritize"`
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
-	Review      ReviewConfig             `toml:"review"`
+	Autonomy    string                   `toml:"autonomy"`
+	Review      reviewCompat             `toml:"review"` // legacy migration only
 	Recovery    RecoveryConfig           `toml:"recovery"`
 	Monitor     MonitorConfig            `toml:"monitor"`
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
 	Agents      AgentsConfig             `toml:"agents"`
 	Runtime     RuntimeConfig            `toml:"runtime"`
+}
+
+// reviewCompat exists only to migrate legacy review.enabled TOML.
+type reviewCompat struct {
+	Enabled *bool `toml:"enabled"`
 }
 
 type AdapterConfig struct {
@@ -54,10 +67,6 @@ type ModelPolicy struct {
 
 type SkillsConfig struct {
 	Paths []string `toml:"paths"`
-}
-
-type ReviewConfig struct {
-	Enabled bool `toml:"enabled"`
 }
 
 type RecoveryConfig struct {
@@ -164,9 +173,7 @@ func DefaultConfig() Config {
 		Skills: SkillsConfig{
 			Paths: defaultSkillPaths(),
 		},
-		Review: ReviewConfig{
-			Enabled: true,
-		},
+		Autonomy: AutonomyReview,
 		Recovery: RecoveryConfig{
 			MaxRetries:         3,
 			RetrySuffixPattern: "-recover-%d",
@@ -265,8 +272,17 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Routing.Tags = map[string]ModelPolicy{}
 	}
 
-	if !metadata.IsDefined("review", "enabled") {
-		config.Review.Enabled = true
+	if metadata.IsDefined("autonomy") {
+		// explicit autonomy field — nothing to migrate
+	} else if metadata.IsDefined("review", "enabled") && config.Review.Enabled != nil {
+		// legacy migration: review.enabled → autonomy
+		if *config.Review.Enabled {
+			config.Autonomy = AutonomyReview
+		} else {
+			config.Autonomy = AutonomyFull
+		}
+	} else {
+		config.Autonomy = AutonomyReview
 	}
 
 	if !metadata.IsDefined("recovery", "max_retries") {
@@ -325,6 +341,16 @@ func defaultSkillPaths() []string {
 }
 
 func validateParsedValues(config Config) error {
+	switch config.Autonomy {
+	case AutonomyFull, AutonomyReview, AutonomyApprove:
+	case "":
+		// treated as default in applyDefaults
+	default:
+		return fmt.Errorf(
+			"autonomy: unsupported value %q (expected full, review, approve)",
+			config.Autonomy,
+		)
+	}
 	if err := validateProvider("routing.defaults.provider", config.Routing.Defaults.Provider); err != nil {
 		return err
 	}
@@ -513,4 +539,14 @@ func commandLooksPath(token string) bool {
 	return strings.HasPrefix(token, ".") ||
 		strings.HasPrefix(token, "/") ||
 		strings.Contains(token, string(filepath.Separator))
+}
+
+// ReviewEnabled returns whether quality review should run (autonomy != "full").
+func (c Config) ReviewEnabled() bool {
+	return c.Autonomy != AutonomyFull
+}
+
+// PendingApproval returns whether successful cooks need human approval to merge.
+func (c Config) PendingApproval() bool {
+	return c.Autonomy == AutonomyApprove
 }

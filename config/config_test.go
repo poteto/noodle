@@ -34,8 +34,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Routing.Defaults.Model != "claude-sonnet-4-6" {
 		t.Fatalf("routing.defaults.model default = %q", config.Routing.Defaults.Model)
 	}
-	if !config.Review.Enabled {
-		t.Fatal("review.enabled default should be true")
+	if config.Autonomy != "review" {
+		t.Fatalf("autonomy default = %q, want review", config.Autonomy)
 	}
 	if config.Recovery.MaxRetries != 3 {
 		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
@@ -154,8 +154,8 @@ edit = "gh issue edit"
 	if config.Routing.Tags["frontend"].Model != "opus" {
 		t.Fatalf("routing.tags.frontend.model = %q", config.Routing.Tags["frontend"].Model)
 	}
-	if config.Review.Enabled {
-		t.Fatal("review.enabled should remain false from config")
+	if config.Autonomy != "full" {
+		t.Fatalf("review.enabled=false should migrate to autonomy=full, got %q", config.Autonomy)
 	}
 	if config.Recovery.MaxRetries != 5 {
 		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
@@ -184,8 +184,8 @@ model = "claude-sonnet-4-6"
 	if config.Prioritize.Skill != "prioritize" {
 		t.Fatalf("expected default prioritize.skill, got %q", config.Prioritize.Skill)
 	}
-	if config.Review.Enabled != true {
-		t.Fatalf("expected default review.enabled=true, got %v", config.Review.Enabled)
+	if config.Autonomy != "review" {
+		t.Fatalf("expected default autonomy=review, got %q", config.Autonomy)
 	}
 	if config.Recovery.RetrySuffixPattern != "-recover-%d" {
 		t.Fatalf("expected default recovery.retry_suffix_pattern, got %q", config.Recovery.RetrySuffixPattern)
@@ -446,6 +446,123 @@ func TestValidateAdapterScriptCommandVsPathChecks(t *testing.T) {
 	}
 	if foundCommandDiagnostic {
 		t.Fatal("did not expect diagnostic for non-path command in adapters.backlog.scripts.sync")
+	}
+}
+
+func TestLegacyReviewEnabledTrueMigratesToReview(t *testing.T) {
+	config, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[review]
+enabled = true
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if config.Autonomy != "review" {
+		t.Fatalf("autonomy = %q, want review", config.Autonomy)
+	}
+}
+
+func TestLegacyReviewEnabledFalseMigratesToFull(t *testing.T) {
+	config, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[review]
+enabled = false
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if config.Autonomy != "full" {
+		t.Fatalf("autonomy = %q, want full", config.Autonomy)
+	}
+}
+
+func TestAutonomyFieldParsesDirectly(t *testing.T) {
+	for _, mode := range []string{"full", "review", "approve"} {
+		t.Run(mode, func(t *testing.T) {
+			config, err := Parse([]byte(`
+autonomy = "` + mode + `"
+
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+`))
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if config.Autonomy != mode {
+				t.Fatalf("autonomy = %q, want %q", config.Autonomy, mode)
+			}
+		})
+	}
+}
+
+func TestAutonomyExplicitOverridesLegacyReview(t *testing.T) {
+	config, err := Parse([]byte(`
+autonomy = "approve"
+
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[review]
+enabled = false
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if config.Autonomy != "approve" {
+		t.Fatalf("autonomy = %q, want approve", config.Autonomy)
+	}
+}
+
+func TestAutonomyInvalidValueReturnsError(t *testing.T) {
+	_, err := Parse([]byte(`
+autonomy = "yolo"
+
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+`))
+	if err == nil {
+		t.Fatal("expected parse error for invalid autonomy")
+	}
+	if !strings.Contains(err.Error(), "autonomy") {
+		t.Fatalf("error %q missing autonomy field reference", err)
+	}
+}
+
+func TestReviewEnabledHelper(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Autonomy = "full"
+	if cfg.ReviewEnabled() {
+		t.Fatal("full autonomy should not enable review")
+	}
+	cfg.Autonomy = "review"
+	if !cfg.ReviewEnabled() {
+		t.Fatal("review autonomy should enable review")
+	}
+	cfg.Autonomy = "approve"
+	if !cfg.ReviewEnabled() {
+		t.Fatal("approve autonomy should enable review")
+	}
+}
+
+func TestPendingApprovalHelper(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Autonomy = "approve"
+	if !cfg.PendingApproval() {
+		t.Fatal("approve autonomy should require pending approval")
+	}
+	cfg.Autonomy = "review"
+	if cfg.PendingApproval() {
+		t.Fatal("review autonomy should not require pending approval")
 	}
 }
 

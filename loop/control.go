@@ -2,11 +2,14 @@ package loop
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/poteto/noodle/config"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -157,9 +160,113 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
+	case "merge":
+		if err := l.controlMerge(cmd.Item); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "reject":
+		if err := l.controlReject(cmd.Item); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "autonomy":
+		if err := l.controlAutonomy(cmd.Value); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "enqueue":
+		if err := l.controlEnqueue(cmd); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "stop-all":
+		l.controlStopAll()
+	case "requeue":
+		if err := l.controlRequeue(cmd.Item); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
 	default:
 		ack.Status = "error"
 		ack.Message = "unsupported action"
 	}
 	return ack
+}
+
+func (l *Loop) controlMerge(itemID string) error {
+	itemID = strings.TrimSpace(itemID)
+	if itemID == "" {
+		return fmt.Errorf("merge requires item")
+	}
+	pending, ok := l.pendingReview[itemID]
+	if !ok {
+		return fmt.Errorf("no pending review for %q", itemID)
+	}
+	delete(l.pendingReview, itemID)
+	return l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName)
+}
+
+func (l *Loop) controlReject(itemID string) error {
+	itemID = strings.TrimSpace(itemID)
+	if itemID == "" {
+		return fmt.Errorf("reject requires item")
+	}
+	pending, ok := l.pendingReview[itemID]
+	if !ok {
+		return fmt.Errorf("no pending review for %q", itemID)
+	}
+	delete(l.pendingReview, itemID)
+	if strings.TrimSpace(pending.worktreeName) != "" {
+		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
+	}
+	if err := l.markFailed(itemID, "rejected by user"); err != nil {
+		return err
+	}
+	return l.skipQueueItem(itemID)
+}
+
+func (l *Loop) controlAutonomy(value string) error {
+	value = strings.ToLower(strings.TrimSpace(value))
+	switch value {
+	case config.AutonomyFull, config.AutonomyReview, config.AutonomyApprove:
+		l.config.Autonomy = value
+		return nil
+	default:
+		return fmt.Errorf("unsupported autonomy value %q", value)
+	}
+}
+
+func (l *Loop) controlEnqueue(cmd ControlCommand) error {
+	item := strings.TrimSpace(cmd.Item)
+	if item == "" {
+		return fmt.Errorf("enqueue requires item")
+	}
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return err
+	}
+	queue.Items = append(queue.Items, QueueItem{
+		ID:    item,
+		Title: strings.TrimSpace(cmd.Prompt),
+	})
+	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func (l *Loop) controlStopAll() {
+	for _, cook := range l.activeByID {
+		_ = cook.session.Kill()
+	}
+}
+
+func (l *Loop) controlRequeue(itemID string) error {
+	itemID = strings.TrimSpace(itemID)
+	if itemID == "" {
+		return fmt.Errorf("requeue requires item")
+	}
+	if _, ok := l.failedTargets[itemID]; !ok {
+		return fmt.Errorf("item %q not in failed state", itemID)
+	}
+	delete(l.failedTargets, itemID)
+	return l.writeFailedTargets()
 }
