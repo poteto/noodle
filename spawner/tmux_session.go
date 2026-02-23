@@ -14,13 +14,14 @@ import (
 )
 
 type tmuxSession struct {
-	id            string
-	tmuxName      string
-	worktreePath  string
-	env           []string
-	canonicalPath string
-	eventWriter   *event.EventWriter
-	run           commandRunner
+	id             string
+	tmuxName       string
+	worktreePath   string
+	env            []string
+	canonicalPath  string
+	injectedPrompt string
+	eventWriter    *event.EventWriter
+	run            commandRunner
 
 	mu       sync.Mutex
 	status   string
@@ -32,6 +33,7 @@ type tmuxSession struct {
 	events   chan SessionEvent
 
 	startWarnings []string
+	promptLogged  bool
 }
 
 func newTmuxSession(
@@ -40,22 +42,24 @@ func newTmuxSession(
 	worktreePath string,
 	env []string,
 	canonicalPath string,
+	injectedPrompt string,
 	eventWriter *event.EventWriter,
 	startWarnings []string,
 	run commandRunner,
 ) *tmuxSession {
 	return &tmuxSession{
-		id:            id,
-		tmuxName:      tmuxName,
-		worktreePath:  worktreePath,
-		env:           append([]string(nil), env...),
-		canonicalPath: canonicalPath,
-		eventWriter:   eventWriter,
-		run:           run,
-		status:        "running",
-		done:          make(chan struct{}),
-		events:        make(chan SessionEvent, 32),
-		startWarnings: append([]string(nil), startWarnings...),
+		id:             id,
+		tmuxName:       tmuxName,
+		worktreePath:   worktreePath,
+		env:            append([]string(nil), env...),
+		canonicalPath:  canonicalPath,
+		injectedPrompt: injectedPrompt,
+		eventWriter:    eventWriter,
+		run:            run,
+		status:         "running",
+		done:           make(chan struct{}),
+		events:         make(chan SessionEvent, 32),
+		startWarnings:  append([]string(nil), startWarnings...),
 	}
 }
 
@@ -208,6 +212,9 @@ func (s *tmuxSession) consumeCanonical(event parse.CanonicalEvent) {
 		TokensOut: event.TokensOut,
 	})
 	s.writeEventLog(event)
+	if event.Type == parse.EventInit {
+		s.emitPromptEvent(event.Timestamp)
+	}
 }
 
 func (s *tmuxSession) writeEventLog(canonical parse.CanonicalEvent) {
@@ -220,6 +227,51 @@ func (s *tmuxSession) writeEventLog(canonical parse.CanonicalEvent) {
 		return
 	}
 	if err := s.eventWriter.Append(context.Background(), record); err != nil {
+		s.publish(SessionEvent{
+			Type:      "warning",
+			Message:   "event log append failed: " + err.Error(),
+			Timestamp: nowUTC(),
+		})
+	}
+}
+
+func (s *tmuxSession) emitPromptEvent(timestamp time.Time) {
+	if s.promptLogged {
+		return
+	}
+	s.promptLogged = true
+
+	prompt := strings.TrimSpace(s.injectedPrompt)
+	if prompt == "" {
+		return
+	}
+	if timestamp.IsZero() {
+		timestamp = nowUTC()
+	}
+
+	s.publish(SessionEvent{
+		Type:      string(parse.EventAction),
+		Message:   prompt,
+		Timestamp: timestamp,
+	})
+
+	if s.eventWriter == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"tool":    "prompt",
+		"action":  "prompt_injected",
+		"message": s.injectedPrompt,
+	})
+	if err != nil {
+		return
+	}
+	if err := s.eventWriter.Append(context.Background(), event.Event{
+		Type:      event.EventAction,
+		Payload:   payload,
+		Timestamp: timestamp,
+		SessionID: s.id,
+	}); err != nil {
 		s.publish(SessionEvent{
 			Type:      "warning",
 			Message:   "event log append failed: " + err.Error(),

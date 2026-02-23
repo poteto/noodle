@@ -148,6 +148,7 @@ func (s *TmuxSpawner) Spawn(ctx context.Context, req SpawnRequest) (Session, err
 		req.WorktreePath,
 		buildSpawnEnv(req),
 		canonicalPath,
+		finalPrompt,
 		eventWriter,
 		skillBundle.Warnings,
 		s.run,

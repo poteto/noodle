@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -31,6 +32,7 @@ func TestTmuxSessionClosesEventsAfterDone(t *testing.T) {
 		".",
 		nil,
 		"does-not-exist.ndjson",
+		"",
 		nil,
 		nil,
 		run,
@@ -69,6 +71,7 @@ func TestTmuxSessionWritesEventLogFromCanonical(t *testing.T) {
 		".",
 		nil,
 		"",
+		"",
 		writer,
 		nil,
 		nil,
@@ -100,5 +103,65 @@ func TestTmuxSessionWritesEventLogFromCanonical(t *testing.T) {
 	}
 	if records[1].Type != event.EventCost {
 		t.Fatalf("second event type = %q", records[1].Type)
+	}
+}
+
+func TestTmuxSessionLogsInjectedPromptOnInit(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	writer, err := event.NewEventWriter(runtimeDir, "session-a")
+	if err != nil {
+		t.Fatalf("new event writer: %v", err)
+	}
+	prompt := "Use Skill(sous-chef) to refresh .noodle/queue.json from .noodle/mise.json."
+
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		"",
+		prompt,
+		writer,
+		nil,
+		nil,
+	)
+
+	ts := time.Date(2026, 2, 23, 0, 0, 0, 0, time.UTC)
+	session.consumeCanonical(parse.CanonicalEvent{
+		Type:      parse.EventInit,
+		Message:   "session started",
+		Timestamp: ts,
+	})
+
+	reader := event.NewEventReader(runtimeDir)
+	records, err := reader.ReadSession("session-a", event.EventFilter{})
+	if err != nil {
+		t.Fatalf("read event log: %v", err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("event count = %d, want 2", len(records))
+	}
+	if records[0].Type != event.EventSpawned {
+		t.Fatalf("first event type = %q", records[0].Type)
+	}
+	if records[1].Type != event.EventAction {
+		t.Fatalf("second event type = %q", records[1].Type)
+	}
+	var payload struct {
+		Tool    string `json:"tool"`
+		Action  string `json:"action"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(records[1].Payload, &payload); err != nil {
+		t.Fatalf("decode prompt payload: %v", err)
+	}
+	if payload.Tool != "prompt" {
+		t.Fatalf("tool = %q, want prompt", payload.Tool)
+	}
+	if payload.Action != "prompt_injected" {
+		t.Fatalf("action = %q, want prompt_injected", payload.Action)
+	}
+	if payload.Message != prompt {
+		t.Fatalf("message = %q, want %q", payload.Message, prompt)
 	}
 }

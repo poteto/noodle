@@ -293,6 +293,9 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 	case "grep":
 		label = "Grep"
 		category = traceFilterTools
+	case "prompt":
+		label = "Prompt"
+		category = traceFilterThink
 	case "think":
 		label = "Think"
 		category = traceFilterThink
