@@ -21,6 +21,5 @@ add = "go run .noodle/adapters/main.go backlog-add"
 done = "go run .noodle/adapters/main.go backlog-done"
 edit = "go run .noodle/adapters/main.go backlog-edit"
 
-
 [concurrency]
 max_cooks = 1
