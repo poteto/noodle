@@ -5,52 +5,49 @@ description: Add, complete, or view items in the brain/todos.md backlog. Use whe
 
 # Todo
 
-Manage the project backlog at `brain/todos.md` via the `noodle todo` CLI.
+Manage the project backlog at `brain/todos.md`. Edit the file directly with Edit/Write tools.
 
-## Commands
+## File Format
 
-All mutations go through the CLI to ensure consistent ID allocation and format validation.
+```markdown
+# Todos
+
+<!-- next-id: 26 -->
+
+## Section Name
+
+1. [x] Completed item description
+2. [ ] Open item description [[plans/02-some-plan/overview]]
+```
+
+- Items are numbered markdown checkboxes: `N. [ ] description` or `N. [x] description`
+- Sections are `## Heading` groups
+- `<!-- next-id: N -->` tracks the next available ID
+
+## Operations
 
 ### Add an item
 
-```bash
-noodle todo add --section "Section Name" "Item description"
+1. Read `<!-- next-id: N -->` to get the next ID
+2. Append `N. [ ] description` to the target section
+3. Increment the next-id marker: `<!-- next-id: N+1 -->`
+
+### Mark done
+
+Change `[ ]` to `[x]` and wrap the description in `~~strikethrough~~`:
+
+```
+2. [x] ~~Old description~~ — reason it was closed/superseded.
 ```
 
-Omit `--section` to append to the last section. The CLI auto-assigns the next available ID and prints it.
+The item stays in the file for history.
 
-### Mark an item done
+### Edit description
 
-```bash
-noodle todo done ID
-```
-
-Wraps the item in `~~strikethrough~~`. The item remains in the file for history.
-
-### Move an item to another section
-
-```bash
-noodle todo move --section "Target Section" ID
-```
-
-### Edit an item's description
-
-```bash
-noodle todo edit ID "New description"
-```
-
-Preserves wikilinks if included in the new description.
-
-### List all items
-
-```bash
-noodle todo list
-```
-
-Shows active items grouped by section with their IDs.
+Replace the description text. Preserve any `[[wikilinks]]` unless intentionally removing them.
 
 ## Rules
 
-- Never edit `brain/todos.md` directly with Edit/Write tools. Always use `noodle todo` commands.
-- IDs are permanent and auto-assigned. Never renumber or reuse them.
-- The `<!-- next-id: N -->` marker is managed by the CLI. Do not modify it manually.
+- IDs are permanent. Never renumber or reuse them.
+- Always increment `<!-- next-id -->` when adding items.
+- Keep items in their section — don't move between sections without being asked.

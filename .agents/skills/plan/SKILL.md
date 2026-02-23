@@ -204,17 +204,13 @@ The `noodle plan create` command (Step 5) already handles both updates:
 1. **Plans index** — the CLI appends `- [[plans/NN-plan-name/overview]]` to `brain/plans/index.md`.
 2. **Todo entry** — the CLI appends the plan wikilink to the todo item's description.
 
-If the todo item doesn't exist yet, create it first:
+If the todo item doesn't exist yet, create it by editing `brain/todos.md` directly:
 
-```bash
-noodle todo add --section "Section Name" "Short description"
-```
+1. Read `<!-- next-id: N -->` to get the next ID
+2. Append `N. [ ] description [[plans/NN-plan-name/overview]]` to the target section
+3. Increment the next-id marker: `<!-- next-id: N+1 -->`
 
-Then update its description with more context:
-
-```bash
-noodle todo edit ID "Full description — context. Existing plan: [[plans/NN-plan-name/overview]]."
-```
+To update an existing todo's description, edit the item text in place (preserve any `[[wikilinks]]`).
 
 Do NOT edit `brain/index.md` — the auto-index hook maintains it automatically.
 
