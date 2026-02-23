@@ -114,6 +114,7 @@ var schemaTargets = []targetSpec{
 			"items[].skill":     {Description: "skill name to load"},
 			"items[].review":    {Type: "boolean", Description: "true when this item requires blocking review"},
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
+			"active[]":          {Description: "queue item IDs currently being cooked"},
 			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},
 		},
 		Constraints: []string{
