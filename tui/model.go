@@ -45,11 +45,12 @@ type Model struct {
 	steerOpen bool
 	helpOpen  bool
 
-	snapshot Snapshot
-	feedTab  FeedTab
-	queueTab QueueTab
-	brainTab BrainTab
-	err      error
+	snapshot  Snapshot
+	feedTab   FeedTab
+	queueTab  QueueTab
+	brainTab  BrainTab
+	configTab ConfigTab
+	err       error
 
 	steerInput        string
 	steerMentionOpen  bool
@@ -191,6 +192,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.queueTab.SetQueue(m.snapshot.Queue, activeIDs, m.snapshot.ActionNeeded)
 		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
+		m.configTab.SetAutonomy(m.snapshot.Autonomy)
 		return m, nil
 	case brainPreviewMsg:
 		if msg.err != nil {
@@ -345,6 +347,16 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "a":
 		if m.activeTab == TabFeed {
 			return m, m.mergeAllApproved()
+		}
+	case "left", "h":
+		if m.activeTab == TabConfig {
+			mode := m.configTab.CycleLeft()
+			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
+		}
+	case "right", "l":
+		if m.activeTab == TabConfig {
+			mode := m.configTab.CycleRight()
+			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
 		}
 	case "p":
 		action := "pause"

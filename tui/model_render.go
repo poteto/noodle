@@ -40,7 +40,7 @@ func (m Model) renderLayout() string {
 	case TabBrain:
 		tabContent = m.brainTab.Render(paneWidth, contentHeight)
 	case TabConfig:
-		tabContent = dimStyle.Render("(config — coming soon)")
+		tabContent = m.configTab.Render(paneWidth, contentHeight)
 	}
 
 	pane := tabBar + "\n\n" + tabContent
@@ -91,8 +91,7 @@ func renderHelp(tab Tab) string {
 			dimStyle.Render("enter") + " preview  " +
 			dimStyle.Render("esc") + " back"
 	case TabConfig:
-		tabKeys = dimStyle.Render("j/k") + " navigate  " +
-			dimStyle.Render("←/→") + " dial"
+		tabKeys = dimStyle.Render("←/→") + " change autonomy"
 	}
 
 	result := sectionStyle.Render("Keys") + "\n" + global
