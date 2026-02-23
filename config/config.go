@@ -20,7 +20,7 @@ const (
 type Config struct {
 	Phases      map[string]string        `toml:"phases"`
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
-	SousChef    SousChefConfig           `toml:"sous-chef"`
+	Prioritize  PrioritizeConfig         `toml:"prioritize"`
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
 	Review      ReviewConfig             `toml:"review"`
@@ -35,7 +35,7 @@ type AdapterConfig struct {
 	Scripts map[string]string `toml:"scripts"`
 }
 
-type SousChefConfig struct {
+type PrioritizeConfig struct {
 	Skill string `toml:"skill"`
 	Run   string `toml:"run"`
 	Model string `toml:"model"`
@@ -127,8 +127,8 @@ func DefaultConfig() Config {
 			"debugging": "debugging",
 		},
 		Adapters: defaultAdapters(),
-		SousChef: SousChefConfig{
-			Skill: "sous-chef",
+		Prioritize: PrioritizeConfig{
+			Skill: "prioritize",
 			Run:   "after-each",
 			Model: "claude-sonnet",
 		},
@@ -235,14 +235,14 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Skills.Paths = []string{"skills", "~/.noodle/skills"}
 	}
 
-	if !metadata.IsDefined("sous-chef", "run") {
-		config.SousChef.Run = "after-each"
+	if !metadata.IsDefined("prioritize", "run") {
+		config.Prioritize.Run = "after-each"
 	}
-	if !metadata.IsDefined("sous-chef", "skill") {
-		config.SousChef.Skill = "sous-chef"
+	if !metadata.IsDefined("prioritize", "skill") {
+		config.Prioritize.Skill = "prioritize"
 	}
-	if !metadata.IsDefined("sous-chef", "model") {
-		config.SousChef.Model = "claude-sonnet"
+	if !metadata.IsDefined("prioritize", "model") {
+		config.Prioritize.Model = "claude-sonnet"
 	}
 
 	if !metadata.IsDefined("routing", "defaults", "provider") {
@@ -324,16 +324,16 @@ func validateParsedValues(config Config) error {
 		}
 	}
 
-	switch config.SousChef.Run {
+	switch config.Prioritize.Run {
 	case "after-each", "after-n", "manual":
 	default:
 		return fmt.Errorf(
-			"sous-chef.run: unsupported value %q (expected after-each, after-n, manual)",
-			config.SousChef.Run,
+			"prioritize.run: unsupported value %q (expected after-each, after-n, manual)",
+			config.Prioritize.Run,
 		)
 	}
-	if strings.TrimSpace(config.SousChef.Skill) == "" {
-		return fmt.Errorf("sous-chef.skill: skill is required")
+	if strings.TrimSpace(config.Prioritize.Skill) == "" {
+		return fmt.Errorf("prioritize.skill: skill is required")
 	}
 
 	if config.Recovery.MaxRetries < 0 {

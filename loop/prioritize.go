@@ -10,7 +10,7 @@ import (
 	"github.com/poteto/noodle/spawner"
 )
 
-const sousChefQueueID = taskKeySousChef
+const prioritizeQueueID = taskKeyPrioritize
 
 const queueSchemaPrompt = `queue.json schema (JSON):
 {
@@ -29,24 +29,24 @@ const queueSchemaPrompt = `queue.json schema (JSON):
   ]
 }`
 
-func isSousChefItem(item QueueItem) bool {
-	return strings.EqualFold(strings.TrimSpace(item.ID), sousChefQueueID)
+func isPrioritizeItem(item QueueItem) bool {
+	return strings.EqualFold(strings.TrimSpace(item.ID), prioritizeQueueID)
 }
 
-func bootstrapSousChefQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
+func bootstrapPrioritizeQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
 	return Queue{
 		GeneratedAt: generatedAt,
-		Items:       []QueueItem{sousChefQueueItem(cfg, prompt)},
+		Items:       []QueueItem{prioritizeQueueItem(cfg, prompt)},
 	}
 }
 
-func sousChefQueueItem(cfg config.Config, prompt string) QueueItem {
+func prioritizeQueueItem(cfg config.Config, prompt string) QueueItem {
 	item := QueueItem{
-		ID:       sousChefQueueID,
+		ID:       prioritizeQueueID,
 		Title:    "prioritizing tasks based on your backlog",
 		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
-		Skill:    sousChefSkill(cfg),
+		Skill:    prioritizeSkill(cfg),
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt != "" {
@@ -55,8 +55,8 @@ func sousChefQueueItem(cfg config.Config, prompt string) QueueItem {
 	return item
 }
 
-func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	name := sousChefQueueID
+func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
+	name := prioritizeQueueID
 	if attempt > 0 {
 		nextName, err := recover.NextRecoveryName(name, attempt, l.config.Recovery.RetrySuffixPattern)
 		if err != nil {
@@ -65,11 +65,11 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 		name = nextName
 	}
 
-	skillName := nonEmpty(item.Skill, sousChefSkill(l.config))
+	skillName := nonEmpty(item.Skill, prioritizeSkill(l.config))
 	taskTypesPrompt := buildQueueTaskTypesPrompt(configuredTaskTypes(l.config))
 	req := spawner.SpawnRequest{
 		Name:                 name,
-		Prompt:               buildSousChefPrompt(skillName, taskTypesPrompt, item, resumePrompt),
+		Prompt:               buildPrioritizePrompt(skillName, taskTypesPrompt, item, resumePrompt),
 		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -93,7 +93,7 @@ func (l *Loop) spawnSousChef(ctx context.Context, item QueueItem, attempt int, r
 	return nil
 }
 
-func buildSousChefPrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
+func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
 		"Do not modify .noodle/mise.json.",
@@ -134,11 +134,11 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 	return b.String()
 }
 
-func sousChefSkill(cfg config.Config) string {
-	return sousChefTaskSkill(cfg)
+func prioritizeSkill(cfg config.Config) string {
+	return prioritizeTaskSkill(cfg)
 }
 
 func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
-	queue := bootstrapSousChefQueue(l.config, prompt, l.deps.Now().UTC())
+	queue := bootstrapPrioritizeQueue(l.config, prompt, l.deps.Now().UTC())
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }

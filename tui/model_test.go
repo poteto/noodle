@@ -141,7 +141,7 @@ func TestTraceScrollUsesWrappedDisplayLines(t *testing.T) {
 				{
 					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
 					Label:    "Prompt",
-					Body:     strings.Repeat("Use Skill(sous-chef) to refresh queue. ", 40),
+					Body:     strings.Repeat("Use Skill(prioritize) to refresh queue. ", 40),
 					Category: traceFilterThink,
 				},
 			},
@@ -156,7 +156,7 @@ func TestTraceScrollUsesWrappedDisplayLines(t *testing.T) {
 		t.Fatalf("expected positive trace offset for wrapped long event, got %d", m.traceOffset)
 	}
 	view := m.renderTrace()
-	if !strings.Contains(view, "Skill(sous-chef)") {
+	if !strings.Contains(view, "Skill(prioritize)") {
 		t.Fatalf("trace view missing wrapped prompt body: %q", view)
 	}
 }
@@ -181,7 +181,7 @@ func TestSessionScrollUsesWrappedDisplayLines(t *testing.T) {
 				{
 					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
 					Label:    "Prompt",
-					Body:     strings.Repeat("Use Skill(sous-chef) to refresh queue. ", 40),
+					Body:     strings.Repeat("Use Skill(prioritize) to refresh queue. ", 40),
 					Category: traceFilterThink,
 				},
 			},
@@ -196,7 +196,7 @@ func TestSessionScrollUsesWrappedDisplayLines(t *testing.T) {
 		t.Fatalf("expected positive session events offset, got %d", m.sessionEventsOffset)
 	}
 	view := m.renderSession()
-	if !strings.Contains(view, "Skill(sous-chef)") {
+	if !strings.Contains(view, "Skill(prioritize)") {
 		t.Fatalf("session view missing wrapped prompt body: %q", view)
 	}
 }

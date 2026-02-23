@@ -19,14 +19,14 @@ func TestDefaultConfigValues(t *testing.T) {
 	if got := strings.Join(config.Skills.Paths, ","); got != "skills,~/.noodle/skills" {
 		t.Fatalf("skills.paths default = %q", got)
 	}
-	if config.SousChef.Run != "after-each" {
-		t.Fatalf("sous-chef.run default = %q", config.SousChef.Run)
+	if config.Prioritize.Run != "after-each" {
+		t.Fatalf("prioritize.run default = %q", config.Prioritize.Run)
 	}
-	if config.SousChef.Skill != "sous-chef" {
-		t.Fatalf("sous-chef.skill default = %q", config.SousChef.Skill)
+	if config.Prioritize.Skill != "prioritize" {
+		t.Fatalf("prioritize.skill default = %q", config.Prioritize.Skill)
 	}
-	if config.SousChef.Model != "claude-sonnet" {
-		t.Fatalf("sous-chef.model default = %q", config.SousChef.Model)
+	if config.Prioritize.Model != "claude-sonnet" {
+		t.Fatalf("prioritize.model default = %q", config.Prioritize.Model)
 	}
 	if config.Routing.Defaults.Provider != "claude" {
 		t.Fatalf("routing.defaults.provider default = %q", config.Routing.Defaults.Provider)
@@ -83,11 +83,11 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load missing config: %v", err)
 	}
-	if config.SousChef.Run != "after-each" {
-		t.Fatalf("expected default sous-chef run, got %q", config.SousChef.Run)
+	if config.Prioritize.Run != "after-each" {
+		t.Fatalf("expected default prioritize run, got %q", config.Prioritize.Run)
 	}
-	if config.SousChef.Skill != "sous-chef" {
-		t.Fatalf("expected default sous-chef skill, got %q", config.SousChef.Skill)
+	if config.Prioritize.Skill != "prioritize" {
+		t.Fatalf("expected default prioritize skill, got %q", config.Prioritize.Skill)
 	}
 	if _, ok := config.Adapters["backlog"]; !ok {
 		t.Fatal("expected default backlog adapter when config file is missing")
@@ -100,7 +100,7 @@ func TestParseConfigRoundTrip(t *testing.T) {
 oops = "custom-oops"
 debugging = "custom-debug"
 
-[sous-chef]
+[prioritize]
 skill = "priority-chef"
 run = "manual"
 model = "claude-sonnet"
@@ -149,11 +149,11 @@ edit = "gh issue edit"
 	if config.Phases["oops"] != "custom-oops" {
 		t.Fatalf("oops phase = %q", config.Phases["oops"])
 	}
-	if config.SousChef.Run != "manual" {
-		t.Fatalf("sous-chef.run = %q", config.SousChef.Run)
+	if config.Prioritize.Run != "manual" {
+		t.Fatalf("prioritize.run = %q", config.Prioritize.Run)
 	}
-	if config.SousChef.Skill != "priority-chef" {
-		t.Fatalf("sous-chef.skill = %q", config.SousChef.Skill)
+	if config.Prioritize.Skill != "priority-chef" {
+		t.Fatalf("prioritize.skill = %q", config.Prioritize.Skill)
 	}
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
@@ -185,11 +185,11 @@ model = "claude-sonnet-4-6"
 		t.Fatalf("Parse minimal config: %v", err)
 	}
 
-	if config.SousChef.Run != "after-each" {
-		t.Fatalf("expected default sous-chef.run, got %q", config.SousChef.Run)
+	if config.Prioritize.Run != "after-each" {
+		t.Fatalf("expected default prioritize.run, got %q", config.Prioritize.Run)
 	}
-	if config.SousChef.Skill != "sous-chef" {
-		t.Fatalf("expected default sous-chef.skill, got %q", config.SousChef.Skill)
+	if config.Prioritize.Skill != "prioritize" {
+		t.Fatalf("expected default prioritize.skill, got %q", config.Prioritize.Skill)
 	}
 	if config.Review.Enabled != true {
 		t.Fatalf("expected default review.enabled=true, got %v", config.Review.Enabled)
@@ -224,22 +224,22 @@ model = "x"
 provider = "claude"
 model = "x"
 
-[sous-chef]
+[prioritize]
 run = "sometimes"
 `,
-			wantErr: "sous-chef.run",
+			wantErr: "prioritize.run",
 		},
 		{
-			name: "empty sous-chef skill",
+			name: "empty prioritize skill",
 			payload: `
 [routing.defaults]
 provider = "claude"
 model = "x"
 
-[sous-chef]
+[prioritize]
 skill = ""
 `,
-			wantErr: "sous-chef.skill",
+			wantErr: "prioritize.skill",
 		},
 		{
 			name: "invalid duration",

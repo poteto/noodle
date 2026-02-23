@@ -1,7 +1,7 @@
 # Noodle
 
 Noodle is an AI coding framework built in Go. It uses skills as the only extension point and a
-kitchen brigade model: chef (human), sous chef (scheduler), cooks (implementation), and taster
+kitchen brigade model: chef (human), Prioritize (scheduler), cooks (implementation), and taster
 (review).
 
 ## Quick Start
@@ -20,19 +20,7 @@ git clone https://github.com/poteto/noodle.git
 cd noodle
 ```
 
-2. Install the bootstrap skill (one command):
-
-```sh
-for d in "$HOME/.claude/skills" "$HOME/.codex/skills"; do mkdir -p "$d/bootstrap"; cp -R skills/bootstrap/. "$d/bootstrap/"; done
-```
-
-3. Run bootstrap in your agent:
-
-```text
-Set up Noodle in this project using the bootstrap skill.
-```
-
-4. Verify and start:
+2. Verify and start:
 
 ```sh
 ~/.noodle/bin/noodle commands
@@ -50,7 +38,7 @@ For continuous scheduling, run:
 ## How It Works
 
 - Chef: human direction and intervention
-- Sous chef: prioritizes queue from mise data
+- Prioritize: prioritizes queue from mise data
 - Cook: executes backlog work
 - Taster: reviews completed work
 
@@ -67,8 +55,8 @@ Minimal baseline:
 provider = "claude"
 model = "claude-sonnet-4-6"
 
-[sous-chef]
-skill = "sous-chef"
+[prioritize]
+skill = "prioritize"
 
 [skills]
 paths = ["skills", "~/.noodle/skills"]
@@ -78,17 +66,15 @@ claude_dir = ""
 codex_dir = ""
 ```
 
-Full schema reference: [Bootstrap Config Reference](skills/bootstrap/references/config-schema.md)
+Schema reference: `config/config.go`
 
 ## Skills
 
 Skills are the only extension point.
 
-- Project skills: `skills/` (committed, highest precedence)
+- Project skills: `.agents/skills/` (committed, highest precedence)
 - User defaults: `~/.noodle/skills/`
-- Resolver order defaults to `["skills", "~/.noodle/skills"]`
-
-`skills/bootstrap/` is the setup entry point: [Bootstrap Skill](skills/bootstrap/SKILL.md)
+- Resolver order is configured by your `noodle.toml`.
 
 ## Adapters
 
@@ -97,7 +83,7 @@ Adapters bridge your backlog/plan system to Noodle using:
 1. A skill that teaches semantics (`backlog`, `plans`, or custom)
 2. Scripts declared in `noodle.toml` (`sync`, `add`, `done`, `edit`, etc.)
 
-Default script templates and scaffolds: [Adapter Script Templates](skills/bootstrap/references/adapter-script-templates.md)
+Script templates are project-defined in `noodle.toml`.
 
 ## CLI Reference
 
@@ -128,7 +114,7 @@ go run . commands --json
 
 Repository layout:
 
-- `skills/` default skills that bootstrap installs into `~/.noodle/skills/`
+- `.agents/skills/` project skills
 - `.noodle/` project-level runtime state and local config
 - `brain/` project memory and implementation plans
 - `worktree/` git worktree lifecycle helpers

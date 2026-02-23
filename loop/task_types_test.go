@@ -10,7 +10,7 @@ func TestConfiguredTaskTypesApplyConfigOverrides(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Adapters["plans"] = config.AdapterConfig{Skill: "plan-custom"}
 	cfg.Adapters["backlog"] = config.AdapterConfig{Skill: "execute-custom"}
-	cfg.SousChef.Skill = "priority-chef"
+	cfg.Prioritize.Skill = "priority-chef"
 	cfg.Phases["oops"] = "oops-custom"
 	cfg.Phases["debugging"] = "repair-custom"
 
@@ -30,12 +30,12 @@ func TestConfiguredTaskTypesApplyConfigOverrides(t *testing.T) {
 		t.Fatalf("execute skill = %q, want execute-custom", execute.Skill)
 	}
 
-	sousChef, ok := configuredTaskTypeByKey(cfg, taskKeySousChef)
+	prioritize, ok := configuredTaskTypeByKey(cfg, taskKeyPrioritize)
 	if !ok {
-		t.Fatal("expected sous-chef task type")
+		t.Fatal("expected prioritize task type")
 	}
-	if sousChef.Skill != "priority-chef" {
-		t.Fatalf("sous-chef skill = %q, want priority-chef", sousChef.Skill)
+	if prioritize.Skill != "priority-chef" {
+		t.Fatalf("prioritize skill = %q, want priority-chef", prioritize.Skill)
 	}
 
 	oops, ok := configuredTaskTypeByKey(cfg, taskKeyOops)

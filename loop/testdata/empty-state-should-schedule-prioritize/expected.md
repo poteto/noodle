@@ -22,7 +22,7 @@ source_hash: 7c9f50281fb9c584febcd263884f7c0035f259ce237f31086231e8624c24cd99
       "created_worktrees": 0,
       "first_spawn": {
         "name": "prioritize",
-        "skill": "sous-chef",
+        "skill": "prioritize",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }

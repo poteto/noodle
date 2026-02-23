@@ -176,7 +176,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if len(queue.Items) == 0 &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
-		queue = bootstrapSousChefQueue(l.config, "", l.deps.Now().UTC())
+		queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 			return err
 		}
@@ -267,8 +267,8 @@ func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
 }
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	if isSousChefItem(item) {
-		return l.spawnSousChef(ctx, item, attempt, resumePrompt)
+	if isPrioritizeItem(item) {
+		return l.spawnPrioritize(ctx, item, attempt, resumePrompt)
 	}
 
 	baseName := cookBaseName(item)
@@ -349,7 +349,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 		}
 	}
 	if success {
-		if isSousChefItem(cook.queueItem) {
+		if isPrioritizeItem(cook.queueItem) {
 			return l.skipQueueItem(cook.queueItem.ID)
 		}
 		if err := l.deps.Worktree.Merge(cook.worktreeName); err != nil {
@@ -519,7 +519,7 @@ func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
 	nextAttempt := cook.attempt + 1
 	if nextAttempt > l.config.Recovery.MaxRetries {
-		if isSousChefItem(cook.queueItem) {
+		if isPrioritizeItem(cook.queueItem) {
 			return fmt.Errorf("prioritize failed after retries: %s", strings.TrimSpace(reason))
 		}
 		if err := l.markFailed(cook.queueItem.ID, reason); err != nil {
@@ -845,7 +845,7 @@ func (l *Loop) steer(target string, prompt string) error {
 	if target == "" {
 		return fmt.Errorf("steer requires target")
 	}
-	if strings.EqualFold(target, SousChefTaskKey()) {
+	if strings.EqualFold(target, PrioritizeTaskKey()) {
 		return l.reprioritizeForChefPrompt(prompt)
 	}
 	for _, cook := range l.activeByID {

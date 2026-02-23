@@ -1,5 +1,5 @@
 ---
-name: sous-chef
+name: prioritize
 description: >
   Noodle queue scheduler. Use when reading `.noodle/mise.json` and writing
   `.noodle/queue.json`, especially when enforcing workflow order constraints:
@@ -8,7 +8,7 @@ description: >
   periodically after several Reflects.
 ---
 
-# Sous Chef
+# Prioritize
 
 Read `.noodle/mise.json` and write `.noodle/queue.json`.
 

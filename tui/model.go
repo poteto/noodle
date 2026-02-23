@@ -811,8 +811,8 @@ func queueTaskDisplayName(item QueueItem) string {
 		}
 	}
 	switch strings.ToLower(strings.TrimSpace(token)) {
-	case "sous-chef", "sous chef":
-		return "Sous Chef"
+	case "prioritize":
+		return "Prioritize"
 	default:
 		return titleCaseToken(token, "Task")
 	}
@@ -1003,7 +1003,7 @@ func (m *Model) submitSteer() (tea.Cmd, bool) {
 }
 
 func (m Model) steerTargets() []string {
-	scheduler := loop.SousChefTaskKey()
+	scheduler := loop.PrioritizeTaskKey()
 	targets := []string{scheduler}
 	seen := map[string]struct{}{scheduler: {}}
 	for _, session := range m.snapshot.Active {

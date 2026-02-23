@@ -19,18 +19,18 @@ type TaskType struct {
 }
 
 const (
-	taskKeyPlan     = "plan"
-	taskKeyReview   = "review"
-	taskKeyExecute  = "execute"
-	taskKeyVerify   = "verify"
-	taskKeyReflect  = "reflect"
-	taskKeyMeditate = "meditate"
-	taskKeyCook     = "cook"
-	taskKeySousChef = "prioritize"
-	taskKeyTaster   = "taster"
-	taskKeyOops     = "oops"
-	taskKeyRepair   = "repair"
-	taskKeyDebate   = "debate"
+	taskKeyPlan       = "plan"
+	taskKeyReview     = "review"
+	taskKeyExecute    = "execute"
+	taskKeyVerify     = "verify"
+	taskKeyReflect    = "reflect"
+	taskKeyMeditate   = "meditate"
+	taskKeyCook       = "cook"
+	taskKeyPrioritize = "prioritize"
+	taskKeyTaster     = "taster"
+	taskKeyOops       = "oops"
+	taskKeyRepair     = "repair"
+	taskKeyDebate     = "debate"
 )
 
 var baseTaskTypes = []TaskType{
@@ -102,12 +102,12 @@ var baseTaskTypes = []TaskType{
 		Purpose:    "Backlog execution session spawned from queue items.",
 	},
 	{
-		Key:        taskKeySousChef,
+		Key:        taskKeyPrioritize,
 		Type:       "Prioritize",
-		ConfigPath: "[sous-chef]",
+		ConfigPath: "[prioritize]",
 		Blocking:   false,
 		Synthetic:  true,
-		Aliases:    []string{"sous-chef", "sous chef", "scheduler", "prioritize"},
+		Aliases:    []string{"prioritize", "scheduler"},
 		Purpose:    "Queue prioritization and routing generation.",
 	},
 	{
@@ -159,8 +159,8 @@ func configuredTaskTypes(cfg config.Config) []TaskType {
 			out[i].Skill = adapterConfiguredSkill(cfg, "plans", "plans")
 		case taskKeyExecute:
 			out[i].Skill = adapterConfiguredSkill(cfg, "backlog", "backlog")
-		case taskKeySousChef:
-			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.SousChef.Skill), "sous-chef")
+		case taskKeyPrioritize:
+			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.Prioritize.Skill), "prioritize")
 		case taskKeyOops:
 			out[i].Skill = nonEmpty(strings.TrimSpace(cfg.Phases["oops"]), "oops")
 		case taskKeyRepair:
@@ -229,8 +229,8 @@ func isBlockingQueueItem(cfg config.Config, item QueueItem) bool {
 	return ok && taskType.Blocking
 }
 
-func sousChefTaskSkill(cfg config.Config) string {
-	return configuredTaskSkill(cfg, taskKeySousChef, taskKeySousChef)
+func prioritizeTaskSkill(cfg config.Config) string {
+	return configuredTaskSkill(cfg, taskKeyPrioritize, taskKeyPrioritize)
 }
 
 func tasterTaskSkill(cfg config.Config) string {
@@ -254,9 +254,9 @@ func executeTaskKey() string {
 	return taskKeyExecute
 }
 
-// SousChefTaskKey returns the canonical steer target for the scheduler.
-func SousChefTaskKey() string {
-	return taskKeySousChef
+// PrioritizeTaskKey returns the canonical steer target for the scheduler.
+func PrioritizeTaskKey() string {
+	return taskKeyPrioritize
 }
 
 func adapterConfiguredSkill(cfg config.Config, adapterName, fallback string) string {
