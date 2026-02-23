@@ -299,6 +299,12 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 	case "grep":
 		label = "Grep"
 		category = traceFilterTools
+	case "skill":
+		label = "Skill"
+		category = traceFilterTools
+	case "task":
+		label = "Task"
+		category = traceFilterTools
 	case "prompt":
 		label = "Prompt"
 		category = traceFilterThink
@@ -306,7 +312,6 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 		label = "Think"
 		category = traceFilterThink
 	default:
-		// If no tool was recorded, this is usually assistant narration.
 		label = "Think"
 		category = traceFilterThink
 	}

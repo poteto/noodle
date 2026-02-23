@@ -292,6 +292,93 @@ func TestTmuxSessionEmitsDroppedEventSummary(t *testing.T) {
 	}
 }
 
+func TestParseActionMessage(t *testing.T) {
+	cases := []struct {
+		message  string
+		wantTool string
+		wantBody string
+	}{
+		// Bash: "$ command"
+		{"$ go test ./...", "Bash", "go test ./..."},
+		{"$ git status", "Bash", "git status"},
+		// Text/Think: "text:content"
+		{"text:Let me check the files.", "Think", "Let me check the files."},
+		{"text:turn started", "Think", "turn started"},
+		// User/Prompt: "user:content"
+		{"user:Work backlog item 15", "Prompt", "Work backlog item 15"},
+		// Tool with detail: "ToolName detail"
+		{"Read /path/to/file.go", "Read", "/path/to/file.go"},
+		{"Write /path/to/file.go", "Write", "/path/to/file.go"},
+		{"Glob **/*.go", "Glob", "**/*.go"},
+		{"Grep pattern", "Grep", "pattern"},
+		{"Skill prioritize", "Skill", "prioritize"},
+		// Tool without detail
+		{"Skill", "Skill", ""},
+		{"TodoWrite", "TodoWrite", ""},
+		// Empty
+		{"", "", ""},
+		{"  ", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.message, func(t *testing.T) {
+			tool, body := parseActionMessage(tc.message)
+			if tool != tc.wantTool {
+				t.Errorf("tool = %q, want %q", tool, tc.wantTool)
+			}
+			if body != tc.wantBody {
+				t.Errorf("body = %q, want %q", body, tc.wantBody)
+			}
+		})
+	}
+}
+
+func TestEventFromCanonicalActionStructure(t *testing.T) {
+	cases := []struct {
+		name     string
+		message  string
+		wantTool string
+		wantSumm string
+	}{
+		{"bash command", "$ go build ./...", "Bash", "go build ./..."},
+		{"read file", "Read /path/to/file", "Read", "/path/to/file"},
+		{"skill call", "Skill prioritize", "Skill", "prioritize"},
+		{"think text", "text:analyzing code", "Think", "analyzing code"},
+		{"user prompt", "user:Work on item 15", "Prompt", "Work on item 15"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ev, ok := eventFromCanonical("session-1", parse.CanonicalEvent{
+				Type:      parse.EventAction,
+				Message:   tc.message,
+				Timestamp: time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC),
+			})
+			if !ok {
+				t.Fatal("eventFromCanonical returned false")
+			}
+			if ev.Type != event.EventAction {
+				t.Fatalf("type = %q, want action", ev.Type)
+			}
+			var payload struct {
+				Tool    string `json:"tool"`
+				Summary string `json:"summary"`
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+				t.Fatalf("decode payload: %v", err)
+			}
+			if payload.Tool != tc.wantTool {
+				t.Errorf("tool = %q, want %q", payload.Tool, tc.wantTool)
+			}
+			if payload.Summary != tc.wantSumm {
+				t.Errorf("summary = %q, want %q", payload.Summary, tc.wantSumm)
+			}
+			if payload.Message != tc.message {
+				t.Errorf("message = %q, want %q", payload.Message, tc.message)
+			}
+		})
+	}
+}
+
 func TestTmuxSessionEmitsDroppedSummaryWhenBufferFullAtShutdown(t *testing.T) {
 	session := newTmuxSession(
 		"session-a",

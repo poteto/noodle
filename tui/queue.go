@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/poteto/noodle/tui/components"
 )
 
@@ -170,12 +171,14 @@ func (q *QueueTab) renderStyledTable(width, height int) string {
 	selectedLine := 2 + cursor
 	if selectedLine >= 0 && selectedLine < len(lines) {
 		t := components.DefaultTheme
+		// Strip existing ANSI codes so inner cell styles don't override the background.
+		stripped := ansi.Strip(lines[selectedLine])
 		bg := lipgloss.NewStyle().
 			Background(lipgloss.Color("#2a2a40")).
 			Foreground(t.Brand).
 			Bold(true).
 			Width(width)
-		lines[selectedLine] = bg.Render(lines[selectedLine])
+		lines[selectedLine] = bg.Render(stripped)
 	}
 	return strings.Join(lines, "\n")
 }

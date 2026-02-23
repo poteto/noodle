@@ -135,19 +135,28 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		contents := decodeClaudeContent(msg.Content)
 		events := make([]CanonicalEvent, 0, len(contents))
 		for _, content := range contents {
-			if content.Type != "tool_result" {
-				continue
-			}
-			text := strings.TrimSpace(content.Text)
-			if text == "" {
-				continue
-			}
-			if content.IsError || looksLikeErrorText(text) {
-				events = append(events, CanonicalEvent{
-					Type:      EventError,
-					Message:   strings.TrimSpace(content.Name + ": " + text),
-					Timestamp: ts,
-				})
+			switch content.Type {
+			case "text":
+				text := strings.TrimSpace(content.Text)
+				if text != "" {
+					events = append(events, CanonicalEvent{
+						Type:      EventAction,
+						Message:   "user:" + text,
+						Timestamp: ts,
+					})
+				}
+			case "tool_result":
+				text := strings.TrimSpace(content.Text)
+				if text == "" {
+					continue
+				}
+				if content.IsError || looksLikeErrorText(text) {
+					events = append(events, CanonicalEvent{
+						Type:      EventError,
+						Message:   strings.TrimSpace(content.Name + ": " + text),
+						Timestamp: ts,
+					})
+				}
 			}
 		}
 		return events, nil
@@ -210,6 +219,9 @@ func summarizeClaudeToolUse(name string, input json.RawMessage) string {
 	}
 	if pattern := extractStringField(input, "pattern"); pattern != "" {
 		return name + " " + pattern
+	}
+	if skill := extractStringField(input, "skill"); skill != "" {
+		return name + " " + skill
 	}
 	return name
 }

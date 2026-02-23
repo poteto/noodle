@@ -150,6 +150,39 @@ func TestCodexAdapterParsesFunctionCallAndComplete(t *testing.T) {
 	}
 }
 
+func TestClaudeAdapterParsesSkillCall(t *testing.T) {
+	adapter := ClaudeAdapter{}
+	line := `{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Skill","input":{"skill":"prioritize"}}]},"_ts":"2026-02-23T12:00:00Z"}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse skill line: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Message != "Skill prioritize" {
+		t.Fatalf("message = %q, want %q", events[0].Message, "Skill prioritize")
+	}
+}
+
+func TestClaudeAdapterEmitsUserTextAsPrompt(t *testing.T) {
+	adapter := ClaudeAdapter{}
+	line := `{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Work on backlog item 15"}]},"_ts":"2026-02-23T12:00:00Z"}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse user text: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventAction {
+		t.Fatalf("type = %q, want action", events[0].Type)
+	}
+	if events[0].Message != "user:Work on backlog item 15" {
+		t.Fatalf("message = %q, want %q", events[0].Message, "user:Work on backlog item 15")
+	}
+}
+
 func TestCodexAdapterParsesAgentMessagesFromEventAndItem(t *testing.T) {
 	adapter := CodexAdapter{}
 

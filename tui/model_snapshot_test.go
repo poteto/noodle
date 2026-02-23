@@ -43,6 +43,70 @@ func TestMapEventLinesPromptAction(t *testing.T) {
 	}
 }
 
+func TestFormatActionToolTypes(t *testing.T) {
+	cases := []struct {
+		name      string
+		payload   map[string]any
+		wantLabel string
+		wantBody  string
+	}{
+		{
+			name:      "skill tool",
+			payload:   map[string]any{"tool": "Skill", "summary": "prioritize"},
+			wantLabel: "Skill",
+			wantBody:  "prioritize",
+		},
+		{
+			name:      "task tool",
+			payload:   map[string]any{"tool": "Task", "summary": "spawn explorer"},
+			wantLabel: "Task",
+			wantBody:  "spawn explorer",
+		},
+		{
+			name:      "read tool",
+			payload:   map[string]any{"tool": "Read", "summary": "/path/to/file.go"},
+			wantLabel: "Read",
+			wantBody:  "/path/to/file.go",
+		},
+		{
+			name:      "bash tool",
+			payload:   map[string]any{"tool": "Bash", "summary": "go test ./..."},
+			wantLabel: "Bash",
+			wantBody:  "go test ./...",
+		},
+		{
+			name:      "think",
+			payload:   map[string]any{"tool": "Think", "summary": "analyzing the code"},
+			wantLabel: "Think",
+			wantBody:  "analyzing the code",
+		},
+		{
+			name:      "prompt",
+			payload:   map[string]any{"tool": "Prompt", "summary": "Work on item 15"},
+			wantLabel: "Prompt",
+			wantBody:  "Work on item 15",
+		},
+		{
+			name:      "legacy message-only payload",
+			payload:   map[string]any{"message": "Read /path/to/file"},
+			wantLabel: "Think",
+			wantBody:  "Read /path/to/file",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, _ := json.Marshal(tc.payload)
+			label, body, _ := formatAction(raw)
+			if label != tc.wantLabel {
+				t.Errorf("label = %q, want %q", label, tc.wantLabel)
+			}
+			if body != tc.wantBody {
+				t.Errorf("body = %q, want %q", body, tc.wantBody)
+			}
+		})
+	}
+}
+
 func TestReadQueuePreservesTaskMetadata(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "queue.json")
 	payload := `{

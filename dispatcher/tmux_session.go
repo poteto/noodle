@@ -319,9 +319,17 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 			SessionID: sessionID,
 		}, true
 	case parse.EventAction:
+		tool, summary := parseActionMessage(canonical.Message)
+		payload := map[string]any{"message": canonical.Message}
+		if tool != "" {
+			payload["tool"] = tool
+		}
+		if summary != "" {
+			payload["summary"] = summary
+		}
 		return event.Event{
 			Type:      event.EventAction,
-			Payload:   makePayload(map[string]any{"message": canonical.Message}),
+			Payload:   makePayload(payload),
 			Timestamp: timestamp,
 			SessionID: sessionID,
 		}, true
@@ -353,6 +361,30 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 	default:
 		return event.Event{}, false
 	}
+}
+
+// parseActionMessage extracts a tool name and summary from a canonical action message.
+// Conventions: "$ cmd" → bash, "text:..." → think, "user:..." → prompt, "Tool detail" → tool.
+func parseActionMessage(message string) (tool string, summary string) {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return "", ""
+	}
+	if strings.HasPrefix(message, "$ ") {
+		return "Bash", strings.TrimPrefix(message, "$ ")
+	}
+	if strings.HasPrefix(message, "text:") {
+		return "Think", strings.TrimPrefix(message, "text:")
+	}
+	if strings.HasPrefix(message, "user:") {
+		return "Prompt", strings.TrimPrefix(message, "user:")
+	}
+	// "ToolName detail" or just "ToolName"
+	idx := strings.IndexByte(message, ' ')
+	if idx == -1 {
+		return message, ""
+	}
+	return message[:idx], message[idx+1:]
 }
 
 func (s *tmuxSession) publish(event SessionEvent) {
