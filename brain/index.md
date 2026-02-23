@@ -39,6 +39,7 @@
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
 - [[codebase/loop-test-overlap-matrix]]
+- [[codebase/skill-path-normalization-boundary]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
 - [[codebase/worktree-prune-patch-equivalence]]
