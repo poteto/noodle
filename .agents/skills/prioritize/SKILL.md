@@ -8,7 +8,8 @@ noodle:
 
 # Prioritize
 
-Read `.noodle/mise.json`, write `.noodle/queue.json`. See `references/mise-schema.md` and `references/queue-schema.md` for schemas.
+Read `.noodle/mise.json`, write `.noodle/queue.json`.
+Use `noodle schema mise` and `noodle schema queue` as the schema source of truth.
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
@@ -60,7 +61,7 @@ When uncertain, codex for implementation, opus for judgment.
 
 ## Output
 
-Write valid JSON to `.noodle/queue.json` matching `references/queue-schema.md`.
+Write valid JSON to `.noodle/queue.json` matching `noodle schema queue`.
 
 ## Principles
 
