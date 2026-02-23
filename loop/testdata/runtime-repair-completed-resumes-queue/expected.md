@@ -39,6 +39,7 @@ source_hash: dace5849d5aaf595f23e15d27fcbe463526263a439cd3fdc18ceaf3168e7e26e
       "created_worktrees": 2,
       "first_spawn": {
         "name": "42",
+        "skill": "backlog",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       },

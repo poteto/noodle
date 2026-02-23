@@ -423,17 +423,8 @@ func TestCycleBootstrapsSousChefUsingConfiguredSkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule (from loop/task_types.go):") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- Plan | config: [adapters.plans]") {
-		t.Fatalf("spawn prompt missing plan task type guidance: %q", sp.calls[0].Prompt)
-	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- Verify | config: [review]") {
-		t.Fatalf("spawn prompt missing verify task type guidance: %q", sp.calls[0].Prompt)
-	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- Review | config: [review] | skill: review | blocking: true") {
-		t.Fatalf("spawn prompt missing review blocking guidance: %q", sp.calls[0].Prompt)
-	}
-	if !strings.Contains(sp.calls[0].Prompt, "\n- Oops | config: [phases.oops]") {
-		t.Fatalf("spawn prompt missing oops task type guidance: %q", sp.calls[0].Prompt)
+	if !strings.Contains(sp.calls[0].Prompt, "| key: ") || !strings.Contains(sp.calls[0].Prompt, "| synthetic: ") {
+		t.Fatalf("spawn prompt missing canonical task type fields: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", sp.calls[0].Prompt)

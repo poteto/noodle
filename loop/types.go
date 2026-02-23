@@ -26,6 +26,7 @@ type Queue struct {
 
 type QueueItem struct {
 	ID        string `json:"id"`
+	TaskKey   string `json:"task_key,omitempty"`
 	Title     string `json:"title,omitempty"`
 	Provider  string `json:"provider"`
 	Model     string `json:"model"`

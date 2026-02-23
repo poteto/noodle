@@ -160,6 +160,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.Backlog, l.config); err != nil {
+		return l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
+	} else if changed {
+		queue = normalizedQueue
+		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+			return err
+		}
+	}
 	if shouldRecoverMissingSyncScripts(warnings, queue) &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
@@ -837,7 +845,7 @@ func (l *Loop) steer(target string, prompt string) error {
 	if target == "" {
 		return fmt.Errorf("steer requires target")
 	}
-	if strings.EqualFold(target, "sous-chef") {
+	if strings.EqualFold(target, SousChefTaskKey()) {
 		return l.reprioritizeForChefPrompt(prompt)
 	}
 	for _, cook := range l.activeByID {

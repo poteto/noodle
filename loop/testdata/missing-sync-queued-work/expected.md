@@ -22,6 +22,7 @@ source_hash: d265bfb10878b1efc9e2511e3eec4c72f983f68b9f42d46d504287c8f12a79bd
       "created_worktrees": 1,
       "first_spawn": {
         "name": "42",
+        "skill": "backlog",
         "provider": "claude",
         "model": "claude-sonnet-4-6"
       }

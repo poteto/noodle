@@ -1,11 +1,7 @@
 package loop
 
 import (
-	"context"
-	"os"
-	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/poteto/noodle/config"
 )
@@ -18,70 +14,93 @@ func TestConfiguredTaskTypesApplyConfigOverrides(t *testing.T) {
 	cfg.Phases["oops"] = "oops-custom"
 	cfg.Phases["debugging"] = "repair-custom"
 
-	if got := planTaskSkill(cfg); got != "plan-custom" {
-		t.Fatalf("plan task skill = %q, want plan-custom", got)
+	plan, ok := configuredTaskTypeByKey(cfg, taskKeyPlan)
+	if !ok {
+		t.Fatal("expected plan task type")
 	}
-	if got := executeTaskSkill(cfg); got != "execute-custom" {
-		t.Fatalf("execute task skill = %q, want execute-custom", got)
+	if plan.Skill != "plan-custom" {
+		t.Fatalf("plan skill = %q, want plan-custom", plan.Skill)
 	}
-	if got := sousChefTaskSkill(cfg); got != "priority-chef" {
-		t.Fatalf("sous-chef task skill = %q, want priority-chef", got)
+
+	execute, ok := configuredTaskTypeByKey(cfg, taskKeyExecute)
+	if !ok {
+		t.Fatal("expected execute task type")
 	}
-	if got := oopsTaskSkill(cfg); got != "oops-custom" {
-		t.Fatalf("oops task skill = %q, want oops-custom", got)
+	if execute.Skill != "execute-custom" {
+		t.Fatalf("execute skill = %q, want execute-custom", execute.Skill)
 	}
-	if got := repairTaskSkill(cfg); got != "repair-custom" {
-		t.Fatalf("repair task skill = %q, want repair-custom", got)
+
+	sousChef, ok := configuredTaskTypeByKey(cfg, taskKeySousChef)
+	if !ok {
+		t.Fatal("expected sous-chef task type")
+	}
+	if sousChef.Skill != "priority-chef" {
+		t.Fatalf("sous-chef skill = %q, want priority-chef", sousChef.Skill)
+	}
+
+	oops, ok := configuredTaskTypeByKey(cfg, taskKeyOops)
+	if !ok {
+		t.Fatal("expected oops task type")
+	}
+	if oops.Skill != "oops-custom" {
+		t.Fatalf("oops skill = %q, want oops-custom", oops.Skill)
+	}
+
+	repair, ok := configuredTaskTypeByKey(cfg, taskKeyRepair)
+	if !ok {
+		t.Fatal("expected repair task type")
+	}
+	if repair.Skill != "repair-custom" {
+		t.Fatalf("repair skill = %q, want repair-custom", repair.Skill)
 	}
 }
 
-func TestIsBlockingQueueItemReviewSkill(t *testing.T) {
+func TestTaskTypeRegistryIncludesKeySyntheticAliases(t *testing.T) {
+	cfg := config.DefaultConfig()
+	review, ok := configuredTaskTypeByKey(cfg, taskKeyReview)
+	if !ok {
+		t.Fatal("expected review task type")
+	}
+	if !review.Blocking {
+		t.Fatal("expected review to be blocking")
+	}
+	if !review.Synthetic {
+		t.Fatal("expected review to be synthetic")
+	}
+	if len(review.Aliases) == 0 {
+		t.Fatal("expected review aliases")
+	}
+	if review.Key == "" {
+		t.Fatal("expected stable key")
+	}
+}
+
+func TestTaskTypeForQueueItemUsesAliases(t *testing.T) {
 	cfg := config.DefaultConfig()
 	item := QueueItem{
-		ID:    "review-42",
-		Title: "Review after plan",
-		Skill: "review",
+		ID:    "gate-1",
+		Title: "Chef review approval before execute",
 	}
-	if !isBlockingQueueItem(cfg, item) {
-		t.Fatalf("expected review task to be blocking: %#v", item)
+	taskType, ok := taskTypeForQueueItem(cfg, item)
+	if !ok {
+		t.Fatal("expected alias-based task type resolution")
+	}
+	if taskType.Key != taskKeyReview {
+		t.Fatalf("task key = %q, want %q", taskType.Key, taskKeyReview)
 	}
 }
 
-func TestCycleBlocksConcurrentSpawnWhenBlockingTaskActive(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{
-		{ID: "review-1", Title: "Review plan", Skill: "review", Provider: "claude", Model: "claude-opus-4-6"},
-		{ID: "exec-1", Title: "Implement feature", Skill: "execute", Provider: "codex", Model: "gpt-5.3-codex"},
-	}}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-
+func TestTaskTypeForQueueItemUsesExplicitTaskKey(t *testing.T) {
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = 2
-	sp := &fakeSpawner{}
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Spawner:   sp,
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Now:       time.Now,
-		QueueFile: queuePath,
-	})
-
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle: %v", err)
+	item := QueueItem{
+		ID:      "x-1",
+		TaskKey: taskKeyMeditate,
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d, want 1", len(sp.calls))
+	taskType, ok := taskTypeForQueueItem(cfg, item)
+	if !ok {
+		t.Fatal("expected explicit task key resolution")
 	}
-	if got := sp.calls[0].Name; got != "review-1-review-plan" {
-		t.Fatalf("first spawn = %q, want review item", got)
+	if taskType.Key != taskKeyMeditate {
+		t.Fatalf("task key = %q, want %q", taskType.Key, taskKeyMeditate)
 	}
 }

@@ -22,6 +22,7 @@ source_hash: 361d46fb18cbfedf87bbf59fc3ccdd1a371557cd1db3c9c3a0f6a5d3fdddc3ec
       "created_worktrees": 1,
       "first_spawn": {
         "name": "10",
+        "skill": "backlog",
         "provider": "claude",
         "model": "claude-opus-4-6"
       }

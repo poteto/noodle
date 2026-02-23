@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/poteto/noodle/adapter"
@@ -48,48 +47,106 @@ func writeQueueAtomic(path string, queue Queue) error {
 	return nil
 }
 
-func queueFromBacklog(items []adapter.BacklogItem, cfg config.Config) Queue {
-	queue := Queue{Items: make([]QueueItem, 0, len(items))}
-	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].ID < items[j].ID
-	})
-	for _, item := range items {
-		if item.Status == adapter.BacklogStatusDone {
-			continue
-		}
-		queue.Items = append(queue.Items, QueueItem{
-			ID:       item.ID,
-			Title:    item.Title,
-			Provider: cfg.Routing.Defaults.Provider,
-			Model:    cfg.Routing.Defaults.Model,
-		})
-	}
-	return queue
-}
-
 func applyQueueRoutingDefaults(queue Queue, cfg config.Config) (Queue, bool) {
-	provider := strings.TrimSpace(cfg.Routing.Defaults.Provider)
-	model := strings.TrimSpace(cfg.Routing.Defaults.Model)
-	if provider == "" && model == "" {
-		return queue, false
-	}
-
 	items := make([]QueueItem, len(queue.Items))
 	copy(items, queue.Items)
 	changed := false
 	for i := range items {
-		if provider != "" && strings.TrimSpace(items[i].Provider) == "" {
-			items[i].Provider = provider
-			changed = true
-		}
-		if model != "" && strings.TrimSpace(items[i].Model) == "" {
-			items[i].Model = model
-			changed = true
-		}
+		items[i], changed = applyQueueItemRoutingDefaults(items[i], cfg, changed)
 	}
 	if !changed {
 		return queue, false
 	}
 	queue.Items = items
 	return queue, true
+}
+
+func applyQueueItemRoutingDefaults(item QueueItem, cfg config.Config, changed bool) (QueueItem, bool) {
+	defaultProvider := strings.TrimSpace(cfg.Routing.Defaults.Provider)
+	defaultModel := strings.TrimSpace(cfg.Routing.Defaults.Model)
+	tagProvider := ""
+	tagModel := ""
+	if taskType, ok := taskTypeForQueueItem(cfg, item); ok {
+		if policy, ok := cfg.Routing.Tags[taskType.Key]; ok {
+			tagProvider = strings.TrimSpace(policy.Provider)
+			tagModel = strings.TrimSpace(policy.Model)
+		}
+	}
+
+	if strings.TrimSpace(item.Provider) == "" {
+		provider := nonEmpty(tagProvider, defaultProvider)
+		if provider != "" {
+			item.Provider = provider
+			changed = true
+		}
+	}
+	if strings.TrimSpace(item.Model) == "" {
+		model := nonEmpty(tagModel, defaultModel)
+		if model != "" {
+			item.Model = model
+			changed = true
+		}
+	}
+	return item, changed
+}
+
+func normalizeAndValidateQueue(queue Queue, backlog []adapter.BacklogItem, cfg config.Config) (Queue, bool, error) {
+	backlogIDs := make(map[string]struct{}, len(backlog))
+	for _, item := range backlog {
+		if item.Status == adapter.BacklogStatusDone {
+			continue
+		}
+		id := strings.TrimSpace(item.ID)
+		if id == "" {
+			continue
+		}
+		backlogIDs[id] = struct{}{}
+	}
+
+	items := make([]QueueItem, len(queue.Items))
+	copy(items, queue.Items)
+	changed := false
+	for i := range items {
+		id := strings.TrimSpace(items[i].ID)
+		if id == "" {
+			return queue, false, fmt.Errorf("queue item id is required")
+		}
+
+		taskType, ok := taskTypeForQueueItem(cfg, items[i])
+		if !ok {
+			if strings.TrimSpace(items[i].TaskKey) == "" && strings.TrimSpace(items[i].Skill) == "" {
+				if resolved, found := configuredTaskTypeByKey(cfg, executeTaskKey()); found {
+					taskType = resolved
+					ok = true
+				}
+			}
+		}
+		if !ok {
+			return queue, false, fmt.Errorf("queue item %q has unknown task type", id)
+		}
+
+		if strings.TrimSpace(items[i].TaskKey) != taskType.Key {
+			items[i].TaskKey = taskType.Key
+			changed = true
+		}
+		if strings.TrimSpace(items[i].Skill) == "" && strings.TrimSpace(taskType.Skill) != "" {
+			items[i].Skill = taskType.Skill
+			changed = true
+		}
+		if !taskType.Synthetic && len(backlogIDs) > 0 {
+			if _, exists := backlogIDs[id]; !exists {
+				return queue, false, fmt.Errorf(
+					"queue item %q uses non-synthetic task type %q but is not in backlog",
+					id,
+					taskType.Key,
+				)
+			}
+		}
+	}
+
+	if !changed {
+		return queue, false, nil
+	}
+	queue.Items = items
+	return queue, true, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/poteto/noodle/spawner"
 )
 
-const sousChefQueueID = "sous-chef"
+const sousChefQueueID = taskKeySousChef
 
 const queueSchemaPrompt = `queue.json schema (JSON):
 {
@@ -18,6 +18,7 @@ const queueSchemaPrompt = `queue.json schema (JSON):
   "items": [
     {
       "id": "string",
+      "task_key": "string (optional)",
       "title": "string (optional)",
       "provider": "string",
       "model": "string",
@@ -119,6 +120,7 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 	}
 	for _, taskType := range taskTypes {
 		line := "- " + strings.TrimSpace(taskType.Type)
+		line += " | key: " + strings.TrimSpace(taskType.Key)
 		if cfg := strings.TrimSpace(taskType.ConfigPath); cfg != "" {
 			line += " | config: " + cfg
 		}
@@ -130,6 +132,16 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 			line += "true"
 		} else {
 			line += "false"
+		}
+		line += " | synthetic: "
+		if taskType.Synthetic {
+			line += "true"
+		} else {
+			line += "false"
+		}
+		if len(taskType.Aliases) > 0 {
+			line += " | aliases: "
+			line += strings.Join(taskType.Aliases, ", ")
 		}
 		if purpose := strings.TrimSpace(taskType.Purpose); purpose != "" {
 			line += " | purpose: " + purpose
