@@ -1,6 +1,6 @@
 ---
 name: meditate
-description: Periodic brain cleanup. Prunes stale notes, extracts principles from patterns, and cleans .noodle/ state.
+description: Audit the brain Obsidian vault, CLAUDE.md, and auto-memory files for outdated information, discover connections between learnings to form higher-level principles, and review skills against brain principles to find structural encoding opportunities. Uses an agent team to parallelize the work. Use when the user says "meditate", "audit the brain", "clean up the brain", "find connections", "review skills", "prune memories", or wants to review and evolve their knowledge base.
 noodle:
   blocking: false
   schedule: "Periodically after several reflect cycles have accumulated"
@@ -8,50 +8,74 @@ noodle:
 
 # Meditate
 
-Single-agent brain cleanup. Three activities: prune, extract, housekeep.
+## Autonomous Session Mode
 
-**Quality bar:** A note earns its place by being high-signal, high-frequency, or high-impact. Everything else is noise.
+When running non-interactively (Cook, Oops, Repair):
+
+- Apply all high-confidence changes autonomously. For ambiguous or risky changes (brain file deletions, principle rewrites), file a todo instead.
+- Commit all changes with the `/commit` skill.
+
+**Quality bar:** A note earns its place by being **high-signal** (Claude would reliably get this wrong without it), **high-frequency** (comes up in most sessions or most tasks of a type), or **high-impact** (getting it wrong causes significant damage or wasted work). Everything else is noise. A lean, precise brain outperforms a comprehensive but bloated one.
 
 ## Process
 
-### 1. Prune
+**Use Tasks to track progress** (TaskCreate per step, TaskUpdate to in_progress/completed).
 
-Read `brain/index.md`, then read each referenced file.
+### 1. Build snapshots
 
-Flag notes that are:
-- **Outdated** — references code, tools, or decisions that no longer exist
-- **Redundant** — says the same thing as another note
-- **Low-value** — fails: "Would Claude reliably get this wrong without it, AND does it come up often or cause real damage?"
-- **Verbose** — same information possible in fewer words
-- **Orphaned** — on disk but not linked from any index
+```bash
+sh <skill-path>/scripts/snapshot.sh brain/ /tmp/brain-snapshot.md
+sh <skill-path>/scripts/snapshot.sh .agents/skills/ /tmp/skills-snapshot.md
+```
 
-Actions: delete, condense, or merge into the stronger note.
+Files are delimited with `=== path/to/file.md ===` headers. Also locate the auto-memory directory (`~/.claude/projects/<project>/memory/`).
 
-### 2. Extract
+### 2. Auditor (blocking — its report feeds steps 3-4)
 
-Scan remaining notes for recurring patterns across 2+ learnings that reveal unstated principles.
+Spawn `general-purpose` subagent. See `references/agents.md § Auditor` for the full prompt spec. Inputs: brain snapshot, auto-memory path, CLAUDE.md path.
 
-New principle requirements — all three must hold:
-1. Genuinely independent (not derivable from existing principles)
-2. Evidenced by 2+ separate notes or experiences
-3. Actionable (changes how you'd approach future work)
+Audits brain notes, CLAUDE.md, and auto-memory for staleness, redundancy, low-value content, verbosity, and orphans. Returns a categorized report.
 
-Write new principles to `brain/principles/` and update `brain/principles.md` index.
+**Early-exit gate:** If the auditor finds fewer than 3 actionable items, skip steps 3-4 and go directly to step 5.
 
-### 3. Housekeep
+### 3. Synthesizer + Distiller (parallel)
 
-Clean stale `.noodle/` state:
-- Old debate directories (`.noodle/debates/`) for completed/abandoned tasks
-- Completed session state
-- Stale plan-mode artifacts in `brain/plans/`
+Spawn both as `general-purpose` subagents after the auditor completes. See `references/agents.md § Synthesizer` and `§ Distiller`. Inputs: brain snapshot + auditor report.
 
-### 4. Update indexes
+- **Synthesizer**: Proposes missing wikilinks, flags principle tensions, suggests clarifications.
+- **Distiller**: Identifies recurring patterns that reveal unstated principles. New principles must be (1) independent, (2) evidenced by 2+ notes, (3) actionable.
 
-Update `brain/index.md` for any files added or removed.
+### 4. Skill Reviewer (after all above complete)
 
-## Autonomous session mode
+Spawn `general-purpose` subagent. See `references/agents.md § Skill Reviewer`. Inputs: both snapshots + all three reports + `brain/principles.md`.
 
-When running non-interactively (cook session): apply all high-confidence changes autonomously. For ambiguous changes (brain file deletions, principle rewrites), file a todo instead.
+Cross-references every skill against brain principles. Finds contradictions, missed structural enforcement opportunities, redundant instructions, and missing principles.
+
+### 5. Review reports
+
+Present the user with a consolidated summary. See `references/agents.md § Report Template` for the format.
+
+### 6. Route skill-specific learnings
+
+Check all reports for findings that belong in skill files, not `brain/`. Update the skill's SKILL.md or references/ directly. Read the skill first to avoid duplication.
+
+### 7. Apply changes
+
+Apply all changes directly. The user reviews the diff.
+
+- **Outdated notes**: Update or delete
+- **Redundant notes**: Merge into the stronger note, delete the weaker
+- **Low-value notes**: Delete
+- **Verbose notes**: Condense in place
+- **New connections**: Add `[[wikilinks]]`
+- **Tensions**: Reword to clarify boundaries
+- **New principles**: Only from the distiller, only if genuinely independent. Write brain files and update `brain/principles.md`
+- **CLAUDE.md issues**: Rewrite or delete
+- **Stale memories**: Delete or rewrite
+
+### 8. Housekeep
+
+Clean stale `.noodle/` state (old debates, completed sessions, stale plan artifacts). Update `brain/index.md` for any files added or removed.
 
 ## Summary
 
@@ -59,5 +83,6 @@ When running non-interactively (cook session): apply all high-confidence changes
 ## Meditate Summary
 - Pruned: [N notes deleted, M condensed, K merged]
 - Extracted: [N new principles, with one-line + evidence count each]
+- Skill review: [N findings, M applied]
 - Housekeep: [state files cleaned]
 ```
