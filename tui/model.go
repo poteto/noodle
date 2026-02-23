@@ -120,6 +120,12 @@ type EventLine struct {
 	Category TraceFilter
 }
 
+type traceDisplayLine struct {
+	At    string
+	Label string
+	Body  string
+}
+
 type tickMsg time.Time
 
 type snapshotMsg struct {
@@ -340,7 +346,7 @@ func (m Model) handleSessionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleTraceKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	lines := m.filteredTraceLines()
+	lines := m.traceDisplayLines(m.filteredTraceLines())
 	maxStart := 0
 	if len(lines) > m.traceHeight() {
 		maxStart = len(lines) - m.traceHeight()
@@ -634,7 +640,7 @@ func (m Model) renderTrace() string {
 	if !ok {
 		return errorStyle.Render("trace unavailable: session not found") + "\n\n" + keybarStyle.Render("esc back")
 	}
-	lines := m.filteredTraceLines()
+	lines := m.traceDisplayLines(m.filteredTraceLines())
 	height := m.traceHeight()
 	start := 0
 	if len(lines) > height {
@@ -669,7 +675,13 @@ func (m Model) renderTrace() string {
 		b.WriteString(dimStyle.Render("(no events)\n"))
 	} else {
 		for _, line := range lines[start:end] {
-			fmt.Fprintf(&b, "%s  %-14s | %s\n", line.At.Format("15:04:05"), eventLabel(line.Label), line.Body)
+			atCell := padRight(strings.TrimSpace(line.At), 8)
+			labelCell := padRight(strings.TrimSpace(line.Label), 14)
+			if strings.TrimSpace(labelCell) == "" {
+				fmt.Fprintf(&b, "%s  %s | %s\n", atCell, labelCell, line.Body)
+				continue
+			}
+			fmt.Fprintf(&b, "%s  %s | %s\n", atCell, eventLabel(labelCell), line.Body)
 		}
 	}
 	if m.traceFollow {
@@ -927,6 +939,38 @@ func (m Model) filteredTraceLines() []EventLine {
 		}
 	}
 	return filtered
+}
+
+func (m Model) traceDisplayLines(lines []EventLine) []traceDisplayLine {
+	// Trace rows are wrapped to terminal width so scroll math stays aligned.
+	eventPrefixWidth := 8 + 2 + 14 + 3
+	bodyWidth := m.contentWidth() - eventPrefixWidth
+	if bodyWidth < 12 {
+		bodyWidth = 12
+	}
+
+	out := make([]traceDisplayLine, 0, len(lines))
+	for _, line := range lines {
+		label := strings.TrimSpace(line.Label)
+		if label == "" {
+			label = "-"
+		}
+		wrapped := wrapPlainText(line.Body, bodyWidth)
+		if len(wrapped) == 0 {
+			wrapped = []string{""}
+		}
+		for i, segment := range wrapped {
+			display := traceDisplayLine{
+				Body: segment,
+			}
+			if i == 0 {
+				display.At = line.At.Format("15:04:05")
+				display.Label = label
+			}
+			out = append(out, display)
+		}
+	}
+	return out
 }
 
 func (m Model) traceHeight() int {

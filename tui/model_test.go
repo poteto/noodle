@@ -121,6 +121,46 @@ func TestModelTransitionsBetweenSurfaces(t *testing.T) {
 	}
 }
 
+func TestTraceScrollUsesWrappedDisplayLines(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC) },
+	})
+	m.width = 80
+	m.height = 14
+	m.surface = surfaceTrace
+	m.sessionID = "cook-a"
+	m.traceFollow = true
+	m.snapshot = Snapshot{
+		Sessions: []Session{
+			{ID: "cook-a", Status: "running", Health: "green"},
+		},
+		EventsBySession: map[string][]EventLine{
+			"cook-a": {
+				{
+					At:       time.Date(2026, 2, 23, 1, 0, 0, 0, time.UTC),
+					Label:    "Prompt",
+					Body:     strings.Repeat("Use Skill(sous-chef) to refresh queue. ", 40),
+					Category: traceFilterThink,
+				},
+			},
+		},
+	}
+
+	m = pressRune(t, m, 'k')
+	if m.traceFollow {
+		t.Fatal("expected trace follow to disable on manual up scroll")
+	}
+	if m.traceOffset <= 0 {
+		t.Fatalf("expected positive trace offset for wrapped long event, got %d", m.traceOffset)
+	}
+	view := m.renderTrace()
+	if !strings.Contains(view, "Skill(sous-chef)") {
+		t.Fatalf("trace view missing wrapped prompt body: %q", view)
+	}
+}
+
 func TestSteerSubmitWritesControlCommand(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
