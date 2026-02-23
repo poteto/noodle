@@ -54,28 +54,33 @@ func (b *BrainTab) renderList(width, height int) string {
 	out.WriteString(b.renderStats(width))
 	out.WriteString("\n\n")
 
-	// Group by agent
+	// Group by agent, tracking which line the selected entry lands on.
+	selectedLine := 0
+	lineCount := strings.Count(out.String(), "\n")
 	groups := b.groupByAgent()
 	for i, group := range groups {
 		if i > 0 {
 			out.WriteString("\n")
+			lineCount++
 		}
 		out.WriteString(sectionStyle.Render(group.agent))
 		out.WriteString("\n")
+		lineCount++
 		for j, item := range group.items {
 			globalIdx := group.indices[j]
+			if globalIdx == b.selected {
+				selectedLine = lineCount
+			}
 			line := b.renderEntry(item, width-2, globalIdx == b.selected)
 			out.WriteString(line)
 			out.WriteString("\n")
+			lineCount++
 		}
 	}
 
 	// Constrain output to available height.
 	rendered := out.String()
 	lines := strings.Split(rendered, "\n")
-
-	// Ensure selected item is visible by scrolling.
-	selectedLine := b.findSelectedLine(lines)
 	start := 0
 	if selectedLine >= height {
 		start = selectedLine - height + 2
@@ -92,21 +97,6 @@ func (b *BrainTab) renderList(width, height int) string {
 	}
 
 	return strings.Join(lines[start:end], "\n")
-}
-
-// findSelectedLine returns the approximate line index of the selected item.
-func (b *BrainTab) findSelectedLine(lines []string) int {
-	// Count entries seen to find which line the selected entry falls on.
-	entryCount := 0
-	for i, line := range lines {
-		if strings.HasPrefix(line, "  ") && (strings.Contains(line, "new") || strings.Contains(line, "edit") || strings.Contains(line, "del")) {
-			if entryCount == b.selected {
-				return i
-			}
-			entryCount++
-		}
-	}
-	return 0
 }
 
 func (b *BrainTab) renderPreview(width, height int) string {
