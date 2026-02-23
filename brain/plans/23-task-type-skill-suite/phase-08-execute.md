@@ -1,0 +1,66 @@
+Back to [[plans/23-task-type-skill-suite/overview]]
+
+# Phase 8: Execute — Implementation Methodology Skill
+
+## Goal
+
+Create `.agents/skills/execute/SKILL.md` — the skill that teaches cook sessions how to do implementation work. This is the most-spawned task type and currently has no methodology skill. The cook prompt provides _what_ to do (backlog item + plan phase); this skill provides _how_ to do it.
+
+## Current State
+
+- The execute task type maps to the adapter-configured skill (`todo`), which teaches backlog management — not execution methodology
+- Cook prompt is just `"Work backlog item <id>"` with rationale context
+- No skill provides: worktree discipline, sub-agent delegation, lint-before-commit, verification, commit conventions
+- The Operator skill had this methodology but it's being deleted
+
+## Patterns to Incorporate
+
+From **Operator**:
+- **Decompose → Implement → Verify → Commit** — structured execution flow
+- **Worktree isolation** — work in a worktree, not the primary checkout
+- **Lint-before-commit** — run linting and fix ALL issues before committing
+- **Task tracking** — create tasks after decomposition, mark in_progress/completed at each step
+
+From **Manager** (for phases that need delegation):
+- **Parallel by default** — when a phase touches independent areas, use sub-agents
+- **Minimal-context workers** — front-load context to avoid rediscovery costs
+- **Verify artifacts, not reports** — git diff --stat ALL files after sub-agents complete
+
+## Principles
+
+- [[principles/verify-runtime]] — verify your own work before calling it done
+- [[principles/trust-the-output-not-the-report]] — inspect artifacts (git diff --stat ALL files), not sub-agent summaries
+- [[principles/cost-aware-delegation]] — use sub-agents when beneficial, self-execute when simpler
+- [[principles/guard-the-context-window]] — delegate large reads to sub-agents
+- [[principles/outcome-oriented-execution]] — optimize for the end state, not smooth intermediate steps
+
+## Changes
+
+- Create `.agents/skills/execute/SKILL.md` — **use the `skill-creator` skill**
+- This skill is cook-session-first — autonomous execution is the only mode
+- Define the execution flow:
+  1. Read the plan phase (if one exists) — it has goal, changes, data structures, verification, routing
+  2. Decompose into sub-tasks if the phase is large enough
+  3. Work in a worktree (invoke worktree skill)
+  4. Implement, using sub-agents for independent sub-tasks
+  5. Verify: run tests, lint, check git diff against expected changes, and compare against plan phase requirements (confirm all items in Changes and Verification sections are addressed)
+  6. Commit with conventional message
+- Include delegation heuristics: when to self-execute vs spawn sub-agents
+- Include scope discipline: only change what the phase specifies, flag anything else
+- The execute skill provides _methodology_ (how to work) and is loaded alongside the adapter-configured skill (which provides _what_ to work on). Do not replace the adapter skill wiring — the execute skill is additive.
+
+## Data Structures
+
+- Input: cook prompt (backlog item ID + rationale) + plan phase file (if exists)
+- Output: committed code changes in the worktree
+
+## Verification
+
+- Static: SKILL.md has frontmatter, principles, execution flow, delegation heuristics, scope discipline
+- Runtime: Spawn an execute cook session for a plan phase. Confirm:
+  - Agent reads the plan phase file
+  - Agent works in a worktree
+  - Agent runs tests and lint before committing
+  - Agent checks all plan phase requirements are addressed before committing
+  - Commit message references the backlog item
+  - Only files listed in the phase's Changes section are modified (scope discipline)
