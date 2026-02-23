@@ -341,7 +341,7 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
-	success := status == "completed" || status == "exited"
+	success := status == "completed"
 	if success && cook.reviewEnabled {
 		accepted, feedback := l.runTaster(ctx, cook)
 		if !accepted {
@@ -574,7 +574,7 @@ func (l *Loop) runTaster(ctx context.Context, cook *activeCook) (bool, string) {
 	}
 
 	status := strings.ToLower(strings.TrimSpace(session.Status()))
-	if status == "completed" || status == "exited" {
+	if status == "completed" {
 		_ = l.writeDebateVerdict(cook, true, "")
 		return true, ""
 	}

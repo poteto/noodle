@@ -122,7 +122,7 @@ func TestMonitorRunOnceWritesSessionMetaAndTickets(t *testing.T) {
 	}
 
 	metaB := mustReadMeta(t, filepath.Join(runtimeDir, "sessions", sessionB, "meta.json"))
-	if metaB.Status != SessionStatusExited {
+	if metaB.Status != SessionStatusFailed {
 		t.Fatalf("session B status = %q", metaB.Status)
 	}
 

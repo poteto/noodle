@@ -568,6 +568,54 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	}
 }
 
+func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, Queue{}); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Recovery.MaxRetries = 0
+
+	sp := &fakeSpawner{}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Spawner:   sp,
+		Worktree:  &fakeWorktree{},
+		Adapter:   &fakeAdapterRunner{},
+		Mise:      &fakeMise{},
+		Monitor:   fakeMonitor{},
+		Now:       time.Now,
+		QueueFile: queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "exited"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle with exited prioritize session: %v", err)
+	}
+	if l.runtimeRepairInFlight == nil {
+		t.Fatal("expected runtime repair to be scheduled")
+	}
+	if len(sp.calls) != 2 {
+		t.Fatalf("spawn calls = %d, want 2", len(sp.calls))
+	}
+	if !strings.HasPrefix(sp.calls[1].Name, "repair-runtime-") {
+		t.Fatalf("expected repair spawn, got %q", sp.calls[1].Name)
+	}
+}
+
 func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

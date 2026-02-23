@@ -80,6 +80,8 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 			claims.TokensOut += event.TokensOut
 		case parse.EventError:
 			claims.Failed = true
+		case parse.EventComplete:
+			claims.Completed = true
 		}
 	}
 	if err := scanner.Err(); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -163,5 +164,46 @@ func TestTmuxSessionLogsInjectedPromptOnInit(t *testing.T) {
 	}
 	if payload.Message != prompt {
 		t.Fatalf("message = %q, want %q", payload.Message, prompt)
+	}
+}
+
+func TestTerminalStatusWithoutCompletionIsFailed(t *testing.T) {
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		filepath.Join(t.TempDir(), "canonical.ndjson"),
+		"",
+		nil,
+		nil,
+		nil,
+	)
+	if got := session.terminalStatus(); got != "failed" {
+		t.Fatalf("terminal status = %q, want failed", got)
+	}
+}
+
+func TestTerminalStatusWithCompleteEventIsCompleted(t *testing.T) {
+	dir := t.TempDir()
+	canonicalPath := filepath.Join(dir, "canonical.ndjson")
+	line := `{"type":"complete","message":"done","timestamp":"2026-02-23T01:00:00Z"}`
+	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
+		t.Fatalf("write canonical: %v", err)
+	}
+
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		canonicalPath,
+		"",
+		nil,
+		nil,
+		nil,
+	)
+	if got := session.terminalStatus(); got != "completed" {
+		t.Fatalf("terminal status = %q, want completed", got)
 	}
 }

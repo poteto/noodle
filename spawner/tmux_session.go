@@ -128,11 +128,24 @@ func (s *tmuxSession) monitorPane(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if _, err := s.run(ctx, s.worktreePath, s.env, "tmux", "has-session", "-t", s.tmuxName); err != nil {
-				s.markDone("completed")
+				s.markDone(s.terminalStatus())
 				return
 			}
 		}
 	}
+}
+
+func (s *tmuxSession) terminalStatus() string {
+	events, err := readCanonicalEvents(s.canonicalPath)
+	if err != nil {
+		return "failed"
+	}
+	for _, event := range events {
+		if event.Type == parse.EventComplete {
+			return "completed"
+		}
+	}
+	return "failed"
 }
 
 func (s *tmuxSession) monitorCanonicalEvents(ctx context.Context) {

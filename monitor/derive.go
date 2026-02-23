@@ -37,8 +37,10 @@ func DeriveSessionMeta(
 		status = SessionStatusRunning
 	case claims.Failed:
 		status = SessionStatusFailed
-	case claims.HasEvents:
+	case claims.Completed:
 		status = SessionStatusExited
+	default:
+		status = SessionStatusFailed
 	}
 
 	contextUsagePct := 0.0
