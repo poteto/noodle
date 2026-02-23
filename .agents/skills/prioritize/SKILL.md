@@ -1,11 +1,6 @@
 ---
 name: prioritize
-description: >
-  Noodle queue scheduler. Use when reading `.noodle/mise.json` and writing
-  `.noodle/queue.json`, especially when enforcing workflow order constraints:
-  Plan must be followed by blocking Chef Review, Execute must be followed by
-  Verify, Verify must be followed by Reflect, and Meditate should be scheduled
-  periodically after several Reflects.
+description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue.json. Schedules work based on backlog state, plan phases, session history, and task type schedules.
 noodle:
   blocking: true
   schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
@@ -13,76 +8,63 @@ noodle:
 
 # Prioritize
 
-Read `.noodle/mise.json` and write `.noodle/queue.json`.
+Read `.noodle/mise.json`, write `.noodle/queue.json`. See `references/mise-schema.md` and `references/queue-schema.md` for schemas.
 
-Operate fully autonomously. Never ask the user to choose between options, and
-never pause for confirmation.
+Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
-## Required Workflow Order
+## Plans as Precondition
 
-1. `Plan -> Review from Chef` (blocking)
-2. `Execute -> Verify`
-3. `Verify -> Reflect`
-4. `Meditate` after several `Reflect` tasks
+Only schedule `execute` items that have a linked plan (`plan` field non-null in backlog entry). Skip unplanned items entirely -- note their IDs in `queue.json` under `"action_needed"` so the TUI can surface them.
 
-Treat these as hard scheduling constraints.
+## Schedule Reading
 
-## Blocking Rule
+Read `task_types[].schedule` from mise to know when each task type should run. Honor these hints when placing items.
 
-If any open backlog item is a Chef review item, schedule Chef review before all
-other work.
+## Workflow Order
 
-To enforce blocking with parallel workers, output only Chef review items until
-Chef review is cleared. Do not include Execute, Verify, Reflect, or Meditate
-items in the same queue generation when a Chef review item is pending.
+Hard constraints:
 
-## Stage Classification
+1. **Plan** -> **Review** (blocking -- no other work until review clears)
+2. **Execute** -> **Verify** -> **Reflect**
+3. **Meditate** after ~3 completed Reflects (check `recent_history` + current queue)
 
-Classify each open backlog item by title/tags/description keywords
-(case-insensitive):
+When a blocking review is pending, emit only review items. Do not mix execute/verify/reflect/meditate into the same queue generation.
 
-- `plan`
-- `review from chef` (or `chef review`)
-- `execute`
-- `verify`
-- `reflect`
-- `meditate`
+## Situational Awareness
 
-If an item cannot be classified, treat it as general execution work and place
-it only when it does not violate the required workflow order.
+| Trigger | Action |
+|---------|--------|
+| Empty queue | Full survey of mise -- schedule from scratch |
+| Quality rejection | Rescope the rejected item for retry with feedback |
+| New items with plans | Slot into existing queue respecting workflow order |
+| Unplanned items | Skip, add to `action_needed` |
+| All items blocked | Schedule meditate or reflect to use the slot productively |
 
-## Queue Construction Policy
+## CEO Patterns
 
-When no blocking Chef review is pending:
+- **Foundation before feature**: Infrastructure and shared types first.
+- **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
+- **Explicit rationale**: Every queue item must cite which principle or rule drove its placement.
+- **Work around blockers**: If the top-priority item is blocked, schedule the next viable item -- never idle.
+- **Timebox failures**: If an item has failed 2+ times in `recent_history`, deprioritize or split it.
 
-1. Prioritize high-impact/unblocker work while respecting dependencies.
-2. Do not schedule `Execute` ahead of unresolved `Review from Chef`.
-3. If you schedule an `Execute` item, place a `Verify` item immediately after
-   it when one is available.
-4. If you schedule a `Verify` item, place a `Reflect` item immediately after it
-   when one is available.
-5. Schedule one `Meditate` item after roughly every 3 completed/scheduled
-   `Reflect` items (use `recent_history` plus planned queue context).
+## Model Routing
 
-## Model Routing Policy
+| Task type | Provider | Model |
+|-----------|----------|-------|
+| Implementation, execution, coding | codex | gpt-5.3-codex |
+| Judgment, strategy, planning, quality | claude | claude-opus-4-6 |
 
-Set `provider` and `model` per queue item using these defaults:
+When uncertain, codex for implementation, opus for judgment.
 
-1. Front-end tasks and judgment-heavy tasks (for example planning and backlog
-   grooming): `provider: "claude"`, `model: "claude-opus-4-6"`.
-2. Coding execution tasks and tasks that require strong implementation focus:
-   `provider: "codex"`, `model: "gpt-5.3-codex"`.
+## Output
 
-When uncertain, prefer Codex for direct implementation work and Opus for
-strategic prioritization or nuanced product judgment work.
+Write valid JSON to `.noodle/queue.json` matching `references/queue-schema.md`.
 
-## Output Contract
+## Principles
 
-Write valid JSON with this shape:
-
-```json
-{"generated_at":"...","items":[{"id":"42","provider":"codex","model":"gpt-5.3-codex","review":true,"rationale":"..."}]}
-```
-
-Keep rationale brief and explicit about which ordering rule drove each
-placement.
+- [[cost-aware-delegation]]
+- [[foundational-thinking]]
+- [[subtract-before-you-add]]
+- [[never-block-on-the-human]]
+- [[guard-the-context-window]]
