@@ -72,9 +72,9 @@ Each skill you add makes the system more capable. Your workflow becomes a series
 
 noodle has a brain. It's an Obsidian vault (just markdown files) that agents read before they start and write to after they finish. Principles, patterns, past mistakes, what worked and what didn't.
 
-When an agent reflects after a session, it updates the brain. Maybe it notices a certain test pattern keeps failing and writes a note. The next agent picks that up and avoids the same trap. Over time the brain accumulates your project's actual working knowledge. Lessons that agents are actively learning from and contributing to.
+When an agent `reflect`s after a session, it updates the brain. Maybe it notices a certain test pattern keeps failing and writes a note. The next agent picks that up and avoids the same trap. Over time the brain accumulates your project's actual working knowledge. Lessons that agents are actively learning from and contributing to.
 
-Your principles live in the brain too. If you care about error message style, or test coverage, or commit conventions, you write it once and every agent follows it. The quality skill reads your principles when reviewing work. When an agent violates one, it catches it. When the team learns something new, reflect writes it down. The brain is always growing.
+Your principles live in the brain too. If you care about redesigning from first principles, or subtracting before you add, `meditate` extracts them by looking through your brain. It even updates all your skills with these principles so every future decision by an agent is grounded by them.
 
 ## Everything Is Really A File
 
