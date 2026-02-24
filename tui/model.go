@@ -508,6 +508,28 @@ func (m Model) contentWidth() int {
 	return width
 }
 
+// paneWidth returns the content pane width, accounting for whether the rail
+// is visible on the current tab.
+func (m Model) paneWidth() int {
+	if m.activeTab == TabFeed {
+		w := m.width
+		if w < 20 {
+			w = 20
+		}
+		return w
+	}
+	compact := m.width < 80
+	effectiveRailWidth := railWidth
+	if compact {
+		effectiveRailWidth = 8
+	}
+	w := m.width - effectiveRailWidth - 1
+	if w < 20 {
+		w = 20
+	}
+	return w
+}
+
 func (m *Model) enterBrainPreview() tea.Cmd {
 	if m.brainTab.selected < 0 || m.brainTab.selected >= len(m.brainTab.items) {
 		return nil
@@ -615,17 +637,8 @@ func (m Model) countDetailLines() int {
 	if len(events) == 0 {
 		return 0
 	}
-	compact := m.width < 80
-	effectiveRailWidth := railWidth
-	if compact {
-		effectiveRailWidth = 8
-	}
-	paneWidth := m.width - effectiveRailWidth - 1
-	if paneWidth < 20 {
-		paneWidth = 20
-	}
 	const prefixWidth = 8 + 2 + 10 + 2 // ts + gap + label + gap
-	msgWidth := paneWidth - prefixWidth
+	msgWidth := m.paneWidth() - prefixWidth
 	if msgWidth < 20 {
 		msgWidth = 20
 	}

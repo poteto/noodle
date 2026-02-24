@@ -20,23 +20,23 @@ func (m Model) renderLayout() string {
 		layoutHeight = 6
 	}
 
-	compact := m.width < 80
-	effectiveRailWidth := railWidth
-	if compact {
-		effectiveRailWidth = 8
+	// Feed tab uses the full width (no rail). Other tabs show the rail.
+	showRail := m.activeTab != TabFeed
+	var paneWidth int
+	if showRail {
+		compact := m.width < 80
+		effectiveRailWidth := railWidth
+		if compact {
+			effectiveRailWidth = 8
+		}
+		paneWidth = m.width - effectiveRailWidth - 1
+	} else {
+		paneWidth = m.width
 	}
-
-	paneWidth := m.width - effectiveRailWidth - 1
 	if paneWidth < 20 {
 		paneWidth = 20
 	}
 
-	var rail string
-	if compact {
-		rail = renderCompactRail(m.snapshot, layoutHeight)
-	} else {
-		rail = renderRail(m.snapshot, layoutHeight, m.shimmerIndex)
-	}
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
 	// Tab bar takes 2 lines; leave room for padding.
@@ -71,7 +71,19 @@ func (m Model) renderLayout() string {
 	}
 
 	pane := tabBar + "\n\n" + tabContent
-	layout := joinLayout(rail, pane)
+	var layout string
+	if showRail {
+		compact := m.width < 80
+		var rail string
+		if compact {
+			rail = renderCompactRail(m.snapshot, layoutHeight)
+		} else {
+			rail = renderRail(m.snapshot, layoutHeight, m.shimmerIndex)
+		}
+		layout = joinLayout(rail, pane)
+	} else {
+		layout = pane
+	}
 
 	if m.steerOpen {
 		inputLine := keybarStyle.Render("[steer] ") + m.steerInput + keybarStyle.Render("█")
