@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/skill"
@@ -111,9 +110,8 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	cfg := config.DefaultConfig()
 	reg := testRegistry()
 	queue := Queue{Items: []Item{{ID: "1", Title: "implement feature"}}}
-	backlog := []adapter.BacklogItem{{ID: "1", Title: "x", Status: adapter.BacklogStatusOpen}}
 
-	got, changed, err := NormalizeAndValidate(queue, backlog, reg, cfg)
+	got, changed, err := NormalizeAndValidate(queue, []int{1}, reg, cfg)
 	if err != nil {
 		t.Fatalf("normalize: %v", err)
 	}

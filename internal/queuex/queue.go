@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/filex"
 	"github.com/poteto/noodle/internal/stringx"
@@ -116,20 +116,13 @@ func ApplyRoutingDefaults(queue Queue, reg taskreg.Registry, cfg config.Config) 
 
 func NormalizeAndValidate(
 	queue Queue,
-	backlog []adapter.BacklogItem,
+	schedulablePlanIDs []int,
 	reg taskreg.Registry,
 	cfg config.Config,
 ) (Queue, bool, error) {
-	backlogIDs := make(map[string]struct{}, len(backlog))
-	for _, item := range backlog {
-		if item.Status == adapter.BacklogStatusDone {
-			continue
-		}
-		id := strings.TrimSpace(item.ID)
-		if id == "" {
-			continue
-		}
-		backlogIDs[id] = struct{}{}
+	schedulableSet := make(map[int]struct{}, len(schedulablePlanIDs))
+	for _, id := range schedulablePlanIDs {
+		schedulableSet[id] = struct{}{}
 	}
 
 	items := make([]Item, len(queue.Items))
@@ -170,11 +163,18 @@ func NormalizeAndValidate(
 			items[i].Skill = taskType.Key
 			changed = true
 		}
-		// Execute items must exist in backlog.
-		if taskType.Key == "execute" && len(backlogIDs) > 0 {
-			if _, exists := backlogIDs[id]; !exists {
+		// Execute items must map to a schedulable plan ID when available.
+		if taskType.Key == "execute" && len(schedulableSet) > 0 {
+			planID, parseErr := strconv.Atoi(id)
+			if parseErr != nil {
 				return queue, false, fmt.Errorf(
-					"queue item %q is an execute task but is not in backlog",
+					"queue item %q is an execute task but does not match a schedulable plan",
+					id,
+				)
+			}
+			if _, exists := schedulableSet[planID]; !exists {
+				return queue, false, fmt.Errorf(
+					"queue item %q is an execute task but does not match a schedulable plan",
 					id,
 				)
 			}

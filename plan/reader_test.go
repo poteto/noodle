@@ -361,7 +361,7 @@ func TestCleanFilename(t *testing.T) {
 }
 
 func TestParseFrontmatter(t *testing.T) {
-	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: ready\nprovider: codex\nmodel: gpt-5.3-codex\n---\n\n# Title\n\nBody text.\n"
+	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: ready\nprovider: codex\nmodel: gpt-5.3-codex\nbacklog: todo-1\n---\n\n# Title\n\nBody text.\n"
 	meta, body, ok := parseFrontmatter(content)
 	if !ok {
 		t.Fatal("expected ok=true")
@@ -377,6 +377,9 @@ func TestParseFrontmatter(t *testing.T) {
 	}
 	if meta.Model != "gpt-5.3-codex" {
 		t.Errorf("expected model gpt-5.3-codex, got %q", meta.Model)
+	}
+	if meta.Backlog != "todo-1" {
+		t.Errorf("expected backlog todo-1, got %q", meta.Backlog)
 	}
 	if !contains(body, "# Title") {
 		t.Errorf("expected body to contain heading, got %q", body)

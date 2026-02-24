@@ -14,6 +14,7 @@ type PlanSummary struct {
 	Status    string         `json:"status"`
 	Provider  string         `json:"provider,omitempty"`
 	Model     string         `json:"model,omitempty"`
+	Backlog   string         `json:"backlog,omitempty"`
 	Directory string         `json:"directory"` // slug
 	Phases    []PhaseSummary `json:"phases"`
 }
@@ -71,6 +72,7 @@ type Brief struct {
 	GeneratedAt     time.Time             `json:"generated_at"`
 	Backlog         []adapter.BacklogItem `json:"backlog"`
 	Plans           []PlanSummary         `json:"plans"`
+	NeedsScheduling []int                 `json:"needs_scheduling,omitempty"`
 	ActiveCooks     []ActiveCook          `json:"active_cooks"`
 	Tickets         []event.Ticket        `json:"tickets"`
 	Resources       ResourceSnapshot      `json:"resources"`

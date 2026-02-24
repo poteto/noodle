@@ -17,6 +17,7 @@ type PlanMeta struct {
 	Status   string `yaml:"status" json:"status"` // ready | active | done
 	Provider string `yaml:"provider" json:"provider,omitempty"`
 	Model    string `yaml:"model" json:"model,omitempty"`
+	Backlog  string `yaml:"backlog" json:"backlog,omitempty"` // backlog item ID this plan addresses
 }
 
 // Plan represents a single plan directory with its phases.

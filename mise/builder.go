@@ -41,6 +41,8 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
 	plans := make([]PlanSummary, 0)
+	needsScheduling := make([]int, 0)
+	nativePlans := make([]plan.Plan, 0)
 
 	if _, ok := b.config.Adapters["backlog"]; ok {
 		if strings.TrimSpace(b.config.Adapters["backlog"].Scripts["sync"]) == "" {
@@ -61,11 +63,13 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 
 	// Plans: native reader (replaces adapter sync)
 	plansDir := filepath.Join(b.projectDir, "brain", "plans")
-	nativePlans, planErr := plan.ReadAll(plansDir)
+	readPlans, planErr := plan.ReadAll(plansDir)
 	if planErr != nil {
 		warnings = append(warnings, "plan reading failed: "+planErr.Error())
 	} else {
+		nativePlans = readPlans
 		plans = toPlanSummaries(nativePlans)
+		needsScheduling = schedulablePlanIDs(nativePlans, backlog)
 	}
 
 	activeCooks, recentHistory, err := b.readSessionState()
@@ -108,6 +112,7 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		GeneratedAt:     b.now().UTC(),
 		Backlog:         backlog,
 		Plans:           plans,
+		NeedsScheduling: needsScheduling,
 		ActiveCooks:     activeCooks,
 		Tickets:         tickets,
 		Resources:       resources,
@@ -152,11 +157,45 @@ func toPlanSummaries(plans []plan.Plan) []PlanSummary {
 			Status:    p.Meta.Status,
 			Provider:  p.Meta.Provider,
 			Model:     p.Meta.Model,
+			Backlog:   p.Meta.Backlog,
 			Directory: p.Slug,
 			Phases:    phases,
 		})
 	}
 	return summaries
+}
+
+func schedulablePlanIDs(plans []plan.Plan, backlog []adapter.BacklogItem) []int {
+	openBacklogIDs := make(map[string]struct{}, len(backlog))
+	for _, item := range backlog {
+		if item.Status == adapter.BacklogStatusDone {
+			continue
+		}
+		id := strings.TrimSpace(item.ID)
+		if id == "" {
+			continue
+		}
+		openBacklogIDs[id] = struct{}{}
+	}
+	if len(openBacklogIDs) == 0 {
+		return nil
+	}
+
+	ids := make([]int, 0, len(plans))
+	for _, p := range plans {
+		backlogID := strings.TrimSpace(p.Meta.Backlog)
+		if backlogID == "" {
+			continue
+		}
+		if _, ok := openBacklogIDs[backlogID]; !ok {
+			continue
+		}
+		ids = append(ids, p.Meta.ID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return ids
 }
 
 func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
