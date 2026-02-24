@@ -1,4 +1,4 @@
-.PHONY: help build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean
+.PHONY: help build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -30,6 +30,7 @@ help:
 	@printf "  %-40s %s\n" "make watch-verbose" "Rebuild on changes with Air (debug file events)"
 	@printf "  %-40s %s\n" "make generate" "Regenerate auto-generated files"
 	@printf "  %-40s %s\n" "make clean" "Remove built binary"
+	@printf "  %-40s %s\n" "make sandbox STAGE=bare|init|wip|full" "Create a temp sandbox project"
 
 build:
 	$(GO) build -o $(BIN) .
@@ -127,6 +128,9 @@ watch:
 watch-verbose: AIR_FLAGS = -d
 watch-verbose: AIR_CONFIG = .air.verbose.toml
 watch-verbose: watch
+
+sandbox:
+	@./scripts/sandbox.sh $(STAGE)
 
 clean:
 	rm -f $(BIN)
