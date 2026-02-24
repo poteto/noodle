@@ -145,6 +145,7 @@ const (
 	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
+	DiagnosticCodeProviderUnknown        = "provider_unknown"
 )
 
 type ValidationResult struct {
@@ -483,6 +484,14 @@ func Validate(config Config) ValidationResult {
 			Fix:       "Set routing.defaults.provider and routing.defaults.model in .noodle.toml.",
 			Code:      DiagnosticCodeRoutingDefaultsMissing,
 		})
+	} else if !isKnownProvider(config.Routing.Defaults.Provider) {
+		result.Diagnostics = append(result.Diagnostics, ConfigDiagnostic{
+			FieldPath: "routing.defaults.provider",
+			Message:   fmt.Sprintf("unknown provider %q (valid: claude, codex)", config.Routing.Defaults.Provider),
+			Severity:  DiagnosticSeverityFatal,
+			Fix:       "Set routing.defaults.provider to \"claude\" or \"codex\" in .noodle.toml.",
+			Code:      DiagnosticCodeProviderUnknown,
+		})
 	}
 
 	if _, err := lookPath("tmux"); err != nil {
@@ -611,6 +620,14 @@ func (c SpritesConfig) Token() string {
 		key = "SPRITES_TOKEN"
 	}
 	return strings.TrimSpace(os.Getenv(key))
+}
+
+func isKnownProvider(provider string) bool {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "claude", "codex":
+		return true
+	}
+	return false
 }
 
 func (c CursorConfig) APIKey() string {
