@@ -22,10 +22,10 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
   2. Run `noodle start --once` in a fresh temp directory (no existing config, no brain, no skills)
   3. Assert: `PersistentPreRunE` in `root.go` triggers scaffolding before `config.Load`
   4. Deterministic exit expectations:
-     - **tmux on PATH**: exit 0, scaffolded files exist, no fatal diagnostics
+     - **tmux on PATH**: scaffolded files exist, config parses correctly. Exit may be non-zero because a fresh project has no skills installed (the agent installs them after scaffolding). If non-zero, assert the failure reason is the expected missing-skill error, not a config or scaffolding problem.
      - **tmux not on PATH**: exit non-zero with `runtime.tmux` fatal diagnostic message in stderr (current output format is severity/field/message, not diagnostic codes)
-     Test both paths explicitly — no "or expected non-fatal" ambiguity.
-  5. Run again — assert idempotent (no files recreated, same output)
+     Test both paths explicitly.
+  5. Run again — assert idempotent (no files recreated, same output, same exit behavior)
   This tests the boundary path where `PersistentPreRunE` gates the `start` command, not just the library function in isolation.
 
 - **`generate/skill_noodle_test.go`** — verify the snapshot test from Phase 4 is part of CI. If the noodle skill is out of date, CI fails.
