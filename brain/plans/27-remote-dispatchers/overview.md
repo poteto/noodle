@@ -1,10 +1,33 @@
 ---
 id: 27
 created: 2026-02-23
-status: ready
+status: completed
 ---
 
 # Remote Dispatchers
+
+## Implementation outcome (2026-02-24)
+
+- Completed phases: 1, 2, 6, 7, 8, 9, 10, 11
+- Intentionally deferred phases:
+  - Phase 3 + 5: superseded by a simpler sprites wrapper approach that reuses the existing tmux dispatcher lifecycle.
+  - Phase 4: dropped until Cursor backend is real; Cursor remains a stub and has no polling consumer.
+- Reviewer follow-ups completed:
+  - deduplicated runtime normalization
+  - restored Cursor stub behavior tests
+  - factory `Register` now returns errors for invalid registrations
+  - documented custom runtime Claude system-prompt fallback
+  - monitor now treats `EventResult` claims as completed
+
+## Final architecture notes
+
+- Sprites dispatch uses generated provider wrappers (`sprite -s <name> exec claude ...`) and runs through existing tmux dispatch/session paths.
+- Runtime remains a queue scheduling field (`queue.json` item `runtime`) chosen by prioritize, not by skill frontmatter.
+- Phase 10 sync-back ships as branch-based merge routing:
+  - remote session writes sync metadata
+  - loop reads `spawn.json.sync`
+  - branch sync uses `Worktree.MergeRemoteBranch`
+  - merge conflicts are typed and treated as non-retryable failures (mark failed + skip)
 
 ## Context
 

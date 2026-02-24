@@ -2,6 +2,12 @@ Back to [[plans/27-remote-dispatchers/overview]]
 
 # Phase 3: StreamingDispatcher generic implementation
 
+## Status
+
+- Deferred (2026-02-24): not implemented for this plan cycle.
+- Reason: sprites runtime shipped by reusing the existing tmux dispatcher/session lifecycle through runtime wrappers.
+- Follow-up trigger: revisit when a second streaming runtime needs materially different session lifecycle management.
+
 **Routing:** `claude` / `claude-opus-4-6` — architectural judgment, goroutine lifecycle design
 
 ## Goal
