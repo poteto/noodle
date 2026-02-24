@@ -10,7 +10,7 @@ Back to [[plans/27-remote-dispatchers/overview]]
 
 ## Goal
 
-Create a stub `CursorBackend` that satisfies the `PollingBackend` interface. All methods log "cursor backend not implemented" and return errors. This validates the polling infrastructure from Phase 4 has a real type wired through the factory, while deferring the actual Cursor API integration to a future plan.
+Create a stub `CursorBackend` that satisfies the `PollingBackend` interface at compile time. All methods return "not implemented" errors. The stub is **not** registered in the factory or advertised in `available_runtimes` — it exists only to prove the `PollingBackend` interface compiles with a real type and to provide a starting point for a future Cursor implementation plan.
 
 The MVP focus is the Sprites streaming path. The polling dispatcher and its interface are still fully implemented (Phase 4) — this phase just defers the Cursor-specific HTTP plumbing.
 
@@ -22,7 +22,7 @@ The MVP focus is the Sprites streaming path. The polling dispatcher and its inte
 
 **`dispatcher/cursor_backend.go` (new)**
 
-Stub implementation — every method returns `fmt.Errorf("cursor backend not implemented")` and logs to stderr. Satisfies `PollingBackend` at compile time so the factory can register it and the wiring compiles end-to-end.
+Stub implementation — every method returns `fmt.Errorf("cursor backend not implemented")` and logs to stderr. Satisfies `PollingBackend` at compile time only. Not registered in the factory (Phase 2/11) or advertised in `available_runtimes` (Phase 8).
 
 ## Verification
 

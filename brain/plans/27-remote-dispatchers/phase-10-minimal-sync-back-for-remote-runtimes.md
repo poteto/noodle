@@ -44,12 +44,21 @@ Thread `sessionID` through merge APIs. Currently `mergeCook(ctx, item, worktreeN
 Update `mergeCook` — sync-back artifacts flow through the existing completion pipeline:
 1. Quality gate and pending-approval checks run first (unchanged)
 2. Read `SyncResult` from `spawn.json` using the threaded `sessionID`
-3. If result type is `branch`: delegate to a new `WorktreeManager.MergeRemoteBranch(branchName)` method that reuses existing merge safeguards (merge lock, cleanliness checks, rebase discipline) but fetches from a remote branch instead of a local worktree. Deletes the remote branch after successful merge.
+3. If result type is `branch`: delegate to `WorktreeManager.MergeRemoteBranch(branchName)` (see interface changes below).
+
+**`loop/types.go`**
+Add `MergeRemoteBranch(branch string) error` to the `WorktreeManager` interface (line 87-91). This extends the existing interface alongside `Create`, `Merge`, and `Cleanup`.
+
+**`loop/defaults.go`**
+Add `func (noOpWorktree) MergeRemoteBranch(string) error { return nil }` to the no-op stub (line 16-20).
+
+**`worktree/` (app implementation)**
+Implement `MergeRemoteBranch` on the worktree app. Reuses existing merge safeguards (merge lock via `.worktrees/.merge-lock`, integration branch cleanliness check, rebase discipline) but operates on a remote branch: `git fetch origin <branch>`, `git merge origin/<branch>`, delete remote branch on success (`git push origin --delete <branch>`).
 4. If no sync result (tmux): existing worktree merge path (unchanged)
 5. On merge conflict: return `MergeConflictError` (see below).
 
 **`loop/loop.go`**
-Completion errors from `collectCompleted` currently flow into `handleRuntimeIssue` (line 185-186). Add a typed `MergeConflictError` that `mergeCook` returns on git conflicts. In `collectCompleted`, check for this error type with `errors.As` and handle it as a target-scoped cook failure (requeue with failure reason) rather than passing it to `handleRuntimeIssue` which triggers runtime-repair.
+Completion errors from `collectCompleted` currently flow into `handleRuntimeIssue` (line 185-186). Add a typed `MergeConflictError` that `mergeCook` returns on git conflicts. In `collectCompleted`, check for this error type with `errors.As` and handle it as a **non-retryable** target-scoped failure: skip the queue item with a failure reason (same as `skipQueueItem` but with an error message), do not requeue for retry (the conflict is deterministic — retrying would loop), and do not pass to `handleRuntimeIssue`. The user resolves the conflict manually and re-queues if needed.
 
 ## Verification
 
@@ -61,5 +70,5 @@ Completion errors from `collectCompleted` currently flow into `handleRuntimeIssu
 ### Runtime
 - Unit test: mock streaming backend implementing `StreamingSyncBacker` returns a branch → `mergeCook` calls `WorktreeManager.MergeRemoteBranch`
 - Unit test: backend not implementing sync-back → `mergeCook` uses existing worktree merge path
-- Unit test: git merge conflict → `MergeConflictError` returned, handled as cook failure, does not trigger runtime-repair
+- Unit test: git merge conflict → `MergeConflictError` returned, item skipped (not retried), does not trigger runtime-repair
 - Unit test: `mergeCook` reads spawn.json via threaded sessionID
