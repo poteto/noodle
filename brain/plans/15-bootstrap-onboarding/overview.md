@@ -1,7 +1,7 @@
 ---
 id: 15
 created: 2026-02-23
-status: draft
+status: ready
 ---
 
 # Bootstrap & Onboarding

@@ -19,6 +19,7 @@ func newPlanCmd(app *App) *cobra.Command {
 	}
 	cmd.AddCommand(
 		newPlanCreateCmd(),
+		newPlanActivateCmd(),
 		newPlanDoneCmd(app),
 		newPlanPhaseAddCmd(),
 		newPlanListCmd(),
@@ -33,6 +34,17 @@ func newPlanCreateCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPlanCreate(args)
+		},
+	}
+}
+
+func newPlanActivateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "activate <plan-id>",
+		Short: "Mark a plan as active",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPlanActivate(args)
 		},
 	}
 }
@@ -97,6 +109,24 @@ func runPlanCreate(args []string) error {
 
 	fmt.Println(created)
 	return nil
+}
+
+func runPlanActivate(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("plan activate requires <plan-id>")
+	}
+
+	planID, err := strconv.Atoi(args[0])
+	if err != nil {
+		return fmt.Errorf("plan-id not a valid integer: %q", args[0])
+	}
+
+	plansDir, err := resolvePlansDir()
+	if err != nil {
+		return err
+	}
+
+	return plan.Activate(plansDir, planID)
 }
 
 func runPlanDone(args []string, onDone string) error {

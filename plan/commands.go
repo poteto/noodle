@@ -22,7 +22,7 @@ func Create(plansDir string, todoID int, slug string) (string, error) {
 	today := time.Now().Format("2006-01-02")
 	title := titleFromSlug(slug)
 
-	overview := fmt.Sprintf("---\nid: %d\ncreated: %s\nstatus: draft\n---\n\n# %s\n", todoID, today, title)
+	overview := fmt.Sprintf("---\nid: %d\ncreated: %s\nstatus: ready\n---\n\n# %s\n", todoID, today, title)
 	if err := os.WriteFile(filepath.Join(planDir, "overview.md"), []byte(overview), 0o644); err != nil {
 		return "", fmt.Errorf("overview.md not written: %w", err)
 	}
@@ -54,12 +54,12 @@ func Done(plansDir string, planID int, onDone string) error {
 	}
 
 	content := string(data)
-	updated := strings.Replace(content, "status: draft", "status: done", 1)
+	updated := strings.Replace(content, "status: ready", "status: done", 1)
 	if updated == content {
 		updated = strings.Replace(content, "status: active", "status: done", 1)
 	}
 	if updated == content {
-		return fmt.Errorf("plan %d status not draft or active", planID)
+		return fmt.Errorf("plan %d status not ready or active", planID)
 	}
 
 	if err := os.WriteFile(overviewPath, []byte(updated), 0o644); err != nil {
@@ -103,6 +103,31 @@ func Done(plansDir string, planID int, onDone string) error {
 		return err
 	}
 	return rewriteTodoLinks(brainDir, oldPrefix, newPrefix)
+}
+
+// Activate sets a plan's status from "ready" to "active".
+func Activate(plansDir string, planID int) error {
+	planDir, err := findPlanDir(plansDir, planID)
+	if err != nil {
+		return err
+	}
+
+	overviewPath := filepath.Join(planDir, "overview.md")
+	data, err := os.ReadFile(overviewPath)
+	if err != nil {
+		return fmt.Errorf("overview.md not readable: %w", err)
+	}
+
+	content := string(data)
+	updated := strings.Replace(content, "status: ready", "status: active", 1)
+	if updated == content {
+		return fmt.Errorf("plan %d status not ready", planID)
+	}
+
+	if err := os.WriteFile(overviewPath, []byte(updated), 0o644); err != nil {
+		return fmt.Errorf("overview.md not written: %w", err)
+	}
+	return nil
 }
 
 // PhaseAdd creates a new numbered phase file in an existing plan directory.

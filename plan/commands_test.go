@@ -36,7 +36,7 @@ func TestCreate_MakesDirectoryAndFiles(t *testing.T) {
 	if !strings.Contains(overviewStr, "id: 99") {
 		t.Errorf("overview missing id: %s", overviewStr)
 	}
-	if !strings.Contains(overviewStr, "status: draft") {
+	if !strings.Contains(overviewStr, "status: ready") {
 		t.Errorf("overview missing status: %s", overviewStr)
 	}
 	if !strings.Contains(overviewStr, "# Test Plan") {
@@ -92,7 +92,7 @@ func TestDone_FlipsStatusFromDraft(t *testing.T) {
 	writeFile(t, filepath.Join(plansDir, "index.md"),
 		"# Plans\n\n- [ ] [[plans/10-my-plan/overview]]\n")
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 10\ncreated: 2026-02-20\nstatus: draft\n---\n\n# My Plan\n")
+		"---\nid: 10\ncreated: 2026-02-20\nstatus: ready\n---\n\n# My Plan\n")
 
 	if err := Done(plansDir, 10, "keep"); err != nil {
 		t.Fatalf("Done returned error: %v", err)
@@ -106,7 +106,7 @@ func TestDone_FlipsStatusFromDraft(t *testing.T) {
 	if !strings.Contains(string(data), "status: done") {
 		t.Errorf("status not changed to done: %s", string(data))
 	}
-	if strings.Contains(string(data), "status: draft") {
+	if strings.Contains(string(data), "status: ready") {
 		t.Errorf("draft status still present: %s", string(data))
 	}
 }
@@ -149,7 +149,7 @@ func TestDone_ErrorsOnAlreadyDone(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for already-done plan")
 	}
-	if !strings.Contains(err.Error(), "not draft or active") {
+	if !strings.Contains(err.Error(), "not ready or active") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -219,7 +219,7 @@ func TestDone_CreatesArchivedIndexIfMissing(t *testing.T) {
 	writeFile(t, filepath.Join(plansDir, "index.md"),
 		"# Plans\n\n- [ ] [[plans/6-first-archive/overview]]\n")
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 6\ncreated: 2026-02-20\nstatus: draft\n---\n\n# First Archive\n")
+		"---\nid: 6\ncreated: 2026-02-20\nstatus: ready\n---\n\n# First Archive\n")
 
 	// Verify no archived_plans/ exists yet.
 	archivedIndexPath := filepath.Join(dir, "archived_plans", "index.md")
@@ -316,7 +316,7 @@ func TestDone_RemovesFromPlansIndex(t *testing.T) {
 	writeFile(t, filepath.Join(plansDir, "index.md"),
 		"# Plans\n\n- [ ] [[plans/9-index-test/overview]]\n- [ ] [[plans/50-keep-me/overview]]\n")
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 9\ncreated: 2026-02-20\nstatus: draft\n---\n\n# Index Test\n")
+		"---\nid: 9\ncreated: 2026-02-20\nstatus: ready\n---\n\n# Index Test\n")
 
 	if err := Done(plansDir, 9, "keep"); err != nil {
 		t.Fatalf("Done returned error: %v", err)
@@ -371,7 +371,7 @@ func TestPhaseAdd_FirstPhase(t *testing.T) {
 	mustMkdir(t, planDir)
 
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 30\ncreated: 2026-02-20\nstatus: draft\n---\n\n# Empty Plan\n")
+		"---\nid: 30\ncreated: 2026-02-20\nstatus: ready\n---\n\n# Empty Plan\n")
 
 	created, err := PhaseAdd(plansDir, 30, "Setup")
 	if err != nil {
@@ -496,7 +496,7 @@ func TestDone_RemoveDeletesPlanDirectory(t *testing.T) {
 	writeFile(t, filepath.Join(plansDir, "index.md"),
 		"# Plans\n\n- [ ] [[plans/20-remove-test/overview]]\n")
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 20\ncreated: 2026-02-20\nstatus: draft\n---\n\n# Remove Test\n")
+		"---\nid: 20\ncreated: 2026-02-20\nstatus: ready\n---\n\n# Remove Test\n")
 
 	if err := Done(plansDir, 20, "remove"); err != nil {
 		t.Fatalf("Done returned error: %v", err)
@@ -561,5 +561,59 @@ func TestDone_RemoveUpdatesTodoLinks(t *testing.T) {
 	}
 	if !strings.Contains(string(todos), "Other task") {
 		t.Error("todos.md lost unrelated content")
+	}
+}
+
+func TestActivate_FlipsReadyToActive(t *testing.T) {
+	dir := t.TempDir()
+	plansDir := filepath.Join(dir, "plans")
+	planDir := filepath.Join(plansDir, "30-activate-test")
+	mustMkdir(t, planDir)
+
+	writeFile(t, filepath.Join(planDir, "overview.md"),
+		"---\nid: 30\ncreated: 2026-02-20\nstatus: ready\n---\n\n# Activate Test\n")
+
+	if err := Activate(plansDir, 30); err != nil {
+		t.Fatalf("Activate returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(planDir, "overview.md"))
+	if err != nil {
+		t.Fatalf("overview.md not readable: %v", err)
+	}
+	if !strings.Contains(string(data), "status: active") {
+		t.Errorf("status not changed to active: %s", string(data))
+	}
+}
+
+func TestActivate_ErrorsOnAlreadyActive(t *testing.T) {
+	dir := t.TempDir()
+	plansDir := filepath.Join(dir, "plans")
+	planDir := filepath.Join(plansDir, "31-already-active")
+	mustMkdir(t, planDir)
+
+	writeFile(t, filepath.Join(planDir, "overview.md"),
+		"---\nid: 31\ncreated: 2026-02-20\nstatus: active\n---\n\n# Already Active\n")
+
+	err := Activate(plansDir, 31)
+	if err == nil {
+		t.Fatal("expected error for already-active plan")
+	}
+	if !strings.Contains(err.Error(), "not ready") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestActivate_ErrorsOnMissingPlan(t *testing.T) {
+	dir := t.TempDir()
+	plansDir := filepath.Join(dir, "plans")
+	mustMkdir(t, plansDir)
+
+	err := Activate(plansDir, 999)
+	if err == nil {
+		t.Fatal("expected error for missing plan")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }

@@ -1,7 +1,7 @@
 ---
 id: 27
 created: 2026-02-23
-status: draft
+status: ready
 ---
 
 # Remote Dispatchers

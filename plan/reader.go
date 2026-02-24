@@ -14,7 +14,7 @@ import (
 type PlanMeta struct {
 	ID       int    `yaml:"id" json:"id"`
 	Created  string `yaml:"created" json:"created"`
-	Status   string `yaml:"status" json:"status"` // draft | active | done
+	Status   string `yaml:"status" json:"status"` // ready | active | done
 	Provider string `yaml:"provider" json:"provider,omitempty"`
 	Model    string `yaml:"model" json:"model,omitempty"`
 }

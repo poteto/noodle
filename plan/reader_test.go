@@ -85,7 +85,7 @@ func TestReadAll_DonePlansExcluded(t *testing.T) {
 		"---\nid: 1\ncreated: 2026-02-20\nstatus: done\n---\n\n# Done Plan\n")
 
 	writeFile(t, filepath.Join(activeDir, "overview.md"),
-		"---\nid: 2\ncreated: 2026-02-21\nstatus: draft\n---\n\n# Active Plan\n")
+		"---\nid: 2\ncreated: 2026-02-21\nstatus: ready\n---\n\n# Active Plan\n")
 
 	plans, err := ReadAll(plansDir)
 	if err != nil {
@@ -260,7 +260,7 @@ func TestReadAll_NoChecklistDefaultsPending(t *testing.T) {
 		"- [[plans/08-no-checklist/overview]]\n")
 
 	writeFile(t, filepath.Join(planDir, "overview.md"),
-		"---\nid: 8\ncreated: 2026-02-22\nstatus: draft\n---\n\n# No Checklist Plan\n\nJust a description.\n")
+		"---\nid: 8\ncreated: 2026-02-22\nstatus: ready\n---\n\n# No Checklist Plan\n\nJust a description.\n")
 
 	writeFile(t, filepath.Join(planDir, "phase-01-only.md"),
 		"# Only Phase\n")
@@ -361,7 +361,7 @@ func TestCleanFilename(t *testing.T) {
 }
 
 func TestParseFrontmatter(t *testing.T) {
-	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: draft\nprovider: codex\nmodel: gpt-5.3-codex\n---\n\n# Title\n\nBody text.\n"
+	content := "---\nid: 5\ncreated: 2026-02-22\nstatus: ready\nprovider: codex\nmodel: gpt-5.3-codex\n---\n\n# Title\n\nBody text.\n"
 	meta, body, ok := parseFrontmatter(content)
 	if !ok {
 		t.Fatal("expected ok=true")
@@ -369,7 +369,7 @@ func TestParseFrontmatter(t *testing.T) {
 	if meta.ID != 5 {
 		t.Errorf("expected id 5, got %d", meta.ID)
 	}
-	if meta.Status != "draft" {
+	if meta.Status != "ready" {
 		t.Errorf("expected status draft, got %q", meta.Status)
 	}
 	if meta.Provider != "codex" {
