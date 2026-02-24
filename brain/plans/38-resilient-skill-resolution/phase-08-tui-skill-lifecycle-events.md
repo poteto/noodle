@@ -29,6 +29,20 @@ Surface skill lifecycle events (dropped queue items, registry rebuilds, bootstra
 **Dispatch warnings — feed events, not status line:**
 - When a skill resolution soft-fail occurs (phase 2), the warning is already included in session events via `loadedSkill.Warnings`. These surface in the feed naturally as session event cards — no separate status line wiring needed. Drop the status line requirement; feed events are the consistent notification path.
 
+## Quality reference inventory for this phase
+
+These `quality` references are user-facing TUI/schema strings and should be
+reviewed while wiring skill-lifecycle feed visibility:
+
+- TUI labels/descriptions: `tui/config_tab.go`, `tui/verdict.go`
+- TUI theme and task-type rendering: `tui/styles.go`, `tui/components/theme.go`
+- TUI task-type fixtures: `tui/components/components_test.go`, `tui/queue_test.go`
+- Shared schema-facing wording: `internal/schemadoc/specs.go`
+
+Phase acceptance for this inventory:
+- User-facing text should reflect the post-merge semantics (review flow) while
+  still preserving `.noodle/quality/` verdict data contracts where required.
+
 ## Data structures
 
 - `QueueAuditEvent` (from phase 5) — read by TUI

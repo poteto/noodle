@@ -33,6 +33,22 @@ Also fix the registry error path: currently `runCycleMaintenance()` hard-returns
 - Log each dropped item to stderr: `"dropped queue item %q: skill %q no longer exists"`
 - Log registry changes: `"skill registry rebuilt: added [X], removed [Y]"`
 
+## Quality reference inventory for this phase
+
+These `quality` references are runtime/data-pipeline touches that should be
+classified during queue audit work as either intentional (verdict domain) or
+obsolete (skill-name coupling):
+
+- Runtime verdict flow: `loop/quality.go`, `mise/quality.go`, `mise/builder.go`
+- Runtime verdict storage contract: `dispatcher/preamble.go` (`.noodle/quality/`)
+- Autonomy/review behavior docs in code: `config/config.go`
+- Generated product model text: `generate/skill_noodle.go`
+- Regression coverage for verdict handling: `loop/loop_test.go`, `mise/quality_test.go`
+
+Phase acceptance for this inventory:
+- Keep verdict-domain references that describe review outputs and history.
+- Remove or redirect references that still imply a standalone `quality` skill.
+
 ## Data structures
 
 - `QueueAuditEvent` — struct for NDJSON events (type, target, skill, reason, timestamp)

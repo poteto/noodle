@@ -39,6 +39,23 @@ This ensures new skills added between cycles are caught at every layer.
 - `loop/prioritize.go` — same pre-check before dispatch. For prioritize specifically, if still not found after re-scan, fall through to bootstrap agent (phase 7).
 - `loop/runtime_repair.go` — same pre-check for oops skill before dispatch. If still not found, fall through to built-in prompt (phase 3).
 
+## Quality reference inventory for this phase
+
+These `quality` references are task-type/queue resolution surfaces and should
+be validated under the unknown-task-type rescan/drop flow:
+
+- Queue validation boundary: `internal/queuex/queue.go`
+- Queue/task synthesis prompt: `loop/prioritize.go`
+- Task-type catalogs in TUI/runtime: `tui/queue.go`, `tui/task_editor.go`, `tui/model_snapshot.go`
+- Workflow schema text: `internal/schemadoc/specs.go`
+- Coverage: `tui/queue_test.go`, `loop/loop_test.go`
+
+Phase acceptance for this inventory:
+- If `quality` is no longer a discoverable task type, these call sites must
+  degrade via re-scan + drop (not runtime-repair fatal path).
+- If `quality` remains a valid task type, re-scan path must continue to pass
+  unchanged.
+
 ## Data structures
 
 - `queuex.ErrUnknownTaskType` — new sentinel error
