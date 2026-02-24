@@ -423,6 +423,120 @@ func TestTaskEditorSubmitWritesEnqueue(t *testing.T) {
 	}
 }
 
+func TestTaskEditorOpenEditPrefillsFields(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+
+	item := QueueItem{
+		ID:       "execute-123",
+		TaskKey:  "plan",
+		Title:    "Fix the tests",
+		Prompt:   "Fix the tests so they pass on CI",
+		Provider: "codex",
+		Model:    "claude-sonnet-4-6",
+		Skill:    "testing",
+	}
+	m.taskEditor.OpenEdit(item)
+
+	if !m.taskEditor.open {
+		t.Fatal("expected task editor to be open")
+	}
+	if !m.taskEditor.edit {
+		t.Fatal("expected edit mode")
+	}
+	if m.taskEditor.itemID != "execute-123" {
+		t.Fatalf("itemID = %q, want execute-123", m.taskEditor.itemID)
+	}
+	if m.taskEditor.prompt != "Fix the tests so they pass on CI" {
+		t.Fatalf("prompt = %q, want full prompt", m.taskEditor.prompt)
+	}
+	if taskTypes[m.taskEditor.taskType] != "plan" {
+		t.Fatalf("taskType = %q, want plan", taskTypes[m.taskEditor.taskType])
+	}
+	if providers[m.taskEditor.provider] != "codex" {
+		t.Fatalf("provider = %q, want codex", providers[m.taskEditor.provider])
+	}
+	if models[m.taskEditor.model] != "claude-sonnet-4-6" {
+		t.Fatalf("model = %q, want claude-sonnet-4-6", models[m.taskEditor.model])
+	}
+	if m.taskEditor.skill != "testing" {
+		t.Fatalf("skill = %q, want testing", m.taskEditor.skill)
+	}
+}
+
+func TestTaskEditorEditSubmitsEditItem(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	fixed := time.Date(2026, 2, 22, 12, 0, 0, 0, time.UTC)
+
+	m := NewModel(Options{
+		RuntimeDir:      runtimeDir,
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.taskEditor.OpenEdit(QueueItem{
+		ID:       "execute-42",
+		TaskKey:  "execute",
+		Prompt:   "Original prompt",
+		Provider: "claude",
+		Model:    "claude-opus-4-6",
+	})
+	m.taskEditor.prompt = "Updated prompt text"
+
+	cmd := m.taskEditor.Submit(m.runtimeDir, m.now)
+	if cmd == nil {
+		t.Fatal("expected submit command")
+	}
+	msg := cmd()
+	result, ok := msg.(controlResultMsg)
+	if !ok {
+		t.Fatalf("command msg type = %T, want controlResultMsg", msg)
+	}
+	if result.err != nil {
+		t.Fatalf("submit failed: %v", result.err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	var wrote loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &wrote); err != nil {
+		t.Fatalf("parse control command: %v", err)
+	}
+	if wrote.Action != "edit-item" {
+		t.Fatalf("action = %q, want edit-item", wrote.Action)
+	}
+	if wrote.Item != "execute-42" {
+		t.Fatalf("item = %q, want execute-42", wrote.Item)
+	}
+	if wrote.Prompt != "Updated prompt text" {
+		t.Fatalf("prompt = %q, want 'Updated prompt text'", wrote.Prompt)
+	}
+}
+
+func TestTaskEditorEditFallsBackToTitleWhenNoPrompt(t *testing.T) {
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             time.Now,
+	})
+
+	// Simulate an older queue item that only has Title, no Prompt
+	item := QueueItem{
+		ID:      "execute-99",
+		TaskKey: "execute",
+		Title:   "Legacy title only",
+	}
+	m.taskEditor.OpenEdit(item)
+
+	if m.taskEditor.prompt != "Legacy title only" {
+		t.Fatalf("prompt = %q, want fallback to title", m.taskEditor.prompt)
+	}
+}
+
 func TestSteerOpensWithBacktick(t *testing.T) {
 	m := NewModel(Options{
 		RuntimeDir:      t.TempDir(),

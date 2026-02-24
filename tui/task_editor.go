@@ -13,7 +13,9 @@ import (
 
 // TaskEditor is the inline task creator/editor overlay.
 type TaskEditor struct {
-	open bool
+	open   bool
+	edit   bool   // true when editing an existing item
+	itemID string // queue item ID when editing
 
 	prompt   string
 	taskType int
@@ -41,6 +43,8 @@ const (
 // OpenNew opens the task editor in create mode.
 func (e *TaskEditor) OpenNew() {
 	e.open = true
+	e.edit = false
+	e.itemID = ""
 	e.prompt = ""
 	e.taskType = 0
 	e.model = 0
@@ -49,9 +53,27 @@ func (e *TaskEditor) OpenNew() {
 	e.field = 0
 }
 
+// OpenEdit opens the task editor prefilled from an existing queue item.
+func (e *TaskEditor) OpenEdit(item QueueItem) {
+	e.open = true
+	e.edit = true
+	e.itemID = item.ID
+	e.prompt = item.Prompt
+	if e.prompt == "" {
+		e.prompt = item.Title
+	}
+	e.taskType = indexOfOrZero(taskTypes, item.TaskKey)
+	e.model = indexOfOrZero(models, item.Model)
+	e.provider = indexOfOrZero(providers, item.Provider)
+	e.skill = item.Skill
+	e.field = 0
+}
+
 // Close closes the editor without submitting.
 func (e *TaskEditor) Close() {
 	e.open = false
+	e.edit = false
+	e.itemID = ""
 }
 
 // HandleKey processes key events when the editor is open.
@@ -132,19 +154,42 @@ func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
 	}
 
 	taskKey := taskTypes[e.taskType]
-	itemID := fmt.Sprintf("%s-%d", taskKey, now().UnixMilli())
-	cmd := loop.ControlCommand{
-		Action:   "enqueue",
-		Item:     itemID,
-		Prompt:   prompt,
-		TaskKey:  taskKey,
-		Provider: providers[e.provider],
-		Model:    models[e.model],
-		Skill:    strings.TrimSpace(e.skill),
+
+	var cmd loop.ControlCommand
+	if e.edit {
+		cmd = loop.ControlCommand{
+			Action:   "edit-item",
+			Item:     e.itemID,
+			Prompt:   prompt,
+			TaskKey:  taskKey,
+			Provider: providers[e.provider],
+			Model:    models[e.model],
+			Skill:    strings.TrimSpace(e.skill),
+		}
+	} else {
+		itemID := fmt.Sprintf("%s-%d", taskKey, now().UnixMilli())
+		cmd = loop.ControlCommand{
+			Action:   "enqueue",
+			Item:     itemID,
+			Prompt:   prompt,
+			TaskKey:  taskKey,
+			Provider: providers[e.provider],
+			Model:    models[e.model],
+			Skill:    strings.TrimSpace(e.skill),
+		}
 	}
 
 	e.Close()
 	return sendControlCmd(runtimeDir, now, cmd)
+}
+
+func indexOfOrZero(slice []string, value string) int {
+	for i, v := range slice {
+		if v == value {
+			return i
+		}
+	}
+	return 0
 }
 
 // Render renders the task editor overlay.
@@ -156,6 +201,9 @@ func (e *TaskEditor) Render(width int) string {
 	innerWidth := width - 4
 
 	mode := "New Task"
+	if e.edit {
+		mode = "Edit Task"
+	}
 
 	header := lipgloss.NewStyle().
 		Foreground(t.Brand).

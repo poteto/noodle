@@ -187,6 +187,11 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
+	case "edit-item":
+		if err := l.controlEditItem(cmd); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
 	default:
 		ack.Status = "error"
 		ack.Message = "unsupported action"
@@ -256,6 +261,39 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		Model:    strings.TrimSpace(cmd.Model),
 		Skill:    strings.TrimSpace(cmd.Skill),
 	})
+	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func (l *Loop) controlEditItem(cmd ControlCommand) error {
+	itemID := strings.TrimSpace(cmd.Item)
+	if itemID == "" {
+		return fmt.Errorf("edit-item requires item")
+	}
+	if _, active := l.activeByTarget[itemID]; active {
+		return fmt.Errorf("item %q is currently cooking", itemID)
+	}
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return err
+	}
+	found := false
+	for i := range queue.Items {
+		if queue.Items[i].ID != itemID {
+			continue
+		}
+		found = true
+		prompt := strings.TrimSpace(cmd.Prompt)
+		queue.Items[i].Title = titleFromPrompt(prompt, 8)
+		queue.Items[i].Prompt = prompt
+		queue.Items[i].TaskKey = strings.TrimSpace(cmd.TaskKey)
+		queue.Items[i].Provider = strings.TrimSpace(cmd.Provider)
+		queue.Items[i].Model = strings.TrimSpace(cmd.Model)
+		queue.Items[i].Skill = strings.TrimSpace(cmd.Skill)
+		break
+	}
+	if !found {
+		return fmt.Errorf("item %q not found in queue", itemID)
+	}
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }
 

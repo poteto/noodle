@@ -230,6 +230,15 @@ func (q *QueueTab) SelectedSessionID() string {
 	return q.items[cursor].ID
 }
 
+// SelectedItem returns the full QueueItem at the cursor, or false if none.
+func (q *QueueTab) SelectedItem() (QueueItem, bool) {
+	cursor := q.table.Cursor()
+	if cursor < 0 || cursor >= len(q.items) {
+		return QueueItem{}, false
+	}
+	return q.items[cursor], true
+}
+
 // StatusStyle returns the appropriate style for a queue status.
 func statusStyleForQueue(status QueueStatus) lipgloss.Style {
 	t := components.DefaultTheme

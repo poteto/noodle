@@ -355,6 +355,13 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		m.taskEditor.OpenNew()
 		return m, nil
+	case "e":
+		if m.activeTab == TabQueue {
+			if item, ok := m.queueTab.SelectedItem(); ok {
+				m.taskEditor.OpenEdit(item)
+			}
+		}
+		return m, nil
 	case "j", "down":
 		switch m.activeTab {
 		case TabFeed:
