@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // BrainActivity represents a single knowledge-base change.
@@ -156,7 +157,7 @@ func (b *BrainTab) renderEntry(item BrainActivity, width int, selected bool) str
 
 	line := fmt.Sprintf("  %s %s  %s", tag, mutedStyle.Render(path), dimStyle.Render(desc))
 	if selected {
-		line = selectedRowStyle.Render(line)
+		line = selectedRowStyle.Render(ansi.Strip(line))
 	}
 	return line
 }
