@@ -14,23 +14,18 @@ For MVP, only `SpritesBackend` implements sync-back. Cursor is a stub (Phase 6) 
 
 - `SyncResult` struct — holds branch name, result type (branch/none)
 - `StreamingSyncBacker` interface — `SyncBack(ctx, sessionID string) (SyncResult, error)` for streaming backends that push branches
-- `PollingSyncBacker` interface — `SyncBack(ctx, remoteID string) (SyncResult, error)` for polling backends (defined but not implemented by any backend in this plan)
-- `MergeConflictError` — typed error for target-scoped merge failures
+- `MergeConflictError` — typed error for non-retryable merge failures
 
 ## Changes
 
 **`dispatcher/backend.go`**
-Add two optional sync-back interfaces:
+Add optional sync-back interface:
 ```go
 type StreamingSyncBacker interface {
     SyncBack(ctx context.Context, sessionID string) (SyncResult, error)
 }
-
-type PollingSyncBacker interface {
-    SyncBack(ctx context.Context, remoteID string) (SyncResult, error)
-}
 ```
-Not all backends need these — `TmuxBackend` doesn't (local diffs merge via worktree). Check with type assertions. `PollingSyncBacker` is defined for future use but nothing implements it in this plan.
+Not all backends need this — `TmuxBackend` doesn't (local diffs merge via worktree). Check with a type assertion. `PollingSyncBacker` for polling backends is deferred to the Cursor follow-up plan.
 
 **`dispatcher/sprites_backend.go`**
 Implement `StreamingSyncBacker`. After the agent session completes, the Sprite VM has local git changes. The agent should commit and push to a branch named `noodle/<session-id>`. `SyncBack` returns the branch name. The agent prompt (composed by StreamingDispatcher) should include instructions to commit and push before exiting.
@@ -58,13 +53,13 @@ Implement `MergeRemoteBranch` on the worktree app. Reuses existing merge safegua
 5. On merge conflict: return `MergeConflictError` (see below).
 
 **`loop/loop.go`**
-Completion errors from `collectCompleted` currently flow into `handleRuntimeIssue` (line 185-186). Add a typed `MergeConflictError` that `mergeCook` returns on git conflicts. In `collectCompleted`, check for this error type with `errors.As` and handle it as a **non-retryable** target-scoped failure: skip the queue item with a failure reason (same as `skipQueueItem` but with an error message), do not requeue for retry (the conflict is deterministic — retrying would loop), and do not pass to `handleRuntimeIssue`. The user resolves the conflict manually and re-queues if needed.
+Completion errors from `collectCompleted` currently flow into `handleRuntimeIssue` (line 185-186). Add a typed `MergeConflictError` that `mergeCook` returns on git conflicts. In `collectCompleted`, check for this error type with `errors.As` and handle it as a **non-retryable** failure: call `markFailed(item.ID, err.Error())` then `skipQueueItem(item.ID)` — matching the existing failure pattern in `failures.go:43` and `cook.go:301-305`. Do not requeue for retry (the conflict is deterministic — retrying would loop) and do not pass to `handleRuntimeIssue`. The user resolves the conflict manually and re-queues if needed.
 
 ## Verification
 
 ### Static
 - Compiles, passes vet
-- Both sync-back interfaces are optional — existing `TmuxBackend` compiles without implementing either
+- `StreamingSyncBacker` is optional — existing `TmuxBackend` compiles without implementing it
 - `mergeCook` signature change compiles across all call sites
 
 ### Runtime
