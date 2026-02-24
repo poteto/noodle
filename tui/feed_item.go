@@ -40,63 +40,76 @@ func renderAgentCard(card AgentCard, width int, now time.Time, selected bool) st
 	}
 
 	// Title: health dot + name + task type + model
-	var title string
 	name := s.DisplayName
 	if name == "" {
 		name = s.ID
 	}
+
+	var titlePrefix string
 	if selected {
 		borderColor = t.Brand
-		title = "▸ "
+		titlePrefix = "▸ "
 	}
 
+	var icon string
 	if done {
-		title += components.StatusIcon(s.Status)
+		icon = components.StatusIcon(s.Status)
 	} else {
-		title += healthDot(s.Health)
+		icon = healthDot(s.Health)
 	}
-	title += " " + name
 
 	badge := components.TaskTypeBadge(inferTaskType(s.ID))
 	model := shortModelName(nonEmpty(s.Model, "-"))
-	title += " " + dimStyle.Render("──") + " " + badge + " " + dimStyle.Render("──") + " " + dimStyle.Render(model)
 
+	titleParts := icon + " " + name +
+		" " + dimStyle.Render("──") + " " + badge +
+		" " + dimStyle.Render("──") + " " + dimStyle.Render(model)
 	if done {
-		title += " " + dimStyle.Render("── done")
+		titleParts += " " + dimStyle.Render("── done")
 	}
+	title := titlePrefix + titleParts
 
 	innerWidth := width - 4 // card border + padding
 	if innerWidth < 20 {
 		innerWidth = 20
 	}
 
-	// Body: last action (single line).
-	var body string
+	// Body line 1: last action.
+	var bodyLines []string
 	if card.LastAction != "" {
 		label := eventLabel(card.LastLabel)
-		actionText := components.TrimTo(card.LastAction, innerWidth-lipgloss.Width(card.LastLabel)-2)
-		body = label + " " + lipgloss.NewStyle().Foreground(t.Dim).Render(actionText)
+		maxBody := innerWidth - lipgloss.Width(card.LastLabel) - 2
+		if maxBody < 10 {
+			maxBody = 10
+		}
+		actionText := components.TrimTo(card.LastAction, maxBody)
+		if done {
+			bodyLines = append(bodyLines, dimStyle.Render(card.LastLabel+" "+actionText))
+		} else {
+			bodyLines = append(bodyLines, label+" "+lipgloss.NewStyle().Foreground(t.Dim).Render(actionText))
+		}
 	} else {
-		body = dimStyle.Render("(waiting...)")
+		bodyLines = append(bodyLines, dimStyle.Render("(waiting...)"))
 	}
 
-	// Footer: context bar + duration + cost
+	// Body line 2: context bar + duration + cost.
 	dur := durationLabel(s.DurationSeconds)
-	var footerParts []string
+	var metaParts []string
+	barWidth := 24
 	if s.ContextWindowUsagePct > 0 {
-		barWidth := 24
-		footerParts = append(footerParts, components.ProgressBar(s.ContextWindowUsagePct, 1.0, barWidth))
+		metaParts = append(metaParts, components.ProgressBar(s.ContextWindowUsagePct, 1.0, barWidth))
+	} else {
+		metaParts = append(metaParts, components.ProgressBar(0, 1.0, barWidth))
 	}
-	footerParts = append(footerParts, dimStyle.Render(dur))
+	metaParts = append(metaParts, dimStyle.Render(dur))
 	if s.TotalCostUSD > 0 {
-		footerParts = append(footerParts, costStyle.Render(fmt.Sprintf("$%.2f", s.TotalCostUSD)))
+		metaParts = append(metaParts, costStyle.Render(fmt.Sprintf("$%.2f", s.TotalCostUSD)))
 	}
-	footer := strings.Join(footerParts, "  ")
+	bodyLines = append(bodyLines, strings.Join(metaParts, "  "))
 
 	c := &components.Card{
 		Title:       title,
-		Body:        body,
-		Footer:      footer,
+		Body:        strings.Join(bodyLines, "\n"),
 		BorderColor: borderColor,
 	}
 	return c.Render(width)
