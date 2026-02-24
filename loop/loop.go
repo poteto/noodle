@@ -126,6 +126,12 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := watcher.Add(l.runtimeDir); err != nil {
 		return fmt.Errorf("watch runtime directory: %w", err)
 	}
+	plansDir := filepath.Join(l.projectDir, "brain", "plans")
+	if info, err := os.Stat(plansDir); err == nil && info.IsDir() {
+		if err := watcher.Add(plansDir); err != nil {
+			return fmt.Errorf("watch plans directory: %w", err)
+		}
+	}
 
 	ticker := time.NewTicker(l.pollInterval())
 	defer ticker.Stop()
@@ -143,6 +149,14 @@ func (l *Loop) Run(ctx context.Context) error {
 			}
 		case ev := <-watcher.Events:
 			if strings.HasSuffix(ev.Name, "queue.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
+				if err := l.Cycle(ctx); err != nil {
+					return err
+				}
+			}
+			if strings.Contains(ev.Name, filepath.Join("brain", "plans")) {
+				if l.state == StateIdle {
+					l.state = StateRunning
+				}
 				if err := l.Cycle(ctx); err != nil {
 					return err
 				}
