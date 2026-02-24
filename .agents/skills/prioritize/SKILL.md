@@ -1,6 +1,6 @@
 ---
 name: prioritize
-description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue.json. Schedules work based on backlog state, plan phases, session history, and task type schedules.
+description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue-next.json. Schedules work based on backlog state, plan phases, session history, and task type schedules.
 noodle:
   blocking: true
   schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
@@ -8,7 +8,8 @@ noodle:
 
 # Prioritize
 
-Read `.noodle/mise.json`, write `.noodle/queue.json`.
+Read `.noodle/mise.json`, write `.noodle/queue-next.json`.
+The loop atomically promotes `queue-next.json` to `queue.json` — never write `queue.json` directly.
 Use `noodle schema mise` and `noodle schema queue` as the schema source of truth.
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
@@ -75,7 +76,7 @@ Read `routing.available_runtimes` from mise before writing queue items.
 
 ## Output
 
-Write valid JSON to `.noodle/queue.json` matching `noodle schema queue`.
+Write valid JSON to `.noodle/queue-next.json` matching `noodle schema queue`.
 
 ## Principles
 
