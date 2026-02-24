@@ -54,10 +54,13 @@ Update `mergeCook` — sync-back artifacts flow through the existing completion 
 5. If no sync result (tmux): existing worktree merge path (unchanged)
 6. On merge conflict: return a target-scoped error that the loop handles as a cook failure (same path as quality rejection / retry), not as a runtime-repair trigger. User resolves manually.
 
-**PR completion tracking:** Add a `Status string` field to `queuex.Item` (values: `""` for normal, `"action_needed"` for items awaiting external action like PR merge). The spawn planner in the loop must explicitly skip items with `status == "action_needed"` — do not rely on the prioritize agent to filter these, since the loop drives dispatch independently. Items with `action_needed` and a PR URL stay in the queue until the user manually marks them done or a future enhancement polls PR merge status.
+**PR completion tracking:** Add a `Status string` field to `queuex.Item` with `json:"status,omitempty"` (values: `""` for dispatchable, `"action_needed"` for items awaiting external action). Mirror this field into `loop.QueueItem` and the `toQueueX`/`fromQueueX` conversion functions (same pattern as the `Runtime` field in Phase 2). Note: this is a **per-item** status field on `queuex.Item`, separate from the existing **queue-level** `ActionNeeded []string` field on `queuex.Queue`.
 
-**`loop/cook.go` or `loop/loop.go`**
-Update spawn planning to skip queue items where `Status == "action_needed"`. This prevents re-dispatch loops.
+**`loop/cycle_spawn_plan.go`**
+Update the spawn planner's item filtering to skip items where `item.Status == "action_needed"`. Currently `cycle_spawn_plan.go:46` iterates `queue.Items` without checking item status. Add the check alongside existing filters (active target check, etc.). This prevents re-dispatch loops.
+
+**`loop/loop.go`**
+Completion errors from `collectCompleted` currently flow into `handleRuntimeIssue` (line 185-186). Add a typed `MergeConflictError` that `mergeCook` returns on git conflicts. In `collectCompleted`, check for this error type and handle it as a target-scoped cook failure (requeue with failure reason) rather than passing it to `handleRuntimeIssue` which triggers runtime-repair. Use `errors.As` for the type check.
 
 ## Verification
 

@@ -14,8 +14,8 @@ Wire everything together: bootstrap constructs the `DispatcherFactory` with conf
 Build `DispatcherFactory`:
 1. Always create `TmuxBackend` → `StreamingDispatcher` (local default)
 2. If `config.Runtime.Sprites` has a token: create `SpritesBackend` → `StreamingDispatcher`
-3. If `config.Runtime.Cursor` has an API key: create `CursorBackend` → `PollingDispatcher`
-4. Construct `DispatcherFactory` with all backends
+3. Cursor stub is **not** registered — it returns "not implemented" and must not be wired into the factory until fully implemented
+4. Construct `DispatcherFactory` with registered backends only
 5. Pass factory to loop as the `Dispatcher`
 
 **Integration test (new file)**
@@ -25,10 +25,10 @@ Build `DispatcherFactory`:
 - Verify full lifecycle through `DispatcherFactory`:
   - Streaming: session starts, events flow, cost accumulates, done signals, events.ndjson written
   - Polling: session starts, status transitions emit events, conversation messages appear, done signals
-- Verify factory routing: runtime="sprites" goes to streaming, runtime="cursor" goes to polling, runtime="" goes to tmux/streaming
+- Verify factory routing: runtime="sprites" goes to streaming, runtime="cursor" returns "runtime not configured", runtime="" goes to tmux/streaming
 
 **Queue item routing verification**
-Verify that queue items with `runtime: "sprites"` or `runtime: "cursor"` (set by prioritize agent) flow through the loop to `DispatchRequest.Runtime` and reach the correct backend via the factory.
+Verify that queue items with `runtime: "sprites"` (set by prioritize agent) flow through the loop to `DispatchRequest.Runtime` and reach the correct backend via the factory.
 
 ## Verification
 

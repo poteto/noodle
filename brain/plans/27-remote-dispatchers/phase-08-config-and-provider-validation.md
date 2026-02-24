@@ -44,6 +44,9 @@ Add a method `Config.AvailableRuntimes() []string` that returns `["tmux"]` plus 
 **`config/config.go`**
 Relax `validateProvider()`: move hard-coded "claude"/"codex" check into `TmuxBackend` where it's meaningful (needs to resolve a binary). Accept any non-empty provider string at the config/request boundary.
 
+**`dispatcher/types.go`**
+Update `DispatchRequest.Validate()` — the `switch provider` block at line 36-41 currently hard-codes `"claude"` and `"codex"` as the only valid providers. Remove this check from the request validator. Provider validation is backend-specific: `TmuxBackend` validates against locally installed binaries, remote backends accept whatever provider their API supports. The request boundary should only require a non-empty provider string.
+
 **Mise schema (`cmd_mise.go` or wherever mise is generated)**
 Add `routing.available_runtimes: ["tmux", "sprites"]` to mise.json output. Populated from `Config.AvailableRuntimes()`. The prioritize agent reads this to know what dispatch options exist.
 

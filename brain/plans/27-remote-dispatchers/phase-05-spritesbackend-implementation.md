@@ -25,7 +25,7 @@ Implement `SpritesBackend` that satisfies the `StreamingBackend` interface using
 Add dependency: `github.com/superfly/sprites-go`
 
 `SpritesBackend.Start`:
-1. **Bundle local state:** create a git bundle from the current HEAD via `git bundle create <tmpfile> HEAD`. This captures the current branch including any locally committed changes — no need to push to origin first. If the working tree has uncommitted changes, auto-commit them to a temporary detached HEAD before bundling and reset after.
+1. **Bundle local state:** create a git bundle from the current HEAD via `git bundle create <tmpfile> HEAD`. This captures the current branch including any locally committed changes — no need to push to origin first. The loop already dispatches from dedicated worktrees (cook.go:37) which have clean committed state, so uncommitted changes should not be an issue. If the working tree is somehow dirty, return an error rather than auto-committing — mutating git state with temporary commits adds failure modes.
 2. Get or create Sprite: `client.Sprite(name)` (name from config or generated)
 3. **Upload bundle to Sprite:** use the Sprites filesystem API to write the bundle file to `/work/repo.bundle` on the VM.
 4. **Clone from bundle on the Sprite:** run `git clone /work/repo.bundle /work/repo && cd /work/repo && git remote set-url origin <origin-url>` on the Sprite. Set origin to the real remote URL so the agent can push results back via `git push origin noodle/<session-id>`.
