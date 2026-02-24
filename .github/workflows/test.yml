@@ -1,0 +1,36 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install tmux
+        run: sudo apt-get install -y tmux
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint architecture
+        run: sh scripts/lint-arch.sh
+
+      - name: Check skill snapshot
+        run: |
+          go run ./generate/cmd/gen-skill
+          git diff --exit-code .agents/skills/noodle/SKILL.md || {
+            echo "noodle skill is out of date. Run 'make generate' to update."
+            exit 1
+          }
