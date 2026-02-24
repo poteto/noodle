@@ -12,8 +12,6 @@
 
 ## Skill Cleanup
 
-14. [ ] Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup
-
 ## Bootstrap Skill Fixes
 
 18. [ ] Fix adapter skill name assumptions — bootstrap/docs still assume `skill = "backlog"` and `skill = "plans"` without verifying those skill names resolve in the configured skill paths. Add detection or a validation warning when configured adapter skills are missing.
@@ -63,3 +61,4 @@
 27. [x] ~~Hot-reload skill registry via fsnotify~~ — superseded by #38.
 26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
 36. [x] ~~Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.~~ — default is now 3.
+14. [x] ~~Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup~~ — marked complete per user confirmation.
