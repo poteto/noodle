@@ -2,6 +2,7 @@ package loop
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -132,5 +133,35 @@ func TestControlRequestChangesKeepsPendingOnDispatchFailure(t *testing.T) {
 	}
 	if _, ok := l.pendingReview["42"]; !ok {
 		t.Fatal("pending review item should remain when request-changes dispatch fails")
+	}
+}
+
+func TestControlRejectKeepsPendingOnFailure(t *testing.T) {
+	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+
+	// Make the runtime dir unwritable so markFailed cannot write failed.json.
+	if err := os.Chmod(l.runtimeDir, 0o444); err != nil {
+		t.Fatalf("chmod runtime dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(l.runtimeDir, 0o755) })
+
+	err := l.controlReject("42")
+	if err == nil {
+		t.Fatal("expected reject to fail when runtime dir is unwritable")
+	}
+	if _, ok := l.pendingReview["42"]; !ok {
+		t.Fatal("pending review item should remain when reject fails")
+	}
+}
+
+func TestControlRequestChangesNotInPendingReview(t *testing.T) {
+	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+
+	err := l.controlRequestChanges("nonexistent", "feedback")
+	if err == nil {
+		t.Fatal("expected error for non-existent pending review item")
+	}
+	if !strings.Contains(err.Error(), "no pending review") {
+		t.Fatalf("error = %q, want 'no pending review'", err.Error())
 	}
 }

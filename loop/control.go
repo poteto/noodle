@@ -209,7 +209,7 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 func (l *Loop) controlMerge(itemID string) error {
 	itemID = strings.TrimSpace(itemID)
 	if itemID == "" {
-		return fmt.Errorf("merge requires item")
+		return fmt.Errorf("merge: item ID empty")
 	}
 	pending, ok := l.pendingReview[itemID]
 	if !ok {
@@ -225,7 +225,7 @@ func (l *Loop) controlMerge(itemID string) error {
 func (l *Loop) controlReject(itemID string) error {
 	itemID = strings.TrimSpace(itemID)
 	if itemID == "" {
-		return fmt.Errorf("reject requires item")
+		return fmt.Errorf("reject: item ID empty")
 	}
 	pending, ok := l.pendingReview[itemID]
 	if !ok {
@@ -247,7 +247,7 @@ func (l *Loop) controlReject(itemID string) error {
 func (l *Loop) controlRequestChanges(itemID, feedback string) error {
 	itemID = strings.TrimSpace(itemID)
 	if itemID == "" {
-		return fmt.Errorf("request-changes requires item")
+		return fmt.Errorf("request-changes: item ID empty")
 	}
 	pending, ok := l.pendingReview[itemID]
 	if !ok {

@@ -1203,3 +1203,221 @@ func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T)
 		t.Fatalf("expected prioritize bootstrap item after conflict, got %#v", updated.Items)
 	}
 }
+
+func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	// execute task type has CanMerge=true (no Merge override in registry)
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "auto"
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+	ar := &fakeAdapterRunner{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.merged) != 1 {
+		t.Fatalf("worktree merges = %d, want 1 (auto-merge)", len(wt.merged))
+	}
+	if len(l.pendingReview) != 0 {
+		t.Fatalf("pendingReview should be empty, got %d item(s)", len(l.pendingReview))
+	}
+}
+
+func TestApprovalAutoCanMergeFalseParks(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	// review task type has CanMerge=false (Merge: boolPtr(false) in registry)
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "review", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "auto"
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("worktree merges = %d, want 0 (task disallows merge)", len(wt.merged))
+	}
+	if len(l.pendingReview) != 1 {
+		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	}
+	items, err := ReadPendingReview(runtimeDir)
+	if err != nil {
+		t.Fatalf("ReadPendingReview: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != "42" {
+		t.Fatalf("pending review file items = %#v", items)
+	}
+}
+
+func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	// execute task type has CanMerge=true, but autonomy=approve overrides
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "approve"
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("worktree merges = %d, want 0 (approve mode overrides)", len(wt.merged))
+	}
+	if len(l.pendingReview) != 1 {
+		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	}
+	items, err := ReadPendingReview(runtimeDir)
+	if err != nil {
+		t.Fatalf("ReadPendingReview: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != "42" {
+		t.Fatalf("pending review file items = %#v", items)
+	}
+}
+
+func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	// review task type has CanMerge=false AND autonomy=approve
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "review", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Autonomy = "approve"
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("worktree merges = %d, want 0 (both canMerge=false and approve mode)", len(wt.merged))
+	}
+	if len(l.pendingReview) != 1 {
+		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	}
+	items, err := ReadPendingReview(runtimeDir)
+	if err != nil {
+		t.Fatalf("ReadPendingReview: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != "42" {
+		t.Fatalf("pending review file items = %#v", items)
+	}
+}

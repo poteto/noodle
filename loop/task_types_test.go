@@ -47,6 +47,16 @@ func testLoopRegistry() taskreg.Registry {
 				Noodle: &skill.NoodleMeta{Schedule: "On runtime error"},
 			},
 		},
+		{
+			Name: "review",
+			Path: "/skills/review",
+			Frontmatter: skill.Frontmatter{
+				Noodle: &skill.NoodleMeta{
+					Permissions: skill.Permissions{Merge: boolPtr(false)},
+					Schedule:    "When review is needed",
+				},
+			},
+		},
 	})
 }
 

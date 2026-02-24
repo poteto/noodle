@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -585,4 +586,21 @@ func pressKey(t *testing.T, m Model, key tea.KeyPressMsg) Model {
 		t.Fatalf("update model type = %T, want tui.Model", updated)
 	}
 	return next
+}
+
+func TestTabBarReviewsCountInTitle(t *testing.T) {
+	// With 0 pending reviews, the tab title should be just "Reviews"
+	bar0 := renderTabBar(TabReviews, 120, 0)
+	if !strings.Contains(bar0, "Reviews") {
+		t.Fatalf("expected 'Reviews' in tab bar, got %q", bar0)
+	}
+	if strings.Contains(bar0, "Reviews (") {
+		t.Fatalf("expected no count suffix when pendingReviewCount=0, got %q", bar0)
+	}
+
+	// With 2 pending reviews, the tab title should be "Reviews (2)"
+	bar2 := renderTabBar(TabReviews, 120, 2)
+	if !strings.Contains(bar2, "Reviews (2)") {
+		t.Fatalf("expected 'Reviews (2)' in tab bar, got %q", bar2)
+	}
 }

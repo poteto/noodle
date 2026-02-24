@@ -2,6 +2,7 @@ package loop
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -68,6 +69,7 @@ func (l *Loop) writePendingReview() error {
 	items := make([]PendingReviewItem, 0, len(l.pendingReview))
 	for _, pending := range l.pendingReview {
 		if pending == nil {
+			fmt.Fprintf(os.Stderr, "warning: nil entry in pendingReview map\n")
 			continue
 		}
 		items = append(items, PendingReviewItem{
@@ -109,6 +111,10 @@ func (l *Loop) loadPendingReview() error {
 		if id == "" {
 			continue
 		}
+		name := strings.TrimSpace(item.WorktreeName)
+		if name == "" {
+			continue
+		}
 		next[id] = &pendingReviewCook{
 			queueItem: QueueItem{
 				ID:        id,
@@ -122,7 +128,7 @@ func (l *Loop) loadPendingReview() error {
 				Plan:      item.Plan,
 				Rationale: strings.TrimSpace(item.Rationale),
 			},
-			worktreeName: strings.TrimSpace(item.WorktreeName),
+			worktreeName: name,
 			worktreePath: strings.TrimSpace(item.WorktreePath),
 			sessionID:    strings.TrimSpace(item.SessionID),
 		}
