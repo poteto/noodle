@@ -169,7 +169,7 @@ func (q *QueueTab) renderStyledTable(width, height int) string {
 	// The cursor row in data is at offset 2 + cursor.
 	cursor := q.table.Cursor()
 	selectedLine := 2 + cursor
-	if selectedLine >= 0 && selectedLine < len(lines) {
+	if cursor >= 0 && selectedLine < len(lines) {
 		t := components.DefaultTheme
 		// Strip existing ANSI codes so inner cell styles don't override the background.
 		stripped := ansi.Strip(lines[selectedLine])
