@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/poteto/noodle/tui/components"
@@ -12,7 +11,7 @@ import (
 const railWidth = 21
 
 // renderRail renders the left rail showing agents and stats.
-func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) string {
+func renderRail(snap Snapshot, height int, shimmerIndex int) string {
 	w := railWidth - 4 // border (2) + padding (2)
 
 	var b strings.Builder
@@ -30,10 +29,6 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		for _, s := range snap.Active {
 			name := nonEmpty(s.DisplayName, s.ID) + runtimeBadge(s.Runtime)
 			b.WriteString(healthDot(s.Health) + " " + trimTo(name, w-3))
-			b.WriteString("\n")
-			model := shortModelName(nonEmpty(s.Model, "-"))
-			dur := durationLabel(s.DurationSeconds)
-			b.WriteString("  " + dimStyle.Render(model+" · "+dur))
 			b.WriteString("\n")
 		}
 	}

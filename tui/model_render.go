@@ -35,7 +35,7 @@ func (m Model) renderLayout() string {
 	if compact {
 		rail = renderCompactRail(m.snapshot, layoutHeight)
 	} else {
-		rail = renderRail(m.snapshot, m.now(), layoutHeight, m.shimmerIndex)
+		rail = renderRail(m.snapshot, layoutHeight, m.shimmerIndex)
 	}
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
