@@ -17,6 +17,8 @@ Operate fully autonomously. Never ask the user to choose or pause for confirmati
 
 Only schedule execute tasks for plan IDs listed in `needs_scheduling`. Use the plan ID (as a string) as the queue item `id`. Look up plan details (title, directory, phases) in the `plans` array.
 
+When a plan's phases need different providers (per model routing below), split into separate queue items per provider group. Group same-provider phases into one item. Preserve phase ordering in the queue.
+
 If `needs_scheduling` is empty, do not schedule any execute tasks. Note any open backlog items without linked plans in `action_needed`.
 
 ## Schedule Reading
