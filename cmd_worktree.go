@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/worktree"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ var runWorktreeHook = worktree.RunHook
 func newWorktreeCmd(_ *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "worktree",
-		Short: "Manage linked git worktrees",
+		Short: cmdmeta.Short("worktree"),
 	}
 	cmd.AddCommand(
 		newWorktreeHookCmd(),
@@ -49,7 +50,7 @@ func newWorktreeCmd(_ *App) *cobra.Command {
 func newWorktreeHookCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "hook",
-		Short: "Run worktree session hook",
+		Short: cmdmeta.Short("worktree", "hook"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runWorktreeHook(os.Stdin, os.Stdout)
@@ -60,7 +61,7 @@ func newWorktreeHookCmd() *cobra.Command {
 func newWorktreeCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create <name>",
-		Short: "Create a new linked worktree",
+		Short: cmdmeta.Short("worktree", "create"),
 		Args:  exactTrimmedArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wApp, err := newWorktreeCommandApp()
@@ -75,7 +76,7 @@ func newWorktreeCreateCmd() *cobra.Command {
 func newWorktreeExecCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "exec <name> <command...>",
-		Short:              "Run command inside worktree (CWD-safe)",
+		Short:              cmdmeta.Short("worktree", "exec"),
 		Args:               cobra.MinimumNArgs(2),
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -91,7 +92,7 @@ func newWorktreeExecCmd() *cobra.Command {
 func newWorktreeMergeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "merge <name>",
-		Short: "Merge a worktree branch back to main",
+		Short: cmdmeta.Short("worktree", "merge"),
 		Args:  exactTrimmedArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wApp, err := newWorktreeCommandApp()
@@ -107,7 +108,7 @@ func newWorktreeCleanupCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "cleanup <name>",
-		Short: "Remove a worktree without merging",
+		Short: cmdmeta.Short("worktree", "cleanup"),
 		Args:  exactTrimmedArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wApp, err := newWorktreeCommandApp()
@@ -124,7 +125,7 @@ func newWorktreeCleanupCmd() *cobra.Command {
 func newWorktreeListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all worktrees with merge status",
+		Short: cmdmeta.Short("worktree", "list"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			wApp, err := newWorktreeCommandApp()
@@ -139,7 +140,7 @@ func newWorktreeListCmd() *cobra.Command {
 func newWorktreePruneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "prune",
-		Short: "Remove merged and patch-equivalent worktrees",
+		Short: cmdmeta.Short("worktree", "prune"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			wApp, err := newWorktreeCommandApp()

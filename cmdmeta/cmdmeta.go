@@ -1,5 +1,6 @@
 // Package cmdmeta defines CLI command metadata shared between root command
-// wiring and the noodle skill generator.
+// wiring and the noodle skill generator. This is the single source of truth
+// for command names and descriptions.
 package cmdmeta
 
 // Command describes a CLI command or subcommand.
@@ -30,7 +31,7 @@ func Commands() []Command {
 			{Name: "prune", Short: "Remove merged and patch-equivalent worktrees"},
 			{Name: "hook", Short: "Run worktree session hook"},
 		}},
-		{Name: "plan", Short: "Manage plans", Subcommands: []Command{
+		{Name: "plan", Short: "Manage plans (create, done, phase-add, list)", Subcommands: []Command{
 			{Name: "create", Short: "Create a plan from a todo"},
 			{Name: "activate", Short: "Mark a plan as active"},
 			{Name: "done", Short: "Mark a plan as done"},
@@ -41,4 +42,22 @@ func Commands() []Command {
 		{Name: "dispatch", Short: "Dispatch a cook session in tmux"},
 		{Name: "mise", Short: "Build and print the current mise brief"},
 	}
+}
+
+// Short returns the Short description for a command by name path.
+// For top-level: Short("start"). For sub: Short("plan", "create").
+func Short(names ...string) string {
+	cmds := Commands()
+	for i, name := range names {
+		for _, cmd := range cmds {
+			if cmd.Name == name {
+				if i == len(names)-1 {
+					return cmd.Short
+				}
+				cmds = cmd.Subcommands
+				break
+			}
+		}
+	}
+	return ""
 }

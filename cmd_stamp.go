@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/stamp"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ func newStampCmd(_ *App) *cobra.Command {
 	var outputPath, eventsPath string
 	cmd := &cobra.Command{
 		Use:   "stamp",
-		Short: "Stamp NDJSON logs and emit canonical sidecar events",
+		Short: cmdmeta.Short("stamp"),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runStamp(cmd.Context(), outputPath, eventsPath)
 		},

@@ -33,17 +33,31 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 		t.Fatalf("write fake tmux: %v", err)
 	}
 
-	// Run in a fresh temp directory
+	// Run in a fresh temp directory with a git repo (worktrees need one)
 	projectDir := t.TempDir()
+	gitInit := exec.Command("git", "init")
+	gitInit.Dir = projectDir
+	if out, err := gitInit.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	gitCommit := exec.Command("git", "commit", "--allow-empty", "-m", "init")
+	gitCommit.Dir = projectDir
+	if out, err := gitCommit.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
 	cmd := exec.Command(binPath, "start", "--once")
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "PATH="+binDir+":"+os.Getenv("PATH"))
 
 	output, err := cmd.CombinedOutput()
-	// start --once may exit non-zero due to missing adapter scripts (repairable),
-	// but scaffolding should still happen
-	_ = err
-	_ = output
+	// start --once exits non-zero in a fresh project because skills haven't
+	// been installed yet (that's the agent's job after scaffolding). Verify
+	// the failure is from missing skills, not from config or scaffolding.
+	if err != nil {
+		if !strings.Contains(string(output), "skill") {
+			t.Fatalf("noodle start --once failed for unexpected reason:\n%s", output)
+		}
+	}
 
 	// Verify scaffolded files exist
 	for _, path := range []string{

@@ -102,7 +102,7 @@ model = "gpt-5.3-codex"
 | `noodle worktree list` | List all worktrees with merge status |
 | `noodle worktree prune` | Remove merged and patch-equivalent worktrees |
 | `noodle worktree hook` | Run worktree session hook |
-| `noodle plan` | Manage plans |
+| `noodle plan` | Manage plans (create, done, phase-add, list) |
 | `noodle plan create` | Create a plan from a todo |
 | `noodle plan activate` | Mark a plan as active |
 | `noodle plan done` | Mark a plan as done |

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/spf13/cobra"
 )
@@ -69,7 +70,7 @@ func newDispatchCmd(app *App) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "dispatch",
-		Short: "Dispatch a cook session in tmux",
+		Short: cmdmeta.Short("dispatch"),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			args.envVars = envVars
 			return runDispatch(cmd.Context(), app, args)

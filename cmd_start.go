@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/tui"
@@ -31,7 +32,7 @@ func newStartCmd(app *App) *cobra.Command {
 	var once bool
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "Run the scheduling loop",
+		Short: cmdmeta.Short("start"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runStart(cmd.Context(), app, once)

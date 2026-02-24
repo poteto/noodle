@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/spf13/cobra"
@@ -21,7 +22,7 @@ type statusSummary struct {
 func newStatusCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Show compact runtime status",
+		Short: cmdmeta.Short("status"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runStatus(app)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/skill"
 	"github.com/spf13/cobra"
 )
@@ -11,7 +12,7 @@ import (
 func newSkillsCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skills",
-		Short: "List resolved skills",
+		Short: cmdmeta.Short("skills"),
 	}
 	cmd.AddCommand(newSkillsListCmd(app))
 	return cmd
@@ -20,7 +21,7 @@ func newSkillsCmd(app *App) *cobra.Command {
 func newSkillsListCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all resolved skills",
+		Short: cmdmeta.Short("skills", "list"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runSkillsList(app)

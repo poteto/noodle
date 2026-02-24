@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/mise"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,7 @@ import (
 func newMiseCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "mise",
-		Short: "Build and print the current mise brief",
+		Short: cmdmeta.Short("mise"),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runMise(cmd.Context(), app)
 		},

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/internal/schemadoc"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 func newSchemaCmd(_ *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema [target]",
-		Short: "Print generated schema docs for Noodle runtime contracts",
+		Short: cmdmeta.Short("schema"),
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -28,7 +29,7 @@ func newSchemaCmd(_ *App) *cobra.Command {
 func newSchemaListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List available schema targets",
+		Short: cmdmeta.Short("schema", "list"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runSchemaList()

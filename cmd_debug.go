@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/spf13/cobra"
@@ -62,7 +63,7 @@ type debugSession struct {
 func newDebugCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "debug",
-		Short: "Dump canonical runtime debug state",
+		Short: cmdmeta.Short("debug"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runDebug(app)

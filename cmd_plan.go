@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/plan"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ import (
 func newPlanCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan",
-		Short: "Manage plans (create, done, phase-add, list)",
+		Short: cmdmeta.Short("plan"),
 	}
 	cmd.AddCommand(
 		newPlanCreateCmd(),
@@ -30,7 +31,7 @@ func newPlanCmd(app *App) *cobra.Command {
 func newPlanCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create <todo-id> <slug>",
-		Short: "Create a plan from a todo",
+		Short: cmdmeta.Short("plan", "create"),
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPlanCreate(args)
@@ -41,7 +42,7 @@ func newPlanCreateCmd() *cobra.Command {
 func newPlanActivateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "activate <plan-id>",
-		Short: "Mark a plan as active",
+		Short: cmdmeta.Short("plan", "activate"),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPlanActivate(args)
@@ -52,7 +53,7 @@ func newPlanActivateCmd() *cobra.Command {
 func newPlanDoneCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "done <plan-id>",
-		Short: "Mark a plan as done",
+		Short: cmdmeta.Short("plan", "done"),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPlanDone(args, app.Config.Plans.OnDone)
@@ -63,7 +64,7 @@ func newPlanDoneCmd(app *App) *cobra.Command {
 func newPlanPhaseAddCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "phase-add <plan-id> <phase-name>",
-		Short: "Add a phase to a plan",
+		Short: cmdmeta.Short("plan", "phase-add"),
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPlanPhaseAdd(args)
@@ -74,7 +75,7 @@ func newPlanPhaseAddCmd() *cobra.Command {
 func newPlanListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all plans",
+		Short: cmdmeta.Short("plan", "list"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPlanList()
