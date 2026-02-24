@@ -126,6 +126,27 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	}
 }
 
+func TestNormalizeAndValidateAllowsPrioritizeWhenRegistryEmpty(t *testing.T) {
+	cfg := config.DefaultConfig()
+	emptyRegistry := taskreg.NewFromSkills(nil)
+	queue := Queue{
+		Items: []Item{
+			{ID: "prioritize", Skill: "prioritize"},
+		},
+	}
+
+	got, changed, err := NormalizeAndValidate(queue, nil, emptyRegistry, cfg)
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected changed")
+	}
+	if got.Items[0].TaskKey != "prioritize" {
+		t.Fatalf("task key = %q, want prioritize", got.Items[0].TaskKey)
+	}
+}
+
 func TestReadParsesRuntimeField(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "queue.json")

@@ -14,6 +14,8 @@ import (
 	"github.com/poteto/noodle/internal/taskreg"
 )
 
+const prioritizeTaskKey = "prioritize"
+
 // Queue is the canonical queue.json contract.
 type Queue struct {
 	GeneratedAt  time.Time `json:"generated_at"`
@@ -151,6 +153,10 @@ func NormalizeAndValidate(
 				ok = true
 			}
 		}
+		if !ok && isPrioritizeBootstrapItem(items[i]) {
+			taskType = taskreg.TaskType{Key: prioritizeTaskKey}
+			ok = true
+		}
 		if !ok {
 			return queue, false, fmt.Errorf("queue item %q has unknown task type", id)
 		}
@@ -186,6 +192,13 @@ func NormalizeAndValidate(
 	}
 	queue.Items = items
 	return queue, true, nil
+}
+
+func isPrioritizeBootstrapItem(item Item) bool {
+	id := strings.ToLower(strings.TrimSpace(item.ID))
+	taskKey := strings.ToLower(strings.TrimSpace(item.TaskKey))
+	skill := strings.ToLower(strings.TrimSpace(item.Skill))
+	return id == prioritizeTaskKey || taskKey == prioritizeTaskKey || skill == prioritizeTaskKey
 }
 
 func applyItemRoutingDefaults(item Item, reg taskreg.Registry, cfg config.Config) (Item, bool) {
