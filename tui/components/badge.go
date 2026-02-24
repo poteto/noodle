@@ -1,9 +1,10 @@
 package components
 
-import "github.com/charmbracelet/lipgloss"
+import "image/color"
+import "charm.land/lipgloss/v2"
 
 // Badge renders a colored inline label like APPROVE or FLAG.
-func Badge(label string, color lipgloss.Color) string {
+func Badge(label string, color color.Color) string {
 	return lipgloss.NewStyle().
 		Foreground(color).
 		Bold(true).

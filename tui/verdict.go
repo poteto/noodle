@@ -2,9 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/tui/components"
 )
@@ -44,7 +45,7 @@ func renderVerdictCard(v Verdict, width int, now time.Time, showActions bool, se
 	isSelected := len(selected) > 0 && selected[0]
 
 	var verdictLabel string
-	var borderColor lipgloss.Color
+	var borderColor color.Color
 	if v.Accept {
 		verdictLabel = components.VerdictBadge("APPROVE")
 		borderColor = t.Success

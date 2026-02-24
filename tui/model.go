@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/poteto/noodle/loop"
 )
 
@@ -224,20 +224,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case quitResetMsg:
 		m.quitPending = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	default:
 		return m, nil
 	}
 }
 
-func (m Model) View() string {
-	return m.renderLayout()
+func (m Model) View() tea.View {
+	view := tea.NewView(m.renderLayout())
+	view.AltScreen = true
+	return view
 }
 
-func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyCtrlC:
+func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if isCtrlC(msg) {
 		if m.quitPending && m.now().Before(m.quitDeadline) {
 			return m, tea.Quit
 		}
@@ -246,7 +247,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
 			return quitResetMsg{}
 		})
-	case tea.KeyEsc:
+	}
+
+	if msg.Code == tea.KeyEsc {
 		if m.taskEditor.open {
 			m.taskEditor.Close()
 			return m, nil
@@ -268,7 +271,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.brainTab.previewMD = ""
 			return m, nil
 		}
-		return m, nil
 	}
 
 	if m.steerOpen {
@@ -316,7 +318,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Brain tab navigation
 	if m.activeTab == TabBrain && !m.brainTab.preview {
-		switch msg.Type {
+		switch msg.Code {
 		case tea.KeyUp:
 			if m.brainTab.selected > 0 {
 				m.brainTab.selected--
@@ -422,9 +424,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEnter:
+func (m Model) handleSteerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case msg.Code == tea.KeyEnter:
 		if m.steerMentionOpen && len(m.steerMentionItems) > 0 {
 			selection := m.steerMentionItems[m.steerMentionIndex]
 			m.applySteerMention(selection)
@@ -435,26 +437,26 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, sendCmd
-	case tea.KeyUp:
+	case msg.Code == tea.KeyUp:
 		if m.steerMentionOpen && len(m.steerMentionItems) > 0 && m.steerMentionIndex > 0 {
 			m.steerMentionIndex--
 		}
 		return m, nil
-	case tea.KeyDown:
+	case msg.Code == tea.KeyDown:
 		if m.steerMentionOpen && m.steerMentionIndex < len(m.steerMentionItems)-1 {
 			m.steerMentionIndex++
 		}
 		return m, nil
-	case tea.KeyBackspace, tea.KeyCtrlH:
+	case msg.Code == tea.KeyBackspace || isCtrlH(msg):
 		m.steerInput = dropLastRune(m.steerInput)
 		m.refreshSteerMentions()
 		return m, nil
-	case tea.KeySpace:
+	case msg.Code == tea.KeySpace:
 		m.steerInput += " "
 		m.refreshSteerMentions()
 		return m, nil
-	case tea.KeyRunes:
-		m.steerInput += string(msg.Runes)
+	case msg.Text != "":
+		m.steerInput += msg.Text
 		m.refreshSteerMentions()
 		return m, nil
 	default:
@@ -462,8 +464,8 @@ func (m Model) handleSteerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m Model) handleTaskEditorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.Type == tea.KeyEnter {
+func (m Model) handleTaskEditorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if msg.Code == tea.KeyEnter {
 		cmd := m.taskEditor.Submit(m.runtimeDir, m.now)
 		if cmd != nil {
 			return m, cmd
@@ -475,6 +477,16 @@ func (m Model) handleTaskEditorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	return m, nil
+}
+
+func isCtrlC(msg tea.KeyPressMsg) bool {
+	key := msg.Key()
+	return key.Code == 'c' && (key.Mod&tea.ModCtrl) != 0
+}
+
+func isCtrlH(msg tea.KeyPressMsg) bool {
+	key := msg.Key()
+	return key.Code == 'h' && (key.Mod&tea.ModCtrl) != 0
 }
 
 func (m Model) contentWidth() int {

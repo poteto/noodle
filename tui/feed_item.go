@@ -2,10 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/poteto/noodle/tui/components"
 )
 
@@ -41,7 +42,7 @@ func renderFeedItem(item FeedItem, width int, now time.Time, selected ...bool) s
 	isSelected := len(selected) > 0 && selected[0]
 
 	var title string
-	var borderColor lipgloss.Color
+	var borderColor color.Color
 
 	if item.Category == "steer" {
 		borderColor = t.Brand
@@ -99,6 +100,6 @@ func renderFeedItem(item FeedItem, width int, now time.Time, selected ...bool) s
 	return card.Render(width)
 }
 
-func taskTypeBorderColor(taskType string) lipgloss.Color {
+func taskTypeBorderColor(taskType string) color.Color {
 	return components.TaskTypeColor(taskType)
 }

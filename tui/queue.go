@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/poteto/noodle/tui/components"
 )
@@ -182,7 +182,6 @@ func (q *QueueTab) renderStyledTable(width, height int) string {
 	}
 	return strings.Join(lines, "\n")
 }
-
 
 // deriveQueueStatus determines the status of a queue item.
 func deriveQueueStatus(item QueueItem, activeIDs map[string]struct{}, actionNeeded map[string]struct{}) QueueStatus {

@@ -1,7 +1,9 @@
 package components
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/lipgloss/v2"
 )
 
 // Card renders a bordered card with optional title, body, and footer.
@@ -9,7 +11,7 @@ type Card struct {
 	Title       string
 	Body        string
 	Footer      string
-	BorderColor lipgloss.Color
+	BorderColor color.Color
 
 	cache      string
 	cacheWidth int
@@ -23,7 +25,7 @@ func (c *Card) Render(width int) string {
 
 	t := DefaultTheme
 	borderColor := c.BorderColor
-	if borderColor == "" {
+	if borderColor == nil {
 		borderColor = t.Border
 	}
 

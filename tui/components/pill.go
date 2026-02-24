@@ -1,12 +1,13 @@
 package components
 
-import "github.com/charmbracelet/lipgloss"
+import "image/color"
+import "charm.land/lipgloss/v2"
 
 // Pill renders an inline bordered button like ┌─ Label ─┐.
 type Pill struct {
 	Label   string
 	Icon    string
-	Color   lipgloss.Color
+	Color   color.Color
 	Focused bool
 }
 
@@ -14,7 +15,7 @@ type Pill struct {
 func (p Pill) Render(width int) string {
 	t := DefaultTheme
 	color := p.Color
-	if color == "" {
+	if color == nil {
 		color = t.Secondary
 	}
 

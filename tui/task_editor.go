@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/tui/components"
 )
@@ -55,46 +55,51 @@ func (e *TaskEditor) Close() {
 }
 
 // HandleKey processes key events when the editor is open.
-func (e *TaskEditor) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
-	switch msg.Type {
-	case tea.KeyEsc:
+func (e *TaskEditor) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch {
+	case msg.Code == tea.KeyEsc:
 		e.Close()
 		return nil, true
-	case tea.KeyTab:
-		e.field = (e.field + 1) % fieldCount
-		return nil, true
-	case tea.KeyShiftTab:
+	case isShiftTab(msg):
 		e.field = (e.field - 1 + fieldCount) % fieldCount
 		return nil, true
-	case tea.KeyLeft:
+	case msg.Code == tea.KeyTab:
+		e.field = (e.field + 1) % fieldCount
+		return nil, true
+	case msg.Code == tea.KeyLeft:
 		e.cyclePrev()
 		return nil, true
-	case tea.KeyRight:
+	case msg.Code == tea.KeyRight:
 		e.cycleNext()
 		return nil, true
-	case tea.KeyBackspace, tea.KeyCtrlH:
+	case msg.Code == tea.KeyBackspace || isCtrlH(msg):
 		if e.field == fieldTitle {
 			e.title = dropLastRune(e.title)
 		} else if e.field == fieldSkill {
 			e.skill = dropLastRune(e.skill)
 		}
 		return nil, true
-	case tea.KeyRunes:
-		if e.field == fieldTitle {
-			e.title += string(msg.Runes)
-		} else if e.field == fieldSkill {
-			e.skill += string(msg.Runes)
-		}
-		return nil, true
-	case tea.KeySpace:
+	case msg.Code == tea.KeySpace:
 		if e.field == fieldTitle {
 			e.title += " "
 		} else if e.field == fieldSkill {
 			e.skill += " "
 		}
 		return nil, true
+	case msg.Text != "":
+		if e.field == fieldTitle {
+			e.title += msg.Text
+		} else if e.field == fieldSkill {
+			e.skill += msg.Text
+		}
+		return nil, true
 	}
 	return nil, false
+}
+
+func isShiftTab(msg tea.KeyPressMsg) bool {
+	key := msg.Key()
+	return key.Code == tea.KeyTab && (key.Mod&tea.ModShift) != 0
 }
 
 func (e *TaskEditor) cyclePrev() {
@@ -158,8 +163,8 @@ func (e *TaskEditor) Render(width int) string {
 		Render(mode)
 
 	fields := []struct {
-		label string
-		value string
+		label    string
+		value    string
 		editable bool
 	}{
 		{"Title", e.title, true},

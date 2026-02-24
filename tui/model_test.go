@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/poteto/noodle/loop"
 )
 
@@ -154,7 +154,7 @@ func TestSteerEscClosesMentionsBeforeModal(t *testing.T) {
 		t.Fatal("expected mention dropdown to be open")
 	}
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyEsc})
 	if !m.steerOpen {
 		t.Fatal("expected steer still open after first esc (only closes mentions)")
 	}
@@ -162,7 +162,7 @@ func TestSteerEscClosesMentionsBeforeModal(t *testing.T) {
 		t.Fatal("expected mention dropdown to close on first esc")
 	}
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyEsc})
 	if m.steerOpen {
 		t.Fatal("expected steerOpen=false after second esc")
 	}
@@ -185,8 +185,8 @@ func TestSteerMentionSelectionInsertsTarget(t *testing.T) {
 		t.Fatal("expected mention candidates")
 	}
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyDown})
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyDown})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 	if m.steerMentionOpen {
 		t.Fatal("expected mention dropdown to close after selection")
 	}
@@ -215,7 +215,7 @@ func TestLayoutRendersAtVariousWidths(t *testing.T) {
 	for _, width := range []int{80, 120, 200} {
 		m.width = width
 		m.height = 24
-		view := m.View()
+		view := m.View().Content
 		if view == "" {
 			t.Fatalf("empty view at width %d", width)
 		}
@@ -243,7 +243,7 @@ func TestDoubleCtrlCQuits(t *testing.T) {
 	})
 
 	// First ctrl+c sets pending.
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	if !m.quitPending {
 		t.Fatal("expected quitPending after first ctrl+c")
@@ -253,7 +253,7 @@ func TestDoubleCtrlCQuits(t *testing.T) {
 	}
 
 	// Second ctrl+c within deadline should quit.
-	updated, cmd = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, cmd = m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	_ = m
 	// tea.Quit returns a quit msg; we verify by checking cmd is non-nil.
@@ -271,7 +271,7 @@ func TestDoubleCtrlCResetsAfterTimeout(t *testing.T) {
 	})
 
 	// First ctrl+c.
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	if !m.quitPending {
 		t.Fatal("expected quitPending")
@@ -294,7 +294,7 @@ func TestSteerSpacebarWorks(t *testing.T) {
 	m.steerOpen = true
 	m.steerInput = "hello"
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeySpace})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeySpace})
 	if m.steerInput != "hello " {
 		t.Fatalf("steerInput after space = %q, want %q", m.steerInput, "hello ")
 	}
@@ -328,12 +328,12 @@ func TestTaskEditorTabCyclesFields(t *testing.T) {
 		t.Fatalf("initial field = %d, want 0", m.taskEditor.field)
 	}
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyTab})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.taskEditor.field != 1 {
 		t.Fatalf("field after tab = %d, want 1", m.taskEditor.field)
 	}
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyTab})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.taskEditor.field != 2 {
 		t.Fatalf("field after 2 tabs = %d, want 2", m.taskEditor.field)
 	}
@@ -349,7 +349,7 @@ func TestTaskEditorArrowCyclesOptions(t *testing.T) {
 	m.taskEditor.field = fieldType // type field
 
 	initial := m.taskEditor.taskType
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyRight})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyRight})
 	if m.taskEditor.taskType == initial {
 		t.Fatal("expected task type to change after right arrow")
 	}
@@ -364,7 +364,7 @@ func TestTaskEditorEscCancels(t *testing.T) {
 	m.taskEditor.OpenNew()
 	m.taskEditor.title = "some task"
 
-	m = pressKey(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyEsc})
 	if m.taskEditor.open {
 		t.Fatal("expected task editor to close after esc")
 	}
@@ -634,10 +634,10 @@ func trimSpace(s string) string {
 
 func pressRune(t *testing.T, m Model, r rune) Model {
 	t.Helper()
-	return pressKey(t, m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	return pressKey(t, m, tea.KeyPressMsg{Code: r, Text: string(r)})
 }
 
-func pressKey(t *testing.T, m Model, key tea.KeyMsg) Model {
+func pressKey(t *testing.T, m Model, key tea.KeyPressMsg) Model {
 	t.Helper()
 	updated, _ := m.Update(key)
 	next, ok := updated.(Model)

@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/tui/components"
 )
@@ -62,9 +62,9 @@ func (c *ConfigTab) Render(width, height int) string {
 	for i, mode := range autonomyModes {
 		label := mode
 		if i == c.index {
-			b.WriteString(lipgloss.NewStyle().Foreground(t.Brand).Bold(true).Render("["+label+"]"))
+			b.WriteString(lipgloss.NewStyle().Foreground(t.Brand).Bold(true).Render("[" + label + "]"))
 		} else {
-			b.WriteString(dimStyle.Render(" "+label+" "))
+			b.WriteString(dimStyle.Render(" " + label + " "))
 		}
 		if i < len(autonomyModes)-1 {
 			b.WriteString(dimStyle.Render(" ── "))

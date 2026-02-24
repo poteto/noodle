@@ -1,29 +1,30 @@
 package tui
 
 import (
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Theme holds the pastel color palette for the TUI.
 type Theme struct {
-	Brand      lipgloss.Color
-	Border     lipgloss.Color
-	Surface    lipgloss.Color
-	CardBG     lipgloss.Color
-	Success    lipgloss.Color
-	Warning    lipgloss.Color
-	Error      lipgloss.Color
-	Info       lipgloss.Color
-	Text       lipgloss.Color
-	Dim        lipgloss.Color
-	Secondary  lipgloss.Color
-	Execute    lipgloss.Color
-	Plan       lipgloss.Color
-	Quality    lipgloss.Color
-	Reflect    lipgloss.Color
-	Prioritize lipgloss.Color
+	Brand      color.Color
+	Border     color.Color
+	Surface    color.Color
+	CardBG     color.Color
+	Success    color.Color
+	Warning    color.Color
+	Error      color.Color
+	Info       color.Color
+	Text       color.Color
+	Dim        color.Color
+	Secondary  color.Color
+	Execute    color.Color
+	Plan       color.Color
+	Quality    color.Color
+	Reflect    color.Color
+	Prioritize color.Color
 }
 
 var theme = Theme{

@@ -4,29 +4,30 @@
 package components
 
 import (
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Theme holds the pastel color palette shared across all components.
 type Theme struct {
-	Brand      lipgloss.Color
-	Border     lipgloss.Color
-	Surface    lipgloss.Color
-	CardBG     lipgloss.Color
-	Success    lipgloss.Color
-	Warning    lipgloss.Color
-	Error      lipgloss.Color
-	Info       lipgloss.Color
-	Text       lipgloss.Color
-	Dim        lipgloss.Color
-	Secondary  lipgloss.Color
-	Execute    lipgloss.Color
-	Plan       lipgloss.Color
-	Quality    lipgloss.Color
-	Reflect    lipgloss.Color
-	Prioritize lipgloss.Color
+	Brand      color.Color
+	Border     color.Color
+	Surface    color.Color
+	CardBG     color.Color
+	Success    color.Color
+	Warning    color.Color
+	Error      color.Color
+	Info       color.Color
+	Text       color.Color
+	Dim        color.Color
+	Secondary  color.Color
+	Execute    color.Color
+	Plan       color.Color
+	Quality    color.Color
+	Reflect    color.Color
+	Prioritize color.Color
 }
 
 // DefaultTheme is the pastel palette used by Noodle's TUI.
@@ -51,28 +52,28 @@ var DefaultTheme = Theme{
 
 // ColorPool is a set of distinct pastel colors for hashing arbitrary task types.
 // The first 5 match the named task type colors for consistency.
-var ColorPool = []lipgloss.Color{
-	"#86efac", // green (execute)
-	"#93c5fd", // blue (plan)
-	"#fde68a", // yellow (quality)
-	"#f9a8d4", // pink (reflect)
-	"#fdba74", // orange (prioritize)
-	"#c4b5fd", // violet
-	"#67e8f9", // cyan
-	"#fda4af", // rose
-	"#a3e635", // lime
-	"#fbbf24", // amber
-	"#818cf8", // indigo
-	"#34d399", // emerald
-	"#fb923c", // tangerine
-	"#e879f9", // fuchsia
-	"#38bdf8", // sky
-	"#a78bfa", // purple
+var ColorPool = []color.Color{
+	lipgloss.Color("#86efac"), // green (execute)
+	lipgloss.Color("#93c5fd"), // blue (plan)
+	lipgloss.Color("#fde68a"), // yellow (quality)
+	lipgloss.Color("#f9a8d4"), // pink (reflect)
+	lipgloss.Color("#fdba74"), // orange (prioritize)
+	lipgloss.Color("#c4b5fd"), // violet
+	lipgloss.Color("#67e8f9"), // cyan
+	lipgloss.Color("#fda4af"), // rose
+	lipgloss.Color("#a3e635"), // lime
+	lipgloss.Color("#fbbf24"), // amber
+	lipgloss.Color("#818cf8"), // indigo
+	lipgloss.Color("#34d399"), // emerald
+	lipgloss.Color("#fb923c"), // tangerine
+	lipgloss.Color("#e879f9"), // fuchsia
+	lipgloss.Color("#38bdf8"), // sky
+	lipgloss.Color("#a78bfa"), // purple
 }
 
 // TaskTypeColor returns a consistent color for a task type. Named types use
 // their dedicated theme color; unknown types hash into the color pool.
-func TaskTypeColor(taskType string) lipgloss.Color {
+func TaskTypeColor(taskType string) color.Color {
 	switch strings.ToLower(taskType) {
 	case "execute":
 		return DefaultTheme.Execute

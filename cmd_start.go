@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
@@ -80,7 +80,7 @@ func runTUI(ctx context.Context, runtimeDir string) error {
 	model := tui.NewModel(tui.Options{
 		RuntimeDir: runtimeDir,
 	})
-	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithContext(ctx))
+	program := tea.NewProgram(model, tea.WithContext(ctx))
 	if _, err := program.Run(); err != nil {
 		return fmt.Errorf("run tui: %w", err)
 	}
