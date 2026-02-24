@@ -110,7 +110,7 @@ Reason: Caused performance regression in production.
 
 ## Principles
 
-- Each commit should be a single, stable change
+- **One commit per logical change** — never combine unrelated fixes or features into a single commit. If you made three independent changes, create three commits.
 - Commits should be independently reviewable
 - The repository should be in a working state after each commit
 - Sequence commits to maximise option value — foundational infrastructure first, then features that build on it
