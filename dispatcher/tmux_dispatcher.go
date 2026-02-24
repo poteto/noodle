@@ -140,6 +140,9 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	if runtimeCmd != "" &&
 		strings.EqualFold(req.Provider, "claude") &&
 		strings.TrimSpace(systemPrompt) != "" {
+		// Runtime command templates are provider-agnostic shell snippets and may
+		// not include Claude-specific flags. Inline the system prompt so skill
+		// guidance is preserved when we cannot inject --append-system-prompt.
 		finalPrompt = finalPrompt + "\n\n---\n\n" + systemPrompt
 		systemPrompt = ""
 	}
