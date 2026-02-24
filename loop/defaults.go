@@ -58,6 +58,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				SkillResolver: resolver,
 				SpriteName:    spriteName,
 				Token:         cfg.Runtime.Sprites.Token(),
+				GitToken:      cfg.Runtime.Sprites.GitToken(),
 			})
 			if err := factory.Register("sprites", sd); err != nil {
 				panic(err)

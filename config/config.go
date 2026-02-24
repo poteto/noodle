@@ -106,9 +106,10 @@ type RuntimeConfig struct {
 }
 
 type SpritesConfig struct {
-	TokenEnv   string `toml:"token_env"`
-	BaseURL    string `toml:"base_url"`
-	SpriteName string `toml:"sprite_name"`
+	TokenEnv    string `toml:"token_env"`
+	BaseURL     string `toml:"base_url"`
+	SpriteName  string `toml:"sprite_name"`
+	GitTokenEnv string `toml:"git_token_env"`
 }
 
 type CursorConfig struct {
@@ -618,6 +619,14 @@ func (c SpritesConfig) Token() string {
 	key := strings.TrimSpace(c.TokenEnv)
 	if key == "" {
 		key = "SPRITES_TOKEN"
+	}
+	return strings.TrimSpace(os.Getenv(key))
+}
+
+func (c SpritesConfig) GitToken() string {
+	key := strings.TrimSpace(c.GitTokenEnv)
+	if key == "" {
+		key = "GITHUB_TOKEN"
 	}
 	return strings.TrimSpace(os.Getenv(key))
 }
