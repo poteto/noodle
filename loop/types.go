@@ -18,6 +18,7 @@ const (
 	StateRunning  State = "running"
 	StatePaused   State = "paused"
 	StateDraining State = "draining"
+	StateIdle     State = "idle"
 )
 
 type Queue struct {
@@ -26,6 +27,7 @@ type Queue struct {
 	Active       []string    `json:"active,omitempty"`
 	ActionNeeded []string    `json:"action_needed,omitempty"`
 	Autonomy     string      `json:"autonomy,omitempty"`
+	LoopState    string      `json:"loop_state,omitempty"`
 }
 
 type QueueItem struct {

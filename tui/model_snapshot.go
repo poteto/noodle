@@ -167,6 +167,7 @@ type queueResult struct {
 	Active       []string
 	ActionNeeded []string
 	Autonomy     string
+	LoopState    string
 }
 
 func readQueue(path string) (queueResult, error) {
@@ -193,6 +194,7 @@ func readQueue(path string) (queueResult, error) {
 		Active:       queue.Active,
 		ActionNeeded: queue.ActionNeeded,
 		Autonomy:     queue.Autonomy,
+		LoopState:    queue.LoopState,
 	}, nil
 }
 

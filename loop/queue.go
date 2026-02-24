@@ -55,7 +55,7 @@ func toQueueX(queue Queue) queuex.Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy}
+	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy, LoopState: queue.LoopState}
 }
 
 func fromQueueX(queue queuex.Queue) Queue {
@@ -74,7 +74,7 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy}
+	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy, LoopState: queue.LoopState}
 }
 
 // stampLoopState writes active IDs and autonomy into queue.json so the TUI
@@ -93,14 +93,16 @@ func (l *Loop) stampLoopState() error {
 	sort.Strings(active)
 
 	autonomy := l.config.Autonomy
+	loopState := string(l.state)
 
 	// Skip write if nothing changed.
-	if slicesEqual(queue.Active, active) && queue.Autonomy == autonomy {
+	if slicesEqual(queue.Active, active) && queue.Autonomy == autonomy && queue.LoopState == loopState {
 		return nil
 	}
 
 	queue.Active = active
 	queue.Autonomy = autonomy
+	queue.LoopState = loopState
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }
 
