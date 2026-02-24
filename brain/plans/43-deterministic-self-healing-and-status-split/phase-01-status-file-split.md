@@ -52,7 +52,7 @@ sh scripts/lint-arch.sh
 - Run `noodle start`, verify TUI renders loop state, active spinners, autonomy mode
 - Verify queue.json no longer contains `active`, `loop_state`, or `autonomy` fields
 - Verify status.json is created with those fields
-- Write to queue.json as prioritize agent — confirm no loop state stamping overwrites it
+- Write to queue-next.json as prioritize agent — confirm loop promotes it without state stamping race
 
 ### Degraded states (must be covered by automated tests)
 - **status.json absent** (loop not yet started, or first run): `cmd_status` and `cmd_debug` fall back to session-derived loop state. TUI `loadSnapshot()` returns sensible defaults (loop_state "running", empty active list, default autonomy).

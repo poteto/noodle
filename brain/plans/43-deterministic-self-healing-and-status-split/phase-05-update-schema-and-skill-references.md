@@ -17,7 +17,7 @@ Update all schema documentation, skill prompts, and injected references to refle
 ### Prioritize skill (`/.agents/skills/prioritize/SKILL.md`)
 
 - Add a note that status.json exists and contains loop runtime state
-- No changes to the skill's core instructions — it already only writes queue.json
+- No changes to the skill's core instructions — it already only writes queue-next.json
 
 ### Prioritize prompt injection (`loop/prioritize.go`)
 
