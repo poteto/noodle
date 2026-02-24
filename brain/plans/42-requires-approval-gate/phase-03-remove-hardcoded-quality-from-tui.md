@@ -4,7 +4,7 @@ Back to [[plans/42-requires-approval-gate/overview]]
 
 ## Goal
 
-Replace all hardcoded `"quality"` string literals in the TUI with `"review"`, remove the named `Quality` theme color, and delete verdict rendering entirely. Verdicts are a userland concept — noodle's TUI doesn't render them. The `TaskTypeColor` function already has a hash-based fallback for unknown types, so removing named colors is safe.
+Replace all hardcoded `"quality"` string literals in the TUI with `"review"`, remove the named `Quality` theme color, and delete verdict rendering entirely. Verdicts are a userland concept — noodle's TUI doesn't render them. Remove all approval workflow from the Feed tab (m/x/a keybindings, verdict cards) — approval moves exclusively to the Reviews tab in Phase 6.
 
 ## Changes
 
@@ -39,13 +39,25 @@ Delete entirely: `Verdict` struct, `loadVerdicts`, `renderVerdictCard`. Verdicts
 
 Remove `Verdicts` field from the snapshot and the `loadVerdicts` call. Remove `ActionNeeded` if it's only used for verdict-based approval.
 
-### `tui/feed.go` — Remove verdict card rendering
+### `tui/feed.go` — Remove all approval workflow
 
-Remove verdict card rendering from the feed view. The feed shows session activity, not verdicts.
+- Remove `verdicts` field from `FeedTab`
+- Remove `autonomy` and `actionNeeded` fields
+- Remove verdict card rendering from `Render`
+- The feed is a read-only dashboard — no m/x/a actions
+
+### `tui/model.go` — Remove Feed approval keybindings
+
+- Remove `m`, `x`, `a` key handlers from the Feed tab
+- Remove `mergeSelectedVerdict`, `rejectSelectedVerdict`, `mergeAllApproved`, `isActionable` methods
+
+### `tui/model_render.go` — Clean up Feed keybar
+
+Remove merge/reject/merge-all hints from the Feed keybar. Feed keybar should only show: tabs, j/k select, enter open, steer, new task, pause.
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical string replacements.
+Provider: `codex` | Model: `gpt-5.3-codex` — mechanical string replacements and deletions.
 
 ## Verification
 
@@ -53,4 +65,6 @@ Provider: `codex` | Model: `gpt-5.3-codex` — mechanical string replacements.
 go test ./tui/...
 # Confirm no remaining quality references:
 rg '"quality"' tui/
+# Confirm no verdict or approval references in feed:
+rg 'verdict|Verdict|merge.*verdict|actionNeeded' tui/feed.go
 ```

@@ -29,7 +29,8 @@ noodle:
 - Remove all hardcoded `"quality"` string literals from TUI
 - Simplify the 3-mode autonomy config (full/review/approve) to 2 modes
 - Add "request changes" control command (spawn new agent with feedback)
-- Add TUI approval flow: approve / reject / request changes with Huh text input
+- Delete Config tab, replace with Reviews tab. Approval workflow (m/x/c) lives exclusively in Reviews tab, not in Feed
+- Reviews tab shows pending review count in tab title: `Reviews (2)` or just `Reviews` when empty
 
 **Also in scope:**
 - Remove verdicts as a noodle-managed concept — delete `mise.QualityVerdict`, `tui/verdict.go`, verdict loading/rendering. Verdicts are entirely implementable in userland (skills write state files, prioritize reads them)
@@ -41,7 +42,6 @@ noodle:
 
 ## Constraints
 
-- **Worktree:** `remove-hardcoded-quality-skill` already has one commit (quality→review merge). Continue work there.
 - **No backward compat.** Per CLAUDE.md: no legacy fallbacks, no dual-path support. `blocking` is deleted, not deprecated. Old autonomy values (`full`, `review`) are rejected, not migrated.
 - **Huh library** is not currently a dependency. Add it when needed in Phase 6.
 
@@ -66,7 +66,7 @@ noodle:
 - [[plans/42-requires-approval-gate/phase-03-remove-hardcoded-quality-from-tui]]
 - [[plans/42-requires-approval-gate/phase-04-simplify-autonomy-config]]
 - [[plans/42-requires-approval-gate/phase-05-request-changes-control-command]]
-- [[plans/42-requires-approval-gate/phase-06-tui-approval-flow-with-huh-text-input]]
+- [[plans/42-requires-approval-gate/phase-06-reviews-tab-and-approval-flow]]
 - [[plans/42-requires-approval-gate/phase-07-update-noodle-skill-with-permissions-docs]]
 
 ## Verification
