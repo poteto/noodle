@@ -1,11 +1,14 @@
 # Todos
 
-<!-- next-id: 38 -->
+<!-- next-id: 42 -->
 
 ## Tooling
 
 1. [x] Noodle open-source architecture: redesign Noodle for OSS adoption — kitchen brigade naming (Chef/Sous Chef/Taster/Cook/Mise), skills as the only extension point, LLM-powered prioritization replacing deterministic scoring, adapter pattern for backlog/plans, aggressive Go code deletion, bootstrap skill. [[archived_plans/01-noodle-extensible-skill-layering/overview]]
 2. [x] ~~Investigate automated post-reflect/meditate learning step~~ — superseded by the prioritize agent, which already does LLM-powered learning and queue scheduling based on session history and measured evidence.
+39. [ ] Upgrade Bubble Tea to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbletea/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
+40. [ ] Upgrade Lip Gloss to v2 using the upstream migration guide. https://github.com/charmbracelet/lipgloss/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
+41. [ ] Upgrade Bubbles to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbles/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
 
 ## Noodle Post-Plan 1
 
@@ -41,7 +44,7 @@
 28. [ ] Rename `prioritize` skill/task type to `schedule` — better describes what it does (scheduling, not just prioritization). Rename skill directory, frontmatter, all references in loop, mise, config, tests, docs, and brain.
 29. [ ] Queue item context passthrough — let the prioritization agent attach arbitrary context to a queue item. This context gets injected into the spawned agent's prompt, so the prioritizer can pass along reasoning, constraints, or instructions to any task it schedules.
 30. [ ] Sprites session marked "failed" despite successful completion — `cmd.Wait()` returns a non-`ExitError` (likely connection drop after ~60s), causing `waitAndSync` to classify the session as "failed". The agent finishes work, push-back succeeds, but terminal status is wrong. Investigate what `sprites.Cmd.Wait()` actually returns on connection drop vs clean exit, and fix the status classification in `sprites_session.go:waitAndSync`. May need to inspect the raw stream for a `result` event with `subtype: "success"` as a fallback signal.
-27. [ ] Hot-reload skill registry via fsnotify — `DiscoverTaskTypes()` only runs at startup (`loop.go:82`). If a user adds or modifies a skill while the loop is running, noodle won't see it until restart. Watch configured skill paths with fsnotify and re-scan on changes.
+27. [ ] ~~Hot-reload skill registry via fsnotify~~ — subsumed by #38.
 26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
 
 ## Loop Observability & DX
@@ -53,3 +56,4 @@
 35. [ ] Silent plan/skill discovery warnings — missing frontmatter, wrong directory structure, missing adapter scripts all fail silently. Plans just don't appear in mise.json with no indication why. `noodle debug` should surface discovery issues, and mise builder should emit warnings.
 36. [ ] Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.
 37. [ ] Skip prioritize when queue already has items — every fresh start requires a 60-120s prioritize session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new prioritize cycle. Or add a `--queue` flag to pre-seed the queue.
+38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[plans/38-resilient-skill-resolution/overview]]
