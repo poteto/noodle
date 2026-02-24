@@ -11,12 +11,10 @@ type spawnPlanInput struct {
 	Capacity        int
 	ActiveCount     int
 	AdoptedCount    int
-	BlockingActive  bool
 	BusyTargets     map[string]struct{}
 	FailedTargets   map[string]struct{}
 	AdoptedTargets  map[string]struct{}
 	TicketedTargets map[string]struct{}
-	IsBlocking      func(QueueItem) bool
 }
 
 func activeTicketTargetSet(brief mise.Brief) map[string]struct{} {
@@ -41,17 +39,10 @@ func planSpawnItems(input spawnPlanInput) []QueueItem {
 	}
 
 	current := input.ActiveCount + input.AdoptedCount
-	blockingActive := input.BlockingActive
 	plan := make([]QueueItem, 0, len(input.QueueItems))
 	for _, item := range input.QueueItems {
-		if blockingActive {
-			break
-		}
 		if current >= limit {
 			break
-		}
-		if input.IsBlocking != nil && input.IsBlocking(item) && current > 0 {
-			continue
 		}
 		if _, busy := input.BusyTargets[item.ID]; busy {
 			continue
@@ -68,9 +59,6 @@ func planSpawnItems(input spawnPlanInput) []QueueItem {
 
 		plan = append(plan, item)
 		current++
-		if input.IsBlocking != nil && input.IsBlocking(item) {
-			blockingActive = true
-		}
 	}
 	return plan
 }

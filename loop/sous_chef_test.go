@@ -9,7 +9,7 @@ func TestBuildQueueTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
 	prompt := buildQueueTaskTypesPrompt([]TaskType{
 		{
 			Key:      "prioritize",
-			Blocking: true,
+			CanMerge: false,
 			Schedule: "When the queue is empty",
 		},
 	})

@@ -2,7 +2,6 @@
 name: oops
 description: Infrastructure fix for broken builds, failed tests, stale state, and environment drift. Covers both user-project and Noodle-internal failures.
 noodle:
-  blocking: false
   schedule: "When infrastructure failures are detected (build breaks, test failures, stale Noodle state)"
 ---
 

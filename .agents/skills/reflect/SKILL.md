@@ -5,7 +5,6 @@ description: >-
   or corrections, or when significant codebase knowledge was gained. Triggers: "reflect",
   "remember this".
 noodle:
-  blocking: false
   schedule: "After a cook session completes"
 ---
 

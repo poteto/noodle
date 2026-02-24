@@ -34,7 +34,7 @@ func runMise(ctx context.Context, app *App) error {
 		for i, s := range taskTypeSkills {
 			summaries[i] = mise.TaskTypeSummary{
 				Key:      s.Name,
-				Blocking: s.Frontmatter.Noodle.Blocking,
+				CanMerge: s.Frontmatter.Noodle.Permissions.CanMerge(),
 				Schedule: s.Frontmatter.Noodle.Schedule,
 			}
 		}

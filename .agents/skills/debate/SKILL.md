@@ -2,7 +2,6 @@
 name: debate
 description: Structured multi-round debate for design decisions. Configures parameters per-task, runs reviewer/responder rounds, writes verdict.
 noodle:
-  blocking: false
   schedule: "When design decisions need structured evaluation before implementation"
 ---
 

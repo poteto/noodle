@@ -2,7 +2,6 @@
 name: quality
 description: Post-cook quality gate. Reviews completed cook work for correctness, scope discipline, and principle compliance. Writes verdict to .noodle/quality/.
 noodle:
-  blocking: false
   schedule: "After each cook session completes"
 ---
 

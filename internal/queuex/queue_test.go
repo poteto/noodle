@@ -24,7 +24,7 @@ func testRegistry() taskreg.Registry {
 			Name: "prioritize",
 			Path: "/skills/prioritize",
 			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{Blocking: true, Schedule: "When queue is empty"},
+				Noodle: &skill.NoodleMeta{Schedule: "When queue is empty"},
 			},
 		},
 	})

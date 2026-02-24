@@ -177,7 +177,8 @@ func TestDiscoverTaskTypesFiltersCorrectly(t *testing.T) {
 name: prioritize
 description: Queue scheduler
 noodle:
-  blocking: true
+  permissions:
+    merge: false
   schedule: "When the queue is empty"
 ---
 # Prioritize
@@ -232,7 +233,8 @@ func TestResolveWithMetaParsesNoodleFrontmatter(t *testing.T) {
 name: deploy
 description: Deploy to production
 noodle:
-  blocking: false
+  permissions:
+    merge: true
   schedule: "After successful execute"
 ---
 # Deploy

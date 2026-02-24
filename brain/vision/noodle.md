@@ -23,7 +23,8 @@ Skills become schedulable by adding frontmatter:
 name: deploy
 description: Deploy after successful execution on main
 noodle:
-  blocking: false
+  permissions:
+    merge: false
   schedule: "After a successful execute completes on main branch"
 ---
 ```
@@ -40,7 +41,6 @@ The Hello World minimal autonomous system in noodle is two skills working togeth
 name: schedule
 description: Read the backlog and decide what to work on next
 noodle:
-  blocking: true
   schedule: "Start of every cycle"
 ---
 

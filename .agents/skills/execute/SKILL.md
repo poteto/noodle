@@ -2,7 +2,6 @@
 name: execute
 description: Implementation methodology for cook sessions. Provides the how — plan reading, decomposition, worktree workflow, verification, and commit conventions.
 noodle:
-  blocking: false
   schedule: "When backlog items with linked plans are ready for implementation"
 ---
 

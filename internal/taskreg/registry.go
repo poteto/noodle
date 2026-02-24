@@ -9,7 +9,7 @@ import (
 // TaskType is one schedulable task kind, discovered from skill frontmatter.
 type TaskType struct {
 	Key       string // skill name (e.g., "prioritize", "execute", "deploy")
-	Blocking  bool
+	CanMerge  bool
 	Schedule  string // one-line guidance for prioritize skill
 	SkillPath string // absolute path to skill directory
 }
@@ -38,7 +38,7 @@ func NewFromSkills(skills []skill.SkillMeta) Registry {
 		}
 		types = append(types, TaskType{
 			Key:       s.Name,
-			Blocking:  s.Frontmatter.Noodle.Blocking,
+			CanMerge:  s.Frontmatter.Noodle.Permissions.CanMerge(),
 			Schedule:  s.Frontmatter.Noodle.Schedule,
 			SkillPath: s.Path,
 		})

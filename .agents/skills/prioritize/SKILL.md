@@ -2,7 +2,6 @@
 name: prioritize
 description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue-next.json. Schedules work based on backlog state, plan phases, session history, and task type schedules.
 noodle:
-  blocking: true
   schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 

@@ -10,16 +10,6 @@ import (
 // TaskType is the canonical registry entry for a Noodle task/session type.
 type TaskType = taskreg.TaskType
 
-func isBlockingQueueItem(reg taskreg.Registry, item QueueItem) bool {
-	taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
-		ID:      item.ID,
-		TaskKey: item.TaskKey,
-		Title:   item.Title,
-		Skill:   item.Skill,
-	})
-	return ok && taskType.Blocking
-}
-
 func taskSkill(reg taskreg.Registry, taskKey, fallback string) string {
 	if _, ok := reg.ByKey(taskKey); ok {
 		return taskKey
@@ -47,7 +37,7 @@ func registryToTaskTypeSummaries(reg taskreg.Registry) []mise.TaskTypeSummary {
 	for i, tt := range all {
 		summaries[i] = mise.TaskTypeSummary{
 			Key:      tt.Key,
-			Blocking: tt.Blocking,
+			CanMerge: tt.CanMerge,
 			Schedule: tt.Schedule,
 		}
 	}

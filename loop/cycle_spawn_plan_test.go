@@ -32,52 +32,20 @@ func TestPlanSpawnItemsSkipsBusyFailedAdoptedAndTicketedTargets(t *testing.T) {
 	}
 }
 
-func TestPlanSpawnItemsStopsWhenBlockingCookAlreadyActive(t *testing.T) {
+func TestPlanSpawnItemsRespectsCapacityWithExistingActiveCook(t *testing.T) {
 	t.Parallel()
 
 	plan := planSpawnItems(spawnPlanInput{
 		QueueItems: []QueueItem{
 			{ID: "a"},
 			{ID: "b"},
-		},
-		Capacity:       2,
-		BlockingActive: true,
-	})
-	if len(plan) != 0 {
-		t.Fatalf("expected empty plan when blocking cook already active, got %v", queueItemIDs(plan))
-	}
-}
-
-func TestPlanSpawnItemsRespectsBlockingItemRules(t *testing.T) {
-	t.Parallel()
-
-	isBlocking := func(item QueueItem) bool {
-		return item.ID == "blocking"
-	}
-
-	planWithNoActive := planSpawnItems(spawnPlanInput{
-		QueueItems: []QueueItem{
-			{ID: "blocking"},
-			{ID: "next"},
-		},
-		Capacity:   3,
-		IsBlocking: isBlocking,
-	})
-	if got, want := queueItemIDs(planWithNoActive), []string{"blocking"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("blocking-first plan mismatch: got %v want %v", got, want)
-	}
-
-	planWithActive := planSpawnItems(spawnPlanInput{
-		QueueItems: []QueueItem{
-			{ID: "blocking"},
-			{ID: "next"},
+			{ID: "c"},
 		},
 		Capacity:    3,
 		ActiveCount: 1,
-		IsBlocking:  isBlocking,
 	})
-	if got, want := queueItemIDs(planWithActive), []string{"next"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("blocking-skip plan mismatch: got %v want %v", got, want)
+	if got, want := queueItemIDs(plan), []string{"a", "b"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("capacity plan mismatch: got %v want %v", got, want)
 	}
 }
 

@@ -312,14 +312,10 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 		Capacity:        l.config.Concurrency.MaxCooks,
 		ActiveCount:     len(l.activeByID),
 		AdoptedCount:    len(l.adoptedTargets),
-		BlockingActive:  l.hasBlockingActive(queue.Items),
 		BusyTargets:     busyTargets,
 		FailedTargets:   failedTargets,
 		AdoptedTargets:  adoptedTargets,
 		TicketedTargets: activeTicketTargetSet(brief),
-		IsBlocking: func(item QueueItem) bool {
-			return isBlockingQueueItem(l.registry, item)
-		},
 	})
 }
 
@@ -330,20 +326,4 @@ func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
 		}
 	}
 	return nil
-}
-
-func (l *Loop) hasBlockingActive(queueItems []QueueItem) bool {
-	for _, cook := range l.activeByID {
-		if isBlockingQueueItem(l.registry, cook.queueItem) {
-			return true
-		}
-	}
-	for targetID := range l.adoptedTargets {
-		if item, ok := findQueueItemByTarget(queueItems, targetID); ok {
-			if isBlockingQueueItem(l.registry, item) {
-				return true
-			}
-		}
-	}
-	return false
 }

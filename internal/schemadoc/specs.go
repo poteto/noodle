@@ -88,7 +88,7 @@ var schemaTargets = []targetSpec{
 			"routing.tags{}.provider":       {Description: "tag-specific provider override"},
 			"routing.tags{}.model":          {Description: "tag-specific model override"},
 			"task_types[].key":              {Description: "task type key"},
-			"task_types[].blocking":         {Type: "boolean", Description: "whether this task type blocks other work"},
+			"task_types[].can_merge":        {Type: "boolean", Description: "whether successful runs can auto-merge"},
 			"task_types[].schedule":         {Description: "when this task type is normally scheduled"},
 			"quality_verdicts[].session_id": {Description: "quality session ID"},
 			"quality_verdicts[].target_id":  {Description: "target reviewed by quality"},

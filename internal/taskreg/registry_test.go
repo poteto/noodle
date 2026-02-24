@@ -13,7 +13,9 @@ func testSkills() []skill.SkillMeta {
 			Path: "/skills/prioritize",
 			Frontmatter: skill.Frontmatter{
 				Noodle: &skill.NoodleMeta{
-					Blocking: true,
+					Permissions: skill.Permissions{
+						Merge: boolPtr(false),
+					},
 					Schedule: "When the queue is empty",
 				},
 			},
@@ -66,8 +68,8 @@ func TestByKey(t *testing.T) {
 	if tt.Key != "prioritize" {
 		t.Fatalf("key = %q", tt.Key)
 	}
-	if !tt.Blocking {
-		t.Fatal("expected blocking")
+	if tt.CanMerge {
+		t.Fatal("expected canMerge == false")
 	}
 }
 
@@ -107,4 +109,8 @@ func TestResolveQueueItemByExactID(t *testing.T) {
 	if !ok || tt.Key != "reflect" {
 		t.Fatalf("resolve by exact id = %+v, %v", tt, ok)
 	}
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }

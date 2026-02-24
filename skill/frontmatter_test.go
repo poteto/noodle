@@ -10,7 +10,8 @@ func TestParseFrontmatterComplete(t *testing.T) {
 name: deploy
 description: Deploy to production
 noodle:
-  blocking: true
+  permissions:
+    merge: false
   schedule: "After successful execute on main branch"
 ---
 # Deploy Skill
@@ -30,8 +31,8 @@ Instructions here.
 	if !fm.IsTaskType() {
 		t.Fatal("expected IsTaskType() == true")
 	}
-	if !fm.Noodle.Blocking {
-		t.Fatal("expected blocking == true")
+	if fm.Noodle.Permissions.CanMerge() {
+		t.Fatal("expected canMerge == false")
 	}
 	if fm.Noodle.Schedule != "After successful execute on main branch" {
 		t.Fatalf("schedule = %q", fm.Noodle.Schedule)
@@ -83,8 +84,27 @@ Body.
 	if !fm.IsTaskType() {
 		t.Fatal("expected IsTaskType() == true")
 	}
-	if fm.Noodle.Blocking {
-		t.Fatal("expected blocking to default to false")
+	if !fm.Noodle.Permissions.CanMerge() {
+		t.Fatal("expected canMerge to default to true")
+	}
+}
+
+func TestParseFrontmatterMergePermissionTrue(t *testing.T) {
+	content := []byte(`---
+name: execute
+noodle:
+  permissions:
+    merge: true
+  schedule: "When ready"
+---
+Body.
+`)
+	fm, _, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fm.Noodle.Permissions.CanMerge() {
+		t.Fatal("expected canMerge == true")
 	}
 }
 
@@ -92,7 +112,8 @@ func TestParseFrontmatterMissingSchedule(t *testing.T) {
 	content := []byte(`---
 name: bad
 noodle:
-  blocking: true
+  permissions:
+    merge: false
 ---
 Body.
 `)

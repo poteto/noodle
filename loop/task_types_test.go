@@ -13,7 +13,10 @@ func testLoopRegistry() taskreg.Registry {
 			Name: "prioritize",
 			Path: "/skills/prioritize",
 			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{Blocking: true, Schedule: "When queue is empty"},
+				Noodle: &skill.NoodleMeta{
+					Permissions: skill.Permissions{Merge: boolPtr(false)},
+					Schedule:    "When queue is empty",
+				},
 			},
 		},
 		{
@@ -45,20 +48,6 @@ func testLoopRegistry() taskreg.Registry {
 			},
 		},
 	})
-}
-
-func TestIsBlockingQueueItem(t *testing.T) {
-	reg := testLoopRegistry()
-
-	if !isBlockingQueueItem(reg, QueueItem{ID: "prioritize"}) {
-		t.Fatal("prioritize should be blocking")
-	}
-	if isBlockingQueueItem(reg, QueueItem{ID: "execute"}) {
-		t.Fatal("execute should not be blocking")
-	}
-	if isBlockingQueueItem(reg, QueueItem{ID: "unknown-42"}) {
-		t.Fatal("unknown item should not be blocking")
-	}
 }
 
 func TestTaskSkillFallback(t *testing.T) {
@@ -103,4 +92,8 @@ func TestUnknownItemDoesNotResolve(t *testing.T) {
 	}); ok {
 		t.Fatal("unknown item should not resolve")
 	}
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
