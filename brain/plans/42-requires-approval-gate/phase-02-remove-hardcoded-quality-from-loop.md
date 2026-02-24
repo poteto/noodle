@@ -74,9 +74,13 @@ Update fixtures that test quality review behavior. Fixtures with quality review 
 
 Check `make bugs` — some bug fixtures may reference quality behavior.
 
+### Persist and rehydrate `pendingReview`
+
+`pendingReview` currently lives only in memory — it's lost on loop restart. With `permissions.merge` as the primary approval mechanism, this must be durable. Persist pending items to a file (e.g. `.noodle/pending-review.json`) when items are parked, and rehydrate on startup in `loop/reconcile.go` alongside adopted session recovery. Without this, a loop restart silently drops all parked items.
+
 ### Loop state export for TUI
 
-The TUI currently renders approval items from verdict files (`.noodle/quality/`) and `ActionNeeded`. After removing quality verdict production, there's no data path for the TUI to know about pending-approval items. The loop must export `pendingReview` state so the TUI can render it — either by writing pending items to a state file or by adding them to the snapshot/status output that the TUI polls. This is the bridge that makes Phases 5-6 (TUI approval flow) work.
+The TUI currently renders approval items from verdict files (`.noodle/quality/`) and `ActionNeeded`. After removing quality verdict production, there's no data path for the TUI to know about pending-approval items. The loop must export `pendingReview` state so the TUI can render it. The persistence file from above doubles as the TUI's data source — the snapshot loader reads it instead of verdict files. This is the bridge that makes Phases 5-6 (TUI approval flow) work.
 
 ## Data Structures
 

@@ -24,9 +24,9 @@ New function:
 
 Note: `spawnCook` derives worktree name from `cookBaseName(item)`, which won't match the `pendingReviewCook.worktreeName` if the original was a retry. Either pass the worktree name explicitly or add a `requestChanges`-specific spawn path that takes the name from `pendingReviewCook`.
 
-### Pre-existing risk: delete-before-side-effects in merge/reject
+### Fix delete-before-side-effects in merge/reject
 
-The existing `controlMerge` and `controlReject` commands delete the pending item before running side effects (worktree merge, adapter call). If the side effect fails, the item is lost. This is a pre-existing pattern not introduced by this plan, but it becomes more important now that parking is the normal path. Consider applying the same "remove after success" pattern to merge/reject while touching this code.
+The existing `controlMerge` and `controlReject` commands delete the pending item from `pendingReview` before running side effects (worktree merge, adapter call, cleanup). If the side effect fails, the item is lost and cannot be retried. Now that parking is the normal approval path, this must be fixed: remove from `pendingReview` (and its persistence file) only AFTER the side effects succeed. Apply the same "remove after success" pattern used for `request-changes` to both `controlMerge` and `controlReject`.
 
 ### `loop/types.go` — `ControlCommand`
 

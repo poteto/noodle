@@ -4,7 +4,7 @@ Back to [[plans/42-requires-approval-gate/overview]]
 
 ## Goal
 
-Wire up the TUI to support all three approval actions: approve (merge), reject, and request changes. The first two already work via keybindings. This phase adds the "request changes" flow with a Huh text input overlay for feedback.
+Rewrite the TUI approval flow to work with `pendingReview` state instead of verdict files. The current `m`/`x` keybindings are verdict-driven (`snapshot.Verdicts` + `ActionNeeded`) — Phase 3 deletes verdict loading, so these must be rebuilt from the persisted pending-review data. This phase also adds the "request changes" flow with a Huh text input overlay.
 
 Use the `bubbletea-tui` and `go-best-practices` skills during implementation.
 
@@ -14,11 +14,23 @@ Use the `bubbletea-tui` and `go-best-practices` skills during implementation.
 
 Add `github.com/charmbracelet/huh` as a direct dependency.
 
+### `tui/model_snapshot.go` — Replace verdict loading with pending-review
+
+Remove `loadVerdicts` call and `Verdicts` field. Replace with pending-review data loaded from the persistence file (`.noodle/pending-review.json`, created in Phase 2). Add a `PendingReview []PendingReviewItem` field to `Snapshot` with item ID, worktree name, and session ID.
+
+### `tui/feed.go` — Replace verdict cards with pending-review cards
+
+Remove `verdicts` field from `FeedTab`. Replace verdict card rendering with pending-review cards that show the item ID, worktree, and action hints (m/x/c). The `cardCount`, `SetSnapshot`, `SelectedSessionID`, and `Render` methods all reference `f.verdicts` — rewrite to use `f.pendingReview`.
+
+### `tui/model.go` — Rewrite `m`/`x` to use pending-review
+
+Current `m`/`x` handlers call `mergeSelectedVerdict`/`rejectSelectedVerdict` which iterate `snapshot.Verdicts`. Rewrite to iterate the selected pending-review item and send merge/reject control commands. Delete `mergeSelectedVerdict`, `rejectSelectedVerdict`, `mergeAllApproved`, `isActionable`.
+
 ### `tui/model.go` — Key bindings
 
-Add a new keybinding for "request changes" on pending-approval items. Suggest `c` (for "changes") since `r` may conflict with other bindings:
-- `m` — merge (existing)
-- `x` — reject (existing)
+Add `c` (request changes) alongside the rewritten `m`/`x`:
+- `m` — merge (rewritten to use pending-review)
+- `x` — reject (rewritten to use pending-review)
 - `c` — request changes (new)
 
 ### `tui/feedback_input.go` (new file)
@@ -47,7 +59,7 @@ When `feedbackInput` is active, render it as an overlay on top of the current vi
 
 Update the overlay rendering branch (around line 48) to render the feedback input when active. Also update the keybar/action hints (around line 129) to show the `c` keybinding for pending-approval items.
 
-### `tui/feed.go` or `tui/verdict.go`
+### `tui/feed.go`
 
 Update the help text shown for pending-approval items to include the `c` keybinding.
 
@@ -55,6 +67,9 @@ Update the help text shown for pending-approval items to include the `c` keybind
 
 - `tui/feedback_input_test.go` — test form creation, submit/cancel messages
 - Verify the control command is sent correctly with the feedback text
+- Test `m` sends merge control command for selected pending-review item
+- Test `x` sends reject control command for selected pending-review item
+- Test that `m`/`x`/`c` are no-ops when no pending-review items exist
 
 ## Routing
 
