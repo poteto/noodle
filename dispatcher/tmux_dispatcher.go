@@ -73,6 +73,13 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
+	runtimeKind := strings.ToLower(strings.TrimSpace(req.Runtime))
+	if runtimeKind == "" {
+		runtimeKind = "tmux"
+	}
+	if runtimeKind != "tmux" {
+		return nil, fmt.Errorf("runtime %q not configured", runtimeKind)
+	}
 
 	if req.AllowPrimaryCheckout {
 		req.WorktreePath = strings.TrimSpace(req.WorktreePath)
@@ -128,7 +135,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	}
 
 	var pipeline string
-	if runtimeCmd := s.resolveRuntime(req); runtimeCmd != "" {
+	if runtimeCmd := strings.TrimSpace(s.runtimeDefault); runtimeCmd != "" {
 		vars := map[string]string{
 			"session": sessionID,
 			"repo":    req.WorktreePath,
@@ -178,13 +185,6 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	)
 	session.start(ctx)
 	return session, nil
-}
-
-func (s *TmuxDispatcher) resolveRuntime(req DispatchRequest) string {
-	if r := strings.TrimSpace(req.Runtime); r != "" {
-		return r
-	}
-	return s.runtimeDefault
 }
 
 // resolveTemplateVars replaces {{key}} placeholders with verbatim values.

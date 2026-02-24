@@ -111,6 +111,7 @@ var schemaTargets = []targetSpec{
 			"items[].title":     {Description: "brief task description"},
 			"items[].provider":  {Description: "provider used for this task"},
 			"items[].model":     {Description: "model used for this task"},
+			"items[].runtime":   {Description: "runtime used for this task (tmux, sprites, etc.)"},
 			"items[].skill":     {Description: "skill name to load"},
 			"items[].plan[]":    {Description: "linked plan path(s), e.g. plans/15-bootstrap-onboarding/overview"},
 			"items[].review":    {Type: "boolean", Description: "true when this item requires blocking review"},

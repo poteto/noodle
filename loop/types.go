@@ -34,6 +34,7 @@ type QueueItem struct {
 	Title     string   `json:"title,omitempty"`
 	Provider  string   `json:"provider"`
 	Model     string   `json:"model"`
+	Runtime   string   `json:"runtime,omitempty"`
 	Skill     string   `json:"skill,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
 	Review    *bool    `json:"review,omitempty"`

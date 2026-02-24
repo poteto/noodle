@@ -1,6 +1,10 @@
 package dispatcher
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+)
 
 func TestComposePromptsCodexPutsRequestBeforeSkillBundle(t *testing.T) {
 	systemPrompt, finalPrompt := composePrompts(
@@ -33,21 +37,21 @@ func TestResolveTemplateVarsEmptyTemplate(t *testing.T) {
 	}
 }
 
-func TestResolveRuntimeSelectsRequestOverDefault(t *testing.T) {
-	d := &TmuxDispatcher{runtimeDefault: "default-cmd"}
-	req := DispatchRequest{Runtime: "custom-cmd --repo={{repo}}"}
-	got := d.resolveRuntime(req)
-	if got != "custom-cmd --repo={{repo}}" {
-		t.Fatalf("resolveRuntime = %q, want request runtime", got)
+func TestDispatchRejectsUnsupportedRuntimeKind(t *testing.T) {
+	d := &TmuxDispatcher{}
+	_, err := d.Dispatch(context.Background(), DispatchRequest{
+		Name:         "cook-1",
+		Prompt:       "test prompt",
+		Provider:     "claude",
+		Model:        "claude-sonnet-4-6",
+		WorktreePath: "/tmp/worktree",
+		Runtime:      "sprites",
+	})
+	if err == nil {
+		t.Fatal("expected runtime validation error")
 	}
-}
-
-func TestResolveRuntimeFallsBackToDefault(t *testing.T) {
-	d := &TmuxDispatcher{runtimeDefault: "default-cmd --repo={{repo}}"}
-	req := DispatchRequest{}
-	got := d.resolveRuntime(req)
-	if got != "default-cmd --repo={{repo}}" {
-		t.Fatalf("resolveRuntime = %q, want default", got)
+	if !strings.Contains(err.Error(), `runtime "sprites" not configured`) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

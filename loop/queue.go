@@ -49,7 +49,9 @@ func toQueueX(queue Queue) queuex.Queue {
 			Title:     item.Title,
 			Provider:  item.Provider,
 			Model:     item.Model,
+			Runtime:   item.Runtime,
 			Skill:     item.Skill,
+			Plan:      item.Plan,
 			Review:    item.Review,
 			Rationale: item.Rationale,
 		})
@@ -66,7 +68,9 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Title:     item.Title,
 			Provider:  item.Provider,
 			Model:     item.Model,
+			Runtime:   item.Runtime,
 			Skill:     item.Skill,
+			Plan:      item.Plan,
 			Review:    item.Review,
 			Rationale: item.Rationale,
 		})

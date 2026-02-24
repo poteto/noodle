@@ -200,3 +200,28 @@ func TestNormalizeAndValidateQueueAllowsReflectTask(t *testing.T) {
 		t.Fatalf("skill = %q, want reflect", got)
 	}
 }
+
+func TestQueueXRoundTripPreservesRuntimeAndPlan(t *testing.T) {
+	queue := Queue{
+		Items: []QueueItem{
+			{
+				ID:       "task-1",
+				TaskKey:  "execute",
+				Provider: "claude",
+				Model:    "claude-sonnet-4-6",
+				Runtime:  "sprites",
+				Skill:    "execute",
+				Plan:     []string{"plans/27-remote-dispatchers/phase-02"},
+			},
+		},
+	}
+
+	roundTrip := fromQueueX(toQueueX(queue))
+	item := roundTrip.Items[0]
+	if item.Runtime != "sprites" {
+		t.Fatalf("runtime = %q, want sprites", item.Runtime)
+	}
+	if len(item.Plan) != 1 || item.Plan[0] != "plans/27-remote-dispatchers/phase-02" {
+		t.Fatalf("plan = %+v", item.Plan)
+	}
+}

@@ -127,3 +127,20 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 		t.Fatalf("skill not populated: %+v", got.Items[0])
 	}
 }
+
+func TestReadParsesRuntimeField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "queue.json")
+
+	wrapped := `{"items":[{"id":"1","task_key":"execute","runtime":"sprites"}]}`
+	if err := os.WriteFile(path, []byte(wrapped), 0o644); err != nil {
+		t.Fatalf("write wrapped: %v", err)
+	}
+	q, err := Read(path)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if got := q.Items[0].Runtime; got != "sprites" {
+		t.Fatalf("runtime = %q, want sprites", got)
+	}
+}

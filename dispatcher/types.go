@@ -22,7 +22,7 @@ type DispatchRequest struct {
 	AllowPrimaryCheckout bool
 	TaskKey              string // resolved task type key (e.g., "execute", "prioritize")
 	DomainSkill          string // for execute: adapter-configured domain skill
-	Runtime              string // command template from frontmatter, empty = built-in
+	Runtime              string // runtime kind from queue item (e.g., "tmux", "sprites")
 }
 
 // Validate ensures required request fields are set at the boundary.

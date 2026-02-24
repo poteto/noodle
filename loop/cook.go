@@ -51,7 +51,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		Skill:        item.Skill,
 		WorktreePath: worktreePath,
 		TaskKey:      taskType.Key,
-		Runtime:      taskType.Runtime,
+		Runtime:      nonEmpty(item.Runtime, "tmux"),
 	}
 	if taskType.Key == "execute" {
 		if adapter, exists := l.config.Adapters["backlog"]; exists {
