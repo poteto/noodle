@@ -10,7 +10,6 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
-	"github.com/poteto/noodle/internal/shellx"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	"github.com/poteto/noodle/skill"
@@ -48,29 +47,19 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		panic(err)
 	}
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
-		wrapperDir, err := ensureSpritesProviderWrappers(runtimeDir, cfg.Runtime.Sprites)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: sprites runtime unavailable: %v\n", err)
+		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)
+		if spriteName == "" {
+			fmt.Fprintf(os.Stderr, "warning: sprites runtime unavailable: sprite_name not set\n")
 		} else {
-			remoteProviders := dispatcher.ProviderConfigs{
-				Claude: dispatcher.ProviderConfig{
-					Path: wrapperDir,
-					Args: cfg.Agents.Claude.Args,
-				},
-				Codex: dispatcher.ProviderConfig{
-					Path: wrapperDir,
-					Args: cfg.Agents.Codex.Args,
-				},
-			}
-			sprites := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
-				ProjectDir:      projectDir,
-				RuntimeDir:      runtimeDir,
-				NoodleBin:       noodleBin,
-				SkillResolver:   resolver,
-				RuntimeKind:     "sprites",
-				ProviderConfigs: remoteProviders,
+			sd := dispatcher.NewSpritesDispatcher(dispatcher.SpritesDispatcherConfig{
+				ProjectDir:    projectDir,
+				RuntimeDir:    runtimeDir,
+				NoodleBin:     noodleBin,
+				SkillResolver: resolver,
+				SpriteName:    spriteName,
+				Token:         cfg.Runtime.Sprites.Token(),
 			})
-			if err := factory.Register("sprites", sprites); err != nil {
+			if err := factory.Register("sprites", sd); err != nil {
 				panic(err)
 			}
 		}
@@ -104,40 +93,4 @@ func runtimeEnabled(available []string, kind string) bool {
 		}
 	}
 	return false
-}
-
-func ensureSpritesProviderWrappers(runtimeDir string, cfg config.SpritesConfig) (string, error) {
-	spriteName := strings.TrimSpace(cfg.SpriteName)
-	if spriteName == "" {
-		return "", fmt.Errorf("runtime.sprites.sprite_name not set")
-	}
-
-	dir := filepath.Join(runtimeDir, "bin", "sprites")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create sprites wrapper directory: %w", err)
-	}
-
-	claudePath := filepath.Join(dir, "claude")
-	claudeScript := strings.Join([]string{
-		"#!/bin/sh",
-		"set -eu",
-		"exec sprite -s " + shellx.Quote(spriteName) + " exec claude \"$@\"",
-		"",
-	}, "\n")
-	if err := os.WriteFile(claudePath, []byte(claudeScript), 0o755); err != nil {
-		return "", fmt.Errorf("write sprites claude wrapper: %w", err)
-	}
-
-	codexPath := filepath.Join(dir, "codex")
-	codexScript := strings.Join([]string{
-		"#!/bin/sh",
-		"set -eu",
-		"exec sprite -s " + shellx.Quote(spriteName) + " exec codex \"$@\"",
-		"",
-	}, "\n")
-	if err := os.WriteFile(codexPath, []byte(codexScript), 0o755); err != nil {
-		return "", fmt.Errorf("write sprites codex wrapper: %w", err)
-	}
-
-	return dir, nil
 }
