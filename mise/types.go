@@ -50,8 +50,9 @@ type HistoryItem struct {
 }
 
 type RoutingSnapshot struct {
-	Defaults RoutingPolicy            `json:"defaults"`
-	Tags     map[string]RoutingPolicy `json:"tags"`
+	Defaults          RoutingPolicy            `json:"defaults"`
+	Tags              map[string]RoutingPolicy `json:"tags"`
+	AvailableRuntimes []string                 `json:"available_runtimes,omitempty"`
 }
 
 type RoutingPolicy struct {

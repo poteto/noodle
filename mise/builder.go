@@ -91,7 +91,8 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 			Provider: b.config.Routing.Defaults.Provider,
 			Model:    b.config.Routing.Defaults.Model,
 		},
-		Tags: make(map[string]RoutingPolicy, len(b.config.Routing.Tags)),
+		Tags:              make(map[string]RoutingPolicy, len(b.config.Routing.Tags)),
+		AvailableRuntimes: b.config.AvailableRuntimes(),
 	}
 	for tag, policy := range b.config.Routing.Tags {
 		routing.Tags[tag] = RoutingPolicy{Provider: policy.Provider, Model: policy.Model}

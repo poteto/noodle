@@ -63,6 +63,16 @@ When any item has `"review": true`, it must be the only item type in the queue (
 
 When uncertain, codex for implementation, opus for judgment.
 
+## Runtime Routing
+
+Read `routing.available_runtimes` from mise before writing queue items.
+
+- If only `tmux` is available, set queue item `"runtime": "tmux"`.
+- If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
+- Keep `quality`, `reflect`, and `meditate` on `"runtime": "tmux"` unless explicitly justified.
+- Do not emit `"runtime": "cursor"` yet (Cursor backend is not implemented).
+- Always include `"runtime"` on scheduled queue items so dispatch routing is explicit.
+
 ## Output
 
 Write valid JSON to `.noodle/queue.json` matching `noodle schema queue`.

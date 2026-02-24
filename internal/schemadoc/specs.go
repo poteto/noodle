@@ -84,6 +84,7 @@ var schemaTargets = []targetSpec{
 			"recent_history[].duration_s":   {Type: "number", Description: "session duration in seconds"},
 			"routing.defaults.provider":     {Description: "default provider"},
 			"routing.defaults.model":        {Description: "default model"},
+			"routing.available_runtimes[]":  {Description: "runtime kinds available for scheduling"},
 			"routing.tags{}.provider":       {Description: "tag-specific provider override"},
 			"routing.tags{}.model":          {Description: "tag-specific model override"},
 			"task_types[].key":              {Description: "task type key"},
