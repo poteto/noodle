@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 42 -->
+<!-- next-id: 43 -->
 
 ## Tooling
 
@@ -57,3 +57,4 @@
 36. [ ] Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.
 37. [ ] Skip prioritize when queue already has items — every fresh start requires a 60-120s prioritize session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new prioritize cycle. Or add a `--queue` flag to pre-seed the queue.
 38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[plans/38-resilient-skill-resolution/overview]]
+42. [ ] Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[plans/42-requires-approval-gate/overview]]
