@@ -33,7 +33,7 @@ func TestTmuxSessionClosesEventsAfterDone(t *testing.T) {
 		"noodle-session-a",
 		".",
 		nil,
-		"does-not-exist.ndjson",
+		filepath.Join(t.TempDir(), "does-not-exist.ndjson"),
 		"",
 		nil,
 		nil,
