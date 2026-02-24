@@ -120,10 +120,13 @@ func (a *App) Merge(name string) error {
 	}
 
 	a.info(fmt.Sprintf("Rebasing %s onto %s...", name, base))
-	if a.git("-C", wtPath, "rebase", base).Run() != nil {
+	if err := a.git("-C", wtPath, "rebase", base).Run(); err != nil {
 		if stashed {
 			_ = a.git("-C", wtPath, "rebase", "--abort").Run()
 			_ = a.git("-C", wtPath, "stash", "pop", "--quiet").Run()
+		}
+		if a.hasMergeConflicts(wtPath) {
+			return &MergeConflictError{Branch: mergeBranch, Err: err}
 		}
 		return fmt.Errorf("rebase failed — resolve conflicts manually in %s", wtPath)
 	}
@@ -134,6 +137,9 @@ func (a *App) Merge(name string) error {
 
 	a.info(fmt.Sprintf("Merging %s into %s...", mergeBranch, base))
 	if err := a.gitRun("merge", mergeBranch); err != nil {
+		if a.hasMergeConflicts(a.Root) {
+			return &MergeConflictError{Branch: mergeBranch, Err: err}
+		}
 		return fmt.Errorf("merge failed: %w", err)
 	}
 
@@ -178,6 +184,9 @@ func (a *App) MergeRemoteBranch(branch string) error {
 	mergeRef := "origin/" + branch
 	a.info(fmt.Sprintf("Merging %s into %s...", mergeRef, base))
 	if err := a.gitRun("merge", mergeRef); err != nil {
+		if a.hasMergeConflicts(a.Root) {
+			return &MergeConflictError{Branch: mergeRef, Err: err}
+		}
 		return fmt.Errorf("merge remote branch %s: %w", branch, err)
 	}
 

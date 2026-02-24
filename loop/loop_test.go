@@ -15,6 +15,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	"github.com/poteto/noodle/worktree"
 )
 
 type fakeSession struct {
@@ -53,6 +54,8 @@ type fakeWorktree struct {
 	merged          []string
 	remoteMerged    []string
 	cleaned         []string
+	mergeErr        error
+	remoteMergeErr  error
 	createErr       error
 	createErrByName map[string]error
 }
@@ -68,11 +71,11 @@ func (f *fakeWorktree) Create(name string) error {
 }
 func (f *fakeWorktree) Merge(name string) error {
 	f.merged = append(f.merged, name)
-	return nil
+	return f.mergeErr
 }
 func (f *fakeWorktree) MergeRemoteBranch(branch string) error {
 	f.remoteMerged = append(f.remoteMerged, branch)
-	return nil
+	return f.remoteMergeErr
 }
 func (f *fakeWorktree) Cleanup(name string, _ bool) error {
 	f.cleaned = append(f.cleaned, name)
@@ -1189,5 +1192,77 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 	}
 	if len(wt.remoteMerged) != 0 {
 		t.Fatalf("expected no remote merge, got %#v", wt.remoteMerged)
+	}
+}
+
+func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	review := false
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{
+		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(sp.sessions))
+	}
+
+	sessionID := sp.sessions[0].id
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sessionPath, "spawn.json"),
+		[]byte(`{"sync":{"type":"branch","branch":"noodle/session-a"}}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
+	}
+
+	sp.sessions[0].status = "completed"
+	close(sp.sessions[0].done)
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if l.runtimeRepairInFlight != nil {
+		t.Fatalf("expected no runtime repair in flight, got %#v", l.runtimeRepairInFlight)
+	}
+	if reason, ok := l.failedTargets["42"]; !ok {
+		t.Fatal("expected target to be marked failed")
+	} else if !strings.Contains(reason, "merge conflict") {
+		t.Fatalf("failed reason = %q", reason)
+	}
+
+	updated, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue after conflict: %v", err)
+	}
+	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
+		t.Fatalf("expected prioritize bootstrap item after conflict, got %#v", updated.Items)
 	}
 }

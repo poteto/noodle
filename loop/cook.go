@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/recover"
+	"github.com/poteto/noodle/worktree"
 )
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
@@ -91,7 +92,9 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 		delete(l.activeByID, cook.session.ID())
 		delete(l.activeByTarget, cook.queueItem.ID)
 		if err := l.handleCompletion(ctx, cook); err != nil {
-			return err
+			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+				return conflictErr
+			}
 		}
 	}
 	return l.collectAdoptedCompletions(ctx)
@@ -197,9 +200,28 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 			continue
 		}
 		if err := l.handleCompletion(ctx, cook); err != nil {
-			return err
+			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+				return conflictErr
+			}
 		}
 		l.dropAdoptedTarget(targetID, sessionID)
+	}
+	return nil
+}
+
+func (l *Loop) handleMergeConflict(cook *activeCook, err error) error {
+	var conflictErr *worktree.MergeConflictError
+	if !errors.As(err, &conflictErr) {
+		return err
+	}
+	if isPrioritizeItem(cook.queueItem) {
+		return err
+	}
+	if markErr := l.markFailed(cook.queueItem.ID, conflictErr.Error()); markErr != nil {
+		return markErr
+	}
+	if skipErr := l.skipQueueItem(cook.queueItem.ID); skipErr != nil {
+		return skipErr
 	}
 	return nil
 }

@@ -448,6 +448,7 @@ func TestMergeRemoteBranch(t *testing.T) {
 	remoteDir := filepath.Join(t.TempDir(), "remote.git")
 	runGitIn(t, dir, "init", "--bare", remoteDir)
 	runGitIn(t, dir, "remote", "add", "origin", remoteDir)
+	runGitIn(t, dir, "config", "merge.ff", "false")
 	runGitIn(t, dir, "push", "-u", "origin", "main")
 
 	runGitIn(t, dir, "checkout", "-b", "noodle/remote-merge")
@@ -483,6 +484,43 @@ func TestMergeRemoteBranchRequiresBranch(t *testing.T) {
 
 	if err := app.MergeRemoteBranch(""); err == nil {
 		t.Fatal("expected branch validation error")
+	}
+}
+
+func TestMergeRemoteBranchConflictReturnsTypedError(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	app := &App{Root: dir}
+
+	remoteDir := filepath.Join(t.TempDir(), "remote.git")
+	runGitIn(t, dir, "init", "--bare", remoteDir)
+	runGitIn(t, dir, "remote", "add", "origin", remoteDir)
+	runGitIn(t, dir, "config", "merge.ff", "false")
+	runGitIn(t, dir, "push", "-u", "origin", "main")
+
+	runGitIn(t, dir, "checkout", "-b", "noodle/conflict")
+	writeFile(t, filepath.Join(dir, "README.md"), "remote change\n")
+	runGitIn(t, dir, "add", "README.md")
+	runGitIn(t, dir, "commit", "-m", "remote update")
+	runGitIn(t, dir, "push", "-u", "origin", "noodle/conflict")
+	runGitIn(t, dir, "checkout", "main")
+
+	writeFile(t, filepath.Join(dir, "README.md"), "local change\n")
+	runGitIn(t, dir, "add", "README.md")
+	runGitIn(t, dir, "commit", "-m", "local update")
+
+	err := app.MergeRemoteBranch("noodle/conflict")
+	if err == nil {
+		t.Fatal("expected merge conflict error")
+	}
+	var conflictErr *MergeConflictError
+	if !errors.As(err, &conflictErr) {
+		t.Fatalf("expected MergeConflictError, got %T: %v", err, err)
+	}
+	if conflictErr.Branch != "origin/noodle/conflict" {
+		t.Fatalf("conflict branch = %q", conflictErr.Branch)
 	}
 }
 
@@ -538,8 +576,9 @@ func TestMergeLockReleasedOnFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected merge to fail due to rebase conflict")
 	}
-	if !strings.Contains(err.Error(), "rebase failed") {
-		t.Fatalf("expected rebase failure, got: %v", err)
+	var conflictErr *MergeConflictError
+	if !errors.As(err, &conflictErr) {
+		t.Fatalf("expected MergeConflictError, got: %v", err)
 	}
 	if fileExists(app.mergeLockPath()) {
 		t.Error("merge lock file should be removed after failed merge")
