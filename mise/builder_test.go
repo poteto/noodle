@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/plan"
 )
 
 func TestBuilderBuildWritesMiseJSON(t *testing.T) {
@@ -126,6 +128,78 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	misePath := filepath.Join(projectDir, ".noodle", "mise.json")
 	if _, err := os.Stat(misePath); err != nil {
 		t.Fatalf("mise.json not written: %v", err)
+	}
+}
+
+func TestSchedulablePlanIDsFallsBackToPlanID(t *testing.T) {
+	tests := []struct {
+		name    string
+		plans   []plan.Plan
+		backlog []adapter.BacklogItem
+		want    []int
+	}{
+		{
+			name: "explicit backlog field",
+			plans: []plan.Plan{
+				{Meta: plan.PlanMeta{ID: 10, Status: "active", Backlog: "42"}},
+			},
+			backlog: []adapter.BacklogItem{
+				{ID: "42", Status: adapter.BacklogStatusOpen},
+			},
+			want: []int{10},
+		},
+		{
+			name: "implicit match via plan ID",
+			plans: []plan.Plan{
+				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
+			},
+			backlog: []adapter.BacklogItem{
+				{ID: "38", Status: adapter.BacklogStatusOpen},
+			},
+			want: []int{38},
+		},
+		{
+			name: "explicit field takes precedence over plan ID",
+			plans: []plan.Plan{
+				{Meta: plan.PlanMeta{ID: 38, Status: "active", Backlog: "99"}},
+			},
+			backlog: []adapter.BacklogItem{
+				{ID: "38", Status: adapter.BacklogStatusOpen},
+				{ID: "99", Status: adapter.BacklogStatusOpen},
+			},
+			want: []int{38},
+		},
+		{
+			name: "no match when backlog item is done",
+			plans: []plan.Plan{
+				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
+			},
+			backlog: []adapter.BacklogItem{
+				{ID: "38", Status: adapter.BacklogStatusDone},
+			},
+			want: nil,
+		},
+		{
+			name: "no match when no backlog items",
+			plans: []plan.Plan{
+				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
+			},
+			backlog: nil,
+			want:    nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := schedulablePlanIDs(tt.plans, tt.backlog)
+			if len(got) != len(tt.want) {
+				t.Fatalf("schedulablePlanIDs = %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("schedulablePlanIDs[%d] = %d, want %d", i, got[i], tt.want[i])
+				}
+			}
+		})
 	}
 }
 
