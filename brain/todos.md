@@ -8,7 +8,6 @@
 ## Noodle Post-Plan 1
 
 7. [ ] `go install` support — add proper module versioning so `go install github.com/poteto/noodle@latest` works without cloning the repo. Update README quick start accordingly.
-8. [ ] Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.
 
 ## Skill Cleanup
 
@@ -29,7 +28,6 @@
 35. [ ] Silent plan/skill discovery warnings — missing frontmatter, wrong directory structure, missing adapter scripts all fail silently. Plans just don't appear in mise.json with no indication why. `noodle debug` should surface discovery issues, and mise builder should emit warnings.
 37. [ ] Skip prioritize when queue already has items — every fresh start requires a 60-120s prioritize session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new prioritize cycle. Or add a `--queue` flag to pre-seed the queue.
 38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[plans/38-resilient-skill-resolution/overview]]
-42. [ ] Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[archived_plans/42-requires-approval-gate/overview]]
 43. [ ] Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[plans/43-deterministic-self-healing-and-status-split/overview]]
 44. [ ] TUI feed notifications for deterministic repairs — surface self-healing events (file resets, dir creation, stale cleanup) in the TUI feed so users can see what Go fixed silently.
 
@@ -62,3 +60,5 @@
 26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
 36. [x] ~~Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.~~ — default is now 3.
 14. [x] ~~Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup~~ — marked complete per user confirmation.
+42. [x] ~~Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[archived_plans/42-requires-approval-gate/overview]]~~ — completed. `permissions.merge` frontmatter implemented, autonomy config simplified to `auto`/`approve`, plan archived.
+8. [x] ~~Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.~~ — decided not to do.
