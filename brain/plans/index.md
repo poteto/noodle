@@ -6,3 +6,4 @@
 - [ ] [[plans/43-deterministic-self-healing-and-status-split/overview]]
 - [ ] [[plans/28-rename-prioritize-to-schedule/overview]]
 - [ ] [[plans/29-queue-item-context-passthrough/overview]]
+- [ ] [[plans/31-structured-loop-logging/overview]]

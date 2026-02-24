@@ -21,7 +21,7 @@
 
 ## Loop Observability & DX
 
-31. [ ] Structured loop logging — the loop produces zero stderr/stdout. Dispatch failures, queue validation rejections, session completions, retry decisions — all silent. Add structured stderr logging for key lifecycle events so you can tail the log and see what's happening.
+31. [ ] Structured loop logging — the loop produces zero stderr/stdout. Dispatch failures, queue validation rejections, session completions, retry decisions — all silent. Add structured stderr logging for key lifecycle events so you can tail the log and see what's happening. [[plans/31-structured-loop-logging/overview]]
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command.
