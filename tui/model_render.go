@@ -74,8 +74,20 @@ func (m Model) renderLayout() string {
 	layout := joinLayout(rail, pane)
 
 	if m.steerOpen {
-		layout += "\n" + keybarStyle.Render("[steer] ") +
-			dimStyle.Render("type @target instruction · enter sends · esc closes")
+		inputLine := keybarStyle.Render("[steer] ") + m.steerInput + keybarStyle.Render("█")
+		if m.steerMentionOpen && len(m.steerMentionItems) > 0 {
+			for i, item := range m.steerMentionItems {
+				if i == m.steerMentionIndex {
+					inputLine += "\n  " + keybarStyle.Render("> "+item)
+				} else {
+					inputLine += "\n  " + dimStyle.Render("  "+item)
+				}
+			}
+		}
+		if m.steerInput == "" {
+			inputLine += " " + dimStyle.Render("@target instruction · enter sends · esc closes")
+		}
+		layout += "\n" + inputLine
 	}
 
 	// Persistent keybar.
