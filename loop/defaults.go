@@ -43,7 +43,9 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		},
 	})
 	factory := dispatcher.NewDispatcherFactory()
-	factory.Register("tmux", local)
+	if err := factory.Register("tmux", local); err != nil {
+		panic(err)
+	}
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		wrapperDir, err := ensureSpritesProviderWrappers(runtimeDir, cfg.Runtime.Sprites)
 		if err != nil {
@@ -67,7 +69,9 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				RuntimeKind:     "sprites",
 				ProviderConfigs: remoteProviders,
 			})
-			factory.Register("sprites", sprites)
+			if err := factory.Register("sprites", sprites); err != nil {
+				panic(err)
+			}
 		}
 	}
 

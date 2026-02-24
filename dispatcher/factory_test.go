@@ -32,7 +32,9 @@ var _ Session = (*factorySessionStub)(nil)
 func TestDispatcherFactoryRoutesDefaultToTmux(t *testing.T) {
 	factory := NewDispatcherFactory()
 	stub := &factoryDispatcherStub{session: &factorySessionStub{id: "sess-1", status: "running"}}
-	factory.Register("tmux", stub)
+	if err := factory.Register("tmux", stub); err != nil {
+		t.Fatalf("register: %v", err)
+	}
 
 	session, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: ""})
 	if err != nil {
@@ -49,7 +51,9 @@ func TestDispatcherFactoryRoutesDefaultToTmux(t *testing.T) {
 func TestDispatcherFactoryRoutesSpritesRuntime(t *testing.T) {
 	factory := NewDispatcherFactory()
 	stub := &factoryDispatcherStub{session: &factorySessionStub{id: "sess-2", status: "running"}}
-	factory.Register("sprites", stub)
+	if err := factory.Register("sprites", stub); err != nil {
+		t.Fatalf("register: %v", err)
+	}
 
 	_, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: "sprites"})
 	if err != nil {
@@ -62,11 +66,20 @@ func TestDispatcherFactoryRoutesSpritesRuntime(t *testing.T) {
 
 func TestDispatcherFactoryRejectsUnknownRuntime(t *testing.T) {
 	factory := NewDispatcherFactory()
-	factory.Register("tmux", &factoryDispatcherStub{
+	if err := factory.Register("tmux", &factoryDispatcherStub{
 		session: &factorySessionStub{id: "sess-3", status: "running"},
-	})
+	}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
 
 	if _, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: "cursor"}); err == nil {
 		t.Fatal("expected runtime configuration error")
+	}
+}
+
+func TestDispatcherFactoryRegisterRejectsNilDispatcher(t *testing.T) {
+	factory := NewDispatcherFactory()
+	if err := factory.Register("tmux", nil); err == nil {
+		t.Fatal("expected register error for nil dispatcher")
 	}
 }

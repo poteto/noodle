@@ -16,12 +16,16 @@ func NewDispatcherFactory() *DispatcherFactory {
 	}
 }
 
-func (f *DispatcherFactory) Register(runtime string, dispatcher Dispatcher) {
-	if f == nil || dispatcher == nil {
-		return
+func (f *DispatcherFactory) Register(runtime string, dispatcher Dispatcher) error {
+	if f == nil {
+		return fmt.Errorf("dispatcher factory not initialized")
+	}
+	if dispatcher == nil {
+		return fmt.Errorf("dispatcher for runtime %q not configured", normalizeRuntime(runtime))
 	}
 	key := normalizeRuntime(runtime)
 	f.runtimes[key] = dispatcher
+	return nil
 }
 
 func (f *DispatcherFactory) Dispatch(ctx context.Context, req DispatchRequest) (Session, error) {
