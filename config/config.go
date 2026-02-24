@@ -37,6 +37,7 @@ type Config struct {
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
 	Agents      AgentsConfig             `toml:"agents"`
 	Runtime     RuntimeConfig            `toml:"runtime"`
+	Plans       PlansConfig              `toml:"plans"`
 }
 
 // reviewCompat exists only to migrate legacy review.enabled TOML.
@@ -97,6 +98,11 @@ type AgentsConfig struct {
 // RuntimeConfig controls the default runtime for spawned cook sessions.
 type RuntimeConfig struct {
 	Default string `toml:"default"` // command template, empty = built-in tmux
+}
+
+// PlansConfig controls plan lifecycle behavior.
+type PlansConfig struct {
+	OnDone string `toml:"on_done"` // "keep" | "remove"
 }
 
 type DiagnosticSeverity string
@@ -187,6 +193,9 @@ func DefaultConfig() Config {
 			MaxCooks: 4,
 		},
 		Agents: AgentsConfig{},
+		Plans: PlansConfig{
+			OnDone: "keep",
+		},
 	}
 }
 
@@ -306,6 +315,10 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Concurrency.MaxCooks = 4
 	}
 
+	if !metadata.IsDefined("plans", "on_done") {
+		config.Plans.OnDone = "keep"
+	}
+
 	if metadata.IsDefined("adapters") {
 		if config.Adapters == nil {
 			config.Adapters = map[string]AdapterConfig{}
@@ -384,6 +397,15 @@ func validateParsedValues(config Config) error {
 	}
 	if config.Concurrency.MaxCooks <= 0 {
 		return fmt.Errorf("concurrency.max_cooks: must be greater than 0")
+	}
+
+	switch config.Plans.OnDone {
+	case "keep", "remove":
+	default:
+		return fmt.Errorf(
+			"plans.on_done: unsupported value %q (expected keep, remove)",
+			config.Plans.OnDone,
+		)
 	}
 
 	if err := validatePositiveDuration("monitor.stuck_threshold", config.Monitor.StuckThreshold); err != nil {

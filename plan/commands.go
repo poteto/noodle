@@ -38,8 +38,10 @@ func Create(plansDir string, todoID int, slug string) (string, error) {
 	return absDir, nil
 }
 
-// Done sets a plan's status to "done" in its overview.md frontmatter.
-func Done(plansDir string, planID int) error {
+// Done sets a plan's status to "done" and either archives or removes it.
+// onDone "keep": move to archived_plans/, update indexes and wikilinks.
+// onDone "remove": delete the plan directory and remove wikilinks.
+func Done(plansDir string, planID int, onDone string) error {
 	planDir, err := findPlanDir(plansDir, planID)
 	if err != nil {
 		return err
@@ -63,7 +65,44 @@ func Done(plansDir string, planID int) error {
 	if err := os.WriteFile(overviewPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("overview.md not written: %w", err)
 	}
-	return nil
+
+	dirName := filepath.Base(planDir)
+	brainDir := filepath.Dir(plansDir)
+
+	if onDone == "remove" {
+		if err := os.RemoveAll(planDir); err != nil {
+			return fmt.Errorf("plan directory not removed: %w", err)
+		}
+		if err := removeWikilink(plansDir, dirName); err != nil {
+			return err
+		}
+		return removeTodoLinks(brainDir, dirName)
+	}
+
+	// Default "keep": archive to archived_plans/.
+	archivedDir := filepath.Join(brainDir, "archived_plans")
+
+	if err := os.MkdirAll(archivedDir, 0o755); err != nil {
+		return fmt.Errorf("archived_plans directory not created: %w", err)
+	}
+
+	if err := os.Rename(planDir, filepath.Join(archivedDir, dirName)); err != nil {
+		return fmt.Errorf("plan directory not moved to archive: %w", err)
+	}
+
+	if err := removeWikilink(plansDir, dirName); err != nil {
+		return err
+	}
+	if err := appendArchivedWikilink(archivedDir, dirName); err != nil {
+		return err
+	}
+
+	oldPrefix := "plans/" + dirName
+	newPrefix := "archived_plans/" + dirName
+	if err := rewriteInternalLinks(filepath.Join(archivedDir, dirName), oldPrefix, newPrefix); err != nil {
+		return err
+	}
+	return rewriteTodoLinks(brainDir, oldPrefix, newPrefix)
 }
 
 // PhaseAdd creates a new numbered phase file in an existing plan directory.
@@ -156,6 +195,136 @@ func appendWikilink(plansDir, dirName string) error {
 
 	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("index.md not written: %w", err)
+	}
+	return nil
+}
+
+// removeWikilink removes the line containing a wikilink for dirName from plansDir/index.md.
+func removeWikilink(plansDir, dirName string) error {
+	indexPath := filepath.Join(plansDir, "index.md")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("index.md not readable: %w", err)
+	}
+
+	target := "[[plans/" + dirName + "/overview]]"
+	lines := strings.Split(string(data), "\n")
+	var filtered []string
+	for _, line := range lines {
+		if !strings.Contains(line, target) {
+			filtered = append(filtered, line)
+		}
+	}
+
+	if err := os.WriteFile(indexPath, []byte(strings.Join(filtered, "\n")), 0o644); err != nil {
+		return fmt.Errorf("index.md not written: %w", err)
+	}
+	return nil
+}
+
+// appendArchivedWikilink appends a plan wikilink to archived_plans/index.md, creating it if needed.
+func appendArchivedWikilink(archivedDir, dirName string) error {
+	indexPath := filepath.Join(archivedDir, "index.md")
+	link := fmt.Sprintf("- [x] [[archived_plans/%s/overview]]", dirName)
+
+	existing, err := os.ReadFile(indexPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("archived index.md not readable: %w", err)
+	}
+
+	var content string
+	if len(existing) == 0 {
+		content = "# Archived Plans\n\n" + link + "\n"
+	} else {
+		s := string(existing)
+		if !strings.HasSuffix(s, "\n") {
+			s += "\n"
+		}
+		content = s + link + "\n"
+	}
+
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("archived index.md not written: %w", err)
+	}
+	return nil
+}
+
+// rewriteInternalLinks replaces wikilinks containing oldPrefix with newPrefix
+// in all .md files within planDir.
+func rewriteInternalLinks(planDir, oldPrefix, newPrefix string) error {
+	entries, err := os.ReadDir(planDir)
+	if err != nil {
+		return fmt.Errorf("plan directory not readable: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		path := filepath.Join(planDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("%s not readable: %w", entry.Name(), err)
+		}
+
+		content := string(data)
+		updated := strings.ReplaceAll(content, "[["+oldPrefix, "[["+newPrefix)
+		if updated != content {
+			if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
+				return fmt.Errorf("%s not written: %w", entry.Name(), err)
+			}
+		}
+	}
+	return nil
+}
+
+// removeTodoLinks removes wikilink references to a plan directory from todos.md.
+func removeTodoLinks(brainDir, dirName string) error {
+	todosPath := filepath.Join(brainDir, "todos.md")
+	data, err := os.ReadFile(todosPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("todos.md not readable: %w", err)
+	}
+
+	target := "[[plans/" + dirName + "/"
+	lines := strings.Split(string(data), "\n")
+	var filtered []string
+	for _, line := range lines {
+		if !strings.Contains(line, target) {
+			filtered = append(filtered, line)
+		}
+	}
+
+	if err := os.WriteFile(todosPath, []byte(strings.Join(filtered, "\n")), 0o644); err != nil {
+		return fmt.Errorf("todos.md not written: %w", err)
+	}
+	return nil
+}
+
+// rewriteTodoLinks replaces wikilinks containing oldPrefix with newPrefix in todos.md.
+func rewriteTodoLinks(brainDir, oldPrefix, newPrefix string) error {
+	todosPath := filepath.Join(brainDir, "todos.md")
+	data, err := os.ReadFile(todosPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("todos.md not readable: %w", err)
+	}
+
+	content := string(data)
+	updated := strings.ReplaceAll(content, "[["+oldPrefix, "[["+newPrefix)
+	if updated != content {
+		if err := os.WriteFile(todosPath, []byte(updated), 0o644); err != nil {
+			return fmt.Errorf("todos.md not written: %w", err)
+		}
 	}
 	return nil
 }

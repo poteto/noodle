@@ -1,116 +1,159 @@
-> **Stale:** This document predates Plan 23 (task-type skills) and Plan 25 (TUI revamp). Terminology (sous-chef, taster, spawner, config path) is outdated. See `[[plans/23-task-type-skill-suite/overview]]` for current architecture. Rewrite tracked by todo #24.
-
 # Noodle: Open-Source AI Coding Framework
 
 ## The Problem
 
-The human is the scheduler for all project work: initiating audits, deciding what to plan, picking which plans to execute, triggering reflection. Every step blocks on human attention — the scarcest resource in the system.
+The human is the scheduler for all project work. Audits, plans, execution, review — every step blocks on human attention.
 
 ## The Vision
 
-Noodle replaces the human as the top-level scheduler. It continuously drives a project's backlog — planning, executing, verifying, reflecting — while the human observes and intervenes only when they choose to. The system is designed for full autonomy by default, capable of running unattended for hours.
+Noodle replaces the human as the top-level scheduler. It reads your backlog, decides what matters, spawns agents to do the work, reviews the output, and loops. The human observes via TUI and intervenes when they choose to.
 
-Users extend Noodle by writing or overriding skills — pure Claude Code skills with no Noodle-specific metadata. All wiring lives in a single config file.
+Three ideas run through the whole design:
+
+1. **Everything is a file.** The loop reads and writes JSON/NDJSON in `.noodle/`. The TUI reads those same files. There's no internal state that isn't on disk.
+2. **LLMs do judgment, Go does mechanics.** The scheduling loop never decides *what* to work on — it reads a queue file. The prioritize skill (an LLM) writes that file. The quality skill (an LLM) writes verdict files. Go code just enforces constraints and moves files around.
+3. **Skills are the only extension point.** No plugin API, no hook system, no registries. A skill is a `SKILL.md` file with optional YAML frontmatter. If it has `noodle:` frontmatter, the loop discovers it as a task type automatically.
 
 ## Kitchen Brigade
 
-All actor roles adopt kitchen terminology:
-
 | Role | What | Actor |
 |------|------|-------|
-| **Chef** | Human — sets strategy, intervenes when they choose | Human |
-| **Sous Chef** | Scheduler — reads the mise, prioritizes the queue, decides what to cook next | LLM agent (configurable model) |
-| **Taster** | Quality reviewer — checks every dish before it leaves the pass | LLM agent |
-| **Cook** | Does the work — uses native sub-agents as needed | Claude or Codex session |
-| **Mise** | Gathers state into a structured brief (mise en place) | Go code (not an actor) |
+| **Chef** | Human — sets direction, intervenes when they want | Human via TUI/CLI |
+| **Prioritize** | Reads the mise brief, writes the prioritized queue | LLM session |
+| **Quality** | Reviews completed work, writes accept/reject verdict | LLM session |
+| **Cook** | Does the work — execute, plan, reflect, debug, whatever the skill says | LLM session |
+| **Mise** | Gathers all project state into a structured brief | Go code |
+
+The chef is always human. Everything else is an LLM session loaded with the right skill, or Go code doing mechanical work.
+
+## Everything is a File
+
+All loop state lives in `.noodle/` as JSON or NDJSON. If it's not on disk, it doesn't exist.
+
+**mise.json** — The mise brief. Go code gathers backlog items, plan phases, active sessions, recent history, resource capacity, discovered task types, and quality verdicts into one file. The prioritize skill reads this to make scheduling decisions.
+
+**queue.json** — The prioritized work queue. Written by the prioritize skill, read by the loop. Each item has a task key, skill name, routing info, and rationale. The loop reads items off the top and spawns them.
+
+**quality/\<session-id\>.json** — Verdict files. The quality skill writes one per completed cook: accept or reject, with feedback. The loop reads these to decide whether to merge the worktree.
+
+**control.ndjson** — Commands from the TUI to the loop. Pause, resume, drain, skip, kill, steer, merge, reject, change autonomy. The loop processes and empties the file each cycle, writes acks to `control-ack.ndjson`.
+
+**sessions/\<session-id\>/events.ndjson** — Per-session event stream. Spawned, cost, state changes, ticket claims, completion. The monitor reads these to detect stuck sessions and materialize ticket state.
+
+## Skills as the Only Extension Point
+
+A skill is a directory containing `SKILL.md` and optional `references/`. The `SKILL.md` is a Claude Code system prompt — markdown that gets loaded as the agent's instructions for that task.
+
+Skills become Noodle task types by adding YAML frontmatter:
+
+```yaml
+---
+name: execute
+description: Implementation methodology for cook sessions
+noodle:
+  blocking: false
+  schedule: "When backlog items with linked plans are ready"
+---
+```
+
+The `noodle:` block is what makes it a task type. On startup, the skill resolver scans configured paths, parses frontmatter, and builds a task type registry. No hardcoded list — if a skill has `noodle:` frontmatter, the loop can schedule it.
+
+**blocking** controls concurrency: a blocking task type (like prioritize) runs alone. Non-blocking types (execute, quality, reflect) run in parallel up to `max_cooks`.
+
+**schedule** is a natural-language hint for the prioritize skill. It reads these hints when deciding what to put in the queue.
+
+Skills resolve by path order in `.noodle.toml`. Project skills shadow user skills shadow bundled skills. Override any default by dropping a `SKILL.md` with the same name in your project's skill path.
 
 ## Architecture
 
 ```
-                     ┌─────────────────────┐
-                     │     Chef (TUI)      │
-                     │  observe · intervene │
-                     └─────────┬───────────┘
-                               │
-┌──────────────────────────────┼──────────────────────────────┐
-│                        noodle cook                          │
-│                              │                              │
-│  Mise (Go) ──► Sous Chef (LLM) ──► Prioritized Queue       │
-│       ↓              ↓                    ↓                 │
-│  Structured Brief  Scheduling judgment   Spawn decisions    │
-│                                           ↓                 │
-│              Cook Loop ◄──── Spawner (tmux/future cloud)    │
-│              enforce constraints · spawn · monitor · log    │
-│                      ↓                                      │
-│              NDJSON Log (source of truth)                    │
-│                      ↓                                      │
-│              Bubbletea TUI (optional)                        │
-└─────────────────────────────────────────────────────────────┘
-                       │
-           ┌───────────┴───────────┐
-           │   Cook Sessions       │
-           │   plan · execute      │
-           │   verify · reflect    │
-           │   quality · systemfix │
-           └───────────────────────┘
+                 ┌─────────────────────┐
+                 │    Chef (TUI/CLI)   │
+                 │  observe · command  │
+                 └─────────┬───────────┘
+                           │ control.ndjson
+┌──────────────────────────┼──────────────────────────┐
+│                     noodle start                     │
+│                          │                           │
+│  ┌─────┐  mise.json  ┌──────────┐  queue.json       │
+│  │Mise ├─────────────►│Prioritize├──────────┐        │
+│  │(Go) │              │ (skill)  │          │        │
+│  └─────┘              └──────────┘          ▼        │
+│                                        ┌────────┐    │
+│                                        │  Loop  │    │
+│                                        │  (Go)  │    │
+│                                        └───┬────┘    │
+│                              ┌─────────────┼─────┐   │
+│                              ▼             ▼     ▼   │
+│                          ┌──────┐    ┌──────┐  ...   │
+│                          │Cook 1│    │Cook 2│        │
+│                          │(tmux)│    │(tmux)│        │
+│                          └──┬───┘    └──────┘        │
+│                             │                        │
+│                             ▼                        │
+│                        ┌─────────┐                   │
+│                        │Quality  │  verdict JSON     │
+│                        │(skill)  ├──────────────►    │
+│                        └─────────┘     .noodle/      │
+│                                       quality/       │
+└──────────────────────────────────────────────────────┘
 ```
 
-## Key Principles
+Each cycle: mise gathers state, prioritize writes the queue, the loop spawns cooks in tmux sessions. When a cook finishes, quality reviews it. Approved work gets merged from worktree to main.
 
-### Skills as the only extension point
+## Autonomy Dial
 
-Skills are pure Claude Code skills (`SKILL.md` + optional `references/`). No per-skill Noodle metadata. Users extend Noodle by writing or overriding skills, wired in via `.noodle/config.toml`.
+Trust is a dial with three positions:
 
-### LLM-powered prioritization
+- **full** — quality runs, auto-merge on accept. No human in the loop.
+- **review** — quality runs, verdicts show in the TUI. Human merges or rejects. Default.
+- **approve** — same as review, but human must also confirm every merge.
 
-The mise (Go) gathers backlog state, resource state, active sessions, recent history into a structured brief. The sous chef (LLM) reads the brief, applies scheduling judgment, outputs a prioritized queue. The Go loop reads the queue mechanically and enforces hard constraints.
+Set in `.noodle.toml` as `autonomy = "review"` or change live via TUI. The loop reads the current mode each cycle.
 
-### Deterministic execution
+## Adapters
 
-The Go loop never makes judgment calls. Judgment lives in the sous chef (LLM). The Go loop reads the queue and enforces hard constraints mechanically.
+Adapters bridge your existing backlog and plan formats to Noodle. An adapter is:
 
-### The log is the source of truth
+1. A skill that teaches agents how to read/write your format
+2. Shell scripts declared in `.noodle.toml` that the mise calls for sync/add/done/edit
 
-Every cycle produces an NDJSON entry: session ID, phase, target, outcome, cost, commit hashes, concurrent sessions, decision trace. The TUI, CLI status commands, and future web UI all read from this log.
+The adapter scripts output normalized NDJSON. The mise reads it. No Noodle-specific format required in your actual backlog files.
 
-### Autonomy is a dial, not a switch
+## Configuration
 
-The chef tunes trust from full headless autonomy to manual approval of every spawn decision.
+One file: `.noodle.toml` at project root. Declares routing defaults, skill paths, agent binaries, adapter scripts, concurrency limits, autonomy mode, and recovery settings. Schema reference: `config/config.go`.
 
-### Self-recovering by default
+## What Ships
 
-Session crashes auto-retry. Spawn failures retry with backoff. The systemfix phase spawns an agent to diagnose root cause before continuing.
+**Go binary:**
+- Mise (state gathering)
+- Loop (queue reading, constraint enforcement, spawning, monitoring)
+- Dispatcher (tmux session management, NDJSON pipeline)
+- Monitor (session observation, stuck detection, ticket materialization)
+- Skill resolver (frontmatter parsing, path-based precedence)
+- Adapter runner (script execution, NDJSON normalization)
+- TUI and CLI
 
-## What Ships with Noodle
+**Default skills (all overridable):**
+- `prioritize` — scheduling and queue writing
+- `quality` — post-cook review
+- `execute` — implementation methodology
+- `reflect` — post-session learning
+- `oops` — infrastructure failure recovery
+- `debugging` — root-cause investigation
+- `plan` — phased planning
+- `review` — code review
+- `debate` — structured design decisions
 
-**Tier 1 — Go binary (lean core):**
-- Mise (data gathering, brief construction)
-- Cook loop (read queue, enforce constraints, spawn, monitor, log)
-- Spawner (tmux today, Spawner interface for future cloud)
-- TUI, CLI
-- Skill resolver (project > user > bundled precedence)
-- Adapter runner (execute sync scripts, read normalized output)
-
-**Tier 2 — Default skills (fully overridable):**
-- `sous-chef` — scheduling and prioritization
-- `taster` — quality review
-- `backlog` — teaches agents to read/write the backlog
-- `plans` — teaches agents to read/write plans
-- `noodle` — meta-skill: how to configure and extend Noodle
-- `bootstrap` — detects missing infra, scaffolds defaults
-
-**Tier 3 — Default adapters (sync scripts):**
-- `sync-backlog.sh` — parses backlog to normalized NDJSON
-- `sync-plans.sh` — parses plans to normalized NDJSON
-
-## Current Rollout Posture
-
-- Prelaunch posture (2026-02-21): prioritize clean contracts and hard cutovers over backwards compatibility. No external users yet, so legacy-support complexity is optional.
+**Default adapters:**
+- `backlog-sync` — parse backlog to normalized NDJSON
+- `backlog-add/done/edit` — write operations
 
 ## Principles Applied
 
-- [[principles/never-block-on-the-human]] — the human supervises asynchronously; agents stay unblocked
-- [[principles/encode-lessons-in-structure]] — CLI enforces process, prompts focus on work
-- [[principles/cost-aware-delegation]] — LLM for judgment, Go for mechanics, resource-aware parallelism
-- [[principles/prove-it-works]] — the log is the source of truth; direct process liveness checks
-- [[principles/redesign-from-first-principles]] — rewrite over refactor when 86% of code is coupled to the old model
+- [[principles/never-block-on-the-human]] — agents stay unblocked; the human observes asynchronously
+- [[principles/cost-aware-delegation]] — LLM for judgment, Go for mechanics
+- [[principles/encode-lessons-in-structure]] — skills encode process knowledge; the loop enforces constraints
+- [[principles/prove-it-works]] — the event log is the source of truth
+- [[principles/subtract-before-you-add]] — one extension point (skills), one config file, file-based state

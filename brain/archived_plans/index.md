@@ -1,0 +1,7 @@
+# Archived Plans
+
+- [x] [[archived_plans/01-noodle-extensible-skill-layering/overview]]
+- [x] [[archived_plans/21-fixture-directory-redesign/overview]]
+- [x] [[archived_plans/23-task-type-skill-suite/overview]]
+- [x] [[archived_plans/25-tui-revamp/overview]]
+- [x] [[archived_plans/26-context-usage-tracking/overview]]

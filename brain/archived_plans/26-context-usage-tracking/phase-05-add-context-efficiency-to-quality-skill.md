@@ -1,0 +1,40 @@
+Back to [[archived_plans/26-context-usage-tracking/overview]]
+
+# Phase 5: Add context efficiency to quality skill
+
+## Goal
+
+Teach the quality gate to flag sessions that hit compression or used disproportionate context. This creates the feedback loop: wasteful sessions get flagged → prioritize deprioritizes or the agent investigates.
+
+## Changes
+
+- **`.agents/skills/quality/SKILL.md`** — Add a "Context Efficiency" section to the review checklist:
+  - Flag if session hit compression (`CompressionCount > 0`)
+  - Flag if peak context exceeded 80% of budget
+  - Note the skill name and suggest investigation if context usage is abnormally high relative to the task complexity
+  - Include context metrics in the verdict output
+
+- **`loop/quality.go`** — `runQuality` currently sends only a text prompt (`"Review completed cook work for item <id>"`); it does NOT pass structured session metadata. Add plumbing to:
+  - Read `meta.json` for the completed session (`.noodle/sessions/<cook-session-id>/meta.json`)
+  - Include `PeakContextTokens`, `CompressionCount`, `ContextWindowUsagePct`, and `Skill` in the quality prompt
+  - If `meta.json` is missing/unreadable, continue quality review with default/empty context metrics (no fail-open for verdict file behavior; only context enrichment is best-effort)
+  - This is new infrastructure, not just extending existing fields
+
+Use the `skill-creator` skill when editing the quality skill spec.
+
+## Data structures
+
+- Quality verdict schema (`.noodle/quality/<id>.json`) may gain an optional `context_flags []string` field for structured context feedback
+
+## Routing
+
+| Provider | Model | Rationale |
+|----------|-------|-----------|
+| `claude` | `claude-opus-4-6` | Skill design requires judgment about thresholds and wording |
+
+## Verification
+
+- Quality skill SKILL.md updated with context efficiency section
+- `go test ./loop/...` — existing tests pass
+- New test: quality spawn includes context metrics in prompt when available
+- Manual: run quality on a session with compression → verdict mentions context flag

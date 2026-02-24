@@ -12,14 +12,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPlanCmd(_ *App) *cobra.Command {
+func newPlanCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan",
 		Short: "Manage plans (create, done, phase-add, list)",
 	}
 	cmd.AddCommand(
 		newPlanCreateCmd(),
-		newPlanDoneCmd(),
+		newPlanDoneCmd(app),
 		newPlanPhaseAddCmd(),
 		newPlanListCmd(),
 	)
@@ -37,13 +37,13 @@ func newPlanCreateCmd() *cobra.Command {
 	}
 }
 
-func newPlanDoneCmd() *cobra.Command {
+func newPlanDoneCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "done <plan-id>",
 		Short: "Mark a plan as done",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPlanDone(args)
+			return runPlanDone(args, app.Config.Plans.OnDone)
 		},
 	}
 }
@@ -99,7 +99,7 @@ func runPlanCreate(args []string) error {
 	return nil
 }
 
-func runPlanDone(args []string) error {
+func runPlanDone(args []string, onDone string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("plan done requires <plan-id>")
 	}
@@ -114,7 +114,7 @@ func runPlanDone(args []string) error {
 		return err
 	}
 
-	return plan.Done(plansDir, planID)
+	return plan.Done(plansDir, planID, onDone)
 }
 
 func runPlanPhaseAdd(args []string) error {
