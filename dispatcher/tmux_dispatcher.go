@@ -66,7 +66,7 @@ func NewTmuxDispatcher(config TmuxDispatcherConfig) *TmuxDispatcher {
 		skillResolver:   config.SkillResolver,
 		providerConfigs: config.ProviderConfigs,
 		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
-		runtimeKind:     normalizeRuntimeKind(config.RuntimeKind),
+		runtimeKind:     normalizeRuntime(config.RuntimeKind),
 		run:             defaultRunner,
 	}
 }
@@ -76,9 +76,11 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	reqRuntime := strings.ToLower(strings.TrimSpace(req.Runtime))
+	reqRuntime := strings.TrimSpace(req.Runtime)
 	if reqRuntime == "" {
 		reqRuntime = s.runtimeKind
+	} else {
+		reqRuntime = normalizeRuntime(reqRuntime)
 	}
 	if reqRuntime != s.runtimeKind {
 		return nil, fmt.Errorf("runtime %q not configured", reqRuntime)
@@ -281,14 +283,6 @@ func defaultRunner(
 
 func nowUTC() time.Time {
 	return time.Now().UTC()
-}
-
-func normalizeRuntimeKind(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	if value == "" {
-		return "tmux"
-	}
-	return value
 }
 
 func composePrompts(provider, requestPrompt, skillSystemPrompt string) (systemPrompt, finalPrompt string) {

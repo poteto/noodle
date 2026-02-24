@@ -3,7 +3,6 @@ package dispatcher
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 // DispatcherFactory routes dispatch requests to a runtime-specific dispatcher.
@@ -21,7 +20,7 @@ func (f *DispatcherFactory) Register(runtime string, dispatcher Dispatcher) {
 	if f == nil || dispatcher == nil {
 		return
 	}
-	key := normalizeFactoryRuntime(runtime)
+	key := normalizeRuntime(runtime)
 	f.runtimes[key] = dispatcher
 }
 
@@ -29,21 +28,13 @@ func (f *DispatcherFactory) Dispatch(ctx context.Context, req DispatchRequest) (
 	if f == nil {
 		return nil, fmt.Errorf("dispatcher factory not initialized")
 	}
-	runtime := normalizeFactoryRuntime(req.Runtime)
+	runtime := normalizeRuntime(req.Runtime)
 	dispatcher, ok := f.runtimes[runtime]
 	if !ok {
 		return nil, fmt.Errorf("runtime %q not configured", runtime)
 	}
 	req.Runtime = runtime
 	return dispatcher.Dispatch(ctx, req)
-}
-
-func normalizeFactoryRuntime(runtime string) string {
-	runtime = strings.ToLower(strings.TrimSpace(runtime))
-	if runtime == "" {
-		return "tmux"
-	}
-	return runtime
 }
 
 var _ Dispatcher = (*DispatcherFactory)(nil)
