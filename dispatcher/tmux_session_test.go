@@ -108,6 +108,47 @@ func TestTmuxSessionWritesEventLogFromCanonical(t *testing.T) {
 	}
 }
 
+func TestTmuxSessionWritesHeartbeatOnCanonicalEvent(t *testing.T) {
+	sessionDir := t.TempDir()
+	canonicalPath := filepath.Join(sessionDir, "canonical.ndjson")
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		canonicalPath,
+		"",
+		nil,
+		nil,
+		nil,
+	)
+
+	ts := time.Date(2026, 2, 24, 6, 0, 0, 0, time.UTC)
+	session.consumeCanonical(parse.CanonicalEvent{
+		Type:      parse.EventAction,
+		Message:   "check status",
+		Timestamp: ts,
+	})
+
+	data, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
+	if err != nil {
+		t.Fatalf("read heartbeat: %v", err)
+	}
+	var heartbeat struct {
+		Timestamp  time.Time `json:"timestamp"`
+		TTLSeconds int       `json:"ttl_seconds"`
+	}
+	if err := json.Unmarshal(data, &heartbeat); err != nil {
+		t.Fatalf("parse heartbeat: %v", err)
+	}
+	if !heartbeat.Timestamp.Equal(ts) {
+		t.Fatalf("heartbeat timestamp = %s, want %s", heartbeat.Timestamp, ts)
+	}
+	if heartbeat.TTLSeconds != sessionHeartbeatTTLSeconds {
+		t.Fatalf("heartbeat ttl = %d, want %d", heartbeat.TTLSeconds, sessionHeartbeatTTLSeconds)
+	}
+}
+
 func TestTmuxSessionLogsInjectedPromptOnInit(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	writer, err := event.NewEventWriter(runtimeDir, "session-a")

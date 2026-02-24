@@ -27,12 +27,14 @@ type Monitor struct {
 
 func NewMonitor(runtimeDir string) *Monitor {
 	runtimeDir = strings.TrimSpace(runtimeDir)
+	tmuxObserver := NewTmuxObserver(runtimeDir)
+	heartbeatObserver := NewHeartbeatObserver(runtimeDir)
 	return &Monitor{
 		runtimeDir:     runtimeDir,
 		stuckThreshold: defaultStuckThreshold,
 		pollInterval:   defaultPollInterval,
 		debounce:       defaultDebounce,
-		observer:       NewTmuxObserver(runtimeDir),
+		observer:       NewCompositeObserver(runtimeDir, tmuxObserver, heartbeatObserver),
 		claims:         NewCanonicalClaimsReader(runtimeDir),
 		tickets:        NewEventTicketMaterializer(runtimeDir),
 		now:            time.Now,
