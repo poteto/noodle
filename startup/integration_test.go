@@ -143,8 +143,8 @@ func TestCLIIntegrationStartNoTmux(t *testing.T) {
 }
 
 // TestScaffoldedConfigValidation verifies the scaffolded config produces
-// no fatal diagnostics. Uses a fake tmux on PATH so the result is
-// deterministic regardless of host environment.
+// no diagnostics at all (no fatals, no repairables). Uses a fake tmux on
+// PATH so the result is deterministic regardless of host environment.
 func TestScaffoldedConfigValidation(t *testing.T) {
 	dir := t.TempDir()
 	var buf strings.Builder
@@ -166,15 +166,14 @@ func TestScaffoldedConfigValidation(t *testing.T) {
 	}
 	defer os.Chdir(origDir)
 
-	cfg, validation, err := config.Load(config.DefaultConfigPath)
+	_, validation, err := config.Load(config.DefaultConfigPath)
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	_ = cfg
 
-	for _, d := range validation.Diagnostics {
-		if d.Severity == config.DiagnosticSeverityFatal {
-			t.Errorf("unexpected fatal diagnostic: %s: %s", d.FieldPath, d.Message)
+	if len(validation.Diagnostics) > 0 {
+		for _, d := range validation.Diagnostics {
+			t.Errorf("unexpected diagnostic [%s] %s: %s", d.Severity, d.FieldPath, d.Message)
 		}
 	}
 }

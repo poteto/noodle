@@ -35,7 +35,7 @@ build:
 	$(GO) build -o $(BIN) .
 
 generate:
-	$(GO) run ./generate/cmd/gen-skill
+	$(GO) generate ./generate/...
 
 test:
 	$(GO) test ./...
