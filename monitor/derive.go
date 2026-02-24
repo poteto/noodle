@@ -75,6 +75,10 @@ func DeriveSessionMeta(
 	if provider == "" {
 		provider = strings.TrimSpace(previous.Provider)
 	}
+	runtime := strings.TrimSpace(claims.Runtime)
+	if runtime == "" {
+		runtime = strings.TrimSpace(previous.Runtime)
+	}
 	model := strings.TrimSpace(claims.Model)
 	if model == "" {
 		model = strings.TrimSpace(previous.Model)
@@ -87,6 +91,7 @@ func DeriveSessionMeta(
 	return SessionMeta{
 		SessionID:               sessionID,
 		Status:                  status,
+		Runtime:                 runtime,
 		Provider:                provider,
 		Model:                   model,
 		TotalCostUSD:            claims.TotalCostUSD,

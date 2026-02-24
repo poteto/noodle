@@ -81,7 +81,7 @@ func TestReadSessionUsesSpawnMetadataForModel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical+"\n"), 0o644); err != nil {
 		t.Fatalf("write canonical events: %v", err)
 	}
-	spawn := `{"provider":"claude","model":"claude-opus-4-6"}`
+	spawn := `{"runtime":"sprites","provider":"claude","model":"claude-opus-4-6"}`
 	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(spawn), 0o644); err != nil {
 		t.Fatalf("write spawn metadata: %v", err)
 	}
@@ -93,6 +93,9 @@ func TestReadSessionUsesSpawnMetadataForModel(t *testing.T) {
 	}
 	if claims.Provider != "claude" {
 		t.Fatalf("provider = %q", claims.Provider)
+	}
+	if claims.Runtime != "sprites" {
+		t.Fatalf("runtime = %q", claims.Runtime)
 	}
 	if claims.Model != "claude-opus-4-6" {
 		t.Fatalf("model = %q", claims.Model)

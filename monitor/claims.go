@@ -89,6 +89,9 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 		return SessionClaims{}, fmt.Errorf("read canonical events: %w", err)
 	}
 	if metadata, err := r.readSpawnMetadata(sessionID); err == nil {
+		if claims.Runtime == "" {
+			claims.Runtime = metadata.Runtime
+		}
 		if claims.Provider == "" {
 			claims.Provider = metadata.Provider
 		}
@@ -111,6 +114,7 @@ func (r *CanonicalClaimsReader) readSpawnMetadata(sessionID string) (SessionClai
 	}
 
 	var payload struct {
+		Runtime  string `json:"runtime"`
 		Provider string `json:"provider"`
 		Model    string `json:"model"`
 	}
@@ -118,6 +122,7 @@ func (r *CanonicalClaimsReader) readSpawnMetadata(sessionID string) (SessionClai
 		return SessionClaims{}, fmt.Errorf("parse spawn metadata: %w", err)
 	}
 	return SessionClaims{
+		Runtime:  strings.TrimSpace(payload.Runtime),
 		Provider: strings.TrimSpace(payload.Provider),
 		Model:    strings.TrimSpace(payload.Model),
 	}, nil

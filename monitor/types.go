@@ -40,6 +40,7 @@ type SessionClaims struct {
 	SessionID    string    `json:"session_id"`
 	HasEvents    bool      `json:"has_events"`
 	Completed    bool      `json:"completed"`
+	Runtime      string    `json:"runtime,omitempty"`
 	Provider     string    `json:"provider,omitempty"`
 	Model        string    `json:"model,omitempty"`
 	TotalCostUSD float64   `json:"total_cost_usd"`
@@ -54,6 +55,7 @@ type SessionClaims struct {
 type SessionMeta struct {
 	SessionID               string        `json:"session_id"`
 	Status                  SessionStatus `json:"status"`
+	Runtime                 string        `json:"runtime,omitempty"`
 	Provider                string        `json:"provider,omitempty"`
 	Model                   string        `json:"model,omitempty"`
 	TotalCostUSD            float64       `json:"total_cost_usd"`
