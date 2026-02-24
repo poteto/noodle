@@ -31,9 +31,11 @@ noodle:
 - Add "request changes" control command (spawn new agent with feedback)
 - Add TUI approval flow: approve / reject / request changes with Huh text input
 
+**Also in scope:**
+- Remove verdicts as a noodle-managed concept — delete `mise.QualityVerdict`, `tui/verdict.go`, verdict loading/rendering. Verdicts are entirely implementable in userland (skills write state files, prioritize reads them)
+
 **Out of scope:**
 - Automated review scheduling (the prioritize skill handles this via `schedule` field)
-- Verdict file format changes (review skill still writes `.noodle/quality/` JSON — verdicts merge to project level when the review session's worktree merges)
 - Registry-driven task type lists in TUI (follow-up improvement)
 - Additional permissions beyond `merge` (future work)
 

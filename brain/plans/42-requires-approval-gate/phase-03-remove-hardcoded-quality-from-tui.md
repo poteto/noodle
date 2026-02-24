@@ -4,7 +4,7 @@ Back to [[plans/42-requires-approval-gate/overview]]
 
 ## Goal
 
-Replace all hardcoded `"quality"` string literals in the TUI with `"review"` and remove the named `Quality` theme color. The `TaskTypeColor` function already has a hash-based fallback for unknown types, so removing named colors is safe.
+Replace all hardcoded `"quality"` string literals in the TUI with `"review"`, remove the named `Quality` theme color, and delete verdict rendering entirely. Verdicts are a userland concept — noodle's TUI doesn't render them. The `TaskTypeColor` function already has a hash-based fallback for unknown types, so removing named colors is safe.
 
 ## Changes
 
@@ -31,9 +31,17 @@ Replace all hardcoded `"quality"` string literals in the TUI with `"review"` and
 
 - Update test data that references `"quality"` task key to `"review"`
 
-### `tui/verdict.go`
+### Delete `tui/verdict.go`
 
-- Update comments that reference "quality review" to "review"
+Delete entirely: `Verdict` struct, `loadVerdicts`, `renderVerdictCard`. Verdicts are a userland concept — noodle's TUI no longer renders them. The approval flow (Phase 6) renders from `pendingReview` loop state, not verdict files.
+
+### `tui/model_snapshot.go` — Remove verdict loading
+
+Remove `Verdicts` field from the snapshot and the `loadVerdicts` call. Remove `ActionNeeded` if it's only used for verdict-based approval.
+
+### `tui/feed.go` — Remove verdict card rendering
+
+Remove verdict card rendering from the feed view. The feed shows session activity, not verdicts.
 
 ## Routing
 

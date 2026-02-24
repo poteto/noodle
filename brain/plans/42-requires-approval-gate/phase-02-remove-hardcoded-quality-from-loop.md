@@ -12,7 +12,7 @@ Delete `loop/quality.go` and rewire `handleCompletion` to use the task type's `C
 
 Remove entirely: `runQuality`, `readQualityVerdictFile`, `copyVerdictToRuntime`, `writeDebateVerdict`. These functions are the heart of the hardcoded quality flow.
 
-Note: `copyVerdictToRuntime` (worktree `.noodle/quality/` -> project `.noodle/quality/`) was only needed because quality ran inline during another cook's completion. With review as a normal cook, its verdict files merge to project level when the review session's worktree merges. No replacement sync path needed.
+Verdicts are removed as a noodle-managed concept. Users who want review state can implement it in their skills (write state files to `.noodle/`, have prioritize read them). Noodle itself does not consume or produce verdict files.
 
 ### `loop/cook.go` — `handleCompletion`
 
@@ -29,6 +29,10 @@ New flow:
 4. Otherwise -> `mergeCook()`
 
 The `runQuality` step is gone. The review skill is just another schedulable task now. The `isPrioritizeItem` bypass must be preserved — prioritize cooks have no worktree name and `mergeCook` would crash.
+
+### `mise/` — Remove verdict types and readers
+
+Delete `mise.QualityVerdict` type, `mise.ReadQualityVerdicts`, and any verdict-related fields from `mise.Brief`. The mise builder currently reads `.noodle/quality/` to include historical quality signals — remove this. Verdicts are a userland concept now.
 
 ### `loop/cook.go` — `spawnCook`
 
