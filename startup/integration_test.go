@@ -94,7 +94,12 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 	cmd2 := exec.Command(binPath, "start", "--once")
 	cmd2.Dir = projectDir
 	cmd2.Env = append(os.Environ(), "PATH="+binDir+":"+os.Getenv("PATH"))
-	_, _ = cmd2.CombinedOutput()
+	output2, err := cmd2.CombinedOutput()
+	if err != nil {
+		if !strings.Contains(string(output2), "skill") {
+			t.Fatalf("second run failed for unexpected reason:\n%s", output2)
+		}
+	}
 
 	// Verify config was not overwritten (should still parse identically)
 	configData2, err := os.ReadFile(filepath.Join(projectDir, ".noodle.toml"))
@@ -138,13 +143,22 @@ func TestCLIIntegrationStartNoTmux(t *testing.T) {
 }
 
 // TestScaffoldedConfigValidation verifies the scaffolded config produces
-// no fatal diagnostics when tmux is available.
+// no fatal diagnostics. Uses a fake tmux on PATH so the result is
+// deterministic regardless of host environment.
 func TestScaffoldedConfigValidation(t *testing.T) {
 	dir := t.TempDir()
 	var buf strings.Builder
 	if err := startup.EnsureProjectStructure(dir, &buf); err != nil {
 		t.Fatalf("scaffold: %v", err)
 	}
+
+	// Stub tmux so the diagnostic is never environment-dependent.
+	fakeBin := t.TempDir()
+	fakeTmux := filepath.Join(fakeBin, "tmux")
+	if err := os.WriteFile(fakeTmux, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake tmux: %v", err)
+	}
+	t.Setenv("PATH", fakeBin+":"+os.Getenv("PATH"))
 
 	origDir, _ := os.Getwd()
 	if err := os.Chdir(dir); err != nil {
@@ -158,10 +172,8 @@ func TestScaffoldedConfigValidation(t *testing.T) {
 	}
 	_ = cfg
 
-	// Scaffolded config has no adapters, so no adapter diagnostics.
-	// Only possible fatal is tmux missing (environment dependent).
 	for _, d := range validation.Diagnostics {
-		if d.Severity == config.DiagnosticSeverityFatal && d.Code != config.DiagnosticCodeRuntimeTmuxMissing {
+		if d.Severity == config.DiagnosticSeverityFatal {
 			t.Errorf("unexpected fatal diagnostic: %s: %s", d.FieldPath, d.Message)
 		}
 	}

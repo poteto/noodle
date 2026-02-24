@@ -294,7 +294,22 @@ model = "gpt-5.3-codex"
 {{- end}}
 {{- end}}
 
-Run ` + "`" + `noodle --help` + "`" + ` or ` + "`" + `noodle <command> --help` + "`" + ` for flags and details.
+### Flags
+{{range .Commands}}
+{{- $parent := .Name}}
+{{- if .Flags}}
+` + "`" + `noodle {{.Name}}` + "`" + `:
+{{range .Flags}}- ` + "`" + `--{{.Name}}` + "`" + `{{if .Short}} (` + "`" + `-{{.Short}}` + "`" + `){{end}} ({{.Type}}){{if .Default}}, default ` + "`" + `{{.Default}}` + "`" + `{{end}}: {{.Desc}}
+{{end}}
+{{- end}}
+{{- range .Subcommands}}
+{{- if .Flags}}
+` + "`" + `noodle {{$parent}} {{.Name}}` + "`" + `:
+{{range .Flags}}- ` + "`" + `--{{.Name}}` + "`" + `{{if .Short}} (` + "`" + `-{{.Short}}` + "`" + `){{end}} ({{.Type}}){{if .Default}}, default ` + "`" + `{{.Default}}` + "`" + `{{end}}: {{.Desc}}
+{{end}}
+{{- end}}
+{{- end}}
+{{- end}}
 
 ## Adapter Setup
 

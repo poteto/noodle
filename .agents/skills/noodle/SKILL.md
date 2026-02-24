@@ -112,7 +112,30 @@ model = "gpt-5.3-codex"
 | `noodle dispatch` | Dispatch a cook session in tmux |
 | `noodle mise` | Build and print the current mise brief |
 
-Run `noodle --help` or `noodle <command> --help` for flags and details.
+### Flags
+
+`noodle start`:
+- `--once` (bool): Run one scheduling cycle and exit
+
+`noodle worktree cleanup`:
+- `--force` (bool): Remove even when unmerged commits exist
+
+`noodle stamp`:
+- `--output` (`-o`) (string): Output path for stamped NDJSON
+- `--events` (string): Output path for canonical sidecar events
+
+`noodle dispatch`:
+- `--name` (string), default `cook`: Session name
+- `--prompt` (string): Prompt text for the dispatched session
+- `--provider` (string): Provider (claude or codex)
+- `--model` (string): Model name
+- `--skill` (string): Skill name to inject
+- `--reasoning-level` (string): Reasoning level
+- `--worktree` (string): Linked worktree path
+- `--max-turns` (int): Max turns
+- `--budget-cap` (float64): Budget cap
+- `--env` ([]string): Extra env vars (KEY=VALUE)
+
 
 ## Adapter Setup
 
