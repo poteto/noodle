@@ -82,7 +82,6 @@ type Snapshot struct {
 	FeedEvents   []FeedEvent
 	TotalCostUSD float64
 
-	Verdicts           []Verdict
 	PendingReviews     []loop.PendingReviewItem
 	PendingReviewCount int
 	Autonomy           string
@@ -346,18 +345,6 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case "m":
-		if m.activeTab == TabFeed && len(m.snapshot.Verdicts) > 0 {
-			return m, m.mergeSelectedVerdict()
-		}
-	case "x":
-		if m.activeTab == TabFeed && len(m.snapshot.Verdicts) > 0 {
-			return m, m.rejectSelectedVerdict()
-		}
-	case "a":
-		if m.activeTab == TabFeed {
-			return m, m.mergeAllApproved()
-		}
 	case "left", "h":
 		if m.activeTab == TabConfig {
 			mode := m.configTab.CycleLeft()
@@ -611,56 +598,6 @@ func (m *Model) findSessionForQueueItem(queueItemID string) string {
 		}
 	}
 	return ""
-}
-
-func (m *Model) isActionable(targetID string) bool {
-	for _, id := range m.snapshot.ActionNeeded {
-		if id == targetID {
-			return true
-		}
-	}
-	return false
-}
-
-func (m *Model) mergeSelectedVerdict() tea.Cmd {
-	for _, v := range m.snapshot.Verdicts {
-		if m.isActionable(v.TargetID) {
-			return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-				Action: "merge",
-				Item:   v.TargetID,
-			})
-		}
-	}
-	return nil
-}
-
-func (m *Model) rejectSelectedVerdict() tea.Cmd {
-	for _, v := range m.snapshot.Verdicts {
-		if m.isActionable(v.TargetID) {
-			return sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-				Action: "reject",
-				Item:   v.TargetID,
-			})
-		}
-	}
-	return nil
-}
-
-func (m *Model) mergeAllApproved() tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	for _, v := range m.snapshot.Verdicts {
-		if v.Accept && m.isActionable(v.TargetID) {
-			cmds = append(cmds, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
-				Action: "merge",
-				Item:   v.TargetID,
-			}))
-		}
-	}
-	if len(cmds) == 0 {
-		m.statusLine = "no approved verdicts to merge"
-		return nil
-	}
-	return tea.Batch(cmds...)
 }
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {

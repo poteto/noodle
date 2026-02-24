@@ -8,12 +8,9 @@ import (
 
 // FeedTab manages the feed dashboard view showing one card per agent.
 type FeedTab struct {
-	agents       []AgentCard
-	verdicts     []Verdict
-	autonomy     string
-	actionNeeded map[string]struct{}
-	selection    int
-	scroll       int
+	agents    []AgentCard
+	selection int
+	scroll    int
 
 	// Stats for the footer line.
 	activeCount   int
@@ -25,13 +22,6 @@ type FeedTab struct {
 // SetSnapshot rebuilds the agent card list from the snapshot's sessions.
 // Active agents appear first, then recently completed agents.
 func (f *FeedTab) SetSnapshot(snap Snapshot) {
-	f.verdicts = snap.Verdicts
-	f.autonomy = snap.Autonomy
-	f.actionNeeded = make(map[string]struct{}, len(snap.ActionNeeded))
-	for _, id := range snap.ActionNeeded {
-		f.actionNeeded[id] = struct{}{}
-	}
-
 	f.activeCount = len(snap.Active)
 	f.queuedCount = len(snap.Queue)
 	f.pendingReview = snap.PendingReviewCount
@@ -68,9 +58,9 @@ func buildAgentCard(s Session, events []EventLine) AgentCard {
 	return card
 }
 
-// cardCount returns the total selectable cards (verdicts + agents).
+// cardCount returns the total selectable agent cards.
 func (f *FeedTab) cardCount() int {
-	return len(f.verdicts) + len(f.agents)
+	return len(f.agents)
 }
 
 // SelectDown moves selection to the next card.
@@ -90,36 +80,20 @@ func (f *FeedTab) SelectUp() {
 
 // SelectedSessionID returns the session ID of the currently selected card.
 func (f *FeedTab) SelectedSessionID() string {
-	sel := f.selection
-
-	// Verdicts come first.
-	if sel < len(f.verdicts) {
-		return f.verdicts[sel].SessionID
-	}
-	sel -= len(f.verdicts)
-
-	if sel >= 0 && sel < len(f.agents) {
-		return f.agents[sel].Session.ID
+	if f.selection >= 0 && f.selection < len(f.agents) {
+		return f.agents[f.selection].Session.ID
 	}
 	return ""
 }
 
-// Render renders the feed dashboard: verdict banners, agent cards, stats.
+// Render renders the feed dashboard: agent cards and stats.
 func (f *FeedTab) Render(width, height int, now time.Time) string {
-	if len(f.agents) == 0 && len(f.verdicts) == 0 {
+	if len(f.agents) == 0 {
 		return renderEmptyState("No events yet. Warming up the kitchen...", width, height)
 	}
 
 	var cards []string
 	cardIdx := 0
-
-	// Verdict cards at the top.
-	canAct := f.autonomy != "full"
-	for _, v := range f.verdicts {
-		_, actionable := f.actionNeeded[v.TargetID]
-		cards = append(cards, renderVerdictCard(v, width, now, canAct && actionable, cardIdx == f.selection))
-		cardIdx++
-	}
 
 	// Agent cards: one per session.
 	for _, agent := range f.agents {

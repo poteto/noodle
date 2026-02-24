@@ -143,9 +143,6 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 		parts = append(parts,
 			dimStyle.Render("j/k")+" select",
 			dimStyle.Render("enter")+" open",
-			dimStyle.Render("m")+" merge",
-			dimStyle.Render("x")+" reject",
-			dimStyle.Render("a")+" merge all",
 		)
 	case TabQueue:
 		parts = append(parts,

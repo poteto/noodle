@@ -26,7 +26,7 @@ type TaskEditor struct {
 }
 
 var (
-	taskTypes = []string{"execute", "plan", "quality", "reflect", "prioritize"}
+	taskTypes = []string{"execute", "plan", "review", "reflect", "prioritize"}
 	models    = []string{"claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5", "gpt-5.3-codex"}
 	providers = []string{"claude", "codex"}
 )

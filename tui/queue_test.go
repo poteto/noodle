@@ -50,7 +50,7 @@ func TestDeriveQueueStatusNoPlan(t *testing.T) {
 }
 
 func TestDeriveQueueStatusReady(t *testing.T) {
-	for _, taskKey := range []string{"reflect", "prioritize", "quality"} {
+	for _, taskKey := range []string{"reflect", "prioritize", "review"} {
 		item := QueueItem{ID: "task-5", TaskKey: taskKey}
 		active := map[string]struct{}{}
 		action := map[string]struct{}{}
@@ -66,7 +66,7 @@ func TestQueueTabRenderAt80And120(t *testing.T) {
 	items := []QueueItem{
 		{ID: "task-1", TaskKey: "execute", Title: "Implement login flow"},
 		{ID: "task-2", TaskKey: "plan", Title: "Design API schema"},
-		{ID: "task-3", TaskKey: "quality", Title: "Review PR #42"},
+		{ID: "task-3", TaskKey: "review", Title: "Review PR #42"},
 	}
 	qt.SetQueue(items, []string{"task-1"}, nil, "")
 
@@ -152,8 +152,8 @@ func TestQueueStatusAllLifecycleStates(t *testing.T) {
 			want: QueueStatusReady,
 		},
 		{
-			name: "ready — quality",
-			item: QueueItem{ID: "g", TaskKey: "quality"},
+			name: "ready — review",
+			item: QueueItem{ID: "g", TaskKey: "review"},
 			want: QueueStatusReady,
 		},
 	}

@@ -25,7 +25,7 @@ type Theme struct {
 	Secondary  color.Color
 	Execute    color.Color
 	Plan       color.Color
-	Quality    color.Color
+	Review     color.Color
 	Reflect    color.Color
 	Prioritize color.Color
 }
@@ -45,7 +45,7 @@ var DefaultTheme = Theme{
 	Secondary:  lipgloss.Color("#a8a8b8"),
 	Execute:    lipgloss.Color("#86efac"),
 	Plan:       lipgloss.Color("#93c5fd"),
-	Quality:    lipgloss.Color("#fde68a"),
+	Review:     lipgloss.Color("#fde68a"),
 	Reflect:    lipgloss.Color("#f9a8d4"),
 	Prioritize: lipgloss.Color("#fdba74"),
 }
@@ -55,7 +55,7 @@ var DefaultTheme = Theme{
 var ColorPool = []color.Color{
 	lipgloss.Color("#86efac"), // green (execute)
 	lipgloss.Color("#93c5fd"), // blue (plan)
-	lipgloss.Color("#fde68a"), // yellow (quality)
+	lipgloss.Color("#fde68a"), // yellow (review)
 	lipgloss.Color("#f9a8d4"), // pink (reflect)
 	lipgloss.Color("#fdba74"), // orange (prioritize)
 	lipgloss.Color("#c4b5fd"), // violet
@@ -79,8 +79,8 @@ func TaskTypeColor(taskType string) color.Color {
 		return DefaultTheme.Execute
 	case "plan":
 		return DefaultTheme.Plan
-	case "quality":
-		return DefaultTheme.Quality
+	case "review":
+		return DefaultTheme.Review
 	case "reflect":
 		return DefaultTheme.Reflect
 	case "prioritize":

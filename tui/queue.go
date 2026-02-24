@@ -38,7 +38,7 @@ type queueStats struct {
 var noPlanTaskTypes = map[string]struct{}{
 	"reflect":    {},
 	"prioritize": {},
-	"quality":    {},
+	"review":     {},
 }
 
 // NewQueueTab creates a fresh QueueTab.

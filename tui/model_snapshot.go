@@ -110,7 +110,6 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		FeedEvents:         feedEvents,
 		TotalCostUSD:       totalCost,
 		BrainActivity:      brainActivity,
-		Verdicts:           nil,
 		PendingReviews:     pendingReviews,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
@@ -676,7 +675,7 @@ func readSteerEvents(controlPath string) []FeedEvent {
 
 // inferTaskType extracts a task type from a session ID convention.
 func inferTaskType(sessionID string) string {
-	known := []string{"execute", "plan", "quality", "reflect", "prioritize"}
+	known := []string{"execute", "plan", "review", "reflect", "prioritize"}
 	lower := strings.ToLower(sessionID)
 	for _, prefix := range known {
 		if strings.HasPrefix(lower, prefix) {
