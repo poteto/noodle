@@ -16,6 +16,7 @@ func TestWriteDispatchMetadata(t *testing.T) {
 	err := writeDispatchMetadata(runtimeDir, sessionID, DispatchRequest{
 		Provider:     "claude",
 		Model:        "claude-sonnet-4-6",
+		Runtime:      "sprites",
 		Skill:        "debugging",
 		WorktreePath: ".worktrees/cook-a",
 	}, createdAt)
@@ -37,6 +38,9 @@ func TestWriteDispatchMetadata(t *testing.T) {
 	}
 	if meta.Model != "claude-sonnet-4-6" {
 		t.Fatalf("model = %q", meta.Model)
+	}
+	if meta.Runtime != "sprites" {
+		t.Fatalf("runtime = %q", meta.Runtime)
 	}
 	if meta.Skill != "debugging" {
 		t.Fatalf("skill = %q", meta.Skill)
