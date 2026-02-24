@@ -88,6 +88,8 @@ func sectionLine(label string, width int) string {
 
 func loopStateLabel(state string) string {
 	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "idle":
+		return dimStyle.Render("idle")
 	case "paused":
 		return warnStyle.Render("paused")
 	case "draining":

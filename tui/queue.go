@@ -23,9 +23,10 @@ const (
 
 // QueueTab renders the queue as a table with progress bar.
 type QueueTab struct {
-	table table.Model
-	items []QueueItem
-	stats queueStats
+	table     table.Model
+	items     []QueueItem
+	stats     queueStats
+	loopState string
 }
 
 type queueStats struct {
@@ -74,8 +75,9 @@ func queueTableStyles() table.Styles {
 }
 
 // SetQueue updates the table data from snapshot.
-func (q *QueueTab) SetQueue(items []QueueItem, activeIDs []string, actionNeeded []string) {
+func (q *QueueTab) SetQueue(items []QueueItem, activeIDs []string, actionNeeded []string, loopState string) {
 	q.items = items
+	q.loopState = loopState
 	activeSet := make(map[string]struct{}, len(activeIDs))
 	for _, id := range activeIDs {
 		activeSet[id] = struct{}{}
@@ -157,10 +159,11 @@ func (q *QueueTab) resizeTable(width, height int) {
 // Post-processes the selected row to apply background color across the full width.
 func (q *QueueTab) renderStyledTable(width, height int) string {
 	if len(q.items) == 0 {
-		return renderEmptyState(
-			"Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly.",
-			width, height,
-		)
+		msg := "Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly."
+		if q.loopState == "idle" {
+			msg = "All plans complete. Start a new conversation to create more."
+		}
+		return renderEmptyState(msg, width, height)
 	}
 	raw := q.table.View()
 	lines := strings.Split(raw, "\n")

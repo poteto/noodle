@@ -66,7 +66,7 @@ func TestQueueTabRenderAt80And120(t *testing.T) {
 		{ID: "task-2", TaskKey: "plan", Title: "Design API schema"},
 		{ID: "task-3", TaskKey: "quality", Title: "Review PR #42"},
 	}
-	qt.SetQueue(items, []string{"task-1"}, nil)
+	qt.SetQueue(items, []string{"task-1"}, nil, "")
 
 	for _, width := range []int{80, 120} {
 		out := qt.Render(width, 20)
@@ -81,7 +81,7 @@ func TestQueueTabRenderAt80And120(t *testing.T) {
 
 func TestQueueTabRendersEmptyState(t *testing.T) {
 	qt := NewQueueTab()
-	qt.SetQueue(nil, nil, nil)
+	qt.SetQueue(nil, nil, nil, "")
 	out := qt.Render(80, 20)
 	if !strings.Contains(out, "Queue is empty") {
 		t.Fatalf("expected empty state message, got %q", out)
@@ -95,7 +95,7 @@ func TestQueueTabProgressBarCounts(t *testing.T) {
 		{ID: "review-1", TaskKey: "execute", Title: "Task B"},
 		{ID: "pending-1", TaskKey: "execute", Title: "Task C"},
 	}
-	qt.SetQueue(items, []string{"active-1"}, []string{"review-1"})
+	qt.SetQueue(items, []string{"active-1"}, []string{"review-1"}, "")
 	out := qt.Render(80, 20)
 	if !strings.Contains(out, "2/3 cooked") {
 		t.Fatalf("expected '2/3 cooked' in output, got: %s", out)
@@ -194,13 +194,22 @@ func TestTruncTitle(t *testing.T) {
 	}
 }
 
+func TestQueueTabRendersIdleEmptyState(t *testing.T) {
+	qt := NewQueueTab()
+	qt.SetQueue(nil, nil, nil, "idle")
+	out := qt.Render(80, 20)
+	if !strings.Contains(out, "All plans complete") {
+		t.Fatalf("expected idle message, got %q", out)
+	}
+}
+
 func TestQueueTabSetQueueRowCount(t *testing.T) {
 	qt := NewQueueTab()
 	items := []QueueItem{
 		{ID: "1", TaskKey: "execute", Title: "A"},
 		{ID: "2", TaskKey: "plan", Title: "B"},
 	}
-	qt.SetQueue(items, nil, nil)
+	qt.SetQueue(items, nil, nil, "")
 	if len(qt.table.Rows()) != 2 {
 		t.Fatalf("row count = %d, want 2", len(qt.table.Rows()))
 	}

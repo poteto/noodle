@@ -195,7 +195,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = nil
 		m.snapshot = msg.snapshot
 		m.feedTab.SetSnapshot(m.snapshot)
-		m.queueTab.SetQueue(m.snapshot.Queue, m.snapshot.ActiveQueueIDs, m.snapshot.ActionNeeded)
+		m.queueTab.SetQueue(m.snapshot.Queue, m.snapshot.ActiveQueueIDs, m.snapshot.ActionNeeded, m.snapshot.LoopState)
 		m.brainTab.SetBrainActivity(msg.snapshot.BrainActivity)
 		m.configTab.SetAutonomy(m.snapshot.Autonomy)
 		if m.detailSession != "" {

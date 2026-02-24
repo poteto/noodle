@@ -45,7 +45,10 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	active := make([]Session, 0, len(sessions))
 	recent := make([]Session, 0, len(sessions))
 	totalCost := 0.0
-	loopState := "running"
+	loopState := normalizeLoopState(qr.LoopState)
+	if loopState == "" {
+		loopState = "running"
+	}
 	for _, session := range sessions {
 		totalCost += session.TotalCostUSD
 		loopState = pickLoopState(loopState, session.LoopState)
@@ -425,6 +428,8 @@ func pickLoopState(current, candidate string) string {
 
 func normalizeLoopState(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "idle":
+		return "idle"
 	case "running":
 		return "running"
 	case "paused":
@@ -444,8 +449,10 @@ func loopStateRank(state string) int {
 		return 2
 	case "running":
 		return 1
-	default:
+	case "idle":
 		return 0
+	default:
+		return -1
 	}
 }
 
