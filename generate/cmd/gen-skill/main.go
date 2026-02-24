@@ -16,7 +16,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	outPath := filepath.Join(".agents", "skills", "noodle", "SKILL.md")
+	repoRoot, err := findRepoRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "find repo root: %v\n", err)
+		os.Exit(1)
+	}
+
+	outPath := filepath.Join(repoRoot, ".agents", "skills", "noodle", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "create skill directory: %v\n", err)
 		os.Exit(1)
@@ -26,4 +32,22 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "generated %s\n", outPath)
+}
+
+func findRepoRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("could not find go.mod from %s", dir)
+		}
+		dir = parent
+	}
 }

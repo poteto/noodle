@@ -36,7 +36,14 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
 | `routing.tags` | table | {} | Per-tag model overrides keyed by tag name |
-| `runtime.default` | string | "" | Default runtime command template for spawning cooks |
+| `runtime.cursor.api_key_env` | string | "" |  |
+| `runtime.cursor.base_url` | string | "" |  |
+| `runtime.cursor.repository` | string | "" |  |
+| `runtime.default` | string | "tmux" | Default runtime command template for spawning cooks |
+| `runtime.sprites.base_url` | string | "" |  |
+| `runtime.sprites.git_token_env` | string | "" |  |
+| `runtime.sprites.sprite_name` | string | "" |  |
+| `runtime.sprites.token_env` | string | "" |  |
 | `skills.paths` | array | [".agents/skills"] | Ordered search paths for skill resolution |
 
 ### Minimal config
