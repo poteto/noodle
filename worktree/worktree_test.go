@@ -438,6 +438,54 @@ func TestMerge(t *testing.T) {
 	}
 }
 
+func TestMergeRemoteBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	app := &App{Root: dir}
+
+	remoteDir := filepath.Join(t.TempDir(), "remote.git")
+	runGitIn(t, dir, "init", "--bare", remoteDir)
+	runGitIn(t, dir, "remote", "add", "origin", remoteDir)
+	runGitIn(t, dir, "push", "-u", "origin", "main")
+
+	runGitIn(t, dir, "checkout", "-b", "noodle/remote-merge")
+	writeFile(t, filepath.Join(dir, "remote-branch.txt"), "from remote branch\n")
+	runGitIn(t, dir, "add", "remote-branch.txt")
+	runGitIn(t, dir, "commit", "-m", "add remote-branch.txt")
+	runGitIn(t, dir, "push", "-u", "origin", "noodle/remote-merge")
+	runGitIn(t, dir, "checkout", "main")
+
+	if err := app.MergeRemoteBranch("noodle/remote-merge"); err != nil {
+		t.Fatalf("MergeRemoteBranch failed: %v", err)
+	}
+
+	if !fileExists(filepath.Join(dir, "remote-branch.txt")) {
+		t.Fatal("merged file not found on main")
+	}
+	cmd := exec.Command("git", "--git-dir", remoteDir, "branch", "--list", "noodle/remote-merge")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("list remote branches: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "" {
+		t.Fatalf("remote branch still exists: %s", strings.TrimSpace(string(out)))
+	}
+}
+
+func TestMergeRemoteBranchRequiresBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	app := &App{Root: dir}
+
+	if err := app.MergeRemoteBranch(""); err == nil {
+		t.Fatal("expected branch validation error")
+	}
+}
+
 func TestMergeLockAcquiredAndReleased(t *testing.T) {
 	t.Parallel()
 	skipWorktreeIntegrationShort(t)

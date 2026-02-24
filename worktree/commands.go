@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Create creates a new worktree and branch, symlinks local settings, and installs deps.
@@ -149,11 +150,44 @@ func (a *App) Merge(name string) error {
 	return nil
 }
 
-// MergeRemoteBranch merges a remote branch into the integration branch.
-// This method is implemented in a later phase; the placeholder keeps
-// interface wiring explicit until full remote sync-back behavior is added.
 func (a *App) MergeRemoteBranch(branch string) error {
-	return fmt.Errorf("remote branch merge not implemented")
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("remote branch not set")
+	}
+
+	base := a.integrationBranch()
+	if err := a.acquireMergeLock(); err != nil {
+		return err
+	}
+	defer a.releaseMergeLock()
+
+	current, _ := a.gitOutput("branch", "--show-current")
+	if current != base {
+		return fmt.Errorf("not on %s branch (on '%s'). Run: git checkout %s", base, current, base)
+	}
+	if err := a.assertRootClean(); err != nil {
+		return err
+	}
+
+	a.info(fmt.Sprintf("Fetching remote branch %s...", branch))
+	if err := a.gitRun("fetch", "origin", branch); err != nil {
+		return fmt.Errorf("fetch remote branch %s: %w", branch, err)
+	}
+
+	mergeRef := "origin/" + branch
+	a.info(fmt.Sprintf("Merging %s into %s...", mergeRef, base))
+	if err := a.gitRun("merge", mergeRef); err != nil {
+		return fmt.Errorf("merge remote branch %s: %w", branch, err)
+	}
+
+	if err := a.git("push", "origin", "--delete", branch).Run(); err != nil {
+		a.warnf("WARNING: failed to delete remote branch %s: %v\n", branch, err)
+	}
+
+	a.installDeps(a.Root)
+	a.printf("\nDone. %s merged into %s.\n", mergeRef, base)
+	return nil
 }
 
 // Cleanup removes a worktree without merging. If force is false, it refuses
