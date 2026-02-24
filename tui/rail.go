@@ -23,7 +23,7 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 	}
 	b.WriteString("\n\n")
 
-	if len(snap.Active) == 0 && len(snap.Recent) == 0 {
+	if len(snap.Active) == 0 {
 		b.WriteString(dimStyle.Render("(none)"))
 		b.WriteString("\n")
 	} else {
@@ -34,19 +34,6 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 			model := shortModelName(nonEmpty(s.Model, "-"))
 			dur := durationLabel(s.DurationSeconds)
 			b.WriteString("  " + dimStyle.Render(model+" · "+dur))
-			b.WriteString("\n")
-		}
-		limit := 2
-		if len(snap.Recent) < limit {
-			limit = len(snap.Recent)
-		}
-		for i := 0; i < limit; i++ {
-			s := snap.Recent[i]
-			name := nonEmpty(s.DisplayName, s.ID) + runtimeBadge(s.Runtime)
-			b.WriteString(successStyle.Render("✓") + " " + trimTo(name, w-3))
-			b.WriteString("\n")
-			dur := durationLabel(s.DurationSeconds)
-			b.WriteString("  " + dimStyle.Render("done · "+dur))
 			b.WriteString("\n")
 		}
 	}
@@ -75,14 +62,6 @@ func renderCompactRail(snap Snapshot, height int) string {
 	var b strings.Builder
 	for _, s := range snap.Active {
 		b.WriteString(healthDot(s.Health))
-		b.WriteString("\n")
-	}
-	limit := 2
-	if len(snap.Recent) < limit {
-		limit = len(snap.Recent)
-	}
-	for i := 0; i < limit; i++ {
-		b.WriteString(successStyle.Render("✓"))
 		b.WriteString("\n")
 	}
 	b.WriteString(dimStyle.Render("─"))
