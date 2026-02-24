@@ -52,7 +52,7 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	t.Cleanup(func() { newStartRuntimeLoop = originalFactory })
 
 	app := &App{Config: config.DefaultConfig()}
-	if err := runStart(context.Background(), app, true); err != nil {
+	if err := runStart(context.Background(), app, startOptions{once: true}); err != nil {
 		t.Fatalf("runStart --once: %v", err)
 	}
 	if fakeLoop.cycles != 1 {

@@ -3,7 +3,6 @@ package loop
 import (
 	"testing"
 
-	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/skill"
@@ -113,11 +112,8 @@ func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testin
 			{ID: "42", Title: "Implement fix"},
 		},
 	}
-	backlog := []adapter.BacklogItem{
-		{ID: "42", Status: adapter.BacklogStatusOpen},
-	}
 
-	updated, changed, err := normalizeAndValidateQueue(queue, backlog, reg, cfg)
+	updated, changed, err := normalizeAndValidateQueue(queue, []int{42}, reg, cfg)
 	if err != nil {
 		t.Fatalf("normalizeAndValidateQueue error: %v", err)
 	}
@@ -167,14 +163,11 @@ func TestNormalizeAndValidateQueueRejectsExecuteOutsideBacklog(t *testing.T) {
 	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
-			{ID: "not-in-backlog", TaskKey: "execute", Title: "execute something"},
+			{ID: "7", TaskKey: "execute", Title: "execute something"},
 		},
 	}
-	backlog := []adapter.BacklogItem{
-		{ID: "42", Status: adapter.BacklogStatusOpen},
-	}
 
-	_, _, err := normalizeAndValidateQueue(queue, backlog, reg, cfg)
+	_, _, err := normalizeAndValidateQueue(queue, []int{42}, reg, cfg)
 	if err == nil {
 		t.Fatal("expected validation error for execute item not in backlog")
 	}
@@ -198,5 +191,30 @@ func TestNormalizeAndValidateQueueAllowsReflectTask(t *testing.T) {
 	}
 	if got := updated.Items[0].Skill; got != "reflect" {
 		t.Fatalf("skill = %q, want reflect", got)
+	}
+}
+
+func TestQueueXRoundTripPreservesRuntimeAndPlan(t *testing.T) {
+	queue := Queue{
+		Items: []QueueItem{
+			{
+				ID:       "task-1",
+				TaskKey:  "execute",
+				Provider: "claude",
+				Model:    "claude-sonnet-4-6",
+				Runtime:  "sprites",
+				Skill:    "execute",
+				Plan:     []string{"plans/27-remote-dispatchers/phase-02"},
+			},
+		},
+	}
+
+	roundTrip := fromQueueX(toQueueX(queue))
+	item := roundTrip.Items[0]
+	if item.Runtime != "sprites" {
+		t.Fatalf("runtime = %q, want sprites", item.Runtime)
+	}
+	if len(item.Plan) != 1 || item.Plan[0] != "plans/27-remote-dispatchers/phase-02" {
+		t.Fatalf("plan = %+v", item.Plan)
 	}
 }

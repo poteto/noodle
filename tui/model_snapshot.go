@@ -97,18 +97,18 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	}
 
 	return Snapshot{
-		UpdatedAt:       now.UTC(),
-		LoopState:       loopState,
-		Sessions:        sessions,
-		Active:          active,
-		Recent:          recent,
-		Queue:           qr.Items,
-		ActiveQueueIDs:  qr.Active,
-		ActionNeeded:    qr.ActionNeeded,
-		EventsBySession: eventsBySession,
-		FeedEvents:      feedEvents,
-		TotalCostUSD:    totalCost,
-		BrainActivity:   brainActivity,
+		UpdatedAt:          now.UTC(),
+		LoopState:          loopState,
+		Sessions:           sessions,
+		Active:             active,
+		Recent:             recent,
+		Queue:              qr.Items,
+		ActiveQueueIDs:     qr.Active,
+		ActionNeeded:       qr.ActionNeeded,
+		EventsBySession:    eventsBySession,
+		FeedEvents:         feedEvents,
+		TotalCostUSD:       totalCost,
+		BrainActivity:      brainActivity,
 		Verdicts:           verdicts,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
@@ -137,6 +137,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			ID:                    sessionID,
 			DisplayName:           stringx.KitchenName(sessionID),
 			Status:                stringx.NonEmpty(status, "running"),
+			Runtime:               strings.TrimSpace(meta.Runtime),
 			Provider:              strings.TrimSpace(meta.Provider),
 			Model:                 strings.TrimSpace(meta.Model),
 			TotalCostUSD:          meta.TotalCostUSD,
@@ -747,4 +748,3 @@ func inferDescription(relPath string) string {
 	base = strings.ReplaceAll(base, "-", " ")
 	return base
 }
-

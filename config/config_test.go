@@ -61,6 +61,9 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Plans.OnDone != "keep" {
 		t.Fatalf("plans.on_done default = %q, want keep", config.Plans.OnDone)
 	}
+	if config.Runtime.Default != "tmux" {
+		t.Fatalf("runtime.default = %q, want tmux", config.Runtime.Default)
+	}
 
 	backlog, ok := config.Adapters["backlog"]
 	if !ok {
@@ -214,10 +217,10 @@ func TestParseInvalidValues(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "unknown provider",
+			name: "missing provider",
 			payload: `
 [routing.defaults]
-provider = "bad"
+provider = ""
 model = "x"
 `,
 			wantErr: "routing.defaults.provider",
@@ -271,14 +274,14 @@ max_cooks = 0
 			wantErr: "concurrency.max_cooks",
 		},
 		{
-			name: "invalid tag provider",
+			name: "missing tag provider",
 			payload: `
 [routing.defaults]
 provider = "claude"
 model = "x"
 
 [routing.tags.frontend]
-provider = "bad"
+provider = ""
 model = "y"
 `,
 			wantErr: "routing.tags.frontend.provider",
@@ -607,5 +610,87 @@ model = "claude-sonnet-4-6"
 	}
 	if config.Routing.Defaults.Provider != "claude" {
 		t.Fatalf("provider = %q", config.Routing.Defaults.Provider)
+	}
+}
+
+func TestAvailableRuntimesDefaultsToTmux(t *testing.T) {
+	cfg := DefaultConfig()
+	got := strings.Join(cfg.AvailableRuntimes(), ",")
+	if got != "tmux" {
+		t.Fatalf("available runtimes = %q, want tmux", got)
+	}
+}
+
+func TestAvailableRuntimesIncludesSpritesWhenConfiguredAndTokenSet(t *testing.T) {
+	old := os.Getenv("SPRITES_TOKEN")
+	if err := os.Setenv("SPRITES_TOKEN", "token-value"); err != nil {
+		t.Fatalf("set env: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Setenv("SPRITES_TOKEN", old)
+	})
+
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[runtime.sprites]
+sprite_name = "noodle-dev"
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	got := strings.Join(cfg.AvailableRuntimes(), ",")
+	if got != "tmux,sprites" {
+		t.Fatalf("available runtimes = %q, want tmux,sprites", got)
+	}
+}
+
+func TestAvailableRuntimesSkipsSpritesWhenTokenMissing(t *testing.T) {
+	old := os.Getenv("SPRITES_TOKEN")
+	if err := os.Setenv("SPRITES_TOKEN", ""); err != nil {
+		t.Fatalf("set env: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Setenv("SPRITES_TOKEN", old)
+	})
+
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[runtime.sprites]
+sprite_name = "noodle-dev"
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	got := strings.Join(cfg.AvailableRuntimes(), ",")
+	if got != "tmux" {
+		t.Fatalf("available runtimes = %q, want tmux", got)
+	}
+}
+
+func TestSpritesTokenReadsCustomEnvVar(t *testing.T) {
+	oldA := os.Getenv("SPRITES_TOKEN")
+	oldB := os.Getenv("NOODLE_SPRITES_TOKEN")
+	if err := os.Setenv("SPRITES_TOKEN", "ignored"); err != nil {
+		t.Fatalf("set SPRITES_TOKEN: %v", err)
+	}
+	if err := os.Setenv("NOODLE_SPRITES_TOKEN", "chosen"); err != nil {
+		t.Fatalf("set NOODLE_SPRITES_TOKEN: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Setenv("SPRITES_TOKEN", oldA)
+		_ = os.Setenv("NOODLE_SPRITES_TOKEN", oldB)
+	})
+
+	cfg := SpritesConfig{TokenEnv: "NOODLE_SPRITES_TOKEN"}
+	if got := cfg.Token(); got != "chosen" {
+		t.Fatalf("token = %q, want chosen", got)
 	}
 }

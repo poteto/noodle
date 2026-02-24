@@ -10,6 +10,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
+	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/air-verse/air v1.64.5 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -36,6 +37,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -56,6 +58,7 @@ require (
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
+	github.com/superfly/sprites-go v0.0.0-20260206213632-8176adff485b // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark v1.7.13 // indirect

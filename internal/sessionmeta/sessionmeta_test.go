@@ -20,7 +20,7 @@ func TestReadSessionAndReadAll(t *testing.T) {
 	tA := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	tB := time.Date(2026, 2, 20, 11, 0, 0, 0, time.UTC)
 
-	metaA := `{"session_id":"a","status":"RUNNING","updated_at":"` + tA.Format(time.RFC3339) + `"}`
+	metaA := `{"session_id":"a","status":"RUNNING","runtime":" sprites ","updated_at":"` + tA.Format(time.RFC3339) + `"}`
 	metaB := `{"session_id":"b","status":"exited","updated_at":"` + tB.Format(time.RFC3339) + `"}`
 
 	if err := os.WriteFile(filepath.Join(sessions, "a", "meta.json"), []byte(metaA), 0o644); err != nil {
@@ -36,6 +36,9 @@ func TestReadSessionAndReadAll(t *testing.T) {
 	}
 	if meta.Status != "running" {
 		t.Fatalf("status = %q", meta.Status)
+	}
+	if meta.Runtime != "sprites" {
+		t.Fatalf("runtime = %q", meta.Runtime)
 	}
 
 	all, err := ReadAll(runtimeDir)

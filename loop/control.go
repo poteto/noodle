@@ -204,7 +204,7 @@ func (l *Loop) controlMerge(itemID string) error {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
 	delete(l.pendingReview, itemID)
-	return l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName)
+	return l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName, pending.sessionID)
 }
 
 func (l *Loop) controlReject(itemID string) error {

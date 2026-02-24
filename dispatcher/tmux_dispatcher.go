@@ -42,6 +42,7 @@ type TmuxDispatcherConfig struct {
 	SkillResolver   skill.Resolver
 	ProviderConfigs ProviderConfigs
 	RuntimeDefault  string // command template from config, empty = built-in
+	RuntimeKind     string // runtime kind this dispatcher instance services
 }
 
 // TmuxDispatcher dispatches provider sessions in detached tmux sessions.
@@ -52,6 +53,7 @@ type TmuxDispatcher struct {
 	skillResolver   skill.Resolver
 	providerConfigs ProviderConfigs
 	runtimeDefault  string
+	runtimeKind     string
 	run             commandRunner
 }
 
@@ -64,6 +66,7 @@ func NewTmuxDispatcher(config TmuxDispatcherConfig) *TmuxDispatcher {
 		skillResolver:   config.SkillResolver,
 		providerConfigs: config.ProviderConfigs,
 		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
+		runtimeKind:     normalizeRuntime(config.RuntimeKind),
 		run:             defaultRunner,
 	}
 }
@@ -73,6 +76,16 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
+	reqRuntime := strings.TrimSpace(req.Runtime)
+	if reqRuntime == "" {
+		reqRuntime = s.runtimeKind
+	} else {
+		reqRuntime = normalizeRuntime(reqRuntime)
+	}
+	if reqRuntime != s.runtimeKind {
+		return nil, fmt.Errorf("runtime %q not configured", reqRuntime)
+	}
+	req.Runtime = reqRuntime
 
 	if req.AllowPrimaryCheckout {
 		req.WorktreePath = strings.TrimSpace(req.WorktreePath)
@@ -123,12 +136,22 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 
 	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
 	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
+	runtimeCmd := strings.TrimSpace(s.runtimeDefault)
+	if runtimeCmd != "" &&
+		strings.EqualFold(req.Provider, "claude") &&
+		strings.TrimSpace(systemPrompt) != "" {
+		// Runtime command templates are provider-agnostic shell snippets and may
+		// not include Claude-specific flags. Inline the system prompt so skill
+		// guidance is preserved when we cannot inject --append-system-prompt.
+		finalPrompt = finalPrompt + "\n\n---\n\n" + systemPrompt
+		systemPrompt = ""
+	}
 	if err := os.WriteFile(promptPath, []byte(finalPrompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
 	}
 
 	var pipeline string
-	if runtimeCmd := s.resolveRuntime(req); runtimeCmd != "" {
+	if runtimeCmd != "" {
 		vars := map[string]string{
 			"session": sessionID,
 			"repo":    req.WorktreePath,
@@ -178,13 +201,6 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	)
 	session.start(ctx)
 	return session, nil
-}
-
-func (s *TmuxDispatcher) resolveRuntime(req DispatchRequest) string {
-	if r := strings.TrimSpace(req.Runtime); r != "" {
-		return r
-	}
-	return s.runtimeDefault
 }
 
 // resolveTemplateVars replaces {{key}} placeholders with verbatim values.

@@ -97,7 +97,25 @@ type AgentsConfig struct {
 
 // RuntimeConfig controls the default runtime for spawned cook sessions.
 type RuntimeConfig struct {
-	Default string `toml:"default"` // command template, empty = built-in tmux
+	Default string        `toml:"default"` // runtime kind, defaults to tmux
+	Sprites SpritesConfig `toml:"sprites"`
+	Cursor  CursorConfig  `toml:"cursor"`
+
+	spritesDefined bool
+	cursorDefined  bool
+}
+
+type SpritesConfig struct {
+	TokenEnv    string `toml:"token_env"`
+	BaseURL     string `toml:"base_url"`
+	SpriteName  string `toml:"sprite_name"`
+	GitTokenEnv string `toml:"git_token_env"`
+}
+
+type CursorConfig struct {
+	APIKeyEnv  string `toml:"api_key_env"`
+	BaseURL    string `toml:"base_url"`
+	Repository string `toml:"repository"`
 }
 
 // PlansConfig controls plan lifecycle behavior.
@@ -128,6 +146,7 @@ const (
 	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
+	DiagnosticCodeProviderUnknown        = "provider_unknown"
 )
 
 type ValidationResult struct {
@@ -193,6 +212,9 @@ func DefaultConfig() Config {
 			MaxCooks: 4,
 		},
 		Agents: AgentsConfig{},
+		Runtime: RuntimeConfig{
+			Default: "tmux",
+		},
 		Plans: PlansConfig{
 			OnDone: "keep",
 		},
@@ -315,6 +337,12 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Concurrency.MaxCooks = 4
 	}
 
+	config.Runtime.spritesDefined = metadata.IsDefined("runtime", "sprites")
+	config.Runtime.cursorDefined = metadata.IsDefined("runtime", "cursor")
+	if !metadata.IsDefined("runtime", "default") {
+		config.Runtime.Default = "tmux"
+	}
+
 	if !metadata.IsDefined("plans", "on_done") {
 		config.Plans.OnDone = "keep"
 	}
@@ -421,12 +449,10 @@ func validateParsedValues(config Config) error {
 }
 
 func validateProvider(fieldPath, provider string) error {
-	switch provider {
-	case "claude", "codex":
-		return nil
-	default:
-		return fmt.Errorf("%s: unsupported provider %q", fieldPath, provider)
+	if strings.TrimSpace(provider) == "" {
+		return fmt.Errorf("%s: provider is required", fieldPath)
 	}
+	return nil
 }
 
 func validatePositiveDuration(fieldPath, raw string) error {
@@ -458,6 +484,14 @@ func Validate(config Config) ValidationResult {
 			Severity:  DiagnosticSeverityFatal,
 			Fix:       "Set routing.defaults.provider and routing.defaults.model in .noodle.toml.",
 			Code:      DiagnosticCodeRoutingDefaultsMissing,
+		})
+	} else if !isKnownProvider(config.Routing.Defaults.Provider) {
+		result.Diagnostics = append(result.Diagnostics, ConfigDiagnostic{
+			FieldPath: "routing.defaults.provider",
+			Message:   fmt.Sprintf("unknown provider %q (valid: claude, codex)", config.Routing.Defaults.Provider),
+			Severity:  DiagnosticSeverityFatal,
+			Fix:       "Set routing.defaults.provider to \"claude\" or \"codex\" in .noodle.toml.",
+			Code:      DiagnosticCodeProviderUnknown,
 		})
 	}
 
@@ -571,4 +605,44 @@ func (c Config) ReviewEnabled() bool {
 // PendingApproval returns whether successful cooks need human approval to merge.
 func (c Config) PendingApproval() bool {
 	return c.Autonomy == AutonomyApprove
+}
+
+func (c Config) AvailableRuntimes() []string {
+	available := []string{"tmux"}
+	if c.Runtime.spritesDefined && c.Runtime.Sprites.Token() != "" {
+		available = append(available, "sprites")
+	}
+	return available
+}
+
+func (c SpritesConfig) Token() string {
+	key := strings.TrimSpace(c.TokenEnv)
+	if key == "" {
+		key = "SPRITES_TOKEN"
+	}
+	return strings.TrimSpace(os.Getenv(key))
+}
+
+func (c SpritesConfig) GitToken() string {
+	key := strings.TrimSpace(c.GitTokenEnv)
+	if key == "" {
+		key = "GITHUB_TOKEN"
+	}
+	return strings.TrimSpace(os.Getenv(key))
+}
+
+func isKnownProvider(provider string) bool {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "claude", "codex":
+		return true
+	}
+	return false
+}
+
+func (c CursorConfig) APIKey() string {
+	key := strings.TrimSpace(c.APIKeyEnv)
+	if key == "" {
+		key = "CURSOR_API_KEY"
+	}
+	return strings.TrimSpace(os.Getenv(key))
 }

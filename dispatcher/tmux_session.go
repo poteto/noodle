@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -39,6 +40,8 @@ type tmuxSession struct {
 	promptLogged  bool
 }
 
+const sessionHeartbeatTTLSeconds = 30
+
 func newTmuxSession(
 	id string,
 	tmuxName string,
@@ -67,6 +70,7 @@ func newTmuxSession(
 }
 
 func (s *tmuxSession) start(ctx context.Context) {
+	s.writeHeartbeat(nowUTC())
 	s.wg.Add(2)
 	go func() {
 		defer s.wg.Done()
@@ -134,6 +138,7 @@ func (s *tmuxSession) monitorPane(ctx context.Context) {
 				s.markDone(s.terminalStatus())
 				return
 			}
+			s.writeHeartbeat(nowUTC())
 		}
 	}
 }
@@ -143,10 +148,17 @@ func (s *tmuxSession) terminalStatus() string {
 	if err != nil {
 		return "failed"
 	}
+	completed := false
 	for _, event := range events {
-		if event.Type == parse.EventComplete {
-			return "completed"
+		switch event.Type {
+		case parse.EventError:
+			return "failed"
+		case parse.EventComplete, parse.EventResult:
+			completed = true
 		}
+	}
+	if completed {
+		return "completed"
 	}
 	return "failed"
 }
@@ -209,6 +221,7 @@ func readCanonicalEvents(path string) ([]parse.CanonicalEvent, error) {
 }
 
 func (s *tmuxSession) consumeCanonical(event parse.CanonicalEvent) {
+	s.writeHeartbeat(event.Timestamp)
 	if event.CostUSD > 0 {
 		s.mu.Lock()
 		s.costUSD += event.CostUSD
@@ -361,6 +374,27 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 	default:
 		return event.Event{}, false
 	}
+}
+
+func (s *tmuxSession) writeHeartbeat(timestamp time.Time) {
+	if strings.TrimSpace(s.canonicalPath) == "" {
+		return
+	}
+	if timestamp.IsZero() {
+		timestamp = nowUTC()
+	}
+	path := filepath.Join(filepath.Dir(s.canonicalPath), "heartbeat.json")
+	payload, err := json.Marshal(struct {
+		Timestamp  time.Time `json:"timestamp"`
+		TTLSeconds int       `json:"ttl_seconds"`
+	}{
+		Timestamp:  timestamp.UTC(),
+		TTLSeconds: sessionHeartbeatTTLSeconds,
+	})
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(path, payload, 0o644)
 }
 
 // parseActionMessage extracts a tool name and summary from a canonical action message.

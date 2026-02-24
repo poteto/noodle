@@ -25,8 +25,6 @@ type BacklogItem struct {
 	Section     string        `json:"section,omitempty"`
 	Status      BacklogStatus `json:"status"`
 	Tags        []string      `json:"tags,omitempty"`
-	Plan        string        `json:"plan,omitempty"`
-	PlanPhase   string        `json:"plan_phase,omitempty"`
 	Estimate    Estimate      `json:"estimate,omitempty"`
 }
 

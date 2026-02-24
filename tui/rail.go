@@ -28,7 +28,7 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		b.WriteString("\n")
 	} else {
 		for _, s := range snap.Active {
-			name := nonEmpty(s.DisplayName, s.ID)
+			name := nonEmpty(s.DisplayName, s.ID) + runtimeBadge(s.Runtime)
 			b.WriteString(healthDot(s.Health) + " " + trimTo(name, w-3))
 			b.WriteString("\n")
 			model := shortModelName(nonEmpty(s.Model, "-"))
@@ -42,7 +42,7 @@ func renderRail(snap Snapshot, now time.Time, height int, shimmerIndex int) stri
 		}
 		for i := 0; i < limit; i++ {
 			s := snap.Recent[i]
-			name := nonEmpty(s.DisplayName, s.ID)
+			name := nonEmpty(s.DisplayName, s.ID) + runtimeBadge(s.Runtime)
 			b.WriteString(successStyle.Render("✓") + " " + trimTo(name, w-3))
 			b.WriteString("\n")
 			dur := durationLabel(s.DurationSeconds)
@@ -115,9 +115,9 @@ func renderShimmerTitle(text string, index int) string {
 
 func shortModelName(model string) string {
 	short := map[string]string{
-		"claude-opus-4-6":      "opus",
-		"claude-sonnet-4-6":    "sonnet",
-		"claude-haiku-4-5":     "haiku",
+		"claude-opus-4-6":     "opus",
+		"claude-sonnet-4-6":   "sonnet",
+		"claude-haiku-4-5":    "haiku",
 		"gpt-5.3-codex":       "codex",
 		"gpt-5.3-codex-spark": "spark",
 	}
@@ -125,4 +125,12 @@ func shortModelName(model string) string {
 		return s
 	}
 	return model
+}
+
+func runtimeBadge(runtime string) string {
+	runtime = strings.ToLower(strings.TrimSpace(runtime))
+	if runtime == "" || runtime == "tmux" {
+		return ""
+	}
+	return " " + dimStyle.Render(runtime)
 }

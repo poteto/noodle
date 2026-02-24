@@ -178,6 +178,14 @@ func (a *App) branchExists(branch string) bool {
 	return a.git("show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run() == nil
 }
 
+func (a *App) hasMergeConflicts(repoPath string) bool {
+	out, err := a.gitOutput("-C", repoPath, "diff", "--name-only", "--diff-filter=U")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(out) != ""
+}
+
 func (a *App) resolveBranchName(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {

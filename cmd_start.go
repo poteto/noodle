@@ -28,21 +28,27 @@ var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) 
 
 var runStartTUI = runTUI
 
+type startOptions struct {
+	once     bool
+	headless bool
+}
+
 func newStartCmd(app *App) *cobra.Command {
-	var once bool
+	var opts startOptions
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: cmdmeta.Short("start"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runStart(cmd.Context(), app, once)
+			return runStart(cmd.Context(), app, opts)
 		},
 	}
-	cmd.Flags().BoolVar(&once, "once", false, "Run one scheduling cycle and exit")
+	cmd.Flags().BoolVar(&opts.once, "once", false, "Run one scheduling cycle and exit")
+	cmd.Flags().BoolVar(&opts.headless, "headless", false, "Run without the TUI")
 	return cmd
 }
 
-func runStart(ctx context.Context, app *App, once bool) error {
+func runStart(ctx context.Context, app *App, opts startOptions) error {
 	cwd, err := app.ProjectDir()
 	if err != nil {
 		return err
@@ -57,14 +63,14 @@ func runStart(ctx context.Context, app *App, once bool) error {
 	}
 
 	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config)
-	if once {
+	if opts.once {
 		return runtimeLoop.Cycle(ctx)
 	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	defer runtimeLoop.Shutdown()
-	if isInteractiveTerminal() {
+	if !opts.headless && isInteractiveTerminal() {
 		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir)
 	}
 	return runtimeLoop.Run(ctx)

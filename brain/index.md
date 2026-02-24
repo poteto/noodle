@@ -39,6 +39,7 @@
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
 - [[codebase/loop-test-overlap-matrix]]
+- [[codebase/runtime-routing-owned-by-queue]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/unix-process-liveness-eperm]]

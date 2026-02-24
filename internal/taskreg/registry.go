@@ -11,7 +11,6 @@ type TaskType struct {
 	Key       string // skill name (e.g., "prioritize", "execute", "deploy")
 	Blocking  bool
 	Schedule  string // one-line guidance for prioritize skill
-	Runtime   string // command template, empty = project default
 	SkillPath string // absolute path to skill directory
 }
 
@@ -41,7 +40,6 @@ func NewFromSkills(skills []skill.SkillMeta) Registry {
 			Key:       s.Name,
 			Blocking:  s.Frontmatter.Noodle.Blocking,
 			Schedule:  s.Frontmatter.Noodle.Schedule,
-			Runtime:   s.Frontmatter.Noodle.Runtime,
 			SkillPath: s.Path,
 		})
 	}

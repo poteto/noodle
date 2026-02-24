@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/recover"
+	"github.com/poteto/noodle/worktree"
 )
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
@@ -51,7 +52,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		Skill:        item.Skill,
 		WorktreePath: worktreePath,
 		TaskKey:      taskType.Key,
-		Runtime:      taskType.Runtime,
+		Runtime:      nonEmpty(item.Runtime, "tmux"),
 	}
 	if taskType.Key == "execute" {
 		if adapter, exists := l.config.Adapters["backlog"]; exists {
@@ -91,7 +92,9 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 		delete(l.activeByID, cook.session.ID())
 		delete(l.activeByTarget, cook.queueItem.ID)
 		if err := l.handleCompletion(ctx, cook); err != nil {
-			return err
+			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+				return conflictErr
+			}
 		}
 	}
 	return l.collectAdoptedCompletions(ctx)
@@ -120,14 +123,25 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 			}
 			return nil
 		}
-		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName)
+		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName, cook.session.ID())
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
 }
 
-func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName string) error {
-	if err := l.deps.Worktree.Merge(worktreeName); err != nil {
-		return fmt.Errorf("merge %s: %w", worktreeName, err)
+func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName string, sessionID string) error {
+	syncResult, hasSyncResult, err := l.readSessionSyncResult(sessionID)
+	if err != nil {
+		return err
+	}
+
+	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+		if err := l.deps.Worktree.MergeRemoteBranch(syncResult.Branch); err != nil {
+			return fmt.Errorf("merge remote branch %s: %w", syncResult.Branch, err)
+		}
+	} else {
+		if err := l.deps.Worktree.Merge(worktreeName); err != nil {
+			return fmt.Errorf("merge %s: %w", worktreeName, err)
+		}
 	}
 	if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{item.ID}}); err != nil {
 		if !isMissingAdapter(err) {
@@ -135,6 +149,33 @@ func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName strin
 		}
 	}
 	return l.skipQueueItem(item.ID)
+}
+
+func (l *Loop) readSessionSyncResult(sessionID string) (dispatcher.SyncResult, bool, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return dispatcher.SyncResult{}, false, nil
+	}
+	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return dispatcher.SyncResult{}, false, nil
+		}
+		return dispatcher.SyncResult{}, false, fmt.Errorf("read spawn metadata: %w", err)
+	}
+	var payload struct {
+		Sync dispatcher.SyncResult `json:"sync"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return dispatcher.SyncResult{}, false, fmt.Errorf("parse spawn metadata: %w", err)
+	}
+	if strings.TrimSpace(payload.Sync.Type) == "" && strings.TrimSpace(payload.Sync.Branch) == "" {
+		return dispatcher.SyncResult{}, false, nil
+	}
+	payload.Sync.Type = strings.ToLower(strings.TrimSpace(payload.Sync.Type))
+	payload.Sync.Branch = strings.TrimSpace(payload.Sync.Branch)
+	return payload.Sync, true, nil
 }
 
 func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
@@ -159,9 +200,28 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 			continue
 		}
 		if err := l.handleCompletion(ctx, cook); err != nil {
-			return err
+			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+				return conflictErr
+			}
 		}
 		l.dropAdoptedTarget(targetID, sessionID)
+	}
+	return nil
+}
+
+func (l *Loop) handleMergeConflict(cook *activeCook, err error) error {
+	var conflictErr *worktree.MergeConflictError
+	if !errors.As(err, &conflictErr) {
+		return err
+	}
+	if isPrioritizeItem(cook.queueItem) {
+		return err
+	}
+	if markErr := l.markFailed(cook.queueItem.ID, conflictErr.Error()); markErr != nil {
+		return markErr
+	}
+	if skipErr := l.skipQueueItem(cook.queueItem.ID); skipErr != nil {
+		return skipErr
 	}
 	return nil
 }
@@ -294,6 +354,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		info = recover.RecoveryInfo{SessionID: cook.session.ID(), ExitReason: reason}
 	}
 	resolvedReason := retryFailureReason(reason, info)
+	fmt.Fprintf(os.Stderr, "session %s failed: %s\n", cook.session.ID(), resolvedReason)
 	if nextAttempt > l.config.Recovery.MaxRetries {
 		if isPrioritizeItem(cook.queueItem) {
 			return fmt.Errorf("prioritize failed after retries: %s", resolvedReason)

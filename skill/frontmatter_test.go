@@ -12,7 +12,6 @@ description: Deploy to production
 noodle:
   blocking: true
   schedule: "After successful execute on main branch"
-  runtime: "ssh deploy-host 'cd {{repo}} && claude -p < {{prompt}}'"
 ---
 # Deploy Skill
 
@@ -36,9 +35,6 @@ Instructions here.
 	}
 	if fm.Noodle.Schedule != "After successful execute on main branch" {
 		t.Fatalf("schedule = %q", fm.Noodle.Schedule)
-	}
-	if fm.Noodle.Runtime == "" {
-		t.Fatal("expected runtime to be set")
 	}
 	if !strings.Contains(string(body), "# Deploy Skill") {
 		t.Fatalf("body = %q", string(body))
@@ -89,9 +85,6 @@ Body.
 	}
 	if fm.Noodle.Blocking {
 		t.Fatal("expected blocking to default to false")
-	}
-	if fm.Noodle.Runtime != "" {
-		t.Fatalf("expected empty runtime, got %q", fm.Noodle.Runtime)
 	}
 }
 

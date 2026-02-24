@@ -3,7 +3,6 @@ package loop
 import (
 	"sort"
 
-	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
@@ -29,8 +28,8 @@ func applyQueueRoutingDefaults(queue Queue, reg taskreg.Registry, cfg config.Con
 	return fromQueueX(updated), true
 }
 
-func normalizeAndValidateQueue(queue Queue, backlog []adapter.BacklogItem, reg taskreg.Registry, cfg config.Config) (Queue, bool, error) {
-	updated, changed, err := queuex.NormalizeAndValidate(toQueueX(queue), backlog, reg, cfg)
+func normalizeAndValidateQueue(queue Queue, schedulablePlanIDs []int, reg taskreg.Registry, cfg config.Config) (Queue, bool, error) {
+	updated, changed, err := queuex.NormalizeAndValidate(toQueueX(queue), schedulablePlanIDs, reg, cfg)
 	if err != nil {
 		return Queue{}, false, err
 	}
@@ -49,7 +48,9 @@ func toQueueX(queue Queue) queuex.Queue {
 			Title:     item.Title,
 			Provider:  item.Provider,
 			Model:     item.Model,
+			Runtime:   item.Runtime,
 			Skill:     item.Skill,
+			Plan:      item.Plan,
 			Review:    item.Review,
 			Rationale: item.Rationale,
 		})
@@ -66,7 +67,9 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Title:     item.Title,
 			Provider:  item.Provider,
 			Model:     item.Model,
+			Runtime:   item.Runtime,
 			Skill:     item.Skill,
+			Plan:      item.Plan,
 			Review:    item.Review,
 			Rationale: item.Rationale,
 		})

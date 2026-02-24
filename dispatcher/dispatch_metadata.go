@@ -14,6 +14,7 @@ type dispatchMetadata struct {
 	SessionID    string    `json:"session_id"`
 	Provider     string    `json:"provider"`
 	Model        string    `json:"model"`
+	Runtime      string    `json:"runtime,omitempty"`
 	Skill        string    `json:"skill,omitempty"`
 	WorktreePath string    `json:"worktree_path,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -40,6 +41,7 @@ func writeDispatchMetadata(
 		SessionID:    sessionID,
 		Provider:     strings.TrimSpace(req.Provider),
 		Model:        strings.TrimSpace(req.Model),
+		Runtime:      strings.TrimSpace(req.Runtime),
 		Skill:        strings.TrimSpace(req.Skill),
 		WorktreePath: strings.TrimSpace(req.WorktreePath),
 		CreatedAt:    createdAt.UTC(),

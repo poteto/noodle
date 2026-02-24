@@ -55,6 +55,9 @@ func normalizeWarnings(warnings []string) []string {
 }
 
 func (l *Loop) ensureRuntimeRepair(ctx context.Context, issue runtimeIssue) error {
+	if l.runtimeRepairSkill() == "" {
+		return fmt.Errorf("%s: %s", nonEmpty(issue.Scope, "runtime"), nonEmpty(issue.Message, "unknown runtime issue"))
+	}
 	if l.runtimeRepairInFlight != nil {
 		return nil
 	}
@@ -257,7 +260,10 @@ func (l *Loop) runtimeRepairSkill() string {
 	if _, ok := l.registry.ByKey("oops"); ok {
 		return "oops"
 	}
-	return "debugging"
+	if _, ok := l.registry.ByKey("debugging"); ok {
+		return "debugging"
+	}
+	return ""
 }
 
 func buildRuntimeRepairPrompt(issue runtimeIssue, attempt int) string {

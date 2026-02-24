@@ -2,6 +2,12 @@ Back to [[plans/27-remote-dispatchers/overview]]
 
 # Phase 5: SpritesBackend implementation
 
+## Status
+
+- Deferred (2026-02-24): SDK-backed `SpritesBackend` not implemented in this cycle.
+- Replacement shipped: runtime wrapper approach that executes provider commands via Sprite and reuses tmux dispatcher/session paths.
+- Follow-up trigger: implement SDK backend if/when full remote lifecycle ownership (for example richer sync-back) is required.
+
 **Routing:** `codex` / `gpt-5.3-codex` — coding against a clear spec (sprites-go SDK)
 
 ## References

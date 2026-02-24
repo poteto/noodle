@@ -14,6 +14,7 @@ import (
 type Meta struct {
 	SessionID             string    `json:"session_id"`
 	Status                string    `json:"status"`
+	Runtime               string    `json:"runtime,omitempty"`
 	Provider              string    `json:"provider,omitempty"`
 	Model                 string    `json:"model,omitempty"`
 	TotalCostUSD          float64   `json:"total_cost_usd"`
@@ -43,6 +44,7 @@ func Read(path string) (Meta, error) {
 	}
 	meta.SessionID = strings.TrimSpace(meta.SessionID)
 	meta.Status = strings.ToLower(strings.TrimSpace(meta.Status))
+	meta.Runtime = strings.TrimSpace(meta.Runtime)
 	meta.Provider = strings.TrimSpace(meta.Provider)
 	meta.Model = strings.TrimSpace(meta.Model)
 	meta.CurrentAction = strings.TrimSpace(meta.CurrentAction)

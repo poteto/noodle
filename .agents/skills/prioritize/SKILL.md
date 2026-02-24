@@ -13,13 +13,11 @@ Use `noodle schema mise` and `noodle schema queue` as the schema source of truth
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
-## Plans as Precondition
+## Scheduling Execute Tasks
 
-Only schedule `execute` items that have a linked plan (`plan` field non-null in backlog entry). Skip unplanned items entirely -- note their IDs in `queue.json` under `"action_needed"` so the TUI can surface them.
+Only schedule execute tasks for plan IDs listed in `needs_scheduling`. Use the plan ID (as a string) as the queue item `id`. Look up plan details (title, directory, phases) in the `plans` array.
 
-Populate the queue item's `"plan"` array with the plan paths this item covers — either an overview (`plans/15-bootstrap/overview`) or specific phases (`plans/15-bootstrap/phase-01-scaffold`).
-
-When a plan's phases need different providers (per model routing below), split into separate queue items per provider group. Group same-provider phases into one item. Preserve phase ordering in the queue.
+If `needs_scheduling` is empty, do not schedule any execute tasks. Note any open backlog items without linked plans in `action_needed`.
 
 ## Schedule Reading
 
@@ -62,6 +60,16 @@ When any item has `"review": true`, it must be the only item type in the queue (
 | Judgment, strategy, planning, quality | claude | claude-opus-4-6 |
 
 When uncertain, codex for implementation, opus for judgment.
+
+## Runtime Routing
+
+Read `routing.available_runtimes` from mise before writing queue items.
+
+- If only `tmux` is available, set queue item `"runtime": "tmux"`.
+- If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
+- Keep `quality`, `reflect`, and `meditate` on `"runtime": "tmux"` unless explicitly justified.
+- Do not emit `"runtime": "cursor"` yet (Cursor backend is not implemented).
+- Always include `"runtime"` on scheduled queue items so dispatch routing is explicit.
 
 ## Output
 

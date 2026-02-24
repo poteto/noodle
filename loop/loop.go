@@ -226,7 +226,7 @@ func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warni
 	if err != nil {
 		return Queue{}, false, err
 	}
-	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.Backlog, l.registry, l.config); err != nil {
+	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
 		return Queue{}, false, l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
 	} else if changed {
 		queue = normalizedQueue

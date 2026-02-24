@@ -2,6 +2,12 @@ Back to [[plans/27-remote-dispatchers/overview]]
 
 # Phase 4: PollingDispatcher generic implementation
 
+## Status
+
+- Dropped for now (2026-02-24).
+- Reason: Cursor backend is intentionally a stub (`not implemented`) and there is no polling consumer yet.
+- Follow-up trigger: implement when Cursor backend becomes functional.
+
 **Routing:** `claude` / `claude-opus-4-6` — architectural judgment, state machine design
 
 ## Goal

@@ -84,15 +84,16 @@ type Snapshot struct {
 	TotalCostUSD    float64
 	BrainActivity   []BrainActivity
 
-	Verdicts            []Verdict
-	PendingReviewCount  int
-	Autonomy            string
+	Verdicts           []Verdict
+	PendingReviewCount int
+	Autonomy           string
 }
 
 type Session struct {
 	ID                    string
 	DisplayName           string
 	Status                string
+	Runtime               string
 	Provider              string
 	Model                 string
 	TotalCostUSD          float64

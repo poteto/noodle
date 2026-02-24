@@ -62,6 +62,9 @@ func TestRenderPromptJSONMiseIncludesPlanRoutingHints(t *testing.T) {
 	if !strings.Contains(out, `"model": "string (optional) - optional plan-level model hint"`) {
 		t.Fatalf("missing plans[].model hint in mise prompt schema: %q", out)
 	}
+	if !strings.Contains(out, `"available_runtimes": [`) {
+		t.Fatalf("missing routing.available_runtimes in mise prompt schema: %q", out)
+	}
 }
 
 func TestRenderUnknownTargetReturnsError(t *testing.T) {
