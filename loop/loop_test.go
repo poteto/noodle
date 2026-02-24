@@ -516,8 +516,11 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	if sp.calls[0].Skill != "prioritize" {
 		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(prioritize) to refresh .noodle/queue.json from .noodle/mise.json.") {
+	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(prioritize) to refresh the queue from .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing skill invocation: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "queue-next.json") {
+		t.Fatalf("spawn prompt missing queue-next.json instruction: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
@@ -893,7 +896,7 @@ func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 
 func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "prompt.txt")
-	content := "Use Skill(prioritize) to refresh .noodle/queue.json from .noodle/mise.json."
+	content := "Use Skill(prioritize) to refresh the queue from .noodle/mise.json."
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write prompt: %v", err)
 	}

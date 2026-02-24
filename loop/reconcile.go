@@ -94,7 +94,7 @@ func listTmuxSessions() []string {
 }
 
 var promptItemRegexp = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
-var prioritizePromptRegexp = regexp.MustCompile(`(?im)^\s*use skill\([^)]+\)\s+to refresh \.noodle/queue\.json from \.noodle/mise\.json\.`)
+var prioritizePromptRegexp = regexp.MustCompile(`(?im)^\s*use skill\([^)]+\)\s+to refresh .+from \.noodle/mise\.json\.`)
 
 func readSessionTarget(promptPath string) string {
 	data, err := os.ReadFile(promptPath)

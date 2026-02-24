@@ -102,7 +102,7 @@ var schemaTargets = []targetSpec{
 		Info: TargetInfo{
 			Name:        "queue",
 			FileName:    "queue.json",
-			Description: "Output of prioritize; consumed by the dispatcher.",
+			Description: "Output of prioritize (written to queue-next.json); promoted to queue.json by the loop.",
 		},
 		RootType: reflect.TypeOf(queuex.Queue{}),
 		FieldDocs: map[string]FieldDoc{

@@ -79,7 +79,8 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 
 func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
 	parts := []string{
-		"Use Skill(" + skillName + ") to refresh .noodle/queue.json from .noodle/mise.json.",
+		"Use Skill(" + skillName + ") to refresh the queue from .noodle/mise.json.",
+		"Write to `.noodle/queue-next.json` (not queue.json). The loop promotes it atomically.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize queue items for non-execute task types (e.g. quality, reflect, meditate) based on workflow rules in the skill and the task types list below.",
