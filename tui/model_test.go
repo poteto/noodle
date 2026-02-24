@@ -57,8 +57,8 @@ func TestTabSwitching(t *testing.T) {
 	}
 
 	m = pressRune(t, m, '3')
-	if m.activeTab != TabConfig {
-		t.Fatalf("tab after 3 = %v, want TabConfig", m.activeTab)
+	if m.activeTab != TabReviews {
+		t.Fatalf("tab after 3 = %v, want TabReviews", m.activeTab)
 	}
 
 	m = pressRune(t, m, '1')
@@ -544,7 +544,6 @@ func TestSteerOpensWithBacktick(t *testing.T) {
 		t.Fatal("expected steerOpen after backtick")
 	}
 }
-
 
 func splitLines(s string) []string {
 	var lines []string

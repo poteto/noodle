@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -48,11 +49,11 @@ type Model struct {
 	detailAutoScroll bool   // true when auto-scrolling to newest events
 	detailTotalLines int    // total rendered lines (set during render)
 
-	snapshot  Snapshot
-	feedTab   FeedTab
-	queueTab  QueueTab
-	configTab ConfigTab
-	err       error
+	snapshot   Snapshot
+	feedTab    FeedTab
+	queueTab   QueueTab
+	reviewsTab ReviewsTab
+	err        error
 
 	steerInput        string
 	steerMentionOpen  bool
@@ -139,6 +140,10 @@ type controlResultMsg struct {
 	err    error
 }
 
+type diffExitMsg struct {
+	err error
+}
+
 func NewModel(opts Options) Model {
 	runtimeDir := strings.TrimSpace(opts.RuntimeDir)
 	if runtimeDir == "" {
@@ -189,7 +194,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.snapshot = msg.snapshot
 		m.feedTab.SetSnapshot(m.snapshot)
 		m.queueTab.SetQueue(m.snapshot.Queue, m.snapshot.ActiveQueueIDs, m.snapshot.ActionNeeded, m.snapshot.LoopState)
-		m.configTab.SetAutonomy(m.snapshot.Autonomy)
+		m.reviewsTab.SetPendingReviews(m.snapshot.PendingReviews)
 		if m.detailSession != "" {
 			m.detailTotalLines = m.countDetailLines()
 		}
@@ -200,6 +205,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.statusLine = fmt.Sprintf("%s command sent", msg.action)
+		return m, nil
+	case diffExitMsg:
+		if msg.err != nil {
+			m.statusLine = "diff exited with error: " + msg.err.Error()
+		}
 		return m, nil
 	case shimmerMsg:
 		if len(m.snapshot.Active) > 0 {
@@ -303,7 +313,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "2":
 		m.activeTab = TabQueue
 	case "3":
-		m.activeTab = TabConfig
+		m.activeTab = TabReviews
 	case "?":
 		// reserved
 	case "`":
@@ -324,6 +334,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.feedTab.SelectDown()
 		case TabQueue:
 			m.queueTab.table.MoveDown(1)
+		case TabReviews:
+			m.reviewsTab.SelectDown()
 		}
 	case "k", "up":
 		switch m.activeTab {
@@ -331,6 +343,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.feedTab.SelectUp()
 		case TabQueue:
 			m.queueTab.table.MoveUp(1)
+		case TabReviews:
+			m.reviewsTab.SelectUp()
 		}
 	case "enter":
 		switch m.activeTab {
@@ -344,19 +358,58 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 					m.openDetail(sid)
 				}
 			}
+		case TabReviews:
+			if item, ok := m.reviewsTab.SelectedItem(); ok {
+				worktreePath := strings.TrimSpace(item.WorktreePath)
+				if worktreePath == "" {
+					m.statusLine = "selected review has no worktree path"
+					return m, nil
+				}
+				baseBranch := "main"
+				cmd := exec.Command("git", "-C", worktreePath, "diff", baseBranch, "--stat", "-p")
+				return m, tea.ExecProcess(cmd, func(err error) tea.Msg {
+					return diffExitMsg{err: err}
+				})
+			}
+		}
+	case "m":
+		if m.activeTab == TabReviews {
+			if item, ok := m.reviewsTab.SelectedItem(); ok {
+				return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+					Action: "merge",
+					Item:   item.ID,
+				})
+			}
+		}
+	case "x":
+		if m.activeTab == TabReviews {
+			if item, ok := m.reviewsTab.SelectedItem(); ok {
+				return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+					Action: "reject",
+					Item:   item.ID,
+				})
+			}
+		}
+	case "c":
+		if m.activeTab == TabReviews {
+			if item, ok := m.reviewsTab.SelectedItem(); ok {
+				return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+					Action: "request-changes",
+					Item:   item.ID,
+					Prompt: "",
+				})
+			}
 		}
 	case "left", "h":
-		if m.activeTab == TabConfig {
-			mode := m.configTab.CycleLeft()
-			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
+		if m.activeTab == TabReviews {
+			return m, nil
 		}
 		if m.activeTab != TabFeed {
 			m.navigateActor(-1)
 		}
 	case "right", "l":
-		if m.activeTab == TabConfig {
-			mode := m.configTab.CycleRight()
-			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
+		if m.activeTab == TabReviews {
+			return m, nil
 		}
 		if m.activeTab != TabFeed {
 			m.navigateActor(1)

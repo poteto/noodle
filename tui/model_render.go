@@ -37,7 +37,7 @@ func (m Model) renderLayout() string {
 		paneWidth = 20
 	}
 
-	tabBar := renderTabBar(m.activeTab, paneWidth)
+	tabBar := renderTabBar(m.activeTab, paneWidth, m.snapshot.PendingReviewCount)
 
 	// Feed: 100% - tab bar - keybar. Other tabs: additional padding.
 	contentHeight := layoutHeight - 2 // tab bar (1 line) + 1 line gap
@@ -65,8 +65,8 @@ func (m Model) renderLayout() string {
 			tabContent = m.feedTab.Render(paneWidth, contentHeight, m.now())
 		case TabQueue:
 			tabContent = m.queueTab.Render(paneWidth, contentHeight)
-		case TabConfig:
-			tabContent = m.configTab.Render(paneWidth, contentHeight)
+		case TabReviews:
+			tabContent = m.reviewsTab.Render(paneWidth, contentHeight)
 		}
 	}
 
@@ -149,11 +149,17 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 			dimStyle.Render("j/k")+" select",
 			dimStyle.Render("enter")+" open",
 		)
-	case TabConfig:
-		parts = append(parts, dimStyle.Render("←/→")+" autonomy")
+	case TabReviews:
+		parts = append(parts,
+			dimStyle.Render("j/k")+" select",
+			dimStyle.Render("enter")+" view diff",
+			dimStyle.Render("m")+" merge",
+			dimStyle.Render("x")+" reject",
+			dimStyle.Render("c")+" request changes",
+		)
 	}
 
-	if tab != TabConfig && tab != TabFeed {
+	if tab == TabFeed || tab == TabQueue {
 		parts = append(parts, dimStyle.Render("h/l")+" actors")
 	}
 

@@ -83,9 +83,6 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		feedEvents = feedEvents[len(feedEvents)-maxFeedEvents:]
 	}
 
-	brainDir := filepath.Join(filepath.Dir(runtimeDir), "brain")
-	brainActivity := scanBrainActivity(brainDir)
-
 	pendingReviews, err := loop.ReadPendingReview(runtimeDir)
 	if err != nil {
 		return Snapshot{}, err
@@ -109,7 +106,6 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		EventsBySession:    eventsBySession,
 		FeedEvents:         feedEvents,
 		TotalCostUSD:       totalCost,
-		BrainActivity:      brainActivity,
 		PendingReviews:     pendingReviews,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
