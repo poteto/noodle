@@ -47,7 +47,7 @@ noodle:
 Read .noodle/mise.json. It contains the backlog, active agents, recent
 session history, and available capacity.
 
-Write .noodle/queue.json with the items you want to schedule next based on my workflow <...>.
+Write .noodle/queue.json with the items you want to schedule next based on <my workflow>.
 ```
 
 ```yaml
@@ -58,7 +58,7 @@ noodle:
   schedule: "When there are items in the queue"
 ---
 
-Read the plan. Do the work. Commit to the worktree.
+Read the plan. Do the work <the way I like it>. Commit to the worktree.
 ```
 
 From there you add more skills to make it smarter. You can copy the skills noodle uses, but you can also add your own. Here are 2 of my favorites:
