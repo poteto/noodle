@@ -24,7 +24,7 @@ Extract tmux-specific logic from `TmuxDispatcher` into `TmuxBackend` implementin
 - `Kill`: runs `tmux kill-session`
 
 **`dispatcher/factory.go` (new)**
-`DispatcherFactory` implements `Dispatcher`. Routes: `"tmux"` or `""` → `StreamingDispatcher` with `TmuxBackend`, `"sprites"` → `StreamingDispatcher` with `SpritesBackend`, `"cursor"` → `PollingDispatcher` with `CursorBackend`. Missing backends return "runtime not configured" error.
+`DispatcherFactory` implements `Dispatcher`. Only registers backends that are fully implemented and configured. Routes: `"tmux"` or `""` → `StreamingDispatcher` with `TmuxBackend`, `"sprites"` → `StreamingDispatcher` with `SpritesBackend` (when configured). Cursor stub is **not** registered in the factory — requesting `"cursor"` returns "runtime not configured" error. Backends are registered at bootstrap time based on `Config.AvailableRuntimes()`.
 
 **`dispatcher/types.go`**
 Add `Runtime` field documentation: set by prioritize agent via queue item, not skill frontmatter.

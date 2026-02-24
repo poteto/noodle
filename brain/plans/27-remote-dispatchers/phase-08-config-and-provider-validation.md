@@ -39,7 +39,7 @@ repository = "https://github.com/user/repo"
 
 Each config struct has a well-known default env var (`SPRITES_TOKEN`, `CURSOR_API_KEY`) and an optional `token_env`/`api_key_env` override field. The `Token()` / `APIKey()` method reads `os.Getenv` at call time — never stored in config or serialized.
 
-Add a method `Config.AvailableRuntimes() []string` that returns `["tmux"]` plus any configured remote backends. A backend is "configured" when its config section exists **and** its token env var is set (e.g., `["tmux", "sprites"]` when `$SPRITES_TOKEN` is non-empty).
+Add a method `Config.AvailableRuntimes() []string` that returns `["tmux"]` plus any **implemented** remote backends. A backend is "available" when it is fully implemented (not a stub), its config section exists, **and** its token env var is set. For MVP, only Sprites qualifies — Cursor is a stub and must not appear in `available_runtimes` even if `$CURSOR_API_KEY` is set.
 
 **`config/config.go`**
 Relax `validateProvider()`: move hard-coded "claude"/"codex" check into `TmuxBackend` where it's meaningful (needs to resolve a binary). Accept any non-empty provider string at the config/request boundary.
@@ -57,8 +57,8 @@ Update schema docs to include the new fields.
 Add a "Runtime Routing" section to the prioritize skill. The prioritize agent should:
 - Read `routing.available_runtimes` from mise.json
 - Default to `"tmux"` when only local is available
-- Use remote runtimes when they make sense for the task (e.g., long-running execute tasks on Sprites, fire-and-forget tasks on Cursor)
-- Set `"runtime": "sprites"` or `"runtime": "cursor"` on queue items
+- Use remote runtimes when they make sense for the task (e.g., long-running execute tasks on Sprites)
+- Set `"runtime": "sprites"` on queue items (Cursor not yet available)
 - Use `skill-creator` skill for this update
 
 ## Verification

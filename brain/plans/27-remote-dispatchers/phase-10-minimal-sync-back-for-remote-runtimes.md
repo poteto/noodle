@@ -49,12 +49,15 @@ Thread `sessionID` through merge APIs. Currently `mergeCook(ctx, item, worktreeN
 Update `mergeCook` — sync-back artifacts flow through the existing completion pipeline:
 1. Quality gate and pending-approval checks run first (unchanged)
 2. Read `SyncResult` from `spawn.json` using the threaded `sessionID`
-3. If result type is `branch`: `git fetch origin && git merge origin/noodle/<session-id>` into the integration branch, then delete the remote branch. This replaces the worktree merge for remote sessions.
+3. If result type is `branch`: delegate to a new `WorktreeManager.MergeRemoteBranch(branchName)` method that reuses existing merge safeguards (merge lock, cleanliness checks, rebase discipline) but fetches from a remote branch instead of a local worktree. Deletes the remote branch after successful merge.
 4. If result type is `pr`: mark item as `action_needed` with the PR URL — item stays in queue until the PR is merged. Do not mark done.
 5. If no sync result (tmux): existing worktree merge path (unchanged)
 6. On merge conflict: return a target-scoped error that the loop handles as a cook failure (same path as quality rejection / retry), not as a runtime-repair trigger. User resolves manually.
 
-**PR completion tracking:** Items with `action_needed` and a PR URL stay in the queue. A future enhancement can poll PR merge status or the user can manually mark done. For now, the prioritize agent sees the action_needed flag and skips the item.
+**PR completion tracking:** Add a `Status string` field to `queuex.Item` (values: `""` for normal, `"action_needed"` for items awaiting external action like PR merge). The spawn planner in the loop must explicitly skip items with `status == "action_needed"` — do not rely on the prioritize agent to filter these, since the loop drives dispatch independently. Items with `action_needed` and a PR URL stay in the queue until the user manually marks them done or a future enhancement polls PR merge status.
+
+**`loop/cook.go` or `loop/loop.go`**
+Update spawn planning to skip queue items where `Status == "action_needed"`. This prevents re-dispatch loops.
 
 ## Verification
 
@@ -66,6 +69,7 @@ Update `mergeCook` — sync-back artifacts flow through the existing completion 
 ### Runtime
 - Unit test: mock streaming backend implementing `StreamingSyncBacker` returns a branch → `mergeCook` calls git fetch + merge
 - Unit test: mock polling backend implementing `PollingSyncBacker` returns a PR URL → item marked `action_needed`, not done
+- Unit test: queue item with `status: "action_needed"` is skipped by spawn planner
 - Unit test: backend not implementing sync-back → `mergeCook` uses existing worktree merge path
 - Unit test: git merge conflict → cook fails with target-scoped error, does not trigger runtime-repair
 - Unit test: `mergeCook` reads spawn.json via threaded sessionID
