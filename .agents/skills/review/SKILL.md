@@ -1,37 +1,29 @@
 ---
 name: review
 description: >-
-  Review plans and code changes. Walks Scope → Architecture → Code Quality → Tests →
-  Performance, numbering issues with tradeoff options. In autonomous sessions, writes
-  verdict to .noodle/quality/ and accept/reject decision. Triggers: "review",
-  "review this", "code review", or scheduled as post-cook quality gate.
-noodle:
-  blocking: false
-  schedule: "After each cook session completes"
+  Review plans and code changes. Walks Architecture → Code Quality → Tests → Performance,
+  numbering issues with tradeoff options. Triggers: "review", "review this", "code review".
 ---
 
 # Review
 
-Thorough review grounded in project principles. **Do NOT make changes — the review is the deliverable.**
-
-**Use Tasks to track progress.** Create a task for each step below (TaskCreate), mark each in_progress when starting and completed when done (TaskUpdate).
+Thorough, interactive review grounded in project principles. **Do NOT make changes — the review is the deliverable.**
 
 ## Autonomous Session Mode
 
-When running in a non-interactive Noodle session (Cook, Oops, Repair):
+When this skill runs in a non-interactive Noodle execution session (for example `Cook`, `Oops`, or `Repair`):
 
-- **Never ask the user.** State recommended actions directly.
-- **Write verdict** to `.noodle/quality/<session-id>.json` per [references/verdict-schema.md](references/verdict-schema.md).
-- **Write report** to `brain/audits/review-<date>-<subject>.md`.
-- **High-severity issues**: file a todo in `brain/todos.md` via `/todo`.
-- **Low-severity issues**: note in report only.
-- **Accept**: all checks pass, scope clean, tests present and passing.
-- **Reject**: include specific actionable feedback (file, line context, principle violated). The retry cook must be able to fix issues from feedback alone.
-- Commit the report and verdict. Do not wait for direction.
+- **Do not use AskUserQuestion.** For each issue found, state the recommended action directly instead of presenting options.
+- **Write findings to a report file** at `brain/audits/review-<date>-<subject>.md` in addition to session output.
+- **For high-severity issues**, file a todo in `brain/todos.md` using the `/todo` skill.
+- **For low-severity issues**, note them in the report but don't file separate todos.
+- Conclude by committing the review report. Do not wait for direction.
+
+**Use Tasks to track progress.** Create a task for each step below (TaskCreate), mark each in_progress when starting and completed when done (TaskUpdate). Check TaskList after each step.
 
 ## Step 1 — Load Principles
 
-Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked file. These govern review judgments.
+Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked principle file. These principles govern review judgments — refer back to them when evaluating issues.
 
 **Do NOT skip this. Do NOT use memorized principle content — always read fresh.**
 
@@ -40,65 +32,63 @@ Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked fil
 Infer what to review from context — the user's message, recent diffs, or referenced plans/PRs. If genuinely ambiguous (nothing to infer), ask.
 
 Auto-detect review mode from change size:
-- **BIG CHANGE** (50+ lines, 3+ files, or new architecture) — all sections, at most 4 top issues per section
+- **BIG CHANGE** (50+ lines changed, 3+ files, or new architecture) — all sections, at most 4 top issues per section
 - **SMALL CHANGE** (under those thresholds) — one issue per section
 
 ## Step 3 — Gather Context
 
-**SMALL CHANGE**: read files directly — delegation overhead exceeds the cost.
-**BIG CHANGE**: spawn exploration agents (subagent_type: `Explore`) to read code, identify dependencies/callers/downstream effects, and map relevant types and tests. Run multiple agents in parallel for independent areas.
+For **SMALL CHANGE** reviews, read files directly in the main context — delegation overhead exceeds the cost of reading a few files. For **BIG CHANGE** reviews, delegate exploration to subagents via the `Task` tool.
+
+Spawn exploration agents (subagent_type: `Explore`) to:
+- Read the code or plan under review
+- Identify dependencies, callers, and downstream effects
+- Map relevant types, tests, and infrastructure
+
+Run multiple agents in parallel when investigating independent areas.
 
 ## Step 4 — Gather Domain Skills
 
-Check installed skills (`.claude/skills/`) for domain matches:
+Check installed skills (`.claude/skills/`) for any that match the review's domain. Common matches:
 
 | Domain | Skill | When |
 |--------|-------|------|
 | Bubble Tea TUI | `bubbletea-tui` | Terminal UI components, views, styling |
-| Go code | `go-best-practices` | Go patterns, concurrency, testing |
+| Frontend UI | `frontend-design` | Web UI components, layouts, visual design |
 | Codex delegation | `codex` | Tasks delegated to Codex workers |
 
-For unlisted domains, use `find-skills` to search.
+For domains **not listed above**, use `find-skills` to search for a relevant skill.
+
+**Invoke matched skills now** — read their output and use domain guidance to inform your review.
 
 ## Step 5 — Review Sections
 
-Work through all sections, then present findings together.
+Work through all sections, then present the full review. The user can redirect mid-stream if needed.
 
-### 1. Scope
-- Read the plan phase the work was assigned (from initial prompt or mise context).
-- Run `git diff --stat` and `git log --oneline` for the relevant commits.
-- Flag files changed outside the plan phase's stated scope as scope violations.
-- Stop early and reject on any high-severity scope violation.
-
-### 2. Architecture
+### 1. Architecture
 - System design and component boundaries
 - Dependency graph and coupling
 - Data flow patterns and bottlenecks
+- Scaling characteristics and single points of failure
 - Security architecture (auth, data access, API boundaries)
 
-### 3. Code Quality
-- `go vet ./...` and `go test ./...` must pass
-- Run `sh scripts/lint-arch.sh` if it exists
-- Error handling follows conventions (failure-state messages, not expectation messages)
+### 2. Code Quality
+- Code organization and module structure
 - DRY violations — be aggressive
-- Over-engineering or under-engineering; consider redesign-from-first-principles
-- Common principle violations: bolted-on changes (redesign-from-first-principles), missing verification (prove-it-works), unnecessary complexity (subtract-before-you-add)
+- Error handling patterns and missing edge cases (call out explicitly)
+- Technical debt hotspots
+- Over-engineering or under-engineering relative to foundational-thinking principles; consider redesign-from-first-principles
 
-### 4. Tests
-- New behavior must have new tests
-- Tests assert outcomes, not implementation details
-- Coverage of edge cases mentioned in plan phase
+### 3. Tests
+- Coverage gaps (unit, integration, e2e)
+- Test quality and assertion strength
+- Missing edge case coverage — be thorough
 - Untested failure modes and error paths
 
-### 5. Performance
+### 4. Performance
 - N+1 queries and database access patterns
 - Memory-usage concerns
 - Caching opportunities
 - Slow or high-complexity code paths
-
-### 6. Runtime Verification
-- If the plan phase specifies runtime checks, verify they were performed
-- "It compiles" is not verification
 
 ## Step 6 — Issue Format
 
@@ -106,19 +96,15 @@ Work through all sections, then present findings together.
 
 - Describe the problem concretely with file and line references
 - Present 2–3 options with **LETTERS** (A, B, C), including "do nothing" where reasonable
-- For each option: implementation effort, risk, impact, maintenance burden
-- Recommended option first, mapped to principles
-- In interactive mode: ask whether the user agrees or wants a different direction
+- For each option: implementation effort, risk, impact on other code, maintenance burden
+- Give a recommended option and why, mapped to foundational-thinking principles
+- Ask whether the user agrees or wants a different direction
 
-When using `AskUserQuestion`, label each option with issue NUMBER and option LETTER.
-
-## Non-blocking Issues
-
-Issues that don't warrant rejection (style nits, minor improvements): file as backlog items via `/todo`. Record their IDs in `todos_created` in the verdict.
+When using `AskUserQuestion`, label each option with issue NUMBER and option LETTER. Recommended option is always first.
 
 ## Interaction Rules
 
 - Do not assume priorities on timeline or scale
-- Do not make changes — present findings and wait for direction (interactive) or write verdict (autonomous)
+- Do not make changes — present findings and wait for direction
 - Present all sections together, then ask for feedback once at the end
 - Per prove-it-works: if something can be tested, note how in the issue description
