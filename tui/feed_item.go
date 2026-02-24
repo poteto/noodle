@@ -21,83 +21,85 @@ type FeedEvent struct {
 	Category  string // "steer", "ticket", "action", "cost", etc.
 }
 
-// FeedItem groups consecutive events from the same session into a card.
-type FeedItem struct {
-	SessionID string
-	AgentName string
-	TaskType  string
-	Category  string
-	Events    []FeedEvent
-	StartedAt time.Time
-
-	// Steer metadata (only when Category == "steer").
-	SteerTarget string
-	SteerPrompt string
+// AgentCard represents one agent's current state in the feed dashboard.
+type AgentCard struct {
+	Session    Session
+	LastAction string // most recent event body
+	LastLabel  string // most recent event label
 }
 
-// renderFeedItem renders a single feed item as a Card component.
-// When selected is true, the border is highlighted with the brand color.
-func renderFeedItem(item FeedItem, width int, now time.Time, selected ...bool) string {
+// renderAgentCard renders a single agent's dashboard card.
+func renderAgentCard(card AgentCard, width int, now time.Time, selected bool) string {
 	t := components.DefaultTheme
-	isSelected := len(selected) > 0 && selected[0]
+	s := card.Session
 
+	done := !isActiveStatus(s.Status)
+	borderColor := taskTypeBorderColor(inferTaskType(s.ID))
+	if done {
+		borderColor = t.Dim
+	}
+
+	// Title: health dot + name + task type + model
 	var title string
-	var borderColor color.Color
-
-	if item.Category == "steer" {
+	name := s.DisplayName
+	if name == "" {
+		name = s.ID
+	}
+	if selected {
 		borderColor = t.Brand
-		targetName := item.SteerTarget
-		if targetName == "" && item.AgentName != "" {
-			targetName = item.AgentName
-		}
-		title = fmt.Sprintf("★ Chef → %s", targetName)
+		title = "▸ "
+	}
+
+	if done {
+		title += components.StatusIcon(s.Status)
 	} else {
-		borderColor = taskTypeBorderColor(item.TaskType)
-		badge := components.TaskTypeBadge(item.TaskType)
-		title = badge + " " + item.AgentName
+		title += healthDot(s.Health)
 	}
-	if isSelected {
-		borderColor = t.Brand
-		title = "▸ " + title
+	title += " " + name
+
+	badge := components.TaskTypeBadge(inferTaskType(s.ID))
+	model := shortModelName(nonEmpty(s.Model, "-"))
+	title += " " + dimStyle.Render("──") + " " + badge + " " + dimStyle.Render("──") + " " + dimStyle.Render(model)
+
+	if done {
+		title += " " + dimStyle.Render("── done")
 	}
 
-	age := components.AgeLabel(now, item.StartedAt)
-	ageRendered := lipgloss.NewStyle().Foreground(t.Dim).Render(age)
-
-	// Right-align timestamp: pad title to fill available space.
-	innerWidth := width - 4 // subtract card border + padding
+	innerWidth := width - 4 // card border + padding
 	if innerWidth < 20 {
 		innerWidth = 20
 	}
-	titleWidth := lipgloss.Width(title)
-	ageWidth := lipgloss.Width(ageRendered)
-	gap := innerWidth - titleWidth - ageWidth
-	if gap < 1 {
-		gap = 1
-	}
-	titleLine := title + strings.Repeat(" ", gap) + ageRendered
 
-	dimBody := lipgloss.NewStyle().Foreground(t.Dim)
-	var body strings.Builder
-	for i, ev := range item.Events {
-		if i > 0 {
-			body.WriteString("\n")
-		}
-		if item.Category == "steer" {
-			body.WriteString(fmt.Sprintf("%q", ev.Body))
-		} else {
-			label := eventLabel(ev.Label)
-			bodyText := dimBody.Render(components.TrimTo(ev.Body, innerWidth-lipgloss.Width(ev.Label)-2))
-			body.WriteString(label + " " + bodyText)
-		}
+	// Body: last action (single line).
+	var body string
+	if card.LastAction != "" {
+		label := eventLabel(card.LastLabel)
+		actionText := components.TrimTo(card.LastAction, innerWidth-lipgloss.Width(card.LastLabel)-2)
+		body = label + " " + lipgloss.NewStyle().Foreground(t.Dim).Render(actionText)
+	} else {
+		body = dimStyle.Render("(waiting...)")
 	}
 
-	card := &components.Card{
-		Title:       titleLine,
-		Body:        body.String(),
+	// Footer: context bar + duration + cost
+	dur := durationLabel(s.DurationSeconds)
+	var footerParts []string
+	if s.ContextWindowUsagePct > 0 {
+		barWidth := 24
+		footerParts = append(footerParts, components.ProgressBar(s.ContextWindowUsagePct, 1.0, barWidth))
+	}
+	footerParts = append(footerParts, dimStyle.Render(dur))
+	if s.TotalCostUSD > 0 {
+		footerParts = append(footerParts, costStyle.Render(fmt.Sprintf("$%.2f", s.TotalCostUSD)))
+	}
+	footer := strings.Join(footerParts, "  ")
+
+	c := &components.Card{
+		Title:       title,
+		Body:        body,
+		Footer:      footer,
 		BorderColor: borderColor,
 	}
-	return card.Render(width)
+	return c.Render(width)
 }
 
 func taskTypeBorderColor(taskType string) color.Color {

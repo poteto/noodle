@@ -1,25 +1,29 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
 
-const maxFeedItems = 100
-
-// FeedTab manages the feed view state.
+// FeedTab manages the feed dashboard view showing one card per agent.
 type FeedTab struct {
-	items        []FeedItem
+	agents       []AgentCard
 	verdicts     []Verdict
 	autonomy     string
 	actionNeeded map[string]struct{}
 	selection    int
 	scroll       int
-	userScroll   bool // true when user has scrolled up manually
+
+	// Stats for the footer line.
+	activeCount   int
+	queuedCount   int
+	pendingReview int
+	loopState     string
 }
 
-// SetSnapshot rebuilds feed items from the snapshot's FeedEvents.
-// Consecutive events from the same session are grouped into one card.
+// SetSnapshot rebuilds the agent card list from the snapshot's sessions.
+// Active agents appear first, then recently completed agents.
 func (f *FeedTab) SetSnapshot(snap Snapshot) {
 	f.verdicts = snap.Verdicts
 	f.autonomy = snap.Autonomy
@@ -27,51 +31,22 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 	for _, id := range snap.ActionNeeded {
 		f.actionNeeded[id] = struct{}{}
 	}
-	events := snap.FeedEvents
-	if len(events) == 0 {
-		f.items = nil
-		return
+
+	f.activeCount = len(snap.Active)
+	f.queuedCount = len(snap.Queue)
+	f.pendingReview = snap.PendingReviewCount
+	f.loopState = snap.LoopState
+
+	agents := make([]AgentCard, 0, len(snap.Active)+len(snap.Recent))
+	for _, s := range snap.Active {
+		agents = append(agents, buildAgentCard(s, snap.EventsBySession[s.ID]))
 	}
-
-	items := make([]FeedItem, 0, len(events))
-	var current *FeedItem
-
-	for _, ev := range events {
-		// Group consecutive events from the same session into one card.
-		if current != nil && current.SessionID == ev.SessionID {
-			current.Events = append(current.Events, ev)
-			continue
-		}
-		// Flush current group.
-		if current != nil {
-			items = append(items, *current)
-		}
-		item := FeedItem{
-			SessionID: ev.SessionID,
-			AgentName: ev.AgentName,
-			TaskType:  ev.TaskType,
-			Category:  ev.Category,
-			Events:    []FeedEvent{ev},
-			StartedAt: ev.At,
-		}
-		if ev.Category == "steer" {
-			item.SteerTarget = ev.AgentName
-			item.SteerPrompt = ev.Body
-		}
-		current = &item
+	for _, s := range snap.Recent {
+		agents = append(agents, buildAgentCard(s, snap.EventsBySession[s.ID]))
 	}
-	if current != nil {
-		items = append(items, *current)
-	}
+	f.agents = agents
 
-	// Cap items.
-	if len(items) > maxFeedItems {
-		items = items[len(items)-maxFeedItems:]
-	}
-
-	f.items = items
-
-	// Clamp selection to visible range.
+	// Clamp selection.
 	total := f.cardCount()
 	if f.selection >= total {
 		f.selection = total - 1
@@ -81,9 +56,21 @@ func (f *FeedTab) SetSnapshot(snap Snapshot) {
 	}
 }
 
-// cardCount returns the total selectable cards (verdicts + feed items).
+func buildAgentCard(s Session, events []EventLine) AgentCard {
+	card := AgentCard{Session: s}
+	if len(events) > 0 {
+		last := events[len(events)-1]
+		card.LastAction = last.Body
+		card.LastLabel = last.Label
+	} else if s.CurrentAction != "" {
+		card.LastAction = s.CurrentAction
+	}
+	return card
+}
+
+// cardCount returns the total selectable cards (verdicts + agents).
 func (f *FeedTab) cardCount() int {
-	return len(f.verdicts) + len(f.items)
+	return len(f.verdicts) + len(f.agents)
 }
 
 // SelectDown moves selection to the next card.
@@ -111,25 +98,22 @@ func (f *FeedTab) SelectedSessionID() string {
 	}
 	sel -= len(f.verdicts)
 
-	// Feed items are rendered newest-first.
-	idx := len(f.items) - 1 - sel
-	if idx >= 0 && idx < len(f.items) {
-		return f.items[idx].SessionID
+	if sel >= 0 && sel < len(f.agents) {
+		return f.agents[sel].Session.ID
 	}
 	return ""
 }
 
-// Render renders the feed tab content for the given dimensions.
-// Items are displayed newest first (reverse chronological).
+// Render renders the feed dashboard: verdict banners, agent cards, stats.
 func (f *FeedTab) Render(width, height int, now time.Time) string {
-	if len(f.items) == 0 && len(f.verdicts) == 0 {
+	if len(f.agents) == 0 && len(f.verdicts) == 0 {
 		return renderEmptyState("No events yet. Warming up the kitchen...", width, height)
 	}
 
 	var cards []string
 	cardIdx := 0
 
-	// Verdict cards appear at the top (most actionable).
+	// Verdict cards at the top.
 	canAct := f.autonomy != "full"
 	for _, v := range f.verdicts {
 		_, actionable := f.actionNeeded[v.TargetID]
@@ -137,22 +121,15 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 		cardIdx++
 	}
 
-	// Show a limited number of recent cards based on terminal height.
-	maxCards := height / 4
-	if maxCards < 3 {
-		maxCards = 3
-	}
-	if maxCards > 8 {
-		maxCards = 8
+	// Agent cards: one per session.
+	for _, agent := range f.agents {
+		cards = append(cards, renderAgentCard(agent, width, now, cardIdx == f.selection))
+		cardIdx++
 	}
 
-	// Render items in reverse-chronological order (newest first).
-	shown := 0
-	for i := len(f.items) - 1; i >= 0 && shown < maxCards; i-- {
-		cards = append(cards, renderFeedItem(f.items[i], width, now, cardIdx == f.selection))
-		cardIdx++
-		shown++
-	}
+	// Stats line.
+	stats := f.renderStats()
+	cards = append(cards, stats)
 
 	all := strings.Join(cards, "\n")
 	allLines := strings.Split(all, "\n")
@@ -178,19 +155,27 @@ func (f *FeedTab) Render(width, height int, now time.Time) string {
 	return strings.Join(visible, "\n")
 }
 
-// ScrollUp scrolls the feed view up (toward older content).
-// Disengages auto-scroll.
-func (f *FeedTab) ScrollUp(lines int) {
-	f.scroll += lines
-	f.userScroll = true
+func (f *FeedTab) renderStats() string {
+	parts := []string{
+		fmt.Sprintf("%d active", f.activeCount),
+		fmt.Sprintf("%d queued", f.queuedCount),
+	}
+	if f.pendingReview > 0 {
+		parts = append(parts, warnStyle.Render(fmt.Sprintf("%d pending review", f.pendingReview)))
+	}
+	parts = append(parts, loopStateLabel(f.loopState))
+	return "\n" + strings.Join(parts, "  ")
 }
 
-// ScrollDown scrolls the feed view down (toward newest content).
-// Re-engages auto-scroll if back at top.
+// ScrollUp scrolls the feed view up.
+func (f *FeedTab) ScrollUp(lines int) {
+	f.scroll += lines
+}
+
+// ScrollDown scrolls the feed view down.
 func (f *FeedTab) ScrollDown(lines int) {
 	f.scroll -= lines
-	if f.scroll <= 0 {
+	if f.scroll < 0 {
 		f.scroll = 0
-		f.userScroll = false
 	}
 }
