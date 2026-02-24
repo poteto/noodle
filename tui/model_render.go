@@ -39,16 +39,10 @@ func (m Model) renderLayout() string {
 
 	tabBar := renderTabBar(m.activeTab, paneWidth)
 
-	// Feed tab gets more vertical space (minimal gap after tab bar).
-	// Other tabs keep the original padding.
-	var contentHeight int
-	var tabGap string
-	if m.activeTab == TabFeed {
-		contentHeight = layoutHeight - 2 // tab bar + 1 line gap
-		tabGap = "\n"
-	} else {
+	// Feed: 100% - tab bar - keybar. Other tabs: additional padding.
+	contentHeight := layoutHeight - 2 // tab bar (1 line) + 1 line gap
+	if m.activeTab != TabFeed {
 		contentHeight = layoutHeight - 4
-		tabGap = "\n\n"
 	}
 	if contentHeight < 4 {
 		contentHeight = 4
@@ -56,7 +50,6 @@ func (m Model) renderLayout() string {
 
 	var tabContent string
 	if m.taskEditor.open {
-		// Render task editor centered in the content area as an overlay.
 		editorWidth := paneWidth - 4
 		if editorWidth < 30 {
 			editorWidth = 30
@@ -79,7 +72,7 @@ func (m Model) renderLayout() string {
 		}
 	}
 
-	pane := tabBar + tabGap + tabContent
+	pane := tabBar + "\n" + tabContent
 	var layout string
 	if showRail {
 		compact := m.width < 80
