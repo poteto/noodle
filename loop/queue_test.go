@@ -1,6 +1,9 @@
 package loop
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/poteto/noodle/config"
@@ -191,6 +194,93 @@ func TestNormalizeAndValidateQueueAllowsReflectTask(t *testing.T) {
 	}
 	if got := updated.Items[0].Skill; got != "reflect" {
 		t.Fatalf("skill = %q, want reflect", got)
+	}
+}
+
+func TestConsumeQueueNextPromotesProposal(t *testing.T) {
+	dir := t.TempDir()
+	queuePath := filepath.Join(dir, "queue.json")
+	nextPath := filepath.Join(dir, "queue-next.json")
+
+	// Write an existing queue.json with old data.
+	old := `{"items":[{"id":"old","task_key":"execute"}]}`
+	if err := os.WriteFile(queuePath, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Write a proposal.
+	proposal := `{"items":[{"id":"42","task_key":"execute"}]}`
+	if err := os.WriteFile(nextPath, []byte(proposal), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := consumeQueueNext(nextPath, queuePath); err != nil {
+		t.Fatalf("consumeQueueNext: %v", err)
+	}
+
+	// queue.json should now contain the proposal.
+	data, err := os.ReadFile(queuePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"42"`) {
+		t.Fatalf("queue.json not updated: %s", data)
+	}
+	// queue-next.json should be gone.
+	if _, err := os.Stat(nextPath); !os.IsNotExist(err) {
+		t.Fatal("queue-next.json should be removed after consume")
+	}
+}
+
+func TestConsumeQueueNextNoOpWhenMissing(t *testing.T) {
+	dir := t.TempDir()
+	queuePath := filepath.Join(dir, "queue.json")
+	nextPath := filepath.Join(dir, "queue-next.json")
+
+	old := `{"items":[{"id":"old","task_key":"execute"}]}`
+	if err := os.WriteFile(queuePath, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := consumeQueueNext(nextPath, queuePath); err != nil {
+		t.Fatalf("consumeQueueNext: %v", err)
+	}
+
+	// queue.json should be unchanged.
+	data, err := os.ReadFile(queuePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"old"`) {
+		t.Fatalf("queue.json was modified unexpectedly: %s", data)
+	}
+}
+
+func TestConsumeQueueNextRejectsInvalidProposal(t *testing.T) {
+	dir := t.TempDir()
+	queuePath := filepath.Join(dir, "queue.json")
+	nextPath := filepath.Join(dir, "queue-next.json")
+
+	old := `{"items":[{"id":"old","task_key":"execute"}]}`
+	if err := os.WriteFile(queuePath, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(nextPath, []byte("not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := consumeQueueNext(nextPath, queuePath)
+	if err == nil {
+		t.Fatal("expected error for invalid proposal")
+	}
+
+	// queue.json should be unchanged.
+	data, _ := os.ReadFile(queuePath)
+	if !strings.Contains(string(data), `"old"`) {
+		t.Fatalf("queue.json was modified by invalid proposal: %s", data)
+	}
+	// Invalid proposal should be removed.
+	if _, err := os.Stat(nextPath); !os.IsNotExist(err) {
+		t.Fatal("invalid queue-next.json should be removed")
 	}
 }
 

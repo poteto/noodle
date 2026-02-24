@@ -114,8 +114,9 @@ type Dependencies struct {
 	Mise       MiseBuilder
 	Monitor    Monitor
 	Registry   taskreg.Registry
-	Now        func() time.Time
-	QueueFile  string
+	Now           func() time.Time
+	QueueFile     string
+	QueueNextFile string
 }
 
 type Loop struct {

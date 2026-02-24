@@ -1,12 +1,36 @@
 package loop
 
 import (
+	"fmt"
+	"os"
 	"sort"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
 )
+
+// consumeQueueNext atomically promotes queue-next.json to queue.json.
+// Prioritize sessions write to queue-next.json so they never race with
+// loop state stamps on queue.json. The loop is the single writer of
+// queue.json — this function is the handoff point.
+func consumeQueueNext(nextPath, queuePath string) error {
+	if _, err := os.Stat(nextPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("stat queue-next: %w", err)
+	}
+	// Validate the proposal before promoting it.
+	if _, err := queuex.ReadStrict(nextPath); err != nil {
+		// Remove invalid proposals so they don't block future cycles.
+		_ = os.Remove(nextPath)
+		return fmt.Errorf("invalid queue-next.json: %w", err)
+	}
+	if err := os.Rename(nextPath, queuePath); err != nil {
+		return fmt.Errorf("promote queue-next.json: %w", err)
+	}
+	return nil
+}
 
 func readQueue(path string) (Queue, error) {
 	queue, err := queuex.ReadStrict(path)
