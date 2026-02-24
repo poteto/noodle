@@ -1,4 +1,4 @@
-Back to [[plans/39-charmbracelet-v2-upgrade/overview]]
+Back to [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 5: Phase 5 - Lip Gloss v2 color and style migration
 

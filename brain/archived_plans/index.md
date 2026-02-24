@@ -7,3 +7,4 @@
 - [x] [[archived_plans/26-context-usage-tracking/overview]]
 - [x] [[archived_plans/15-bootstrap-onboarding/overview]]
 - [x] [[archived_plans/27-remote-dispatchers/overview]]
+- [x] [[archived_plans/39-charmbracelet-v2-upgrade/overview]]

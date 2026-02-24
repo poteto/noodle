@@ -1,4 +1,4 @@
-Back to [[plans/39-charmbracelet-v2-upgrade/overview]]
+Back to [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 3: Phase 3 - Bubble Tea key and input event migration
 

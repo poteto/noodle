@@ -1,7 +1,7 @@
 ---
 id: 39
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Charmbracelet V2 Upgrade
@@ -60,12 +60,12 @@ Alternatives considered:
 
 ## Phases
 
-- [[plans/39-charmbracelet-v2-upgrade/phase-01-phase-1-baseline-and-module-path-migration]]
-- [[plans/39-charmbracelet-v2-upgrade/phase-02-phase-2-bubble-tea-view-and-program-lifecycle-migration]]
-- [[plans/39-charmbracelet-v2-upgrade/phase-03-phase-3-bubble-tea-key-and-input-event-migration]]
-- [[plans/39-charmbracelet-v2-upgrade/phase-04-phase-4-bubbles-component-api-migration]]
-- [[plans/39-charmbracelet-v2-upgrade/phase-05-phase-5-lip-gloss-v2-color-and-style-migration]]
-- [[plans/39-charmbracelet-v2-upgrade/phase-06-phase-6-verification-and-cleanup]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-01-phase-1-baseline-and-module-path-migration]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-02-phase-2-bubble-tea-view-and-program-lifecycle-migration]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-03-phase-3-bubble-tea-key-and-input-event-migration]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-04-phase-4-bubbles-component-api-migration]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-05-phase-5-lip-gloss-v2-color-and-style-migration]]
+- [[archived_plans/39-charmbracelet-v2-upgrade/phase-06-phase-6-verification-and-cleanup]]
 
 ## Verification
 

@@ -1,4 +1,4 @@
-Back to [[plans/39-charmbracelet-v2-upgrade/overview]]
+Back to [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 4: Phase 4 - Bubbles component API migration
 

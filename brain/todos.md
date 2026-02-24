@@ -6,9 +6,9 @@
 
 1. [x] Noodle open-source architecture: redesign Noodle for OSS adoption — kitchen brigade naming (Chef/Sous Chef/Taster/Cook/Mise), skills as the only extension point, LLM-powered prioritization replacing deterministic scoring, adapter pattern for backlog/plans, aggressive Go code deletion, bootstrap skill. [[archived_plans/01-noodle-extensible-skill-layering/overview]]
 2. [x] ~~Investigate automated post-reflect/meditate learning step~~ — superseded by the prioritize agent, which already does LLM-powered learning and queue scheduling based on session history and measured evidence.
-39. [ ] Upgrade Bubble Tea to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbletea/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
-40. [ ] Upgrade Lip Gloss to v2 using the upstream migration guide. https://github.com/charmbracelet/lipgloss/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
-41. [ ] Upgrade Bubbles to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbles/blob/main/UPGRADE_GUIDE_V2.md [[plans/39-charmbracelet-v2-upgrade/overview]]
+39. [ ] Upgrade Bubble Tea to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbletea/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
+40. [ ] Upgrade Lip Gloss to v2 using the upstream migration guide. https://github.com/charmbracelet/lipgloss/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
+41. [ ] Upgrade Bubbles to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbles/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
 
 ## Noodle Post-Plan 1
 

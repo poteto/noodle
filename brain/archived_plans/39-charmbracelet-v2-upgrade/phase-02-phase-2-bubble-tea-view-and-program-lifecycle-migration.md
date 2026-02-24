@@ -1,4 +1,4 @@
-Back to [[plans/39-charmbracelet-v2-upgrade/overview]]
+Back to [[archived_plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 2: Phase 2 - Bubble Tea view and program lifecycle migration
 
