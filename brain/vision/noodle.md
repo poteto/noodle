@@ -47,7 +47,7 @@ noodle:
 Read .noodle/mise.json. It contains the backlog, active agents, recent
 session history, and available capacity.
 
-Write .noodle/queue.json with the items you want to schedule next based on <my workflow>.
+Write .noodle/queue-next.json with the items you want to schedule next based on <my workflow>.
 ```
 
 ```yaml
