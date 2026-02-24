@@ -72,6 +72,10 @@ This follows the agent-pilled philosophy: agents do agent work, the binary does 
 6. [[plans/15-bootstrap-onboarding/phase-06-philosophy-md]] — Brain, self-learning, agent-pilled rationale
 7. [[plans/15-bootstrap-onboarding/phase-07-integration-test]] — End-to-end onboarding test
 
+## Notes
+
+- The `[plans] on_done` config field ("keep" | "remove") needs to be documented in the auto-generated noodle skill (Phase 4) and INSTALL.md (Phase 5).
+
 ## Verification
 
 ```bash
