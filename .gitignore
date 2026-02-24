@@ -22,8 +22,9 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 
-# Local reference (private, not part of the open-source repo)
-.noodle/
+# Noodle runtime state (not tracked)
+.noodle/*
+!.noodle/adapters/
 .noodle/reference-path
 
 # Obsidian
