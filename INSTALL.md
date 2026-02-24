@@ -23,13 +23,13 @@ noodle --help
 
 ## What is Noodle
 
-Noodle is an AI coding framework where agents do the work and humans steer. Everything runs through skills — markdown files that teach agents how to do things. There are no plugins, no hooks API, no configuration DSL. Skills are the single extension point.
+Noodle is an AI coding framework. Agents do the work, humans steer. The only extension point is skills, markdown files that teach agents how to do things. No plugins, no hooks API, no config DSL.
 
-All state lives in files. `.noodle/queue.json` is the work queue. `.noodle/mise.json` is the gathered project state. Verdicts, session logs, control commands — all files. Any tool can read them, any agent can write to them. There's no hidden state and nothing to reverse-engineer.
+All state lives in plain files. `.noodle/queue.json` is the work queue. `.noodle/mise.json` is gathered project state. Session logs, control commands, verdicts. All just files on disk. `cat` them, `jq` them, `git diff` them. Nothing is hidden.
 
-Noodle follows a kitchen brigade model. The human is the Chef — you set strategy and review output. The scheduling agent (Prioritize) reads the project state and decides what to work on next. Cooks pick up tasks and do the work in isolated worktrees. Quality reviews what they produce. The loop runs continuously: gather state, schedule, cook, review, merge.
+It follows a kitchen brigade. You're the Chef. Strategy and review. A scheduling agent reads the project state and decides what to cook next. Cooks do the work in isolated worktrees. A quality gate checks their output. The loop: gather state, schedule, cook, review, merge.
 
-Agents work on branches and merge to main when done. You can run one agent or twenty in parallel. The scheduling agent picks the right model for each task — expensive models for hard problems, cheap ones for routine work.
+You can run one agent or twenty in parallel. The scheduler picks the right model for each task.
 
 ## Set up your project
 
@@ -60,10 +60,10 @@ First run detects a fresh project and scaffolds what's missing:
 - `.noodle/` runtime state directory
 - `.noodle.toml` with minimal defaults
 
-After scaffolding, the agent handles everything that requires judgment: choosing adapters, installing skills, setting up hooks. The binary handles the mechanical parts.
+After scaffolding, the agent handles the parts that need judgment: choosing adapters, installing skills, wiring hooks. The binary just does the mechanical work.
 
-`noodle start` is always safe to run. It's idempotent — existing files are never overwritten.
+`noodle start` is always safe to run. Existing files are never overwritten.
 
 ## Learn more
 
-Read [PHILOSOPHY.md](PHILOSOPHY.md) for the deeper rationale behind the brain, self-learning, and why Noodle is built around agent autonomy.
+[PHILOSOPHY.md](PHILOSOPHY.md) explains why Noodle works this way.
