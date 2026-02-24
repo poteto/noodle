@@ -57,13 +57,8 @@ func TestTabSwitching(t *testing.T) {
 	}
 
 	m = pressRune(t, m, '3')
-	if m.activeTab != TabBrain {
-		t.Fatalf("tab after 3 = %v, want TabBrain", m.activeTab)
-	}
-
-	m = pressRune(t, m, '4')
 	if m.activeTab != TabConfig {
-		t.Fatalf("tab after 4 = %v, want TabConfig", m.activeTab)
+		t.Fatalf("tab after 3 = %v, want TabConfig", m.activeTab)
 	}
 
 	m = pressRune(t, m, '1')

@@ -83,9 +83,6 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		feedEvents = feedEvents[len(feedEvents)-maxFeedEvents:]
 	}
 
-	brainDir := filepath.Join(filepath.Dir(runtimeDir), "brain")
-	brainActivity := scanBrainActivity(brainDir)
-
 	verdicts := loadVerdicts(runtimeDir)
 	pendingCount := 0
 	for _, v := range verdicts {
@@ -111,7 +108,6 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		EventsBySession:    eventsBySession,
 		FeedEvents:         feedEvents,
 		TotalCostUSD:       totalCost,
-		BrainActivity:      brainActivity,
 		Verdicts:           verdicts,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
@@ -688,72 +684,3 @@ func inferTaskType(sessionID string) string {
 	return ""
 }
 
-const brainScanLimit = 100
-
-// scanBrainActivity walks the brain directory and returns recently modified
-// markdown files sorted by mtime descending, capped to brainScanLimit.
-func scanBrainActivity(brainDir string) []BrainActivity {
-	info, err := os.Stat(brainDir)
-	if err != nil || !info.IsDir() {
-		return nil
-	}
-
-	type entry struct {
-		path  string
-		mtime time.Time
-	}
-	var entries []entry
-
-	_ = filepath.Walk(brainDir, func(path string, fi os.FileInfo, err error) error {
-		if err != nil {
-			return nil
-		}
-		if fi.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(fi.Name(), ".md") {
-			return nil
-		}
-		rel, err := filepath.Rel(brainDir, path)
-		if err != nil {
-			return nil
-		}
-		entries = append(entries, entry{path: rel, mtime: fi.ModTime()})
-		return nil
-	})
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].mtime.After(entries[j].mtime)
-	})
-
-	if len(entries) > brainScanLimit {
-		entries = entries[:brainScanLimit]
-	}
-
-	activities := make([]BrainActivity, 0, len(entries))
-	for _, e := range entries {
-		tag := inferBrainTag(e.mtime)
-		desc := inferDescription(e.path)
-		activities = append(activities, BrainActivity{
-			Agent:       "unknown",
-			At:          e.mtime,
-			Tag:         tag,
-			FilePath:    e.path,
-			Description: desc,
-		})
-	}
-	return activities
-}
-
-func inferBrainTag(mtime time.Time) string {
-	if time.Since(mtime) < time.Hour {
-		return "new"
-	}
-	return "edit"
-}
-
-func inferDescription(relPath string) string {
-	base := strings.TrimSuffix(filepath.Base(relPath), ".md")
-	base = strings.ReplaceAll(base, "-", " ")
-	return base
-}

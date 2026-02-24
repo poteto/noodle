@@ -65,8 +65,6 @@ func (m Model) renderLayout() string {
 			tabContent = m.feedTab.Render(paneWidth, contentHeight, m.now())
 		case TabQueue:
 			tabContent = m.queueTab.Render(paneWidth, contentHeight)
-		case TabBrain:
-			tabContent = m.brainTab.Render(paneWidth, contentHeight)
 		case TabConfig:
 			tabContent = m.configTab.Render(paneWidth, contentHeight)
 		}
@@ -138,7 +136,7 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 	}
 
 	var parts []string
-	parts = append(parts, dimStyle.Render("1-4")+" tabs")
+	parts = append(parts, dimStyle.Render("1-3")+" tabs")
 
 	switch tab {
 	case TabFeed:
@@ -153,12 +151,6 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 		parts = append(parts,
 			dimStyle.Render("j/k")+" select",
 			dimStyle.Render("enter")+" open",
-		)
-	case TabBrain:
-		parts = append(parts,
-			dimStyle.Render("j/k")+" select",
-			dimStyle.Render("enter")+" preview",
-			dimStyle.Render("esc")+" back",
 		)
 	case TabConfig:
 		parts = append(parts, dimStyle.Render("←/→")+" autonomy")

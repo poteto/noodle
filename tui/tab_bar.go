@@ -12,11 +12,10 @@ type Tab int
 const (
 	TabFeed Tab = iota
 	TabQueue
-	TabBrain
 	TabConfig
 )
 
-var tabNames = [4]string{"Feed", "Queue", "Brain", "Config"}
+var tabNames = [3]string{"Feed", "Queue", "Config"}
 
 func (t Tab) String() string {
 	if int(t) >= 0 && int(t) < len(tabNames) {
