@@ -1,4 +1,4 @@
-.PHONY: help build test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean
+.PHONY: help build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -28,10 +28,14 @@ help:
 	@printf "  %-40s %s\n" "make bugs" "List fixture expected.md files with bug=true"
 	@printf "  %-40s %s\n" "make watch" "Rebuild on changes with Air (silent mode)"
 	@printf "  %-40s %s\n" "make watch-verbose" "Rebuild on changes with Air (debug file events)"
+	@printf "  %-40s %s\n" "make generate" "Regenerate auto-generated files"
 	@printf "  %-40s %s\n" "make clean" "Remove built binary"
 
 build:
 	$(GO) build -o $(BIN) .
+
+generate:
+	$(GO) run ./generate/cmd/gen-skill
 
 test:
 	$(GO) test ./...
