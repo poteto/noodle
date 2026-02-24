@@ -79,6 +79,5 @@ type Brief struct {
 	RecentHistory   []HistoryItem         `json:"recent_history"`
 	Routing         RoutingSnapshot       `json:"routing"`
 	TaskTypes       []TaskTypeSummary     `json:"task_types,omitempty"`
-	QualityVerdicts []QualityVerdict      `json:"quality_verdicts,omitempty"`
 	Warnings        []string              `json:"warnings,omitempty"`
 }

@@ -40,7 +40,6 @@ type QueueItem struct {
 	Runtime   string   `json:"runtime,omitempty"`
 	Skill     string   `json:"skill,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
-	Review    *bool    `json:"review,omitempty"`
 	Rationale string   `json:"rationale,omitempty"`
 }
 
@@ -68,12 +67,11 @@ type ControlAck struct {
 }
 
 type activeCook struct {
-	queueItem     QueueItem
-	session       dispatcher.Session
-	worktreeName  string
-	worktreePath  string
-	attempt       int
-	reviewEnabled bool
+	queueItem    QueueItem
+	session      dispatcher.Session
+	worktreeName string
+	worktreePath string
+	attempt      int
 }
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.

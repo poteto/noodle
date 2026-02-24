@@ -307,6 +307,15 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 		adoptedTargets[targetID] = struct{}{}
 	}
 
+	pendingTargets := make(map[string]struct{}, len(l.pendingReview))
+	for targetID := range l.pendingReview {
+		pendingTargets[targetID] = struct{}{}
+	}
+
+	for targetID := range pendingTargets {
+		busyTargets[targetID] = struct{}{}
+	}
+
 	return planSpawnItems(spawnPlanInput{
 		QueueItems:      queue.Items,
 		Capacity:        l.config.Concurrency.MaxCooks,

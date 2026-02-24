@@ -103,12 +103,6 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		routing.Tags[tag] = RoutingPolicy{Provider: policy.Provider, Model: policy.Model}
 	}
 
-	// Quality verdicts
-	verdicts, verdictErr := ReadQualityVerdicts(b.runtimeDir)
-	if verdictErr != nil {
-		warnings = append(warnings, "quality verdict reading failed: "+verdictErr.Error())
-	}
-
 	brief := Brief{
 		GeneratedAt:     b.now().UTC(),
 		Backlog:         backlog,
@@ -120,7 +114,6 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		RecentHistory:   recentHistory,
 		Routing:         routing,
 		TaskTypes:       b.TaskTypes,
-		QualityVerdicts: verdicts,
 		Warnings:        warnings,
 	}
 

@@ -83,6 +83,7 @@ type Snapshot struct {
 	TotalCostUSD float64
 
 	Verdicts           []Verdict
+	PendingReviews     []loop.PendingReviewItem
 	PendingReviewCount int
 	Autonomy           string
 }
@@ -115,7 +116,6 @@ type QueueItem struct {
 	Model     string   `json:"model"`
 	Skill     string   `json:"skill,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
-	Review    *bool    `json:"review,omitempty"`
 	Rationale string   `json:"rationale,omitempty"`
 }
 

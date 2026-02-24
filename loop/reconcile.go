@@ -13,6 +13,9 @@ import (
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
+	if err := l.loadPendingReview(); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Join(l.runtimeDir, "sessions"), 0o755); err != nil {
 		return err
 	}

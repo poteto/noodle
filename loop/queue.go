@@ -82,7 +82,6 @@ func toQueueX(queue Queue) queuex.Queue {
 			Runtime:   item.Runtime,
 			Skill:     item.Skill,
 			Plan:      item.Plan,
-			Review:    item.Review,
 			Rationale: item.Rationale,
 		})
 	}
@@ -102,7 +101,6 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Runtime:   item.Runtime,
 			Skill:     item.Skill,
 			Plan:      item.Plan,
-			Review:    item.Review,
 			Rationale: item.Rationale,
 		})
 	}

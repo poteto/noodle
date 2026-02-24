@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/recover"
 	"github.com/poteto/noodle/worktree"
 )
@@ -29,10 +30,6 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		if err != nil {
 			return err
 		}
-	}
-	reviewEnabled := l.config.ReviewEnabled()
-	if item.Review != nil {
-		reviewEnabled = *item.Review
 	}
 
 	created, err := l.ensureWorktree(name)
@@ -67,12 +64,11 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		return err
 	}
 	cook := &activeCook{
-		queueItem:     item,
-		session:       session,
-		worktreeName:  name,
-		worktreePath:  req.WorktreePath,
-		attempt:       attempt,
-		reviewEnabled: reviewEnabled,
+		queueItem:    item,
+		session:      session,
+		worktreeName: name,
+		worktreePath: req.WorktreePath,
+		attempt:      attempt,
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
@@ -103,25 +99,13 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
 	success := status == "completed"
-	if success && cook.reviewEnabled {
-		accepted, feedback := l.runQuality(ctx, cook)
-		if !accepted {
-			return l.retryCook(ctx, cook, feedback)
-		}
-	}
 	if success {
 		if isPrioritizeItem(cook.queueItem) {
 			return l.skipQueueItem(cook.queueItem.ID)
 		}
-		// In approve mode, park the cook for human review instead of auto-merging.
-		if l.config.PendingApproval() {
-			l.pendingReview[cook.queueItem.ID] = &pendingReviewCook{
-				queueItem:    cook.queueItem,
-				worktreeName: cook.worktreeName,
-				worktreePath: cook.worktreePath,
-				sessionID:    cook.session.ID(),
-			}
-			return nil
+		canMerge := l.canMergeQueueItem(cook.queueItem)
+		if !canMerge || l.config.PendingApproval() {
+			return l.parkPendingReview(cook)
 		}
 		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName, cook.session.ID())
 	}
@@ -278,12 +262,6 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 	if !found {
 		return nil, false, nil
 	}
-	reviewEnabled := l.config.ReviewEnabled()
-	if isPrioritizeItem(item) {
-		reviewEnabled = false
-	} else if item.Review != nil {
-		reviewEnabled = *item.Review
-	}
 	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, item)
 	return &activeCook{
 		queueItem: item,
@@ -294,8 +272,20 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 		worktreeName:  worktreeName,
 		worktreePath:  worktreePath,
 		attempt:       recover.RecoveryChainLength(worktreeName),
-		reviewEnabled: reviewEnabled,
 	}, true, nil
+}
+
+func (l *Loop) canMergeQueueItem(item QueueItem) bool {
+	taskType, ok := l.registry.ResolveQueueItem(taskreg.QueueItemInput{
+		ID:      item.ID,
+		TaskKey: item.TaskKey,
+		Title:   item.Title,
+		Skill:   item.Skill,
+	})
+	if !ok {
+		return true
+	}
+	return taskType.CanMerge
 }
 
 func (l *Loop) lookupQueueItem(targetID string) (QueueItem, bool, error) {

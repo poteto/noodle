@@ -132,9 +132,7 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(filepath.Join(runtimeDir, "queue.json"), queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -170,9 +168,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -216,9 +212,7 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -255,9 +249,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -297,9 +289,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -350,9 +340,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -619,10 +607,8 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -791,37 +777,6 @@ func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
 	}
 }
 
-func TestCopyVerdictToRuntime(t *testing.T) {
-	worktreeDir := t.TempDir()
-	runtimeDir := t.TempDir()
-
-	// Write verdict to worktree location (where quality skill writes it)
-	worktreeQuality := filepath.Join(worktreeDir, ".noodle", "quality")
-	if err := os.MkdirAll(worktreeQuality, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	verdict := `{"accept":false,"feedback":"needs tests","session_id":"sess-1"}`
-	src := filepath.Join(worktreeQuality, "sess-1.json")
-	if err := os.WriteFile(src, []byte(verdict), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	// Copy to runtime (project-level .noodle/quality/)
-	dst := filepath.Join(runtimeDir, "quality", "sess-1.json")
-	if err := copyVerdictToRuntime(src, dst); err != nil {
-		t.Fatalf("copy: %v", err)
-	}
-
-	// Verify the copy exists and is correct
-	data, err := os.ReadFile(dst)
-	if err != nil {
-		t.Fatalf("read dst: %v", err)
-	}
-	if string(data) != verdict {
-		t.Fatalf("copy mismatch: %q", string(data))
-	}
-}
-
 func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -856,32 +811,6 @@ func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
 	}
 }
 
-func TestReadQualityVerdictFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "verdict.json")
-	content := `{"accept":false,"feedback":"needs tests"}`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write verdict: %v", err)
-	}
-	verdict, err := readQualityVerdictFile(path)
-	if err != nil {
-		t.Fatalf("read verdict: %v", err)
-	}
-	if verdict.Accept {
-		t.Fatalf("expected reject verdict")
-	}
-	if verdict.Feedback != "needs tests" {
-		t.Fatalf("feedback = %q", verdict.Feedback)
-	}
-}
-
-func TestReadQualityVerdictFileMissing(t *testing.T) {
-	_, err := readQualityVerdictFile(filepath.Join(t.TempDir(), "nonexistent.json"))
-	if err == nil {
-		t.Fatal("expected error for missing verdict file")
-	}
-}
-
 func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "prompt.txt")
 	content := "Work backlog item plan/phase_02-ticket.7\n\nContext: test"
@@ -903,50 +832,6 @@ func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
 	target := readSessionTarget(path)
 	if target != PrioritizeTaskKey() {
 		t.Fatalf("target = %q", target)
-	}
-}
-
-func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
-	projectDir := t.TempDir()
-	queuePath := filepath.Join(projectDir, ".noodle", "queue.json")
-	if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		QueueFile:  queuePath,
-	})
-	cook := &activeCook{
-		queueItem: QueueItem{
-			ID:       "42",
-			Provider: "claude",
-			Model:    "claude-opus-4-6",
-		},
-		worktreeName: "42-worktree",
-		worktreePath: filepath.Join(projectDir, ".worktrees", "42-worktree"),
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	accepted, feedback := l.runQuality(ctx, cook)
-	if accepted {
-		t.Fatal("expected canceled quality review run to be rejected")
-	}
-	if !strings.Contains(strings.ToLower(feedback), "canceled") {
-		t.Fatalf("feedback = %q", feedback)
-	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("quality spawn sessions = %d", len(sp.sessions))
-	}
-	if sp.sessions[0].status != "killed" {
-		t.Fatalf("expected canceled quality session to be killed, got %q", sp.sessions[0].status)
 	}
 }
 
@@ -975,10 +860,8 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	); err != nil {
 		t.Fatalf("write meta: %v", err)
 	}
-
-	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1006,43 +889,6 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	}
 	if len(l.adoptedTargets) != 0 {
 		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
-	}
-}
-
-func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{prioritizeQueueItem(config.DefaultConfig(), "")}}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Autonomy = "review"
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		QueueFile:  queuePath,
-	})
-
-	cook, ok, err := l.buildAdoptedCook(PrioritizeTaskKey(), "session-1", "running")
-	if err != nil {
-		t.Fatalf("build adopted cook: %v", err)
-	}
-	if !ok {
-		t.Fatal("expected adopted prioritize cook")
-	}
-	if cook.reviewEnabled {
-		t.Fatal("expected prioritize adopted cook to keep review disabled")
 	}
 }
 
@@ -1153,10 +999,8 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	); err != nil {
 		t.Fatalf("write spawn metadata: %v", err)
 	}
-
-	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1295,10 +1139,8 @@ func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T)
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-
-	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}

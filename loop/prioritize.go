@@ -65,12 +65,11 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 		return err
 	}
 	cook := &activeCook{
-		queueItem:     item,
-		session:       session,
-		worktreeName:  "",
-		worktreePath:  l.projectDir,
-		attempt:       attempt,
-		reviewEnabled: false,
+		queueItem:    item,
+		session:      session,
+		worktreeName: "",
+		worktreePath: l.projectDir,
+		attempt:      attempt,
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
@@ -83,7 +82,7 @@ func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, re
 		"Write to `.noodle/queue-next.json` (not queue.json). The loop promotes it atomically.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
-		"You may synthesize queue items for non-execute task types (e.g. quality, reflect, meditate) based on workflow rules in the skill and the task types list below.",
+		"You may synthesize queue items for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		queueSchemaPrompt(),
 		taskTypesPrompt,
 	}

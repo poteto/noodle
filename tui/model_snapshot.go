@@ -83,17 +83,18 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		feedEvents = feedEvents[len(feedEvents)-maxFeedEvents:]
 	}
 
-	verdicts := loadVerdicts(runtimeDir)
-	pendingCount := 0
-	for _, v := range verdicts {
-		if v.Accept {
-			pendingCount++
-		}
+	brainDir := filepath.Join(filepath.Dir(runtimeDir), "brain")
+	brainActivity := scanBrainActivity(brainDir)
+
+	pendingReviews, err := loop.ReadPendingReview(runtimeDir)
+	if err != nil {
+		return Snapshot{}, err
 	}
+	pendingCount := len(pendingReviews)
 
 	autonomy := qr.Autonomy
 	if autonomy == "" {
-		autonomy = config.AutonomyReview
+		autonomy = config.AutonomyAuto
 	}
 
 	return Snapshot{
@@ -108,7 +109,9 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		EventsBySession:    eventsBySession,
 		FeedEvents:         feedEvents,
 		TotalCostUSD:       totalCost,
-		Verdicts:           verdicts,
+		BrainActivity:      brainActivity,
+		Verdicts:           nil,
+		PendingReviews:     pendingReviews,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
 	}, nil
@@ -184,7 +187,6 @@ func readQueue(path string) (queueResult, error) {
 			Model:     item.Model,
 			Skill:     item.Skill,
 			Plan:      item.Plan,
-			Review:    item.Review,
 			Rationale: item.Rationale,
 		})
 	}

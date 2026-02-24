@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/tui/components"
 )
 
@@ -19,23 +18,9 @@ type Verdict struct {
 	Timestamp time.Time
 }
 
-// loadVerdicts reads quality verdict files from .noodle/quality/.
-func loadVerdicts(runtimeDir string) []Verdict {
-	raw, err := mise.ReadQualityVerdicts(runtimeDir)
-	if err != nil {
-		return nil
-	}
-	verdicts := make([]Verdict, 0, len(raw))
-	for _, v := range raw {
-		verdicts = append(verdicts, Verdict{
-			SessionID: v.SessionID,
-			TargetID:  v.TargetID,
-			Accept:    v.Accept,
-			Feedback:  v.Feedback,
-			Timestamp: v.Timestamp,
-		})
-	}
-	return verdicts
+// loadVerdicts is retained temporarily until the Feed verdict cards are removed.
+func loadVerdicts(_ string) []Verdict {
+	return nil
 }
 
 // renderVerdictCard renders a verdict as a feed card with action pills.

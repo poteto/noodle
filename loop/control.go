@@ -209,6 +209,9 @@ func (l *Loop) controlMerge(itemID string) error {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
 	delete(l.pendingReview, itemID)
+	if err := l.writePendingReview(); err != nil {
+		return err
+	}
 	return l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName, pending.sessionID)
 }
 
@@ -222,6 +225,9 @@ func (l *Loop) controlReject(itemID string) error {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
 	delete(l.pendingReview, itemID)
+	if err := l.writePendingReview(); err != nil {
+		return err
+	}
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}

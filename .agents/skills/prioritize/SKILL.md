@@ -35,10 +35,9 @@ After scheduling a task, consider what naturally follows. Schedule follow-up ite
 
 These are starting points, not a closed list. If the `task_types` registry contains new types you haven't seen before, read their `schedule` hints and infer where they fit. You are empowered to introduce new follow-up chains when they make sense for the current state.
 
-## Workflow Constraints
-
-- When any item has `"review": true`, it must be the only item type in the queue (blocking). Do not mix other task types into the same queue generation.
-- `quality_verdicts` in mise show recent review outcomes. Schedule high-severity rejections for retry above normal backlog items.
+1. **Execute** according to `needs_scheduling` and plan readiness
+2. **Review/Reflect** after completed work when their schedule hints indicate they should run
+3. **Meditate** after enough reflects have accumulated (expensive — don't over-schedule)
 
 ## Situational Awareness
 
@@ -60,7 +59,12 @@ These are starting points, not a closed list. If the `task_types` registry conta
 
 ## Model Routing
 
-Read `routing.defaults` and `routing.tags` from mise for provider/model selection. General heuristic: codex for implementation, opus for judgment and strategy. Always defer to mise routing when explicit.
+| Task type | Provider | Model |
+|-----------|----------|-------|
+| Implementation, execution, coding | codex | gpt-5.3-codex |
+| Judgment, strategy, planning, review | claude | claude-opus-4-6 |
+
+When uncertain, codex for implementation, opus for judgment.
 
 ## Runtime Routing
 
@@ -68,8 +72,8 @@ Read `routing.available_runtimes` from mise before writing queue items.
 
 - If only `tmux` is available, set queue item `"runtime": "tmux"`.
 - If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
-- Short-lived tasks (quality, reflect, meditate) default to `"runtime": "tmux"` unless explicitly justified.
-- Only emit runtimes listed in `available_runtimes`.
+- Keep `review`, `reflect`, and `meditate` on `"runtime": "tmux"` unless explicitly justified.
+- Do not emit `"runtime": "cursor"` yet (Cursor backend is not implemented).
 - Always include `"runtime"` on scheduled queue items so dispatch routing is explicit.
 
 ## Output

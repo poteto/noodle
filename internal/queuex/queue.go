@@ -37,7 +37,6 @@ type Item struct {
 	Runtime   string   `json:"runtime,omitempty"`
 	Skill     string   `json:"skill,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
-	Review    *bool    `json:"review,omitempty"`
 	Rationale string   `json:"rationale,omitempty"`
 }
 
