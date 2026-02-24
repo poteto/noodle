@@ -234,7 +234,6 @@ description: Deploy to production
 noodle:
   blocking: false
   schedule: "After successful execute"
-  runtime: "ssh host 'claude -p < {{prompt}}'"
 ---
 # Deploy
 `)
@@ -252,9 +251,6 @@ noodle:
 	}
 	if meta.Frontmatter.Noodle.Schedule != "After successful execute" {
 		t.Fatalf("schedule = %q", meta.Frontmatter.Noodle.Schedule)
-	}
-	if meta.Frontmatter.Noodle.Runtime == "" {
-		t.Fatal("expected runtime")
 	}
 }
 

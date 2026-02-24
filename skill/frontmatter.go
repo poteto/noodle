@@ -19,11 +19,10 @@ type Frontmatter struct {
 func (f Frontmatter) IsTaskType() bool { return f.Noodle != nil }
 
 // NoodleMeta is the noodle-specific scheduling metadata nested under noodle:.
-// Schedule is required. Blocking defaults to false. Runtime is optional.
+// Schedule is required. Blocking defaults to false.
 type NoodleMeta struct {
 	Blocking bool   `yaml:"blocking"`
 	Schedule string `yaml:"schedule"`
-	Runtime  string `yaml:"runtime,omitempty"`
 }
 
 var frontmatterSep = []byte("---")
