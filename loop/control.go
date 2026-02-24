@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/recover"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -170,6 +172,11 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
+	case "request-changes":
+		if err := l.controlRequestChanges(cmd.Item, cmd.Prompt); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
 	case "autonomy":
 		if err := l.controlAutonomy(cmd.Value); err != nil {
 			ack.Status = "error"
@@ -208,11 +215,11 @@ func (l *Loop) controlMerge(itemID string) error {
 	if !ok {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
-	delete(l.pendingReview, itemID)
-	if err := l.writePendingReview(); err != nil {
+	if err := l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName, pending.sessionID); err != nil {
 		return err
 	}
-	return l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName, pending.sessionID)
+	delete(l.pendingReview, itemID)
+	return l.writePendingReview()
 }
 
 func (l *Loop) controlReject(itemID string) error {
@@ -224,17 +231,75 @@ func (l *Loop) controlReject(itemID string) error {
 	if !ok {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
-	delete(l.pendingReview, itemID)
-	if err := l.writePendingReview(); err != nil {
-		return err
-	}
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 	if err := l.markFailed(itemID, "rejected by user"); err != nil {
 		return err
 	}
-	return l.skipQueueItem(itemID)
+	if err := l.skipQueueItem(itemID); err != nil {
+		return err
+	}
+	delete(l.pendingReview, itemID)
+	return l.writePendingReview()
+}
+
+func (l *Loop) controlRequestChanges(itemID, feedback string) error {
+	itemID = strings.TrimSpace(itemID)
+	if itemID == "" {
+		return fmt.Errorf("request-changes requires item")
+	}
+	pending, ok := l.pendingReview[itemID]
+	if !ok {
+		return fmt.Errorf("no pending review for %q", itemID)
+	}
+
+	resumePrompt := "Previous work needs changes."
+	trimmedFeedback := strings.TrimSpace(feedback)
+	if trimmedFeedback != "" {
+		resumePrompt += " Feedback: " + trimmedFeedback
+	}
+
+	name := strings.TrimSpace(pending.worktreeName)
+	if name == "" {
+		name = cookBaseName(pending.queueItem)
+	}
+	path := strings.TrimSpace(pending.worktreePath)
+	if path == "" {
+		path = l.worktreePath(name)
+	}
+
+	taskType, _ := l.registry.ByKey(pending.queueItem.TaskKey)
+	req := dispatcher.DispatchRequest{
+		Name:         name,
+		Prompt:       buildCookPrompt(pending.queueItem, resumePrompt),
+		Provider:     nonEmpty(pending.queueItem.Provider, l.config.Routing.Defaults.Provider),
+		Model:        nonEmpty(pending.queueItem.Model, l.config.Routing.Defaults.Model),
+		Skill:        pending.queueItem.Skill,
+		WorktreePath: path,
+		TaskKey:      taskType.Key,
+		Runtime:      nonEmpty(pending.queueItem.Runtime, "tmux"),
+	}
+	if taskType.Key == "execute" {
+		if adapter, exists := l.config.Adapters["backlog"]; exists {
+			req.DomainSkill = adapter.Skill
+		}
+	}
+	session, err := l.deps.Dispatcher.Dispatch(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	l.activeByTarget[itemID] = &activeCook{
+		queueItem:    pending.queueItem,
+		session:      session,
+		worktreeName: name,
+		worktreePath: path,
+		attempt:      recover.RecoveryChainLength(name),
+	}
+	l.activeByID[session.ID()] = l.activeByTarget[itemID]
+
+	delete(l.pendingReview, itemID)
+	return l.writePendingReview()
 }
 
 func (l *Loop) controlAutonomy(value string) error {
