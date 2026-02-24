@@ -147,6 +147,17 @@ func TestNormalizeAndValidateAllowsPrioritizeWhenRegistryEmpty(t *testing.T) {
 	}
 }
 
+func TestNormalizeAndValidateAllowsAdHocExecuteWithoutPlan(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := testRegistry()
+	queue := Queue{Items: []Item{{ID: "execute-1771969840249", TaskKey: "execute", Prompt: "fix the bug"}}}
+
+	_, _, err := NormalizeAndValidate(queue, []int{42}, reg, cfg)
+	if err != nil {
+		t.Fatalf("ad-hoc execute task should be allowed without a plan: %v", err)
+	}
+}
+
 func TestReadParsesRuntimeField(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "queue.json")

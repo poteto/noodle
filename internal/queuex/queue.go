@@ -171,20 +171,17 @@ func NormalizeAndValidate(
 			items[i].Skill = taskType.Key
 			changed = true
 		}
-		// Execute items must map to a schedulable plan ID when available.
+		// Execute items with numeric IDs must map to a schedulable plan.
+		// Non-numeric IDs (e.g. "execute-1771969840249" from the task creator)
+		// are ad-hoc tasks that don't require a plan.
 		if taskType.Key == "execute" && len(schedulableSet) > 0 {
-			planID, parseErr := strconv.Atoi(id)
-			if parseErr != nil {
-				return queue, false, fmt.Errorf(
-					"queue item %q is an execute task but does not match a schedulable plan",
-					id,
-				)
-			}
-			if _, exists := schedulableSet[planID]; !exists {
-				return queue, false, fmt.Errorf(
-					"queue item %q is an execute task but does not match a schedulable plan",
-					id,
-				)
+			if planID, parseErr := strconv.Atoi(id); parseErr == nil {
+				if _, exists := schedulableSet[planID]; !exists {
+					return queue, false, fmt.Errorf(
+						"queue item %q is an execute task but does not match a schedulable plan",
+						id,
+					)
+				}
 			}
 		}
 	}
