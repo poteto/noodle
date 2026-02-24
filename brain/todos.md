@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 45 -->
+<!-- next-id: 46 -->
 
 ## Tooling
 
@@ -30,6 +30,7 @@
 38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[plans/38-resilient-skill-resolution/overview]]
 43. [ ] Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[plans/43-deterministic-self-healing-and-status-split/overview]]
 44. [ ] TUI feed notifications for deterministic repairs — surface self-healing events (file resets, dir creation, stale cleanup) in the TUI feed so users can see what Go fixed silently.
+45. [ ] Task editor overhaul — consolidate Type+Skill into single dynamic Skill field, overlay dropdowns for enum fields, multiline prompt with visible cursor, context-sensitive up/down navigation. [[plans/45-task-editor-overhaul/overview]]
 
 ## Done
 

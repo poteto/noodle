@@ -8,3 +8,4 @@
 - [ ] [[plans/29-queue-item-context-passthrough/overview]]
 - [ ] [[plans/31-structured-loop-logging/overview]]
 - [ ] [[plans/37-skip-prioritize-with-queue/overview]]
+- [ ] [[plans/45-task-editor-overhaul/overview]]
