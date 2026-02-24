@@ -9,6 +9,22 @@ type StreamingBackend interface {
 	Kill(ctx context.Context, handle StreamHandle) error
 }
 
+type SyncResult struct {
+	Type   string `json:"type,omitempty"`
+	Branch string `json:"branch,omitempty"`
+}
+
+const (
+	SyncResultTypeNone   = "none"
+	SyncResultTypeBranch = "branch"
+)
+
+// StreamingSyncBacker is implemented by streaming backends that can sync
+// remote changes back to the local repository after a session completes.
+type StreamingSyncBacker interface {
+	SyncBack(ctx context.Context, sessionID string) (SyncResult, error)
+}
+
 // PollingBackend starts and controls sessions that expose state via polling.
 type PollingBackend interface {
 	Launch(ctx context.Context, config PollLaunchConfig) (string, error)

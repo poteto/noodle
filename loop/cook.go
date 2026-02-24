@@ -120,14 +120,25 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 			}
 			return nil
 		}
-		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName)
+		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName, cook.session.ID())
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
 }
 
-func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName string) error {
-	if err := l.deps.Worktree.Merge(worktreeName); err != nil {
-		return fmt.Errorf("merge %s: %w", worktreeName, err)
+func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName string, sessionID string) error {
+	syncResult, hasSyncResult, err := l.readSessionSyncResult(sessionID)
+	if err != nil {
+		return err
+	}
+
+	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+		if err := l.deps.Worktree.MergeRemoteBranch(syncResult.Branch); err != nil {
+			return fmt.Errorf("merge remote branch %s: %w", syncResult.Branch, err)
+		}
+	} else {
+		if err := l.deps.Worktree.Merge(worktreeName); err != nil {
+			return fmt.Errorf("merge %s: %w", worktreeName, err)
+		}
 	}
 	if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{item.ID}}); err != nil {
 		if !isMissingAdapter(err) {
@@ -135,6 +146,33 @@ func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName strin
 		}
 	}
 	return l.skipQueueItem(item.ID)
+}
+
+func (l *Loop) readSessionSyncResult(sessionID string) (dispatcher.SyncResult, bool, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return dispatcher.SyncResult{}, false, nil
+	}
+	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return dispatcher.SyncResult{}, false, nil
+		}
+		return dispatcher.SyncResult{}, false, fmt.Errorf("read spawn metadata: %w", err)
+	}
+	var payload struct {
+		Sync dispatcher.SyncResult `json:"sync"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return dispatcher.SyncResult{}, false, fmt.Errorf("parse spawn metadata: %w", err)
+	}
+	if strings.TrimSpace(payload.Sync.Type) == "" && strings.TrimSpace(payload.Sync.Branch) == "" {
+		return dispatcher.SyncResult{}, false, nil
+	}
+	payload.Sync.Type = strings.ToLower(strings.TrimSpace(payload.Sync.Type))
+	payload.Sync.Branch = strings.TrimSpace(payload.Sync.Branch)
+	return payload.Sync, true, nil
 }
 
 func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {

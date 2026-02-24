@@ -23,16 +23,18 @@ type fakeSession struct {
 	done   chan struct{}
 }
 
-func (s *fakeSession) ID() string                          { return s.id }
-func (s *fakeSession) Status() string                      { return s.status }
-func (s *fakeSession) Events() <-chan dispatcher.SessionEvent { return make(chan dispatcher.SessionEvent) }
-func (s *fakeSession) Done() <-chan struct{}               { return s.done }
-func (s *fakeSession) TotalCost() float64                  { return 0 }
-func (s *fakeSession) Kill() error                         { s.status = "killed"; close(s.done); return nil }
+func (s *fakeSession) ID() string     { return s.id }
+func (s *fakeSession) Status() string { return s.status }
+func (s *fakeSession) Events() <-chan dispatcher.SessionEvent {
+	return make(chan dispatcher.SessionEvent)
+}
+func (s *fakeSession) Done() <-chan struct{} { return s.done }
+func (s *fakeSession) TotalCost() float64    { return 0 }
+func (s *fakeSession) Kill() error           { s.status = "killed"; close(s.done); return nil }
 
 type fakeDispatcher struct {
-	calls    []dispatcher.DispatchRequest
-	sessions []*fakeSession
+	calls       []dispatcher.DispatchRequest
+	sessions    []*fakeSession
 	dispatchErr error
 }
 
@@ -49,6 +51,7 @@ func (f *fakeDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequ
 type fakeWorktree struct {
 	created         []string
 	merged          []string
+	remoteMerged    []string
 	cleaned         []string
 	createErr       error
 	createErrByName map[string]error
@@ -65,6 +68,10 @@ func (f *fakeWorktree) Create(name string) error {
 }
 func (f *fakeWorktree) Merge(name string) error {
 	f.merged = append(f.merged, name)
+	return nil
+}
+func (f *fakeWorktree) MergeRemoteBranch(branch string) error {
+	f.remoteMerged = append(f.remoteMerged, branch)
 	return nil
 }
 func (f *fakeWorktree) Cleanup(name string, _ bool) error {
@@ -134,13 +141,13 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   ar,
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: filepath.Join(runtimeDir, "queue.json"),
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -177,13 +184,13 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -219,13 +226,13 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	wt := &fakeWorktree{createErr: errors.New("worktree '42' already exists at " + existingWorktree)}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -261,13 +268,13 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 
 	err := l.Cycle(context.Background())
@@ -299,13 +306,13 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 
 	err := l.Cycle(context.Background())
@@ -353,13 +360,13 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   ar,
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
@@ -400,13 +407,13 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -483,13 +490,13 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
-		QueueFile: filepath.Join(runtimeDir, "queue.json"),
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
+		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	if err := l.processControlCommands(); err != nil {
 		t.Fatalf("process commands: %v", err)
@@ -533,13 +540,13 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
-		Worktree:  wt,
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
@@ -592,13 +599,13 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
@@ -633,8 +640,8 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree: &fakeWorktree{},
-		Adapter:  &fakeAdapterRunner{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
 		Mise: &fakeMise{brief: mise.Brief{
 			Backlog: []adapter.BacklogItem{{ID: "1", Title: "Fix", Status: adapter.BacklogStatusOpen}},
 		}},
@@ -812,13 +819,13 @@ func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
 	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	cook := &activeCook{
 		queueItem: QueueItem{
@@ -885,13 +892,13 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	l.adoptedTargets = map[string]string{"legacy-1": "stale-session"}
 
@@ -922,13 +929,13 @@ func TestBuildAdoptedCookDisablesReviewForPrioritize(t *testing.T) {
 	cfg.Autonomy = "review"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 
 	cook, ok, err := l.buildAdoptedCook(PrioritizeTaskKey(), "session-1", "running")
@@ -959,13 +966,13 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	cfg.Autonomy = "approve"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	l.state = StatePaused
 
@@ -998,13 +1005,13 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	cfg.Autonomy = "full"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree:  &fakeWorktree{},
-		Adapter:   &fakeAdapterRunner{},
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	l.state = StateDraining
 
@@ -1062,13 +1069,13 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: &fakeDispatcher{},
-		Worktree:  wt,
-		Adapter:   ar,
-		Mise:      &fakeMise{},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
 	})
 	l.adoptedTargets = map[string]string{"42": sessionID}
 	l.adoptedSessions = []string{sessionID}
@@ -1091,5 +1098,96 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	}
 	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
 		t.Fatalf("expected prioritize bootstrap item after adopted completion, got %#v", updated.Items)
+	}
+}
+
+func TestMergeCookUsesRemoteBranchSyncResult(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	sessionID := "session-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sessionPath, "spawn.json"),
+		[]byte(`{"sync":{"type":"branch","branch":"noodle/session-a"}}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
+	}
+
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	wt := &fakeWorktree{}
+	ar := &fakeAdapterRunner{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	if err := l.mergeCook(
+		context.Background(),
+		QueueItem{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"},
+		"42",
+		sessionID,
+	); err != nil {
+		t.Fatalf("mergeCook: %v", err)
+	}
+	if len(wt.remoteMerged) != 1 || wt.remoteMerged[0] != "noodle/session-a" {
+		t.Fatalf("unexpected remote merges: %#v", wt.remoteMerged)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("expected no local merge, got %#v", wt.merged)
+	}
+}
+
+func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	if err := l.mergeCook(
+		context.Background(),
+		QueueItem{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"},
+		"42",
+		"",
+	); err != nil {
+		t.Fatalf("mergeCook: %v", err)
+	}
+	if len(wt.merged) != 1 || wt.merged[0] != "42" {
+		t.Fatalf("unexpected local merges: %#v", wt.merged)
+	}
+	if len(wt.remoteMerged) != 0 {
+		t.Fatalf("expected no remote merge, got %#v", wt.remoteMerged)
 	}
 }

@@ -149,6 +149,13 @@ func (a *App) Merge(name string) error {
 	return nil
 }
 
+// MergeRemoteBranch merges a remote branch into the integration branch.
+// This method is implemented in a later phase; the placeholder keeps
+// interface wiring explicit until full remote sync-back behavior is added.
+func (a *App) MergeRemoteBranch(branch string) error {
+	return fmt.Errorf("remote branch merge not implemented")
+}
+
 // Cleanup removes a worktree without merging. If force is false, it refuses
 // when unmerged commits exist.
 func (a *App) Cleanup(name string, force bool) error {

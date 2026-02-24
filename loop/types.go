@@ -88,6 +88,7 @@ type Dispatcher interface {
 type WorktreeManager interface {
 	Create(name string) error
 	Merge(name string) error
+	MergeRemoteBranch(branch string) error
 	Cleanup(name string, force bool) error
 }
 
@@ -106,18 +107,18 @@ type Monitor interface {
 type Dependencies struct {
 	Dispatcher Dispatcher
 	Worktree   WorktreeManager
-	Adapter   AdapterRunner
-	Mise      MiseBuilder
-	Monitor   Monitor
-	Registry  taskreg.Registry
-	Now       func() time.Time
-	QueueFile string
+	Adapter    AdapterRunner
+	Mise       MiseBuilder
+	Monitor    Monitor
+	Registry   taskreg.Registry
+	Now        func() time.Time
+	QueueFile  string
 }
 
 type Loop struct {
-	projectDir string
-	runtimeDir string
-	config     config.Config
+	projectDir  string
+	runtimeDir  string
+	config      config.Config
 	registry    taskreg.Registry
 	registryErr error
 	deps        Dependencies

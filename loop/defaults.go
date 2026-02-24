@@ -19,9 +19,10 @@ import (
 
 type noOpWorktree struct{}
 
-func (noOpWorktree) Create(string) error        { return nil }
-func (noOpWorktree) Merge(string) error         { return nil }
-func (noOpWorktree) Cleanup(string, bool) error { return nil }
+func (noOpWorktree) Create(string) error            { return nil }
+func (noOpWorktree) Merge(string) error             { return nil }
+func (noOpWorktree) MergeRemoteBranch(string) error { return nil }
+func (noOpWorktree) Cleanup(string, bool) error     { return nil }
 
 func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config) Dependencies {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
