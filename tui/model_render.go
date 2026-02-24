@@ -162,7 +162,7 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 		parts = append(parts, dimStyle.Render("←/→")+" autonomy")
 	}
 
-	if tab != TabConfig {
+	if tab != TabConfig && tab != TabFeed {
 		parts = append(parts, dimStyle.Render("h/l")+" actors")
 	}
 

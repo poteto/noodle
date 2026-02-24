@@ -33,7 +33,7 @@ func renderRail(snap Snapshot, height int, shimmerIndex int) string {
 		}
 	}
 
-	b.WriteString(dimStyle.Render(strings.Repeat("─", w)))
+	b.WriteString(dimStyle.Render(strings.Repeat("─", w-2)))
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("%d active\n", len(snap.Active)))
 	b.WriteString(fmt.Sprintf("%d queued\n", len(snap.Queue)))

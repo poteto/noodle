@@ -414,13 +414,17 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			mode := m.configTab.CycleLeft()
 			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
 		}
-		m.navigateActor(-1)
+		if m.activeTab != TabFeed {
+			m.navigateActor(-1)
+		}
 	case "right", "l":
 		if m.activeTab == TabConfig {
 			mode := m.configTab.CycleRight()
 			return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{Action: "autonomy", Value: mode})
 		}
-		m.navigateActor(1)
+		if m.activeTab != TabFeed {
+			m.navigateActor(1)
+		}
 	case "p":
 		action := "pause"
 		if strings.EqualFold(m.snapshot.LoopState, "paused") {
