@@ -1,8 +1,7 @@
 # Autonomy controls human oversight in the loop.
-# "full" = auto-merge on success, no human in the loop
-# "review" = quality review runs, auto-merge on APPROVE
-# "approve" = quality review runs, human must confirm merge
-autonomy = "review"
+# "auto" = auto-merge on success, per-skill permissions.merge respected
+# "approve" = human must confirm every merge
+autonomy = "auto"
 
 [phases]
 oops = "oops"

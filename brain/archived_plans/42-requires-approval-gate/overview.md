@@ -1,7 +1,7 @@
 ---
 id: 42
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Permissions-Based Approval Gate
@@ -61,13 +61,13 @@ noodle:
 
 ## Phases
 
-- [[plans/42-requires-approval-gate/phase-01-frontmatter-spec-permissions-object]]
-- [[plans/42-requires-approval-gate/phase-02-remove-hardcoded-quality-from-loop]]
-- [[plans/42-requires-approval-gate/phase-03-remove-hardcoded-quality-from-tui]]
-- [[plans/42-requires-approval-gate/phase-04-simplify-autonomy-config]]
-- [[plans/42-requires-approval-gate/phase-05-request-changes-control-command]]
-- [[plans/42-requires-approval-gate/phase-06-reviews-tab-and-approval-flow]]
-- [[plans/42-requires-approval-gate/phase-07-update-noodle-skill-with-permissions-docs]]
+- [[archived_plans/42-requires-approval-gate/phase-01-frontmatter-spec-permissions-object]]
+- [[archived_plans/42-requires-approval-gate/phase-02-remove-hardcoded-quality-from-loop]]
+- [[archived_plans/42-requires-approval-gate/phase-03-remove-hardcoded-quality-from-tui]]
+- [[archived_plans/42-requires-approval-gate/phase-04-simplify-autonomy-config]]
+- [[archived_plans/42-requires-approval-gate/phase-05-request-changes-control-command]]
+- [[archived_plans/42-requires-approval-gate/phase-06-reviews-tab-and-approval-flow]]
+- [[archived_plans/42-requires-approval-gate/phase-07-update-noodle-skill-with-permissions-docs]]
 
 ## Verification
 

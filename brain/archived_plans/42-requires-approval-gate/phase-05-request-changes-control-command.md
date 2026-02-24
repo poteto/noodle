@@ -1,4 +1,4 @@
-Back to [[plans/42-requires-approval-gate/overview]]
+Back to [[archived_plans/42-requires-approval-gate/overview]]
 
 # Phase 5: Request Changes Control Command
 
