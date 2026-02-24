@@ -116,6 +116,7 @@ var schemaTargets = []targetSpec{
 			"items[].skill":     {Description: "skill name to load"},
 			"items[].plan[]":    {Description: "linked plan path(s), e.g. plans/15-bootstrap-onboarding/overview"},
 			"items[].review":    {Type: "boolean", Description: "true when this item requires blocking review"},
+			"items[].prompt":    {Description: "full prompt text for the dispatched session"},
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
 			"active[]":          {Description: "queue item IDs currently being cooked"},
 			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},

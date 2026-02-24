@@ -311,8 +311,8 @@ func TestTaskEditorCreateOpensEmpty(t *testing.T) {
 	if !m.taskEditor.open {
 		t.Fatal("expected task editor to open after n")
 	}
-	if m.taskEditor.title != "" {
-		t.Fatalf("expected empty title, got %q", m.taskEditor.title)
+	if m.taskEditor.prompt != "" {
+		t.Fatalf("expected empty title, got %q", m.taskEditor.prompt)
 	}
 }
 
@@ -362,7 +362,7 @@ func TestTaskEditorEscCancels(t *testing.T) {
 		Now:             time.Now,
 	})
 	m.taskEditor.OpenNew()
-	m.taskEditor.title = "some task"
+	m.taskEditor.prompt = "some task"
 
 	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyEsc})
 	if m.taskEditor.open {
@@ -380,7 +380,7 @@ func TestTaskEditorSubmitWritesEnqueue(t *testing.T) {
 		Now:             func() time.Time { return fixed },
 	})
 	m.taskEditor.OpenNew()
-	m.taskEditor.title = "Fix the tests"
+	m.taskEditor.prompt = "Fix the tests"
 
 	cmd := m.taskEditor.Submit(m.runtimeDir, m.now)
 	if cmd == nil {

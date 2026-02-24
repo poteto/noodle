@@ -246,9 +246,11 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 	if err != nil {
 		return err
 	}
+	prompt := strings.TrimSpace(cmd.Prompt)
 	queue.Items = append(queue.Items, QueueItem{
 		ID:       item,
-		Title:    strings.TrimSpace(cmd.Prompt),
+		Title:    titleFromPrompt(prompt, 8),
+		Prompt:   prompt,
 		TaskKey:  strings.TrimSpace(cmd.TaskKey),
 		Provider: strings.TrimSpace(cmd.Provider),
 		Model:    strings.TrimSpace(cmd.Model),

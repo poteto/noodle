@@ -17,6 +17,9 @@ func buildCookPrompt(item QueueItem, resumePrompt string) string {
 		header = fmt.Sprintf("Work backlog item %s", item.ID)
 	}
 	parts := []string{header}
+	if strings.TrimSpace(item.Prompt) != "" {
+		parts = append(parts, strings.TrimSpace(item.Prompt))
+	}
 	if strings.TrimSpace(item.Rationale) != "" {
 		parts = append(parts, "Context: "+strings.TrimSpace(item.Rationale))
 	}
@@ -24,6 +27,15 @@ func buildCookPrompt(item QueueItem, resumePrompt string) string {
 		parts = append(parts, resumePrompt)
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// titleFromPrompt derives a short title from the first few words of a prompt.
+func titleFromPrompt(prompt string, maxWords int) string {
+	words := strings.Fields(prompt)
+	if len(words) <= maxWords {
+		return strings.Join(words, " ")
+	}
+	return strings.Join(words[:maxWords], " ") + "..."
 }
 
 func nonEmpty(value, fallback string) string {

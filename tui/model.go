@@ -112,6 +112,7 @@ type QueueItem struct {
 	ID        string   `json:"id"`
 	TaskKey   string   `json:"task_key,omitempty"`
 	Title     string   `json:"title,omitempty"`
+	Prompt    string   `json:"prompt,omitempty"`
 	Provider  string   `json:"provider"`
 	Model     string   `json:"model"`
 	Skill     string   `json:"skill,omitempty"`

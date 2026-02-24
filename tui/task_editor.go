@@ -15,7 +15,7 @@ import (
 type TaskEditor struct {
 	open bool
 
-	title    string
+	prompt   string
 	taskType int
 	model    int
 	provider int
@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	fieldTitle    = 0
+	fieldPrompt   = 0
 	fieldType     = 1
 	fieldModel    = 2
 	fieldProvider = 3
@@ -41,7 +41,7 @@ const (
 // OpenNew opens the task editor in create mode.
 func (e *TaskEditor) OpenNew() {
 	e.open = true
-	e.title = ""
+	e.prompt = ""
 	e.taskType = 0
 	e.model = 0
 	e.provider = 0
@@ -73,22 +73,22 @@ func (e *TaskEditor) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		e.cycleNext()
 		return nil, true
 	case msg.Code == tea.KeyBackspace || isCtrlH(msg):
-		if e.field == fieldTitle {
-			e.title = dropLastRune(e.title)
+		if e.field == fieldPrompt {
+			e.prompt = dropLastRune(e.prompt)
 		} else if e.field == fieldSkill {
 			e.skill = dropLastRune(e.skill)
 		}
 		return nil, true
 	case msg.Code == tea.KeySpace:
-		if e.field == fieldTitle {
-			e.title += " "
+		if e.field == fieldPrompt {
+			e.prompt += " "
 		} else if e.field == fieldSkill {
 			e.skill += " "
 		}
 		return nil, true
 	case msg.Text != "":
-		if e.field == fieldTitle {
-			e.title += msg.Text
+		if e.field == fieldPrompt {
+			e.prompt += msg.Text
 		} else if e.field == fieldSkill {
 			e.skill += msg.Text
 		}
@@ -126,8 +126,8 @@ func (e *TaskEditor) cycleNext() {
 
 // Submit creates the control command for the task.
 func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
-	title := strings.TrimSpace(e.title)
-	if title == "" {
+	prompt := strings.TrimSpace(e.prompt)
+	if prompt == "" {
 		return nil
 	}
 
@@ -136,7 +136,7 @@ func (e *TaskEditor) Submit(runtimeDir string, now func() time.Time) tea.Cmd {
 	cmd := loop.ControlCommand{
 		Action:   "enqueue",
 		Item:     itemID,
-		Prompt:   title,
+		Prompt:   prompt,
 		TaskKey:  taskKey,
 		Provider: providers[e.provider],
 		Model:    models[e.model],
@@ -167,7 +167,7 @@ func (e *TaskEditor) Render(width int) string {
 		value    string
 		editable bool
 	}{
-		{"Title", e.title, true},
+		{"Prompt", e.prompt, true},
 		{"Type", taskTypes[e.taskType], false},
 		{"Model", models[e.model], false},
 		{"Provider", providers[e.provider], false},
