@@ -143,10 +143,17 @@ func (s *tmuxSession) terminalStatus() string {
 	if err != nil {
 		return "failed"
 	}
+	completed := false
 	for _, event := range events {
-		if event.Type == parse.EventComplete {
-			return "completed"
+		switch event.Type {
+		case parse.EventError:
+			return "failed"
+		case parse.EventComplete, parse.EventResult:
+			completed = true
 		}
+	}
+	if completed {
+		return "completed"
 	}
 	return "failed"
 }
