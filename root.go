@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/startup"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +24,11 @@ func NewRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if rootSubcommandName(cmd) == "start" {
+				if err := startup.EnsureProjectStructure(".", os.Stderr); err != nil {
+					return err
+				}
+			}
 			loaded, validation, err := config.Load(config.DefaultConfigPath)
 			if err != nil {
 				return err
