@@ -1,159 +1,97 @@
-# Noodle: Open-Source AI Coding Framework
+# noodle: the self-improving agent framework powered by skills
 
-## The Problem
+Agents read files. Agents write files. It's the one thing every agent is already good at.
 
-The human is the scheduler for all project work. Audits, plans, execution, review — every step blocks on human attention.
+noodle takes a big bet on this. It's an agent orchestration framework where the only API is the one agents know best: files. Every piece of system state is a file, so your agent already knows how to see, use, and control noodle. No SDK to install, no protocol to speak, no integration layer to maintain, and it's very hackable.
 
-## The Vision
+A skill is just a markdown file that tells an agent how to do something. noodle is a framework built around that idea. It uses skills to orchestrate agents. That means noodle is extensible and composable. You can use noodle to schedule your skills, and your skills can call other skills. Skills are to noodle, what components are to React. 
 
-Noodle replaces the human as the top-level scheduler. It reads your backlog, decides what matters, spawns agents to do the work, reviews the output, and loops. The human observes via TUI and intervenes when they choose to.
-
-Three ideas run through the whole design:
-
-1. **Everything is a file.** The loop reads and writes JSON/NDJSON in `.noodle/`. The TUI reads those same files. There's no internal state that isn't on disk.
-2. **LLMs do judgment, Go does mechanics.** The scheduling loop never decides *what* to work on — it reads a queue file. The prioritize skill (an LLM) writes that file. The quality skill (an LLM) writes verdict files. Go code just enforces constraints and moves files around.
-3. **Skills are the only extension point.** No plugin API, no hook system, no registries. A skill is a `SKILL.md` file with optional YAML frontmatter. If it has `noodle:` frontmatter, the loop discovers it as a task type automatically.
-
-## Kitchen Brigade
-
-| Role | What | Actor |
-|------|------|-------|
-| **Chef** | Human — sets direction, intervenes when they want | Human via TUI/CLI |
-| **Prioritize** | Reads the mise brief, writes the prioritized queue | LLM session |
-| **Quality** | Reviews completed work, writes accept/reject verdict | LLM session |
-| **Cook** | Does the work — execute, plan, reflect, debug, whatever the skill says | LLM session |
-| **Mise** | Gathers all project state into a structured brief | Go code |
-
-The chef is always human. Everything else is an LLM session loaded with the right skill, or Go code doing mechanical work.
+Agents decide what to work on, review each other's output, and learn from each session. noodle holds it all together. You step in when you feel like it.
 
 ## Everything is a File
 
-All loop state lives in `.noodle/` as JSON or NDJSON. If it's not on disk, it doesn't exist.
+All of noodle's state lives in your project's `.noodle/` directory. If it's not on disk, it doesn't exist. Your agent can natively read `.noodle/queue.json` and reschedule it according to your workflow and scheduling needs.
 
-**mise.json** — The mise brief. Go code gathers backlog items, plan phases, active sessions, recent history, resource capacity, discovered task types, and quality verdicts into one file. The prioritize skill reads this to make scheduling decisions.
+A side effect of this is composition. Tasks don't call other tasks. Your agents pass state around by writing files and noodle picks those changes up next cycle. An agent running the `schedule` skill sees new state and schedules follow-up work. Agents are the orchestrator in noodle. There's no task composition API because there doesn't need to be one.
 
-**queue.json** — The prioritized work queue. Written by the prioritize skill, read by the loop. Each item has a task key, skill name, routing info, and rationale. The loop reads items off the top and spawns them.
+And because all coordination happens through files, the distance between "runs on your laptop" and "runs in the cloud" is exactly one abstraction. Swap tmux for containers and the rest of the system doesn't change. Git push and git pull are already your distributed protocol.
 
-**quality/\<session-id\>.json** — Verdict files. The quality skill writes one per completed cook: accept or reject, with feedback. The loop reads these to decide whether to merge the worktree.
+## Orchestration Through Skills
 
-**control.ndjson** — Commands from the TUI to the loop. Pause, resume, drain, skip, kill, steer, merge, reject, change autonomy. The loop processes and empties the file each cycle, writes acks to `control-ack.ndjson`.
+Skills become schedulable by adding frontmatter:
 
-**sessions/\<session-id\>/events.ndjson** — Per-session event stream. Spawned, cost, state changes, ticket claims, completion. The monitor reads these to detect stuck sessions and materialize ticket state.
+```yaml
+---
+name: deploy
+description: Deploy after successful execution on main
+noodle:
+  blocking: false
+  schedule: "After a successful execute completes on main branch"
+---
+```
 
-## Skills as the Only Extension Point
+The `noodle:` block registers it as a task. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add the noodle field and tell it when you want to run.
 
-A skill is a directory containing `SKILL.md` and optional `references/`. The `SKILL.md` is a Claude Code system prompt — markdown that gets loaded as the agent's instructions for that task.
+The Hello World minimal autonomous system in noodle is a few skills working together:
 
-Skills become Noodle task types by adding YAML frontmatter:
+- **schedule.** The agent reads the backlog and decides what to work on next.
+- **execute.** The agent picks up a task off the queue and does the work.
+- **quality.** The agent reviews completed work against your principles. Accept or reject.
+
+```yaml
+---
+name: schedule
+description: Read the backlog and decide what to work on next
+noodle:
+  blocking: true
+  schedule: "Start of every cycle"
+---
+
+Read .noodle/mise.json. It contains the backlog, active agents, recent
+session history, and available capacity.
+
+Write .noodle/queue.json with the items you want to schedule next based on my workflow <...>.
+```
 
 ```yaml
 ---
 name: execute
-description: Implementation methodology for cook sessions
+description: Pick up a queued item and do the work
 noodle:
-  blocking: false
-  schedule: "When backlog items with linked plans are ready"
+  schedule: "When there are items in the queue"
 ---
+
+Read the plan. Do the work. Commit to the worktree.
 ```
 
-The `noodle:` block is what makes it a task type. On startup, the skill resolver scans configured paths, parses frontmatter, and builds a task type registry. No hardcoded list — if a skill has `noodle:` frontmatter, the loop can schedule it.
+```yaml
+---
+name: quality
+description: Review completed work
+noodle:
+  schedule: "After each agent completes"
+---
 
-**blocking** controls concurrency: a blocking task type (like prioritize) runs alone. Non-blocking types (execute, quality, reflect) run in parallel up to `max_cooks`.
-
-**schedule** is a natural-language hint for the prioritize skill. It reads these hints when deciding what to put in the queue.
-
-Skills resolve by path order in `.noodle.toml`. Project skills shadow user skills shadow bundled skills. Override any default by dropping a `SKILL.md` with the same name in your project's skill path.
-
-## Architecture
-
-```
-                 ┌─────────────────────┐
-                 │    Chef (TUI/CLI)   │
-                 │  observe · command  │
-                 └─────────┬───────────┘
-                           │ control.ndjson
-┌──────────────────────────┼──────────────────────────┐
-│                     noodle start                     │
-│                          │                           │
-│  ┌─────┐  mise.json  ┌──────────┐  queue.json       │
-│  │Mise ├─────────────►│Prioritize├──────────┐        │
-│  │(Go) │              │ (skill)  │          │        │
-│  └─────┘              └──────────┘          ▼        │
-│                                        ┌────────┐    │
-│                                        │  Loop  │    │
-│                                        │  (Go)  │    │
-│                                        └───┬────┘    │
-│                              ┌─────────────┼─────┐   │
-│                              ▼             ▼     ▼   │
-│                          ┌──────┐    ┌──────┐  ...   │
-│                          │Cook 1│    │Cook 2│        │
-│                          │(tmux)│    │(tmux)│        │
-│                          └──┬───┘    └──────┘        │
-│                             │                        │
-│                             ▼                        │
-│                        ┌─────────┐                   │
-│                        │Quality  │  verdict JSON     │
-│                        │(skill)  ├──────────────►    │
-│                        └─────────┘     .noodle/      │
-│                                       quality/       │
-└──────────────────────────────────────────────────────┘
+Review the diff. Accept or reject. Write your reasoning. File a task if the quality isn't great.
 ```
 
-Each cycle: mise gathers state, prioritize writes the queue, the loop spawns cooks in tmux sessions. When a cook finishes, quality reviews it. Approved work gets merged from worktree to main.
+From there you add more skills to make it smarter. You can copy the skills noodle uses, but you can also add your own. Here are 2 of my favorites:
 
-## Autonomy Dial
+- **reflect.** After each session, the agent writes what it learned to the brain. The next agent reads it and avoids the same mistakes.
+- **meditate.** An agent looks at all of the learnings in the brain and extracts higher-level principles from those lessons. Those lessons then get encoded into your skills, making them continuously improving.
 
-Trust is a dial with three positions:
+Each skill you add makes the system more capable. Your workflow becomes a series of skills, and your agent describes to noodle when each one should run. The scheduling agent figures out the rest.
 
-- **full** — quality runs, auto-merge on accept. No human in the loop.
-- **review** — quality runs, verdicts show in the TUI. Human merges or rejects. Default.
-- **approve** — same as review, but human must also confirm every merge.
+## Wait, It Gets Better
 
-Set in `.noodle.toml` as `autonomy = "review"` or change live via TUI. The loop reads the current mode each cycle.
+noodle has a brain. It's an Obsidian vault (just markdown files) that agents read before they start and write to after they finish. Principles, patterns, past mistakes, what worked and what didn't.
 
-## Adapters
+When an agent reflects after a session, it updates the brain. Maybe it notices a certain test pattern keeps failing and writes a note. The next agent picks that up and avoids the same trap. Over time the brain accumulates your project's actual working knowledge. Lessons that agents are actively learning from and contributing to.
 
-Adapters bridge your existing backlog and plan formats to Noodle. An adapter is:
+Your principles live in the brain too. If you care about error message style, or test coverage, or commit conventions, you write it once and every agent follows it. The quality skill reads your principles when reviewing work. When an agent violates one, it catches it. When the team learns something new, reflect writes it down. The brain is always growing.
 
-1. A skill that teaches agents how to read/write your format
-2. Shell scripts declared in `.noodle.toml` that the mise calls for sync/add/done/edit
+## Everything Is Really A File
 
-The adapter scripts output normalized NDJSON. The mise reads it. No Noodle-specific format required in your actual backlog files.
+Because all coordination happens through files, noodle can orchestrate agents locally or in the cloud. Local agents run in tmux. Remote agents run in VMs or containers. Tell your scheduling agent to pick the runtime for each task, and even match the model to a task.
 
-## Configuration
-
-One file: `.noodle.toml` at project root. Declares routing defaults, skill paths, agent binaries, adapter scripts, concurrency limits, autonomy mode, and recovery settings. Schema reference: `config/config.go`.
-
-## What Ships
-
-**Go binary:**
-- Mise (state gathering)
-- Loop (queue reading, constraint enforcement, spawning, monitoring)
-- Dispatcher (tmux session management, NDJSON pipeline)
-- Monitor (session observation, stuck detection, ticket materialization)
-- Skill resolver (frontmatter parsing, path-based precedence)
-- Adapter runner (script execution, NDJSON normalization)
-- TUI and CLI
-
-**Default skills (all overridable):**
-- `prioritize` — scheduling and queue writing
-- `quality` — post-cook review
-- `execute` — implementation methodology
-- `reflect` — post-session learning
-- `oops` — infrastructure failure recovery
-- `debugging` — root-cause investigation
-- `plan` — phased planning
-- `review` — code review
-- `debate` — structured design decisions
-
-**Default adapters:**
-- `backlog-sync` — parse backlog to normalized NDJSON
-- `backlog-add/done/edit` — write operations
-
-## Principles Applied
-
-- [[principles/never-block-on-the-human]] — agents stay unblocked; the human observes asynchronously
-- [[principles/cost-aware-delegation]] — LLM for judgment, Go for mechanics
-- [[principles/encode-lessons-in-structure]] — skills encode process knowledge; the loop enforces constraints
-- [[principles/prove-it-works]] — the event log is the source of truth
-- [[principles/subtract-before-you-add]] — one extension point (skills), one config file, file-based state
+Run 20 agents in parallel on cloud VMs while your laptop sits idle. Route expensive tasks to powerful remote machines and keep cheap ones local. The agents work on branches, push their changes, and noodle merges them back.

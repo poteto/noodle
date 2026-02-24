@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 27 -->
+<!-- next-id: 30 -->
 
 ## Tooling
 
@@ -38,4 +38,7 @@
 21. [x] Redesign fixture framework to directory-based state fixtures with metadata assertions [[archived_plans/21-fixture-directory-redesign/overview]]
 22. [x] Make planning opinionated and first-class — native plan reader and brain/plans format done (Plan 23). Interactive TUI planning session was dropped; steering via control commands is sufficient.
 24. [x] ~~Rewrite vision/noodle doc~~ — completed. Updated to reflect current architecture: file-based state (.noodle/ JSON/NDJSON), LLM judgment / Go mechanics split, frontmatter-based task type discovery, kitchen brigade as implemented (Prioritize/Quality/Cook/Mise), autonomy dial, adapters.
+28. [ ] Rename `prioritize` skill/task type to `schedule` — better describes what it does (scheduling, not just prioritization). Rename skill directory, frontmatter, all references in loop, mise, config, tests, docs, and brain.
+29. [ ] Queue item context passthrough — let the prioritization agent attach arbitrary context to a queue item. This context gets injected into the spawned agent's prompt, so the prioritizer can pass along reasoning, constraints, or instructions to any task it schedules.
+27. [ ] Hot-reload skill registry via fsnotify — `DiscoverTaskTypes()` only runs at startup (`loop.go:82`). If a user adds or modifies a skill while the loop is running, noodle won't see it until restart. Watch configured skill paths with fsnotify and re-scan on changes.
 26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
