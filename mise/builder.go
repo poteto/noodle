@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,7 +186,7 @@ func schedulablePlanIDs(plans []plan.Plan, backlog []adapter.BacklogItem) []int 
 	for _, p := range plans {
 		backlogID := strings.TrimSpace(p.Meta.Backlog)
 		if backlogID == "" {
-			continue
+			backlogID = strconv.Itoa(p.Meta.ID)
 		}
 		if _, ok := openBacklogIDs[backlogID]; !ok {
 			continue
