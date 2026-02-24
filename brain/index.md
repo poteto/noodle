@@ -38,6 +38,7 @@
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
+- [[codebase/charmbracelet-v2-migration-gotchas]]
 - [[codebase/loop-test-overlap-matrix]]
 - [[codebase/runtime-routing-owned-by-queue]]
 - [[codebase/skill-path-normalization-boundary]]
