@@ -14,55 +14,54 @@ Use `noodle schema mise` and `noodle schema queue` as the schema source of truth
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
-## Scheduling Execute Tasks
+## Task Types
+
+Read `task_types` from mise to discover every schedulable task type and its `schedule` hint. You may schedule queue items for **any** registered task type — not just execute. Use `task_key` on each queue item to bind it to a task type.
+
+### Execute Tasks
 
 Only schedule execute tasks for plan IDs listed in `needs_scheduling`. Use the plan ID (as a string) as the queue item `id`. Look up plan details (title, directory, phases) in the `plans` array.
 
-When a plan's phases need different providers (per model routing below), split into separate queue items per provider group. Group same-provider phases into one item. Preserve phase ordering in the queue.
+When a plan's phases need different providers (per routing info in mise), split into separate queue items per provider group. Group same-provider phases into one item. Preserve phase ordering in the queue.
 
 If `needs_scheduling` is empty, do not schedule any execute tasks. Note any open backlog items without linked plans in `action_needed`.
 
-## Schedule Reading
+### Synthesizing Follow-Up Tasks
 
-Read `task_types[].schedule` from mise to know when each task type should run. Honor these hints when placing items.
+After scheduling a task, consider what naturally follows. Schedule follow-up items in the same queue generation when the pattern is clear. Examples:
 
-## Workflow Order
+- **Quality** after **Execute** — review the cook's work
+- **Reflect** after **Quality** — capture learnings from the completed cycle
+- **Meditate** after several Reflects have accumulated — audit the brain vault (expensive, don't over-schedule)
 
-Read `task_types` from mise to discover available task types and their `schedule` hints. Hard constraints:
+These are starting points, not a closed list. If the `task_types` registry contains new types you haven't seen before, read their `schedule` hints and infer where they fit. You are empowered to introduce new follow-up chains when they make sense for the current state.
 
-1. **Execute** -> **Quality** (quality runs after each cook but does not block the queue)
-2. **Quality findings** appear in the backlog with severity — schedule high-severity findings above normal backlog items
-3. **Reflect** periodically after completed work (check `recent_history`)
-4. **Meditate** after ~7 completed Reflects (expensive — runs 4 subagents; don't over-schedule)
+## Workflow Constraints
 
-When any item has `"review": true`, it must be the only item type in the queue (blocking). Do not mix other task types into the same queue generation.
+- When any item has `"review": true`, it must be the only item type in the queue (blocking). Do not mix other task types into the same queue generation.
+- `quality_verdicts` in mise show recent review outcomes. Schedule high-severity rejections for retry above normal backlog items.
 
 ## Situational Awareness
 
 | Trigger | Action |
 |---------|--------|
-| Empty queue | Full survey of mise -- schedule from scratch |
+| Empty queue | Full survey of mise — schedule from scratch |
 | Quality rejection | Rescope the rejected item for retry with feedback |
 | New items with plans | Slot into existing queue respecting workflow order |
 | Unplanned items | Skip, add to `action_needed` |
-| All items blocked | Schedule meditate or reflect to use the slot productively |
+| All items blocked | Schedule reflect or meditate to use the slot productively |
 
 ## Scheduling Heuristics
 
 - **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every queue item must cite which principle or rule drove its placement.
-- **Work around blockers**: If the top-priority item is blocked, schedule the next viable item -- never idle.
+- **Work around blockers**: If the top-priority item is blocked, schedule the next viable item — never idle.
 - **Timebox failures**: If an item has failed 2+ times in `recent_history`, deprioritize or split it.
 
 ## Model Routing
 
-| Task type | Provider | Model |
-|-----------|----------|-------|
-| Implementation, execution, coding | codex | gpt-5.3-codex |
-| Judgment, strategy, planning, quality | claude | claude-opus-4-6 |
-
-When uncertain, codex for implementation, opus for judgment.
+Read `routing.defaults` and `routing.tags` from mise for provider/model selection. General heuristic: codex for implementation, opus for judgment and strategy. Always defer to mise routing when explicit.
 
 ## Runtime Routing
 
@@ -70,8 +69,8 @@ Read `routing.available_runtimes` from mise before writing queue items.
 
 - If only `tmux` is available, set queue item `"runtime": "tmux"`.
 - If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
-- Keep `quality`, `reflect`, and `meditate` on `"runtime": "tmux"` unless explicitly justified.
-- Do not emit `"runtime": "cursor"` yet (Cursor backend is not implemented).
+- Short-lived tasks (quality, reflect, meditate) default to `"runtime": "tmux"` unless explicitly justified.
+- Only emit runtimes listed in `available_runtimes`.
 - Always include `"runtime"` on scheduled queue items so dispatch routing is explicit.
 
 ## Output

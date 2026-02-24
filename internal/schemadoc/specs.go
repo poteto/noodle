@@ -124,7 +124,7 @@ var schemaTargets = []targetSpec{
 			"loop_state":        {Description: "current loop state (running, paused, draining, idle)"},
 		},
 		Constraints: []string{
-			"Items must respect workflow order: execute -> quality (blocking) -> reflect.",
+			"Items should respect natural workflow order (e.g. execute -> quality -> reflect) but the prioritize skill may introduce new follow-up chains.",
 			"When any item has `\"review\": true`, it must be the only item type in the queue.",
 			"Task keys must match a `task_types[].key` from mise.",
 			"Each `rationale` should cite a specific scheduling rule or principle.",
