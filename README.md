@@ -8,32 +8,23 @@ kitchen brigade model: chef (human), Prioritize (scheduler), cooks (implementati
 
 Prerequisites:
 
-- Go 1.24+
 - `tmux`
 - Claude Code or Codex
 - Windows users: run inside WSL
 
-1. Clone and enter the repo:
+Install via Homebrew (macOS):
 
 ```sh
-git clone https://github.com/poteto/noodle.git
-cd noodle
+brew install poteto/tap/noodle
 ```
 
-2. Verify and start:
+Then start:
 
 ```sh
-~/.noodle/bin/noodle --help
-~/.noodle/bin/noodle skills list
-~/.noodle/bin/noodle status
-~/.noodle/bin/noodle start --once
+noodle start
 ```
 
-For continuous scheduling, run:
-
-```sh
-~/.noodle/bin/noodle start
-```
+For agents setting up Noodle in a project, see [INSTALL.md](INSTALL.md).
 
 ## How It Works
 
@@ -42,7 +33,7 @@ For continuous scheduling, run:
 - Cook: executes backlog work
 - Quality: reviews completed work
 
-Architecture details: [Open-Source Architecture Overview](brain/plans/01-noodle-extensible-skill-layering/overview.md)
+Architecture details: [Open-Source Architecture Overview](brain/archived_plans/01-noodle-extensible-skill-layering/overview.md)
 
 ## Configuration
 

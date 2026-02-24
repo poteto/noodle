@@ -1,0 +1,32 @@
+version: 2
+
+builds:
+  - main: .
+    binary: noodle
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+brews:
+  - repository:
+      owner: poteto
+      name: homebrew-tap
+    name: noodle
+    homepage: https://github.com/poteto/noodle
+    description: Open-source AI coding framework
+    install: |
+      bin.install "noodle"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  use: github-native
