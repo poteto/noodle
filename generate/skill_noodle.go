@@ -220,9 +220,31 @@ description: >-
 
 # Noodle
 
-Noodle is an open-source AI coding framework. Skills are the only extension point. An LLM schedules work, Go code executes it mechanically. Everything is a file — queue.json, mise.json, verdicts, control.ndjson. No hidden state.
+Noodle is an open-source AI coding framework. Skills are the only extension point. An LLM schedules work, Go code executes it mechanically. Everything is a file — queue-next.json, mise.json, control.ndjson. No hidden state.
 
-Kitchen brigade model: the human is the Chef (strategy and judgment), Prioritize is the Sous Chef (scheduling), Cook does the work, Quality reviews it.
+## Task-Type Skill Frontmatter
+
+Skills with a ` + "`" + `noodle:` + "`" + ` block in their YAML frontmatter are discovered as task types by the scheduling loop. The prioritize skill reads ` + "`" + `task_types[].schedule` + "`" + ` from mise to decide when to schedule each type.
+
+` + "```" + `yaml
+---
+name: my-task-type
+description: What this task type does
+noodle:
+  schedule: "When to schedule this task type"
+  permissions:
+    merge: true
+---
+` + "```" + `
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| ` + "`" + `noodle.schedule` + "`" + ` | yes | — | Hint for the prioritize skill on when to schedule this type |
+| ` + "`" + `noodle.permissions.merge` + "`" + ` | no | ` + "`" + `true` + "`" + ` | Auto-merge worktree on success. Set ` + "`" + `false` + "`" + ` to park for human approval |
+
+When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves via the TUI Reviews tab.
+
+The global ` + "`" + `autonomy` + "`" + ` config (` + "`" + `auto` + "`" + ` or ` + "`" + `approve` + "`" + `) overrides per-skill merge permissions: ` + "`" + `approve` + "`" + ` mode parks all worktrees regardless of the skill's ` + "`" + `permissions.merge` + "`" + ` value.
 
 ## Config Reference
 
@@ -247,36 +269,7 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 ` + "```" + `
 
-### Adapter config
-
-Adapters bridge your backlog or plan system to Noodle. Each adapter has a skill (teaches agents the semantics) and scripts (deterministic commands for CRUD actions).
-
-` + "```" + `toml
-[adapters.backlog]
-skill = "backlog"
-
-[adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
-` + "```" + `
-
-Scripts can be any executable — shell scripts, binaries, or inline commands like ` + "`" + `gh issue close` + "`" + `. Noodle calls them mechanically; the skill teaches agents when and why to use them.
-
-### Routing tags
-
-Override the default model for specific task categories:
-
-` + "```" + `toml
-[routing.tags.frontend]
-provider = "claude"
-model = "claude-opus-4-6"
-
-[routing.tags.backend]
-provider = "codex"
-model = "gpt-5.3-codex"
-` + "```" + `
+For adapter config and routing tags, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
 
 ## CLI Commands
 
@@ -307,102 +300,22 @@ model = "gpt-5.3-codex"
 {{- end}}
 {{- end}}
 
-## Adapter Setup
-
-Adapters are optional. If you omit ` + "`" + `[adapters.plans]` + "`" + ` from config, Noodle runs with backlog only. If both adapters are omitted, the mise contains only internal state.
-
-### Writing adapter scripts
-
-Each adapter action (sync, add, done, edit) maps to a script path in config. Scripts receive arguments via environment variables and must produce NDJSON output for sync actions.
-
-1. **Sync** — reads all items from your system, writes NDJSON to stdout. Each line is a ` + "`" + `BacklogItem` + "`" + ` or ` + "`" + `PlanItem` + "`" + `.
-2. **Add** — creates a new item. Receives ` + "`" + `NOODLE_TITLE` + "`" + ` and ` + "`" + `NOODLE_BODY` + "`" + ` env vars.
-3. **Done** — marks an item complete. Receives ` + "`" + `NOODLE_ID` + "`" + `.
-4. **Edit** — updates an item. Receives ` + "`" + `NOODLE_ID` + "`" + `, ` + "`" + `NOODLE_FIELD` + "`" + `, ` + "`" + `NOODLE_VALUE` + "`" + `.
-
-### Markdown backlog (default)
-
-The default adapter reads ` + "`" + `brain/todos.md` + "`" + ` — a markdown file with numbered items. Scripts live at ` + "`" + `.noodle/adapters/backlog-*` + "`" + `.
-
-### GitHub Issues
-
-` + "```" + `toml
-[adapters.backlog]
-skill = "backlog"
-
-[adapters.backlog.scripts]
-sync = "gh issue list --json number,title,body,labels,state"
-add = "gh issue create"
-done = "gh issue close"
-edit = "gh issue edit"
-` + "```" + `
-
-### Linear
-
-Use the Linear CLI or API. The adapter pattern is the same — write scripts that call the Linear API and output NDJSON.
-
-## Hook Installation
-
-### Brain injection hook
-
-Injects brain vault content into the agent's context at session start. Add to ` + "`" + `.claude/settings.json` + "`" + `:
-
-` + "```" + `json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "SessionStart",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "noodle worktree hook"
-          }
-        ]
-      }
-    ]
-  }
-}
-` + "```" + `
-
 ## Skill Management
 
-Skills live in ` + "`" + `.agents/skills/` + "`" + ` by default. Each skill is a directory with a ` + "`" + `SKILL.md` + "`" + ` file and optional ` + "`" + `references/` + "`" + ` subdirectory.
-
-### Search path precedence
-
-Paths in ` + "`" + `skills.paths` + "`" + ` are searched in order. First match wins. Project skills override user-level skills of the same name.
-
-### Installing a skill
-
-Copy the skill directory to your first skill path:
-
-` + "```" + `sh
-cp -r /path/to/skill .agents/skills/my-skill
-` + "```" + `
-
-### Task-type skills
-
-Skills with a ` + "`" + `task_type` + "`" + ` in their frontmatter are discovered as task types by the scheduling loop. These are loaded automatically for their respective session types (prioritize, review, etc.).
+Skills live in ` + "`" + `.agents/skills/` + "`" + ` by default. Paths in ` + "`" + `skills.paths` + "`" + ` are searched in order; first match wins. Install a skill by copying its directory to your skill path.
 
 ## Troubleshooting
 
-### ` + "`" + `noodle debug` + "`" + `
+Run ` + "`" + `noodle debug` + "`" + ` to dump the full runtime state. Common issues:
 
-Dumps the full runtime state: config validation, active sessions, queue, mise, and diagnostics. Run this first when something is wrong.
+1. **"tmux is not available on PATH"** — Install tmux.
+2. **"fatal config diagnostics prevent start"** — Run ` + "`" + `noodle debug` + "`" + `, fix fields in ` + "`" + `.noodle.toml` + "`" + `.
+3. **Missing adapter scripts** — Create scripts or update paths in config.
+4. **Stale worktrees** — ` + "`" + `noodle worktree list` + "`" + `, then ` + "`" + `noodle worktree prune` + "`" + `.
 
-### Common issues
+## References
 
-1. **"tmux is not available on PATH"** — Install tmux. Noodle uses tmux to spawn and manage cook sessions.
-2. **"fatal config diagnostics prevent start"** — Run ` + "`" + `noodle debug` + "`" + ` to see which config fields are invalid. Fix them in ` + "`" + `.noodle.toml` + "`" + `.
-3. **Missing adapter scripts** — ` + "`" + `noodle start` + "`" + ` reports missing script paths as repairable diagnostics. Create the scripts or update the paths in config.
-4. **Stale worktrees** — Run ` + "`" + `noodle worktree list` + "`" + ` to check status, then ` + "`" + `noodle worktree prune` + "`" + ` to clean up merged branches.
-
-### Config validation
-
-` + "`" + `noodle start` + "`" + ` validates config on every run. Diagnostics are classified as:
-- **Fatal** — blocks startup (missing tmux, invalid routing defaults)
-- **Repairable** — warns but allows startup (missing adapter scripts)
-
-On interactive terminals, ` + "`" + `noodle start` + "`" + ` offers to spawn a repair session for repairable issues.
+- [references/config-schema.md](references/config-schema.md) — routing tags, config validation
+- [references/adapters.md](references/adapters.md) — adapter setup, script writing, provider examples
+- [references/hooks.md](references/hooks.md) — brain injection hook, settings.json setup
 `
