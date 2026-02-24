@@ -137,6 +137,7 @@ func (q *QueueTab) resizeTable(width, height int) {
 		tableHeight = 3
 	}
 	q.table.SetHeight(tableHeight)
+	q.table.SetWidth(width)
 
 	// Distribute column widths: #(3), Type(12), Status(10), Item(rest)
 	numW := 3

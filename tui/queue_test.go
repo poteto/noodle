@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func boolPtr(b bool) *bool { return &b }
@@ -75,6 +77,13 @@ func TestQueueTabRenderAt80And120(t *testing.T) {
 		}
 		if !strings.Contains(out, "cooked") {
 			t.Fatalf("missing progress bar at width %d", width)
+		}
+		// Row text must be visible (regression: viewport v2 needs width set).
+		stripped := ansi.Strip(out)
+		for _, title := range []string{"Implement login flow", "Design API schema", "Review PR #42"} {
+			if !strings.Contains(stripped, title) {
+				t.Fatalf("row text %q missing at width %d", title, width)
+			}
 		}
 	}
 }
