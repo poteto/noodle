@@ -18,6 +18,7 @@ import (
 type startRuntimeLoop interface {
 	Cycle(ctx context.Context) error
 	Run(ctx context.Context) error
+	Shutdown()
 }
 
 var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) startRuntimeLoop {
@@ -61,6 +62,7 @@ func runStart(ctx context.Context, app *App, once bool) error {
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	defer runtimeLoop.Shutdown()
 	if isInteractiveTerminal() {
 		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir)
 	}

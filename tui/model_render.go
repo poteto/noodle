@@ -100,7 +100,7 @@ func (m Model) renderLayout() string {
 	} else if m.statusLine != "" {
 		bottom = dimStyle.Render("status: " + m.statusLine)
 	} else if m.quitPending {
-		bottom = dimStyle.Render("press ctrl+c again to quit")
+		bottom = warnStyle.Render("ctrl+c again to quit — this will kill all running agents")
 	}
 	layout += "\n" + bottom
 

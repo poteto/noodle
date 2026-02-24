@@ -31,6 +31,8 @@ func (f *fakeStartLoop) Run(ctx context.Context) error {
 	return f.runErr
 }
 
+func (f *fakeStartLoop) Shutdown() {}
+
 func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	projectDir := t.TempDir()
 	originalDir, err := os.Getwd()

@@ -86,6 +86,18 @@ func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, e
 	return taskreg.NewFromSkills(skills), nil
 }
 
+// Shutdown kills all active agent sessions. Called during process exit.
+func (l *Loop) Shutdown() {
+	for _, cook := range l.activeByID {
+		_ = cook.session.Kill()
+	}
+	// Kill adopted sessions from previous runs that are still alive.
+	for _, sessionID := range l.adoptedSessions {
+		name := tmuxSessionName(sessionID)
+		_ = killTmuxSession(name)
+	}
+}
+
 func (l *Loop) Run(ctx context.Context) error {
 	if strings.TrimSpace(l.projectDir) == "" {
 		return fmt.Errorf("project directory not set")

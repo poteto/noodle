@@ -66,7 +66,7 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		if _, ok := knownTmux[name]; ok {
 			continue
 		}
-		_ = exec.Command("tmux", "kill-session", "-t", name).Run()
+		_ = killTmuxSession(name)
 	}
 
 	if len(l.adoptedSessions) > 0 {
@@ -175,6 +175,10 @@ func (s *adoptedSession) TotalCost() float64 {
 
 func (s *adoptedSession) Kill() error {
 	return nil
+}
+
+func killTmuxSession(name string) error {
+	return exec.Command("tmux", "kill-session", "-t", name).Run()
 }
 
 func sanitizeSessionToken(value string, fallback string) string {
