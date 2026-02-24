@@ -35,6 +35,7 @@ type loopFixtureSetup struct {
 
 type loopFixtureMiseRun struct {
 	Backlog  []adapter.BacklogItem `json:"backlog"`
+	Plans    []mise.PlanSummary    `json:"plans"`
 	Warnings []string              `json:"warnings"`
 	Error    string                `json:"error"`
 }
@@ -232,7 +233,7 @@ func buildMiseResults(stateInputs []loopFixtureStateInput) []fakeMiseResult {
 			resultErr = errors.New(strings.TrimSpace(result.Error))
 		}
 		results = append(results, fakeMiseResult{
-			brief:    mise.Brief{Backlog: result.Backlog},
+			brief:    mise.Brief{Backlog: result.Backlog, Plans: result.Plans},
 			warnings: result.Warnings,
 			err:      resultErr,
 		})

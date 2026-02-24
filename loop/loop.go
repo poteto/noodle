@@ -215,8 +215,11 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 	if err != nil {
 		return mise.Brief{}, warnings, false, l.handleRuntimeIssue(ctx, "mise.build", err, warnings)
 	}
-	if l.state != StateRunning {
+	if l.state != StateRunning && l.state != StateIdle {
 		return brief, warnings, false, nil
+	}
+	if l.state == StateIdle {
+		l.state = StateRunning
 	}
 	return brief, warnings, true, nil
 }
@@ -242,6 +245,10 @@ func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warni
 	if len(queue.Items) == 0 &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
+		if len(brief.Plans) == 0 && len(brief.NeedsScheduling) == 0 {
+			l.state = StateIdle
+			return Queue{}, false, nil
+		}
 		queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 			return Queue{}, false, err

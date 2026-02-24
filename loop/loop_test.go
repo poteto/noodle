@@ -361,11 +361,12 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
 		Worktree:   wt,
 		Adapter:    ar,
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -398,6 +399,92 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	}
 }
 
+func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	sp := &fakeDispatcher{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: sp,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if l.state != StateIdle {
+		t.Fatalf("state = %s, want idle", l.state)
+	}
+	if len(sp.calls) != 0 {
+		t.Fatalf("expected no spawn calls when idle, got %d", len(sp.calls))
+	}
+
+	queue, err := readQueue(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+	if queue.LoopState != "idle" {
+		t.Fatalf("queue loop_state = %q, want idle", queue.LoopState)
+	}
+}
+
+func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	fm := &fakeMise{}
+	sp := &fakeDispatcher{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: sp,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       fm,
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	// First cycle: no plans → idle
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 1: %v", err)
+	}
+	if l.state != StateIdle {
+		t.Fatalf("state after cycle 1 = %s, want idle", l.state)
+	}
+
+	// Simulate new plans appearing
+	fm.brief = mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+
+	// Second cycle: idle → running, bootstraps prioritize
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 2: %v", err)
+	}
+	if l.state != StateRunning {
+		t.Fatalf("state after cycle 2 = %s, want running", l.state)
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("expected 1 spawn call after wake, got %d", len(sp.calls))
+	}
+	if sp.calls[0].Skill != "prioritize" {
+		t.Fatalf("expected prioritize spawn, got skill %q", sp.calls[0].Skill)
+	}
+}
+
 func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -408,11 +495,12 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -539,13 +627,14 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -599,12 +688,13 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	sp := &fakeDispatcher{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -1068,13 +1158,14 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: &fakeDispatcher{},
 		Worktree:   wt,
 		Adapter:    ar,
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -1209,6 +1300,7 @@ func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T)
 		t.Fatalf("write queue: %v", err)
 	}
 
+	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{
 		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
@@ -1217,7 +1309,7 @@ func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T)
 		Dispatcher: sp,
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
+		Mise:       &fakeMise{brief: briefWithPlans},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,

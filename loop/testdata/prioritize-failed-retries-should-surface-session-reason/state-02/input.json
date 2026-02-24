@@ -1,7 +1,1 @@
-{
-  "mise_result": {
-    "backlog": []
-  },
-  "runtime_repair_session_status": "failed",
-  "runtime_repair_session_index": 0
-}
+{"mise_result":{"backlog":[],"plans":[{"id":1,"status":"open","title":"Test","directory":"test"}]},"runtime_repair_session_status":"failed","runtime_repair_session_index":0}
