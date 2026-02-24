@@ -8,13 +8,11 @@ A skill is just a markdown file that tells an agent how to do something. noodle 
 
 Agents decide what to work on, review each other's output, and learn from each session. noodle holds it all together. You step in when you feel like it.
 
-## Everything is a File
+## Everything Is A File
 
 All of noodle's state lives in your project's `.noodle/` directory. If it's not on disk, it doesn't exist. Your agent can natively read `.noodle/queue.json` and reschedule it according to your workflow and scheduling needs.
 
 A side effect of this is composition. Tasks don't call other tasks. Your agents pass state around by writing files and noodle picks those changes up next cycle. An agent running the `schedule` skill sees new state and schedules follow-up work. Agents are the orchestrator in noodle. There's no task composition API because there doesn't need to be one.
-
-And because all coordination happens through files, the distance between "runs on your laptop" and "runs in the cloud" is exactly one abstraction. Swap tmux for containers and the rest of the system doesn't change. Git push and git pull are already your distributed protocol.
 
 ## Orchestration Through Skills
 
@@ -32,11 +30,10 @@ noodle:
 
 The `noodle:` block registers it as a task. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add the noodle field and tell it when you want to run.
 
-The Hello World minimal autonomous system in noodle is a few skills working together:
+The Hello World minimal autonomous system in noodle is two skills working together:
 
 - **schedule.** The agent reads the backlog and decides what to work on next.
 - **execute.** The agent picks up a task off the queue and does the work.
-- **quality.** The agent reviews completed work against your principles. Accept or reject.
 
 ```yaml
 ---
@@ -62,17 +59,6 @@ noodle:
 ---
 
 Read the plan. Do the work. Commit to the worktree.
-```
-
-```yaml
----
-name: quality
-description: Review completed work
-noodle:
-  schedule: "After each agent completes"
----
-
-Review the diff. Accept or reject. Write your reasoning. File a task if the quality isn't great.
 ```
 
 From there you add more skills to make it smarter. You can copy the skills noodle uses, but you can also add your own. Here are 2 of my favorites:
