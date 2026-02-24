@@ -1,6 +1,6 @@
 # Verdict Schema
 
-Written by the quality skill to `.noodle/quality/<session-id>.json`.
+Written by the review skill to `.noodle/quality/<session-id>.json`.
 
 ```json
 {
