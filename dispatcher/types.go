@@ -33,11 +33,8 @@ func (r DispatchRequest) Validate() error {
 	if strings.TrimSpace(r.Prompt) == "" {
 		return fmt.Errorf("prompt not set")
 	}
-	provider := strings.ToLower(strings.TrimSpace(r.Provider))
-	switch provider {
-	case "claude", "codex":
-	default:
-		return fmt.Errorf("provider not recognized")
+	if strings.TrimSpace(r.Provider) == "" {
+		return fmt.Errorf("provider not set")
 	}
 	if strings.TrimSpace(r.Model) == "" {
 		return fmt.Errorf("model not set")

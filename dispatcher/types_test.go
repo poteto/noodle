@@ -37,11 +37,11 @@ func TestDispatchRequestValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "bad provider",
+			name: "missing provider",
 			req: DispatchRequest{
 				Name:         "n",
 				Prompt:       "p",
-				Provider:     "openai",
+				Provider:     "",
 				Model:        "m",
 				WorktreePath: "w",
 			},
@@ -73,5 +73,18 @@ func TestDispatchRequestValidate(t *testing.T) {
 				t.Fatal("expected validation error")
 			}
 		})
+	}
+}
+
+func TestDispatchRequestValidateAcceptsNonTmuxProvider(t *testing.T) {
+	req := DispatchRequest{
+		Name:         "cook-a",
+		Prompt:       "Say ok",
+		Provider:     "remote-provider",
+		Model:        "model-x",
+		WorktreePath: ".worktrees/phase-06-dispatcher",
+	}
+	if err := req.Validate(); err != nil {
+		t.Fatalf("validate request: %v", err)
 	}
 }
