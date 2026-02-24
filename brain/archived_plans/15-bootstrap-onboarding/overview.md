@@ -1,7 +1,7 @@
 ---
 id: 15
 created: 2026-02-23
-status: ready
+status: done
 ---
 
 # Bootstrap & Onboarding
@@ -64,13 +64,13 @@ This follows the agent-pilled philosophy: agents do agent work, the binary does 
 
 ## Phases
 
-1. [[plans/15-bootstrap-onboarding/phase-01-scaffold]] — Delete stale Plan 1 Phase 14 artifact
-2. [[plans/15-bootstrap-onboarding/phase-02-homebrew-tap-and-binary-distribution]] — Homebrew tap + GoReleaser
-3. [[plans/15-bootstrap-onboarding/phase-03-first-run-setup]] — First-run scaffolding in `noodle start`
-4. [[plans/15-bootstrap-onboarding/phase-04-auto-generated-noodle-skill]] — Auto-generated skill + CI guard
-5. [[plans/15-bootstrap-onboarding/phase-05-install-md]] — Agent entry point + vision overview
-6. [[plans/15-bootstrap-onboarding/phase-06-philosophy-md]] — Brain, self-learning, agent-pilled rationale
-7. [[plans/15-bootstrap-onboarding/phase-07-integration-test]] — End-to-end onboarding test
+1. [[archived_plans/15-bootstrap-onboarding/phase-01-scaffold]] — Delete stale Plan 1 Phase 14 artifact
+2. [[archived_plans/15-bootstrap-onboarding/phase-02-homebrew-tap-and-binary-distribution]] — Homebrew tap + GoReleaser
+3. [[archived_plans/15-bootstrap-onboarding/phase-03-first-run-setup]] — First-run scaffolding in `noodle start`
+4. [[archived_plans/15-bootstrap-onboarding/phase-04-auto-generated-noodle-skill]] — Auto-generated skill + CI guard
+5. [[archived_plans/15-bootstrap-onboarding/phase-05-install-md]] — Agent entry point + vision overview
+6. [[archived_plans/15-bootstrap-onboarding/phase-06-philosophy-md]] — Brain, self-learning, agent-pilled rationale
+7. [[archived_plans/15-bootstrap-onboarding/phase-07-integration-test]] — End-to-end onboarding test
 
 ## Notes
 

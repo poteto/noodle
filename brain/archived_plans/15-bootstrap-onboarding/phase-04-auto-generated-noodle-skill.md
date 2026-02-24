@@ -1,4 +1,4 @@
-Back to [[plans/15-bootstrap-onboarding/overview]]
+Back to [[archived_plans/15-bootstrap-onboarding/overview]]
 
 # Phase 4: Auto-Generated Noodle Skill
 
