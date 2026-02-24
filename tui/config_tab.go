@@ -10,8 +10,7 @@ import (
 
 var autonomyModes = []string{
 	config.AutonomyApprove,
-	config.AutonomyReview,
-	config.AutonomyFull,
+	config.AutonomyAuto,
 }
 
 // ConfigTab renders the config view with the autonomy dial.
@@ -29,7 +28,7 @@ func (c *ConfigTab) SetAutonomy(mode string) {
 			return
 		}
 	}
-	c.index = 1 // default to review
+	c.index = 1 // default to auto
 }
 
 // CycleLeft moves the autonomy dial left (more restrictive).
@@ -58,7 +57,7 @@ func (c *ConfigTab) Render(width, height int) string {
 	b.WriteString(sectionStyle.Render("Autonomy"))
 	b.WriteString("\n\n")
 
-	// Render the 3-position dial.
+	// Render the 2-position dial.
 	for i, mode := range autonomyModes {
 		label := mode
 		if i == c.index {
@@ -75,12 +74,10 @@ func (c *ConfigTab) Render(width, height int) string {
 	// Description of current mode.
 	var desc string
 	switch c.autonomy {
-	case config.AutonomyFull:
-		desc = "Auto-merge on success. No human in the loop."
-	case config.AutonomyReview:
-		desc = "Quality review runs. Auto-merge on approve."
+	case config.AutonomyAuto:
+		desc = "Auto-merge on success unless task permissions require approval."
 	case config.AutonomyApprove:
-		desc = "Quality review runs. Human must confirm merge."
+		desc = "Everything requires human approval before merge."
 	}
 	b.WriteString(dimStyle.Render(desc))
 	b.WriteString("\n\n")

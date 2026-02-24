@@ -32,7 +32,7 @@ type SkillData struct {
 
 // fieldDescriptions maps TOML paths to human-readable descriptions.
 var fieldDescriptions = map[string]string{
-	"autonomy":                      "How much human oversight the loop requires: full, review, or approve",
+	"autonomy":                      "How much human oversight the loop requires: auto or approve",
 	"routing.defaults.provider":     "Default LLM provider for cook sessions (claude or codex)",
 	"routing.defaults.model":        "Default model name for cook sessions",
 	"routing.tags":                  "Per-tag model overrides keyed by tag name",
@@ -86,10 +86,6 @@ func extractConfigFields() []ConfigField {
 		sf := defaultsType.Field(i)
 		tomlTag := sf.Tag.Get("toml")
 		if tomlTag == "" || tomlTag == "-" {
-			continue
-		}
-		// Skip legacy fields
-		if tomlTag == "review" {
 			continue
 		}
 
@@ -241,7 +237,7 @@ Noodle reads ` + "`" + `.noodle.toml` + "`" + ` at project root. If missing, ` +
 ### Minimal config
 
 ` + "```" + `toml
-autonomy = "review"
+autonomy = "auto"
 
 [routing.defaults]
 provider = "claude"

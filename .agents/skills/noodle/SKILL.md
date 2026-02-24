@@ -21,7 +21,7 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `agents.claude.path` | string | "" | Custom path to Claude Code binary |
 | `agents.codex.args` | array | [] | Extra CLI arguments for Codex CLI |
 | `agents.codex.path` | string | "" | Custom path to Codex CLI binary |
-| `autonomy` | string | "review" | How much human oversight the loop requires: full, review, or approve |
+| `autonomy` | string | "auto" | How much human oversight the loop requires: auto or approve |
 | `concurrency.max_cooks` | integer | 4 | Maximum concurrent cook sessions |
 | `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
@@ -49,7 +49,7 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 ### Minimal config
 
 ```toml
-autonomy = "review"
+autonomy = "auto"
 
 [routing.defaults]
 provider = "claude"

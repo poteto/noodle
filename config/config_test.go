@@ -34,8 +34,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Routing.Defaults.Model != "claude-opus-4-6" {
 		t.Fatalf("routing.defaults.model default = %q", config.Routing.Defaults.Model)
 	}
-	if config.Autonomy != "review" {
-		t.Fatalf("autonomy default = %q, want review", config.Autonomy)
+	if config.Autonomy != "auto" {
+		t.Fatalf("autonomy default = %q, want auto", config.Autonomy)
 	}
 	if config.Recovery.MaxRetries != 3 {
 		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
@@ -115,9 +115,6 @@ model = "opus"
 [skills]
 paths = [".agents/skills"]
 
-[review]
-enabled = false
-
 [recovery]
 max_retries = 5
 retry_suffix_pattern = "-retry-%d"
@@ -163,8 +160,8 @@ on_done = "remove"
 	if config.Routing.Tags["frontend"].Model != "opus" {
 		t.Fatalf("routing.tags.frontend.model = %q", config.Routing.Tags["frontend"].Model)
 	}
-	if config.Autonomy != "full" {
-		t.Fatalf("review.enabled=false should migrate to autonomy=full, got %q", config.Autonomy)
+	if config.Autonomy != "auto" {
+		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
 	}
 	if config.Recovery.MaxRetries != 5 {
 		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
@@ -196,8 +193,8 @@ model = "claude-sonnet-4-6"
 	if config.Prioritize.Skill != "prioritize" {
 		t.Fatalf("expected default prioritize.skill, got %q", config.Prioritize.Skill)
 	}
-	if config.Autonomy != "review" {
-		t.Fatalf("expected default autonomy=review, got %q", config.Autonomy)
+	if config.Autonomy != "auto" {
+		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
 	}
 	if config.Recovery.RetrySuffixPattern != "-recover-%d" {
 		t.Fatalf("expected default recovery.retry_suffix_pattern, got %q", config.Recovery.RetrySuffixPattern)
@@ -476,42 +473,8 @@ func TestValidateAdapterScriptCommandVsPathChecks(t *testing.T) {
 	}
 }
 
-func TestLegacyReviewEnabledTrueMigratesToReview(t *testing.T) {
-	config, err := Parse([]byte(`
-[routing.defaults]
-provider = "claude"
-model = "claude-sonnet-4-6"
-
-[review]
-enabled = true
-`))
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	if config.Autonomy != "review" {
-		t.Fatalf("autonomy = %q, want review", config.Autonomy)
-	}
-}
-
-func TestLegacyReviewEnabledFalseMigratesToFull(t *testing.T) {
-	config, err := Parse([]byte(`
-[routing.defaults]
-provider = "claude"
-model = "claude-sonnet-4-6"
-
-[review]
-enabled = false
-`))
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	if config.Autonomy != "full" {
-		t.Fatalf("autonomy = %q, want full", config.Autonomy)
-	}
-}
-
 func TestAutonomyFieldParsesDirectly(t *testing.T) {
-	for _, mode := range []string{"full", "review", "approve"} {
+	for _, mode := range []string{"auto", "approve"} {
 		t.Run(mode, func(t *testing.T) {
 			config, err := Parse([]byte(`
 autonomy = "` + mode + `"
@@ -530,16 +493,13 @@ model = "claude-sonnet-4-6"
 	}
 }
 
-func TestAutonomyExplicitOverridesLegacyReview(t *testing.T) {
+func TestAutonomyExplicitPersistsWhenSet(t *testing.T) {
 	config, err := Parse([]byte(`
 autonomy = "approve"
 
 [routing.defaults]
 provider = "claude"
 model = "claude-sonnet-4-6"
-
-[review]
-enabled = false
 `))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -565,31 +525,15 @@ model = "claude-sonnet-4-6"
 	}
 }
 
-func TestReviewEnabledHelper(t *testing.T) {
-	cfg := DefaultConfig()
-	cfg.Autonomy = "full"
-	if cfg.ReviewEnabled() {
-		t.Fatal("full autonomy should not enable review")
-	}
-	cfg.Autonomy = "review"
-	if !cfg.ReviewEnabled() {
-		t.Fatal("review autonomy should enable review")
-	}
-	cfg.Autonomy = "approve"
-	if !cfg.ReviewEnabled() {
-		t.Fatal("approve autonomy should enable review")
-	}
-}
-
 func TestPendingApprovalHelper(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Autonomy = "approve"
 	if !cfg.PendingApproval() {
 		t.Fatal("approve autonomy should require pending approval")
 	}
-	cfg.Autonomy = "review"
+	cfg.Autonomy = "auto"
 	if cfg.PendingApproval() {
-		t.Fatal("review autonomy should not require pending approval")
+		t.Fatal("auto autonomy should not require pending approval")
 	}
 }
 

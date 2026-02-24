@@ -69,7 +69,7 @@ cat > brain/plans/index.md <<'EOF'
 EOF
 
 cat > .noodle.toml <<'EOF'
-autonomy = "review"
+autonomy = "auto"
 
 [routing.defaults]
 provider = "claude"

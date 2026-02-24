@@ -944,7 +944,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Autonomy = "full"
+	cfg.Autonomy = "auto"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: &fakeDispatcher{},
 		Worktree:   &fakeWorktree{},
@@ -965,8 +965,8 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if updated.Autonomy != "full" {
-		t.Fatalf("autonomy = %q, want full", updated.Autonomy)
+	if updated.Autonomy != "auto" {
+		t.Fatalf("autonomy = %q, want auto", updated.Autonomy)
 	}
 }
 

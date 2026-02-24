@@ -240,7 +240,7 @@ func (l *Loop) controlReject(itemID string) error {
 func (l *Loop) controlAutonomy(value string) error {
 	value = strings.ToLower(strings.TrimSpace(value))
 	switch value {
-	case config.AutonomyFull, config.AutonomyReview, config.AutonomyApprove:
+	case config.AutonomyAuto, config.AutonomyApprove:
 		l.config.Autonomy = value
 		return nil
 	default:

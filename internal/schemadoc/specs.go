@@ -114,7 +114,7 @@ var schemaTargets = []targetSpec{
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
 			"active[]":          {Description: "queue item IDs currently being cooked"},
 			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},
-			"autonomy":          {Description: "current runtime autonomy mode (full, review, approve)"},
+			"autonomy":          {Description: "current runtime autonomy mode (auto, approve)"},
 			"loop_state":        {Description: "current loop state (running, paused, draining, idle)"},
 		},
 		Constraints: []string{
