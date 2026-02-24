@@ -1,4 +1,4 @@
-Back to [[plans/27-remote-dispatchers/overview]]
+Back to [[archived_plans/27-remote-dispatchers/overview]]
 
 # Phase 3: StreamingDispatcher generic implementation
 

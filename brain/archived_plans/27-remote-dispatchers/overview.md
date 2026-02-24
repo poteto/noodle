@@ -1,7 +1,7 @@
 ---
 id: 27
 created: 2026-02-23
-status: completed
+status: done
 ---
 
 # Remote Dispatchers
@@ -69,17 +69,17 @@ Both reuse the existing `Session` interface so the loop, TUI, and monitor work u
 
 ## Phases
 
-- [[plans/27-remote-dispatchers/phase-01-backend-interfaces-and-shared-types]]
-- [[plans/27-remote-dispatchers/phase-02-dispatcher-factory-and-runtime-routing]]
-- [[plans/27-remote-dispatchers/phase-03-streamingdispatcher-generic-implementation]]
-- [[plans/27-remote-dispatchers/phase-04-pollingdispatcher-generic-implementation]]
-- [[plans/27-remote-dispatchers/phase-05-spritesbackend-implementation]]
-- [[plans/27-remote-dispatchers/phase-06-cursorbackend-implementation]]
-- [[plans/27-remote-dispatchers/phase-07-monitor-observer-abstraction]]
-- [[plans/27-remote-dispatchers/phase-08-config-and-provider-validation]]
-- [[plans/27-remote-dispatchers/phase-09-tui-remote-session-indicator]]
-- [[plans/27-remote-dispatchers/phase-10-minimal-sync-back-for-remote-runtimes]]
-- [[plans/27-remote-dispatchers/phase-11-integration-wiring-and-end-to-end-test]]
+- [[archived_plans/27-remote-dispatchers/phase-01-backend-interfaces-and-shared-types]]
+- [[archived_plans/27-remote-dispatchers/phase-02-dispatcher-factory-and-runtime-routing]]
+- [[archived_plans/27-remote-dispatchers/phase-03-streamingdispatcher-generic-implementation]]
+- [[archived_plans/27-remote-dispatchers/phase-04-pollingdispatcher-generic-implementation]]
+- [[archived_plans/27-remote-dispatchers/phase-05-spritesbackend-implementation]]
+- [[archived_plans/27-remote-dispatchers/phase-06-cursorbackend-implementation]]
+- [[archived_plans/27-remote-dispatchers/phase-07-monitor-observer-abstraction]]
+- [[archived_plans/27-remote-dispatchers/phase-08-config-and-provider-validation]]
+- [[archived_plans/27-remote-dispatchers/phase-09-tui-remote-session-indicator]]
+- [[archived_plans/27-remote-dispatchers/phase-10-minimal-sync-back-for-remote-runtimes]]
+- [[archived_plans/27-remote-dispatchers/phase-11-integration-wiring-and-end-to-end-test]]
 
 ## Verification
 

@@ -1,4 +1,4 @@
-Back to [[plans/27-remote-dispatchers/overview]]
+Back to [[archived_plans/27-remote-dispatchers/overview]]
 
 # Phase 10: Minimal sync-back for remote runtimes
 
