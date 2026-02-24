@@ -55,6 +55,14 @@ func Read(path string) (Queue, error) {
 	return decodeQueue(data, true)
 }
 
+// ParseStrict validates queue bytes without reading from disk.
+func ParseStrict(data []byte) (Queue, error) {
+	if strings.TrimSpace(string(data)) == "" {
+		return Queue{}, nil
+	}
+	return decodeQueue(data, false)
+}
+
 // ReadStrict parses only the canonical wrapped queue object and rejects legacy arrays.
 func ReadStrict(path string) (Queue, error) {
 	data, err := os.ReadFile(path)

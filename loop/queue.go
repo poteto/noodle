@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/filex"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
 )
@@ -14,19 +15,24 @@ import (
 // Prioritize sessions write to queue-next.json so they never race with
 // loop state stamps on queue.json. The loop is the single writer of
 // queue.json — this function is the handoff point.
+//
+// Reads bytes once, validates in-memory, then writes to queue.json via
+// atomic rename — no TOCTOU window between validate and promote.
 func consumeQueueNext(nextPath, queuePath string) error {
-	if _, err := os.Stat(nextPath); os.IsNotExist(err) {
+	data, err := os.ReadFile(nextPath)
+	if os.IsNotExist(err) {
 		return nil
-	} else if err != nil {
-		return fmt.Errorf("stat queue-next: %w", err)
 	}
-	// Validate the proposal before promoting it.
-	if _, err := queuex.ReadStrict(nextPath); err != nil {
-		// Remove invalid proposals so they don't block future cycles.
-		_ = os.Remove(nextPath)
-		return fmt.Errorf("invalid queue-next.json: %w", err)
+	if err != nil {
+		return fmt.Errorf("read queue-next: %w", err)
 	}
-	if err := os.Rename(nextPath, queuePath); err != nil {
+	// Always remove the proposal so it doesn't block future cycles.
+	_ = os.Remove(nextPath)
+	// Validate the bytes we already read.
+	if _, parseErr := queuex.ParseStrict(data); parseErr != nil {
+		return fmt.Errorf("invalid queue-next.json (removed): %w", parseErr)
+	}
+	if err := filex.WriteFileAtomic(queuePath, data); err != nil {
 		return fmt.Errorf("promote queue-next.json: %w", err)
 	}
 	return nil

@@ -248,8 +248,10 @@ func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warni
 	// Consume queue-next.json if the prioritize session wrote one.
 	// The loop is the single writer of queue.json — prioritize writes
 	// to queue-next.json to avoid racing with loop state stamps.
+	// Errors are non-fatal: a transient/partial write shouldn't crash
+	// the loop — route through runtime repair instead.
 	if err := consumeQueueNext(l.deps.QueueNextFile, l.deps.QueueFile); err != nil {
-		return Queue{}, false, err
+		return Queue{}, false, l.handleRuntimeIssue(ctx, "loop.queue-next", err, nil)
 	}
 	queue, err := readQueue(l.deps.QueueFile)
 	if err != nil {
