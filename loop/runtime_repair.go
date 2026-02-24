@@ -241,7 +241,7 @@ func (l *Loop) spawnRuntimeRepair(ctx context.Context, issue runtimeIssue, attem
 		Name:         name,
 		Prompt:       buildRuntimeRepairPrompt(issue, attempt),
 		Provider:     nonEmpty(l.config.Routing.Defaults.Provider, "claude"),
-		Model:        nonEmpty(l.config.Routing.Defaults.Model, "claude-sonnet-4-6"),
+		Model:        nonEmpty(l.config.Routing.Defaults.Model, "claude-opus-4-6"),
 		Skill:        l.runtimeRepairSkill(),
 		WorktreePath: worktreePath,
 	}

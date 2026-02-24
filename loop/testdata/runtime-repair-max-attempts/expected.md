@@ -24,7 +24,7 @@ source_hash: 7c5b20e3b33860d48b1b729e7a10d24b51394f3a37385eb081a8101b8349b70b
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-02": {
@@ -41,7 +41,7 @@ source_hash: 7c5b20e3b33860d48b1b729e7a10d24b51394f3a37385eb081a8101b8349b70b
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-03": {
@@ -58,7 +58,7 @@ source_hash: 7c5b20e3b33860d48b1b729e7a10d24b51394f3a37385eb081a8101b8349b70b
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-04": {
@@ -76,7 +76,7 @@ source_hash: 7c5b20e3b33860d48b1b729e7a10d24b51394f3a37385eb081a8101b8349b70b
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     }
   }

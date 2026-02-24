@@ -44,7 +44,7 @@ Minimal baseline:
 ```toml
 [routing.defaults]
 provider = "claude"
-model = "claude-sonnet-4-6"
+model = "claude-opus-4-6"
 
 [prioritize]
 skill = "prioritize"

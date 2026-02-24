@@ -24,7 +24,7 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
         "name": "prioritize",
         "skill": "prioritize",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-02": {
@@ -41,13 +41,13 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
         "name": "prioritize",
         "skill": "prioritize",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-03": {
@@ -64,13 +64,13 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
         "name": "prioritize",
         "skill": "prioritize",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-04": {
@@ -87,13 +87,13 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
         "name": "prioritize",
         "skill": "prioritize",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     },
     "state-05": {
@@ -111,13 +111,13 @@ source_hash: 77a0bd32767ead22dc5ac365b1d7f71725b3b588e97a06f9ef3e3089078bd83f
         "name": "prioritize",
         "skill": "prioritize",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       },
       "runtime_repair_spawn": {
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     }
   }

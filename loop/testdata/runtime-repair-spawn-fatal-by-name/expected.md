@@ -25,7 +25,7 @@ source_hash: 92e72e9771edd6587c95959de1785a9d8be87b41305804cd6e70ebfd92e4fa33
         "name": "repair-runtime-*",
         "skill": "oops",
         "provider": "claude",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-opus-4-6"
       }
     }
   }

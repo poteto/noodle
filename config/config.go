@@ -172,7 +172,7 @@ func DefaultConfig() Config {
 		Routing: RoutingConfig{
 			Defaults: ModelPolicy{
 				Provider: "claude",
-				Model:    "claude-sonnet-4-6",
+				Model:    "claude-opus-4-6",
 			},
 			Tags: map[string]ModelPolicy{},
 		},
@@ -275,7 +275,7 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Routing.Defaults.Provider = "claude"
 	}
 	if !metadata.IsDefined("routing", "defaults", "model") {
-		config.Routing.Defaults.Model = "claude-sonnet-4-6"
+		config.Routing.Defaults.Model = "claude-opus-4-6"
 	}
 	if config.Routing.Tags == nil {
 		config.Routing.Tags = map[string]ModelPolicy{}

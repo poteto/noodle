@@ -313,7 +313,7 @@ func repairModelForProvider(provider string, loaded config.Config) string {
 	case "codex":
 		return "gpt-5.3-codex"
 	default:
-		return "claude-sonnet-4-6"
+		return "claude-opus-4-6"
 	}
 }
 

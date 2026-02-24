@@ -124,7 +124,7 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	if err := writeQueueAtomic(filepath.Join(runtimeDir, "queue.json"), queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -208,7 +208,7 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -247,7 +247,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -289,7 +289,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -342,7 +342,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	}
 
 	review := false
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -521,7 +521,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 
 	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -824,7 +824,7 @@ func TestRunQualityCancelsSpawnedSessionOnContextDone(t *testing.T) {
 		queueItem: QueueItem{
 			ID:       "42",
 			Provider: "claude",
-			Model:    "claude-sonnet-4-6",
+			Model:    "claude-opus-4-6",
 		},
 		worktreeName: "42-worktree",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42-worktree"),
@@ -875,7 +875,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 
 	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -950,7 +950,7 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -989,7 +989,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1053,7 +1053,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 
 	review := false
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6", Review: &review}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6", Review: &review}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
