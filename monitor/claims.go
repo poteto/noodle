@@ -75,6 +75,7 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 				claims.LastAction = message
 			}
 		case parse.EventResult:
+			claims.Completed = true
 			claims.TotalCostUSD += event.CostUSD
 			claims.TokensIn += event.TokensIn
 			claims.TokensOut += event.TokensOut

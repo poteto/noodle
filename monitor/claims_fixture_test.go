@@ -127,3 +127,61 @@ func TestReadSessionIgnoresMalformedSpawnMetadata(t *testing.T) {
 		t.Fatalf("model = %q", claims.Model)
 	}
 }
+
+func TestReadSessionMarksResultAsCompleted(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	canonical := strings.Join([]string{
+		`{"provider":"claude","type":"init","message":"started","timestamp":"2026-02-22T15:00:00Z"}`,
+		`{"provider":"claude","type":"result","message":"turn complete","timestamp":"2026-02-22T15:00:01Z","cost_usd":0.10,"tokens_in":100,"tokens_out":250}`,
+		"",
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical), 0o644); err != nil {
+		t.Fatalf("write canonical events: %v", err)
+	}
+
+	reader := NewCanonicalClaimsReader(runtimeDir)
+	claims, err := reader.ReadSession(sessionID)
+	if err != nil {
+		t.Fatalf("read session claims: %v", err)
+	}
+	if !claims.Completed {
+		t.Fatal("expected completed=true when result event is present")
+	}
+	if claims.Failed {
+		t.Fatal("expected failed=false when no error event is present")
+	}
+}
+
+func TestReadSessionErrorStillMarksFailedWithResult(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	canonical := strings.Join([]string{
+		`{"provider":"claude","type":"init","message":"started","timestamp":"2026-02-22T15:00:00Z"}`,
+		`{"provider":"claude","type":"error","message":"boom","timestamp":"2026-02-22T15:00:01Z"}`,
+		`{"provider":"claude","type":"result","message":"turn complete","timestamp":"2026-02-22T15:00:02Z","cost_usd":0.10,"tokens_in":100,"tokens_out":250}`,
+		"",
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical), 0o644); err != nil {
+		t.Fatalf("write canonical events: %v", err)
+	}
+
+	reader := NewCanonicalClaimsReader(runtimeDir)
+	claims, err := reader.ReadSession(sessionID)
+	if err != nil {
+		t.Fatalf("read session claims: %v", err)
+	}
+	if !claims.Failed {
+		t.Fatal("expected failed=true when error event is present")
+	}
+}
