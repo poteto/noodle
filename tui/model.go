@@ -62,10 +62,13 @@ type Model struct {
 	steerMentionStart int
 	statusLine        string
 
-	taskEditor   TaskEditor
-	quitPending  bool
-	quitDeadline time.Time
-	shimmerIndex int
+	taskEditor     TaskEditor
+	quitPending    bool
+	quitDeadline   time.Time
+	deletePending  bool
+	deletePendingID string
+	deleteDeadline time.Time
+	shimmerIndex   int
 }
 
 type Snapshot struct {
@@ -128,6 +131,7 @@ type EventLine struct {
 
 type tickMsg time.Time
 type quitResetMsg struct{}
+type deleteResetMsg struct{}
 type shimmerMsg struct{}
 
 type snapshotMsg struct {
@@ -219,6 +223,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case quitResetMsg:
 		m.quitPending = false
 		return m, nil
+	case deleteResetMsg:
+		m.deletePending = false
+		m.deletePendingID = ""
+		return m, nil
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	default:
@@ -304,6 +312,34 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		default:
 			return m, nil
 		}
+	}
+
+	if msg.Code == tea.KeyBackspace || isCtrlH(msg) {
+		if m.activeTab == TabQueue {
+			if item, ok := m.queueTab.SelectedItem(); ok {
+				if m.deletePending && m.deletePendingID == item.ID && m.now().Before(m.deleteDeadline) {
+					m.deletePending = false
+					m.deletePendingID = ""
+					return m, sendControlCmd(m.runtimeDir, m.now, loop.ControlCommand{
+						Action: "skip",
+						Item:   item.ID,
+					})
+				}
+				m.deletePending = true
+				m.deletePendingID = item.ID
+				m.deleteDeadline = m.now().Add(2 * time.Second)
+				return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+					return deleteResetMsg{}
+				})
+			}
+		}
+		return m, nil
+	}
+
+	// Any non-backspace key cancels a pending delete confirmation.
+	if m.deletePending {
+		m.deletePending = false
+		m.deletePendingID = ""
 	}
 
 	key := strings.ToLower(msg.String())

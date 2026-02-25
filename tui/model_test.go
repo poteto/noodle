@@ -635,6 +635,115 @@ func pressKey(t *testing.T, m Model, key tea.KeyPressMsg) Model {
 	return next
 }
 
+func TestDoubleBackspaceDeletesQueueItem(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+
+	m := NewModel(Options{
+		RuntimeDir:      runtimeDir,
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.activeTab = TabQueue
+	m.queueTab.SetQueue(
+		[]QueueItem{{ID: "42", TaskKey: "execute", Title: "Fix bug"}},
+		nil, nil, "running",
+	)
+
+	// First backspace sets pending.
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if !m.deletePending {
+		t.Fatal("expected deletePending after first backspace")
+	}
+	if m.deletePendingID != "42" {
+		t.Fatalf("deletePendingID = %q, want 42", m.deletePendingID)
+	}
+
+	// Second backspace within deadline sends skip command.
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	m = updated.(Model)
+	if m.deletePending {
+		t.Fatal("expected deletePending to clear after confirm")
+	}
+	if cmd == nil {
+		t.Fatal("expected skip command after second backspace")
+	}
+	msg := cmd()
+	result, ok := msg.(controlResultMsg)
+	if !ok {
+		t.Fatalf("command msg type = %T, want controlResultMsg", msg)
+	}
+	if result.err != nil {
+		t.Fatalf("skip command failed: %v", result.err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	var wrote loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &wrote); err != nil {
+		t.Fatalf("parse control command: %v", err)
+	}
+	if wrote.Action != "skip" {
+		t.Fatalf("action = %q, want skip", wrote.Action)
+	}
+	if wrote.Item != "42" {
+		t.Fatalf("item = %q, want 42", wrote.Item)
+	}
+}
+
+func TestBackspaceDeleteResetsOnTimeout(t *testing.T) {
+	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.activeTab = TabQueue
+	m.queueTab.SetQueue(
+		[]QueueItem{{ID: "42", TaskKey: "execute", Title: "Fix bug"}},
+		nil, nil, "running",
+	)
+
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if !m.deletePending {
+		t.Fatal("expected deletePending")
+	}
+
+	// Simulate timeout.
+	updated, _ := m.Update(deleteResetMsg{})
+	m = updated.(Model)
+	if m.deletePending {
+		t.Fatal("expected deletePending to reset after timeout")
+	}
+}
+
+func TestBackspaceDeleteCancelledByOtherKey(t *testing.T) {
+	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
+	m := NewModel(Options{
+		RuntimeDir:      t.TempDir(),
+		RefreshInterval: time.Hour,
+		Now:             func() time.Time { return fixed },
+	})
+	m.activeTab = TabQueue
+	m.queueTab.SetQueue(
+		[]QueueItem{{ID: "42", TaskKey: "execute", Title: "Fix bug"}},
+		nil, nil, "running",
+	)
+
+	m = pressKey(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if !m.deletePending {
+		t.Fatal("expected deletePending")
+	}
+
+	// Any other key cancels the pending delete.
+	m = pressRune(t, m, 'j')
+	if m.deletePending {
+		t.Fatal("expected deletePending to clear after other key")
+	}
+}
+
 func TestTabBarReviewsCountInTitle(t *testing.T) {
 	// With 0 pending reviews, the tab title should be just "Reviews"
 	bar0 := renderTabBar(TabReviews, 120, 0)

@@ -111,6 +111,8 @@ func (m Model) renderLayout() string {
 		bottom = errorStyle.Render("error: " + m.err.Error())
 	} else if m.statusLine != "" {
 		bottom = dimStyle.Render("status: " + m.statusLine)
+	} else if m.deletePending {
+		bottom = warnStyle.Render("backspace again to remove #" + m.deletePendingID + " from queue")
 	} else if m.quitPending {
 		bottom = warnStyle.Render("ctrl+c again to quit — this will kill all running agents")
 	}
@@ -148,6 +150,7 @@ func renderKeybar(tab Tab, inDetail bool, autoScroll bool) string {
 		parts = append(parts,
 			dimStyle.Render("j/k")+" select",
 			dimStyle.Render("enter")+" open",
+			dimStyle.Render("bksp")+" remove",
 		)
 	case TabReviews:
 		parts = append(parts,
