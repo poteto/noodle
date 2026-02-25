@@ -29,8 +29,8 @@ help:
 	@printf "  %-40s %s\n" "make fixtures-loop MODE=check|record" "Verify or regenerate loop runtime dump fixtures"
 	@printf "  %-40s %s\n" "make fixtures-hash MODE=check|sync" "Verify or sync fixture source hashes"
 	@printf "  %-40s %s\n" "make bugs" "List fixture expected.md files with bug=true"
-	@printf "  %-40s %s\n" "make watch" "Rebuild on changes with Air (silent mode)"
-	@printf "  %-40s %s\n" "make watch-verbose" "Rebuild on changes with Air (debug file events)"
+	@printf "  %-40s %s\n" "make watch" "Dev mode: Air (Go) + Vite (UI) with HMR"
+	@printf "  %-40s %s\n" "make watch-verbose" "Dev mode with Air debug logging"
 	@printf "  %-40s %s\n" "make generate" "Regenerate auto-generated files"
 	@printf "  %-40s %s\n" "make clean" "Remove built binary and UI dist"
 	@printf "  %-40s %s\n" "make sandbox STAGE=bare|init|wip|full" "Create a temp sandbox project"
@@ -129,8 +129,10 @@ bugs:
 		fi; \
 	done
 
-watch:
-	@if $(GO) tool -n air >/dev/null 2>&1; then \
+watch: ui
+	@trap 'kill 0' EXIT; \
+	cd ui && npm run dev & \
+	if $(GO) tool -n air >/dev/null 2>&1; then \
 		$(GO) tool air $(AIR_FLAGS) -c $(AIR_CONFIG); \
 	elif command -v $(AIR) >/dev/null 2>&1; then \
 		$(AIR) $(AIR_FLAGS) -c $(AIR_CONFIG); \
