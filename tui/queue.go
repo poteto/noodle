@@ -37,7 +37,7 @@ type queueStats struct {
 // noPlanTaskTypes are task types that don't require a plan.
 var noPlanTaskTypes = map[string]struct{}{
 	"reflect":    {},
-	"prioritize": {},
+	"schedule": {},
 	"review":     {},
 }
 
@@ -160,7 +160,7 @@ func (q *QueueTab) resizeTable(width, height int) {
 // Post-processes the selected row to apply background color across the full width.
 func (q *QueueTab) renderStyledTable(width, height int) string {
 	if len(q.items) == 0 {
-		msg := "Queue is empty. A prioritize agent will fill it\nfrom your backlog shortly."
+		msg := "Queue is empty. A schedule agent will fill it\nfrom your backlog shortly."
 		if q.loopState == "idle" {
 			msg = "All plans complete. Start a new conversation to create more."
 		}

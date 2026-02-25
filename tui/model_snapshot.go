@@ -762,7 +762,7 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 		case "bootstrap":
 			label = "Bootstrap"
 			category = "bootstrap"
-			body = "Creating prioritize skill from workflow analysis"
+			body = "Creating schedule skill from workflow analysis"
 		default:
 			continue
 		}
@@ -785,7 +785,7 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 
 // inferTaskType extracts a task type from a session ID convention.
 func inferTaskType(sessionID string) string {
-	known := []string{"execute", "plan", "review", "reflect", "prioritize"}
+	known := []string{"execute", "plan", "review", "reflect", "schedule"}
 	lower := strings.ToLower(sessionID)
 	for _, prefix := range known {
 		if strings.HasPrefix(lower, prefix) {

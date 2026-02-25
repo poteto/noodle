@@ -27,7 +27,7 @@ type Theme struct {
 	Plan       color.Color
 	Review     color.Color
 	Reflect    color.Color
-	Prioritize color.Color
+	Schedule color.Color
 }
 
 // DefaultTheme is the pastel palette used by Noodle's TUI.
@@ -47,7 +47,7 @@ var DefaultTheme = Theme{
 	Plan:       lipgloss.Color("#93c5fd"),
 	Review:     lipgloss.Color("#fde68a"),
 	Reflect:    lipgloss.Color("#f9a8d4"),
-	Prioritize: lipgloss.Color("#fdba74"),
+	Schedule: lipgloss.Color("#fdba74"),
 }
 
 // ColorPool is a set of distinct pastel colors for hashing arbitrary task types.
@@ -57,7 +57,7 @@ var ColorPool = []color.Color{
 	lipgloss.Color("#93c5fd"), // blue (plan)
 	lipgloss.Color("#fde68a"), // yellow (review)
 	lipgloss.Color("#f9a8d4"), // pink (reflect)
-	lipgloss.Color("#fdba74"), // orange (prioritize)
+	lipgloss.Color("#fdba74"), // orange (schedule)
 	lipgloss.Color("#c4b5fd"), // violet
 	lipgloss.Color("#67e8f9"), // cyan
 	lipgloss.Color("#fda4af"), // rose
@@ -83,8 +83,8 @@ func TaskTypeColor(taskType string) color.Color {
 		return DefaultTheme.Review
 	case "reflect":
 		return DefaultTheme.Reflect
-	case "prioritize":
-		return DefaultTheme.Prioritize
+	case "schedule":
+		return DefaultTheme.Schedule
 	}
 	h := uint32(0)
 	for _, c := range taskType {

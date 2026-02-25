@@ -24,7 +24,7 @@ type Theme struct {
 	Plan       color.Color
 	Quality    color.Color
 	Reflect    color.Color
-	Prioritize color.Color
+	Schedule color.Color
 }
 
 var theme = Theme{
@@ -43,7 +43,7 @@ var theme = Theme{
 	Plan:       lipgloss.Color("#93c5fd"),
 	Quality:    lipgloss.Color("#fde68a"),
 	Reflect:    lipgloss.Color("#f9a8d4"),
-	Prioritize: lipgloss.Color("#fdba74"),
+	Schedule: lipgloss.Color("#fdba74"),
 }
 
 var (
