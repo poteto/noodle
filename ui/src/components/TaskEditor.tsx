@@ -15,16 +15,13 @@ export function TaskEditor({
 
   const [prompt, setPrompt] = useState("");
   const [taskKey, setTaskKey] = useState("execute");
-  const [provider, setProvider] = useState("");
-  const [model, setModel] = useState("");
+  const [providerOverride, setProviderOverride] = useState<string | null>(null);
+  const [modelOverride, setModelOverride] = useState<string | null>(null);
   const [skill, setSkill] = useState("");
 
-  useEffect(() => {
-    if (config) {
-      setProvider(config.provider);
-      setModel(config.model);
-    }
-  }, [config]);
+  // Derive from config, allow user override
+  const provider = providerOverride ?? config?.provider ?? "";
+  const model = modelOverride ?? config?.model ?? "";
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -109,7 +106,7 @@ export function TaskEditor({
               <select
                 className="task-editor-select"
                 value={provider}
-                onChange={(e) => setProvider(e.target.value)}
+                onChange={(e) => setProviderOverride(e.target.value)}
               >
                 <option value="claude">claude</option>
                 <option value="codex">codex</option>
@@ -121,7 +118,7 @@ export function TaskEditor({
               <input
                 className="task-editor-input"
                 value={model}
-                onChange={(e) => setModel(e.target.value)}
+                onChange={(e) => setModelOverride(e.target.value)}
               />
             </div>
           </div>
