@@ -17,13 +17,13 @@ func taskSkill(reg taskreg.Registry, taskKey, fallback string) string {
 	return fallback
 }
 
-// PrioritizeTaskKey returns the canonical steer target for the scheduler.
-func PrioritizeTaskKey() string {
-	return "prioritize"
+// ScheduleTaskKey returns the canonical steer target for the scheduler.
+func ScheduleTaskKey() string {
+	return "schedule"
 }
 
-func isPrioritizeTarget(value string) bool {
-	return strings.EqualFold(strings.TrimSpace(value), PrioritizeTaskKey())
+func isScheduleTarget(value string) bool {
+	return strings.EqualFold(strings.TrimSpace(value), ScheduleTaskKey())
 }
 
 // RepairTaskSkill returns the skill name for runtime repair sessions.

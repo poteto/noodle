@@ -7,8 +7,8 @@ autonomy = "auto"
 oops = "oops"
 debugging = "debugging"
 
-[prioritize]
-skill = "prioritize"
+[schedule]
+skill = "schedule"
 # "after-each" | "after-n" | "manual"
 run = "after-each"
 model = "claude-sonnet"

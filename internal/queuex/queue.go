@@ -19,7 +19,7 @@ import (
 // not present in the registry.
 var ErrUnknownTaskType = errors.New("unknown task type")
 
-const prioritizeTaskKey = "prioritize"
+const scheduleTaskKey = "schedule"
 
 // Queue is the canonical queue.json contract.
 type Queue struct {
@@ -164,8 +164,8 @@ func NormalizeAndValidate(
 				ok = true
 			}
 		}
-		if !ok && isPrioritizeBootstrapItem(items[i]) {
-			taskType = taskreg.TaskType{Key: prioritizeTaskKey}
+		if !ok && isScheduleBootstrapItem(items[i]) {
+			taskType = taskreg.TaskType{Key: scheduleTaskKey}
 			ok = true
 		}
 		if !ok {
@@ -202,11 +202,11 @@ func NormalizeAndValidate(
 	return queue, true, nil
 }
 
-func isPrioritizeBootstrapItem(item Item) bool {
+func isScheduleBootstrapItem(item Item) bool {
 	id := strings.ToLower(strings.TrimSpace(item.ID))
 	taskKey := strings.ToLower(strings.TrimSpace(item.TaskKey))
 	skill := strings.ToLower(strings.TrimSpace(item.Skill))
-	return id == prioritizeTaskKey || taskKey == prioritizeTaskKey || skill == prioritizeTaskKey
+	return id == scheduleTaskKey || taskKey == scheduleTaskKey || skill == scheduleTaskKey
 }
 
 func applyItemRoutingDefaults(item Item, reg taskreg.Registry, cfg config.Config) (Item, bool) {

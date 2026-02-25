@@ -8,9 +8,9 @@ import (
 
 // TaskType is one schedulable task kind, discovered from skill frontmatter.
 type TaskType struct {
-	Key       string // skill name (e.g., "prioritize", "execute", "deploy")
+	Key       string // skill name (e.g., "schedule", "execute", "deploy")
 	CanMerge  bool
-	Schedule  string // one-line guidance for prioritize skill
+	Schedule  string // one-line guidance for schedule skill
 	SkillPath string // absolute path to skill directory
 }
 

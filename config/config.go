@@ -25,7 +25,7 @@ const (
 // Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
-	Prioritize  PrioritizeConfig         `toml:"prioritize"`
+	Schedule    ScheduleConfig           `toml:"schedule"`
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
 	Autonomy    string                   `toml:"autonomy"`
@@ -42,7 +42,7 @@ type AdapterConfig struct {
 	Scripts map[string]string `toml:"scripts"`
 }
 
-type PrioritizeConfig struct {
+type ScheduleConfig struct {
 	Run   string `toml:"run"`
 	Model string `toml:"model"`
 }
@@ -169,7 +169,7 @@ func filterDiagnostics(in []ConfigDiagnostic, severity DiagnosticSeverity) []Con
 func DefaultConfig() Config {
 	return Config{
 		Adapters: defaultAdapters(),
-		Prioritize: PrioritizeConfig{
+		Schedule: ScheduleConfig{
 			Run:   "after-each",
 			Model: "claude-sonnet",
 		},
@@ -257,11 +257,11 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Skills.Paths = defaultSkillPaths()
 	}
 
-	if !metadata.IsDefined("prioritize", "run") {
-		config.Prioritize.Run = "after-each"
+	if !metadata.IsDefined("schedule", "run") {
+		config.Schedule.Run = "after-each"
 	}
-	if !metadata.IsDefined("prioritize", "model") {
-		config.Prioritize.Model = "claude-sonnet"
+	if !metadata.IsDefined("schedule", "model") {
+		config.Schedule.Model = "claude-sonnet"
 	}
 
 	if !metadata.IsDefined("routing", "defaults", "provider") {
@@ -363,12 +363,12 @@ func validateParsedValues(config Config) error {
 		}
 	}
 
-	switch config.Prioritize.Run {
+	switch config.Schedule.Run {
 	case "after-each", "after-n", "manual":
 	default:
 		return fmt.Errorf(
-			"prioritize.run: unsupported value %q (expected after-each, after-n, manual)",
-			config.Prioritize.Run,
+			"schedule.run: unsupported value %q (expected after-each, after-n, manual)",
+			config.Schedule.Run,
 		)
 	}
 
