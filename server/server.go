@@ -220,6 +220,7 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 		"kill": true, "steer": true, "merge": true, "reject": true,
 		"request-changes": true, "autonomy": true, "enqueue": true,
 		"stop-all": true, "requeue": true, "edit-item": true,
+		"reorder": true, "stop": true, "set-max-cooks": true,
 	}
 	if !validActions[action] {
 		http.Error(w, "unknown action: "+action, http.StatusBadRequest)

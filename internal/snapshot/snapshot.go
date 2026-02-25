@@ -119,6 +119,7 @@ func LoadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		PendingReviews:     pendingReviews,
 		PendingReviewCount: pendingCount,
 		Autonomy:           autonomy,
+		MaxCooks:           sr.MaxCooks,
 	}, nil
 }
 
@@ -204,6 +205,7 @@ type statusResult struct {
 	Active    []string
 	Autonomy  string
 	LoopState string
+	MaxCooks  int
 }
 
 func readStatus(path string) (statusResult, error) {
@@ -215,6 +217,7 @@ func readStatus(path string) (statusResult, error) {
 		Active:    status.Active,
 		Autonomy:  status.Autonomy,
 		LoopState: status.LoopState,
+		MaxCooks:  status.MaxCooks,
 	}, nil
 }
 

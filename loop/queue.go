@@ -122,12 +122,14 @@ func (l *Loop) stampStatus() error {
 		Active:    active,
 		LoopState: string(l.state),
 		Autonomy:  l.config.Autonomy,
+		MaxCooks:  l.config.Concurrency.MaxCooks,
 	}
 
 	// Skip write if nothing changed.
 	if slicesEqual(l.lastStatus.Active, status.Active) &&
 		l.lastStatus.LoopState == status.LoopState &&
-		l.lastStatus.Autonomy == status.Autonomy {
+		l.lastStatus.Autonomy == status.Autonomy &&
+		l.lastStatus.MaxCooks == status.MaxCooks {
 		return nil
 	}
 

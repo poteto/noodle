@@ -50,6 +50,7 @@ type Snapshot struct {
 	PendingReviews     []loop.PendingReviewItem `json:"pending_reviews"`
 	PendingReviewCount int                      `json:"pending_review_count"`
 	Autonomy           string                   `json:"autonomy"`
+	MaxCooks           int                      `json:"max_cooks"`
 }
 
 // Session represents a single agent session.

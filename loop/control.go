@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/poteto/noodle/config"
@@ -199,6 +200,21 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
+	case "reorder":
+		if err := l.controlReorder(cmd); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "stop":
+		if err := l.controlStop(cmd.Name); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "set-max-cooks":
+		if err := l.controlSetMaxCooks(cmd.Value); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
 	default:
 		ack.Status = "error"
 		ack.Message = "unsupported action"
@@ -384,4 +400,87 @@ func (l *Loop) controlRequeue(itemID string) error {
 	}
 	delete(l.failedTargets, itemID)
 	return l.writeFailedTargets()
+}
+
+func (l *Loop) controlReorder(cmd ControlCommand) error {
+	itemID := strings.TrimSpace(cmd.Item)
+	if itemID == "" {
+		return fmt.Errorf("reorder requires item")
+	}
+	newIndex := 0
+	if v := strings.TrimSpace(cmd.Value); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("reorder: invalid index %q", v)
+		}
+		newIndex = n
+	}
+	queue, err := readQueue(l.deps.QueueFile)
+	if err != nil {
+		return err
+	}
+	srcIdx := -1
+	for i, item := range queue.Items {
+		if item.ID == itemID {
+			srcIdx = i
+			break
+		}
+	}
+	if srcIdx < 0 {
+		return fmt.Errorf("item %q not found in queue", itemID)
+	}
+	item := queue.Items[srcIdx]
+	queue.Items = append(queue.Items[:srcIdx], queue.Items[srcIdx+1:]...)
+	if newIndex < 0 {
+		newIndex = 0
+	}
+	if newIndex > len(queue.Items) {
+		newIndex = len(queue.Items)
+	}
+	queue.Items = append(queue.Items[:newIndex], append([]QueueItem{item}, queue.Items[newIndex:]...)...)
+	return writeQueueAtomic(l.deps.QueueFile, queue)
+}
+
+func (l *Loop) controlStop(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("stop requires name")
+	}
+	for id, cook := range l.activeByID {
+		if cook.worktreeName == name || cook.session.ID() == name {
+			_ = cook.session.Kill()
+			targetID := ""
+			for tid, c := range l.activeByTarget {
+				if c == cook {
+					targetID = tid
+					break
+				}
+			}
+			delete(l.activeByID, id)
+			if targetID != "" {
+				delete(l.activeByTarget, targetID)
+			}
+			if cook.worktreeName != "" {
+				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("session not found")
+}
+
+func (l *Loop) controlSetMaxCooks(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("set-max-cooks requires value")
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("set-max-cooks: invalid value %q", value)
+	}
+	if n < 1 {
+		return fmt.Errorf("max_cooks must be at least 1")
+	}
+	l.config.Concurrency.MaxCooks = n
+	return nil
 }

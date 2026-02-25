@@ -14,6 +14,7 @@ type Status struct {
 	Active    []string `json:"active,omitempty"`
 	LoopState string   `json:"loop_state,omitempty"`
 	Autonomy  string   `json:"autonomy,omitempty"`
+	MaxCooks  int      `json:"max_cooks,omitempty"`
 }
 
 // Read parses status.json at path. Returns zero-value Status if the file
