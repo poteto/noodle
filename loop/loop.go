@@ -98,6 +98,19 @@ func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, e
 	return taskreg.NewFromSkills(skills), nil
 }
 
+func (l *Loop) rebuildRegistry() {
+	registry, err := discoverRegistry(l.projectDir, l.config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "skill.rebuild-registry: %v\n", err)
+		return
+	}
+	l.registry = registry
+	l.registryErr = nil
+	if builder, ok := l.deps.Mise.(*mise.Builder); ok {
+		builder.TaskTypes = registryToTaskTypeSummaries(registry)
+	}
+}
+
 // Shutdown kills all active agent sessions. Called during process exit.
 func (l *Loop) Shutdown() {
 	for _, cook := range l.activeByID {
@@ -128,6 +141,17 @@ func (l *Loop) Run(ctx context.Context) error {
 	}
 	if err := l.Cycle(ctx); err != nil {
 		return err
+	}
+
+	// Watch skill paths for hot-reload.
+	skillWatcher, skillWatchErr := skill.NewSkillWatcher(l.config.Skills.Paths, func() {
+		l.registryStale.Store(true)
+	})
+	if skillWatchErr != nil {
+		fmt.Fprintf(os.Stderr, "skill.watcher: %v\n", skillWatchErr)
+	} else {
+		go skillWatcher.Run(ctx)
+		defer skillWatcher.Close()
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -182,6 +206,11 @@ func (l *Loop) Run(ctx context.Context) error {
 }
 
 func (l *Loop) Cycle(ctx context.Context) error {
+	if l.registryStale.Load() {
+		l.rebuildRegistry()
+		l.registryStale.Store(false)
+	}
+
 	ready, err := l.runCycleMaintenance(ctx)
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
@@ -131,7 +132,8 @@ type Loop struct {
 	registryErr error
 	deps        Dependencies
 
-	state State
+	state         State
+	registryStale atomic.Bool
 
 	activeByTarget  map[string]*activeCook
 	activeByID      map[string]*activeCook
