@@ -106,11 +106,14 @@ export function TaskEditor({
 
             <div className="task-editor-field">
               <label className="task-editor-label">Provider</label>
-              <input
-                className="task-editor-input"
+              <select
+                className="task-editor-select"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-              />
+              >
+                <option value="claude">claude</option>
+                <option value="codex">codex</option>
+              </select>
             </div>
 
             <div className="task-editor-field">
