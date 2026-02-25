@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -16,6 +17,9 @@ import (
 	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/loop"
 )
+
+//go:embed placeholder.html
+var placeholderHTML []byte
 
 // Options configures the HTTP server.
 type Options struct {
@@ -289,7 +293,7 @@ func uiOrPlaceholder(ui fs.FS) http.Handler {
 
 func servePlaceholder(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, `<!DOCTYPE html><html><head><title>noodle</title></head><body><p>noodle web ui</p></body></html>`)
+	w.Write(placeholderHTML)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
