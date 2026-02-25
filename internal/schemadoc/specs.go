@@ -132,6 +132,7 @@ var schemaTargets = []targetSpec{
 			"active[]":   {Description: "queue item IDs currently being cooked"},
 			"loop_state": {Description: "current loop state (running, paused, draining, idle)"},
 			"autonomy":   {Description: "current runtime autonomy mode (auto, approve)"},
+			"max_cooks":  {Type: "number", Description: "current max concurrency (may differ from config if overridden at runtime)"},
 		},
 	},
 }
