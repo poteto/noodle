@@ -5,6 +5,38 @@ import { Badge } from "./Badge";
 import { Square } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
+const EVENT_TYPE_CLASS: Record<string, string> = {
+  Read:      "bg-[#c8d8f0] text-[#2a4060]",
+  Edit:      "bg-[#f0e0a8] text-[#6a5010]",
+  Write:     "bg-[#d6e4c8] text-[#3a5028]",
+  Bash:      "bg-[#e8dfc0] text-[#4a4020]",
+  Grep:      "bg-[#dcd0e8] text-[#3a2860]",
+  Glob:      "bg-[#dcd0e8] text-[#3a2860]",
+  Task:      "bg-[#f0d8b8] text-[#6a4018]",
+  Skill:     "bg-[#f0d8b8] text-[#6a4018]",
+  WebFetch:  "bg-[#c8d8f0] text-[#2a4060]",
+  WebSearch: "bg-[#c8d8f0] text-[#2a4060]",
+};
+
+function CurrentAction({ action }: { action: string }) {
+  if (!action) return <span className="text-text-3">working...</span>;
+  const spaceIdx = action.indexOf(" ");
+  const type = spaceIdx > 0 ? action.slice(0, spaceIdx) : action;
+  const rest = spaceIdx > 0 ? action.slice(spaceIdx + 1) : "";
+  const badgeClass = EVENT_TYPE_CLASS[type];
+  if (!badgeClass) {
+    return <>{middleTruncate(action, 80)}</>;
+  }
+  return (
+    <>
+      <span className={`font-mono text-[0.625rem] font-bold px-1.5 py-px inline-block align-middle mr-1.5 ${badgeClass}`}>
+        {type}
+      </span>
+      <span className="align-middle">{middleTruncate(rest, 70)}</span>
+    </>
+  );
+}
+
 export function AgentCard({
   session,
   onClick,
@@ -41,7 +73,7 @@ export function AgentCard({
         )}
       </div>
       <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
-        {middleTruncate(session.current_action || "working...", 80)}
+        <CurrentAction action={session.current_action || ""} />
       </div>
 
       <div className="mb-2">
