@@ -59,6 +59,7 @@ func New(opts Options) *Server {
 	mux.HandleFunc("GET /api/sessions/{id}/events", s.handleSessionEvents)
 	mux.HandleFunc("POST /api/control", s.handleControl)
 	mux.HandleFunc("GET /api/config", s.handleConfig)
+	mux.HandleFunc("GET /", handleIndex)
 
 	s.httpServer = &http.Server{
 		Addr:    addr,
@@ -132,6 +133,21 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []snapshot.EventLine{})
 		return
 	}
+
+	// Support ?after= for incremental fetches.
+	if after := r.URL.Query().Get("after"); after != "" {
+		ts, err := time.Parse(time.RFC3339Nano, after)
+		if err == nil {
+			filtered := make([]snapshot.EventLine, 0, len(events))
+			for _, ev := range events {
+				if ev.At.After(ts) {
+					filtered = append(filtered, ev)
+				}
+			}
+			events = filtered
+		}
+	}
+
 	writeJSON(w, http.StatusOK, events)
 }
 
@@ -226,6 +242,11 @@ func appendControlCommand(runtimeDir string, cmd loop.ControlCommand) error {
 		return fmt.Errorf("append control command: %w", err)
 	}
 	return nil
+}
+
+func handleIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, `<!DOCTYPE html><html><head><title>noodle</title></head><body><p>noodle web ui</p></body></html>`)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

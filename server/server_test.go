@@ -350,3 +350,42 @@ func TestSSEHubDiffGating(t *testing.T) {
 
 	hub.removeClient(client)
 }
+
+func TestGetIndex(t *testing.T) {
+	s, _ := testServer(t)
+
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html", ct)
+	}
+}
+
+func TestSessionEventsAfterFilter(t *testing.T) {
+	s, _ := testServer(t)
+
+	// No sessions exist, so events for any session should be empty.
+	req := httptest.NewRequest("GET", "/api/sessions/cook-a/events?after=2026-02-25T00:00:00Z", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var events []snapshot.EventLine
+	if err := json.NewDecoder(resp.Body).Decode(&events); err != nil {
+		t.Fatalf("decode events: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count = %d, want 0", len(events))
+	}
+}
