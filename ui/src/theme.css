@@ -849,17 +849,20 @@ html, body {
 
 /* Loop controls */
 .loop-control-btn {
-  padding: 4px 12px;
+  padding: 8px 20px;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 700;
   background: var(--border);
   color: var(--bg-0);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+  transition: transform 0.12s, box-shadow 0.12s;
 }
 .loop-control-btn:hover {
-  filter: brightness(1.2);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 rgba(0,0,0,0.3);
 }
 .loop-control-btn.paused {
   background: var(--green);
