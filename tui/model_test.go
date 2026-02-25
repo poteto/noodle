@@ -12,36 +12,6 @@ import (
 	"github.com/poteto/noodle/loop"
 )
 
-func TestDeriveHealth(t *testing.T) {
-	cases := []struct {
-		name       string
-		status     string
-		explicit   string
-		contextPct float64
-		idle       int64
-		threshold  int64
-		want       string
-	}{
-		{name: "explicit wins", status: "running", explicit: "red", want: "red"},
-		{name: "failed is red", status: "failed", want: "red"},
-		{name: "stuck is red", status: "stuck", want: "red"},
-		{name: "high context is yellow", status: "running", contextPct: 81, want: "yellow"},
-		{name: "idle over half threshold is yellow", status: "running", idle: 70, threshold: 120, want: "yellow"},
-		{name: "idle over threshold is red", status: "running", idle: 121, threshold: 120, want: "red"},
-		{name: "healthy running is green", status: "running", idle: 10, threshold: 120, want: "green"},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			got := deriveHealth(tc.status, tc.explicit, tc.contextPct, tc.idle, tc.threshold)
-			if got != tc.want {
-				t.Fatalf("deriveHealth() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestTabSwitching(t *testing.T) {
 	m := NewModel(Options{
 		RuntimeDir:      t.TempDir(),

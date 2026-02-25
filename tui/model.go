@@ -11,21 +11,28 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/loop"
 )
 
-const (
-	defaultRefreshInterval = 2 * time.Second
-	defaultStuckThreshold  = int64(120)
+const defaultRefreshInterval = 2 * time.Second
+
+// Type aliases re-export snapshot types so existing tui code compiles unchanged.
+type (
+	Snapshot    = snapshot.Snapshot
+	Session     = snapshot.Session
+	QueueItem   = snapshot.QueueItem
+	EventLine   = snapshot.EventLine
+	FeedEvent   = snapshot.FeedEvent
+	TraceFilter = snapshot.TraceFilter
 )
 
-type TraceFilter string
-
+// Re-export TraceFilter constants for use within tui/.
 const (
-	traceFilterAll    TraceFilter = "all"
-	traceFilterTools  TraceFilter = "tools"
-	traceFilterThink  TraceFilter = "think"
-	traceFilterTicket TraceFilter = "ticket"
+	traceFilterAll    = snapshot.TraceFilterAll
+	traceFilterTools  = snapshot.TraceFilterTools
+	traceFilterThink  = snapshot.TraceFilterThink
+	traceFilterTicket = snapshot.TraceFilterTicket
 )
 
 type Options struct {
@@ -69,64 +76,6 @@ type Model struct {
 	deletePendingID string
 	deleteDeadline time.Time
 	shimmerIndex   int
-}
-
-type Snapshot struct {
-	UpdatedAt time.Time
-	LoopState string
-
-	Sessions []Session
-	Active   []Session
-	Recent   []Session
-	Queue    []QueueItem
-
-	ActiveQueueIDs  []string
-	ActionNeeded    []string
-	EventsBySession map[string][]EventLine
-	FeedEvents   []FeedEvent
-	TotalCostUSD float64
-
-	PendingReviews     []loop.PendingReviewItem
-	PendingReviewCount int
-	Autonomy           string
-}
-
-type Session struct {
-	ID                    string
-	DisplayName           string
-	Status                string
-	Runtime               string
-	Provider              string
-	Model                 string
-	TotalCostUSD          float64
-	DurationSeconds       int64
-	LastActivity          time.Time
-	CurrentAction         string
-	Health                string
-	ContextWindowUsagePct float64
-	RetryCount            int
-	IdleSeconds           int64
-	StuckThresholdSeconds int64
-	LoopState             string
-}
-
-type QueueItem struct {
-	ID        string   `json:"id"`
-	TaskKey   string   `json:"task_key,omitempty"`
-	Title     string   `json:"title,omitempty"`
-	Prompt    string   `json:"prompt,omitempty"`
-	Provider  string   `json:"provider"`
-	Model     string   `json:"model"`
-	Skill     string   `json:"skill,omitempty"`
-	Plan      []string `json:"plan,omitempty"`
-	Rationale string   `json:"rationale,omitempty"`
-}
-
-type EventLine struct {
-	At       time.Time
-	Label    string
-	Body     string
-	Category TraceFilter
 }
 
 type tickMsg time.Time
@@ -691,8 +640,8 @@ func (m *Model) findSessionForQueueItem(queueItemID string) string {
 
 func refreshSnapshotCmd(runtimeDir string, now func() time.Time) tea.Cmd {
 	return func() tea.Msg {
-		snapshot, err := loadSnapshot(runtimeDir, now())
-		return snapshotMsg{snapshot: snapshot, err: err}
+		snap, err := snapshot.LoadSnapshot(runtimeDir, now())
+		return snapshotMsg{snapshot: snap, err: err}
 	}
 }
 

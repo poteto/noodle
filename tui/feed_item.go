@@ -10,17 +10,6 @@ import (
 	"github.com/poteto/noodle/tui/components"
 )
 
-// FeedEvent is one event in the feed timeline.
-type FeedEvent struct {
-	SessionID string
-	AgentName string
-	TaskType  string
-	At        time.Time
-	Label     string
-	Body      string
-	Category  string // "steer", "ticket", "action", "cost", "queue_drop", "registry_rebuild", "bootstrap", etc.
-}
-
 // AgentCard represents one agent's current state in the feed dashboard.
 type AgentCard struct {
 	Session    Session
