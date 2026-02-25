@@ -122,6 +122,12 @@ func eventLabel(label string) string {
 		return mutedStyle.Render(label)
 	case "think":
 		return dimStyle.Render(label)
+	case "dropped":
+		return warnStyle.Render(label)
+	case "rebuild":
+		return dimStyle.Render(label)
+	case "bootstrap":
+		return accentStyle.Render(label)
 	default:
 		return dimStyle.Render(label)
 	}

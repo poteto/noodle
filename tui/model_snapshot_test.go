@@ -107,6 +107,129 @@ func TestFormatActionToolTypes(t *testing.T) {
 	}
 }
 
+func TestReadQueueEvents(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-1","skill":"old-skill","reason":"skill old-skill no longer registered"}
+{"at":"2026-02-24T10:01:00Z","type":"registry_rebuild","added":["execute","verify"],"removed":["old-skill"]}
+{"at":"2026-02-24T10:02:00Z","type":"bootstrap"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write queue-events: %v", err)
+	}
+
+	events := readQueueEvents(dir)
+	if len(events) != 3 {
+		t.Fatalf("event count = %d, want 3", len(events))
+	}
+
+	// queue_drop
+	if events[0].Category != "queue_drop" {
+		t.Errorf("event[0] category = %q, want queue_drop", events[0].Category)
+	}
+	if events[0].Label != "Dropped" {
+		t.Errorf("event[0] label = %q, want Dropped", events[0].Label)
+	}
+	if events[0].Body != "Dropped item item-1: skill old-skill no longer registered" {
+		t.Errorf("event[0] body = %q", events[0].Body)
+	}
+
+	// registry_rebuild
+	if events[1].Category != "registry_rebuild" {
+		t.Errorf("event[1] category = %q, want registry_rebuild", events[1].Category)
+	}
+	if events[1].Label != "Rebuild" {
+		t.Errorf("event[1] label = %q, want Rebuild", events[1].Label)
+	}
+	wantRebuild := "Registry rebuilt — added: [execute verify], removed: [old-skill]"
+	if events[1].Body != wantRebuild {
+		t.Errorf("event[1] body = %q, want %q", events[1].Body, wantRebuild)
+	}
+
+	// bootstrap
+	if events[2].Category != "bootstrap" {
+		t.Errorf("event[2] category = %q, want bootstrap", events[2].Category)
+	}
+	if events[2].Label != "Bootstrap" {
+		t.Errorf("event[2] label = %q, want Bootstrap", events[2].Label)
+	}
+	if events[2].Body != "Creating prioritize skill from workflow analysis" {
+		t.Errorf("event[2] body = %q", events[2].Body)
+	}
+
+	// All should have SessionID "loop"
+	for i, ev := range events {
+		if ev.SessionID != "loop" {
+			t.Errorf("event[%d] session = %q, want loop", i, ev.SessionID)
+		}
+	}
+}
+
+func TestReadQueueEventsSkipsMalformed(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `not valid json
+{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-1","skill":"gone","reason":"skill gone no longer registered"}
+{broken
+{"at":"2026-02-24T10:01:00Z","type":"bootstrap"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write queue-events: %v", err)
+	}
+
+	events := readQueueEvents(dir)
+	if len(events) != 2 {
+		t.Fatalf("event count = %d, want 2 (malformed lines skipped)", len(events))
+	}
+	if events[0].Category != "queue_drop" {
+		t.Errorf("event[0] category = %q, want queue_drop", events[0].Category)
+	}
+	if events[1].Category != "bootstrap" {
+		t.Errorf("event[1] category = %q, want bootstrap", events[1].Category)
+	}
+}
+
+func TestReadQueueEventsMissingFile(t *testing.T) {
+	events := readQueueEvents(t.TempDir())
+	if len(events) != 0 {
+		t.Fatalf("event count = %d, want 0 for missing file", len(events))
+	}
+}
+
+func TestReadQueueEventsDropWithoutReason(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-2","skill":"old-skill"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write queue-events: %v", err)
+	}
+
+	events := readQueueEvents(dir)
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1", len(events))
+	}
+	want := "Dropped item item-2: skill old-skill no longer exists"
+	if events[0].Body != want {
+		t.Errorf("body = %q, want %q", events[0].Body, want)
+	}
+}
+
+func TestReadQueueEventsUnknownTypeSkipped(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"unknown_event","target":"x"}
+{"at":"2026-02-24T10:01:00Z","type":"bootstrap"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write queue-events: %v", err)
+	}
+
+	events := readQueueEvents(dir)
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1 (unknown type skipped)", len(events))
+	}
+	if events[0].Category != "bootstrap" {
+		t.Errorf("event[0] category = %q, want bootstrap", events[0].Category)
+	}
+}
+
 func TestReadQueuePreservesTaskMetadata(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "queue.json")
 	payload := `{

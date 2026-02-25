@@ -80,6 +80,8 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	feedEvents := buildFeedEvents(sessions, eventsBySession)
 	steerEvents := readSteerEvents(filepath.Join(runtimeDir, "control.ndjson"))
 	feedEvents = append(feedEvents, steerEvents...)
+	queueEvents := readQueueEvents(runtimeDir)
+	feedEvents = append(feedEvents, queueEvents...)
 	sort.SliceStable(feedEvents, func(i, j int) bool {
 		return feedEvents[i].At.Before(feedEvents[j].At)
 	})
@@ -707,6 +709,75 @@ func readSteerEvents(controlPath string) []FeedEvent {
 			Label:     "Steer",
 			Body:      prompt,
 			Category:  "steer",
+		})
+	}
+	return events
+}
+
+// readQueueEvents reads queue-events.ndjson and converts lifecycle events
+// (queue drops, registry rebuilds, bootstrap) into feed events.
+func readQueueEvents(runtimeDir string) []FeedEvent {
+	path := filepath.Join(runtimeDir, "queue-events.ndjson")
+	file, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	var events []FeedEvent
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var raw struct {
+			At      time.Time `json:"at"`
+			Type    string    `json:"type"`
+			Target  string    `json:"target"`
+			Skill   string    `json:"skill"`
+			Reason  string    `json:"reason"`
+			Added   []string  `json:"added"`
+			Removed []string  `json:"removed"`
+		}
+		if err := json.Unmarshal([]byte(line), &raw); err != nil {
+			continue
+		}
+
+		var label, body, category string
+		switch raw.Type {
+		case "queue_drop":
+			label = "Dropped"
+			category = "queue_drop"
+			if raw.Reason != "" {
+				body = fmt.Sprintf("Dropped item %s: %s", raw.Target, raw.Reason)
+			} else {
+				body = fmt.Sprintf("Dropped item %s: skill %s no longer exists", raw.Target, raw.Skill)
+			}
+		case "registry_rebuild":
+			label = "Rebuild"
+			category = "registry_rebuild"
+			body = fmt.Sprintf("Registry rebuilt — added: %v, removed: %v", raw.Added, raw.Removed)
+		case "bootstrap":
+			label = "Bootstrap"
+			category = "bootstrap"
+			body = "Creating prioritize skill from workflow analysis"
+		default:
+			continue
+		}
+
+		at := raw.At
+		if at.IsZero() {
+			at = time.Now().UTC()
+		}
+		events = append(events, FeedEvent{
+			SessionID: "loop",
+			AgentName: "loop",
+			At:        at,
+			Label:     label,
+			Body:      body,
+			Category:  category,
 		})
 	}
 	return events
