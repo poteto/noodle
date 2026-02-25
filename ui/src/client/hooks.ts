@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import {
   useQuery,
+  useSuspenseQuery,
   useQueryClient,
   useMutation,
   type QueryClient,
@@ -22,6 +23,23 @@ export function useSnapshot() {
     queryKey: [...SNAPSHOT_KEY],
     queryFn: fetchSnapshot,
     // SSE handles updates; only fetch once for initial seed.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+}
+
+// Suspense variant — throws until the initial snapshot arrives.
+// The component calling this must be wrapped in a <Suspense> boundary.
+export function useSuspenseSnapshot() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    return connectSSE(queryClient);
+  }, [queryClient]);
+
+  return useSuspenseQuery<Snapshot>({
+    queryKey: [...SNAPSHOT_KEY],
+    queryFn: fetchSnapshot,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });

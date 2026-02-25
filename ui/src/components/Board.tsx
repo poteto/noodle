@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSnapshot, deriveKanbanColumns, useSendControl } from "~/client";
+import { useSuspenseSnapshot, deriveKanbanColumns, useSendControl } from "~/client";
 import type { Session } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
@@ -21,7 +21,7 @@ function isInputFocused(): boolean {
 }
 
 export function Board() {
-  const { data: snapshot, isLoading, error } = useSnapshot();
+  const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send } = useSendControl();
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
@@ -36,7 +36,7 @@ export function Board() {
         e.preventDefault();
         setShowTaskEditor(true);
       }
-      if (e.key === "p" && snapshot) {
+      if (e.key === "p") {
         e.preventDefault();
         const isPaused = snapshot.loop_state === "paused";
         send({ action: isPaused ? "resume" : "pause" });
@@ -49,40 +49,6 @@ export function Board() {
     document.addEventListener("keydown", handleKeyboard);
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
-
-  if (error && !snapshot) {
-    return (
-      <div className="board-shell">
-        <div className="board-header">
-          <div className="board-header-left">
-            <h1 className="board-title">noodle</h1>
-          </div>
-        </div>
-        <div className="board-columns">
-          <p style={{ color: "var(--red)", fontFamily: "var(--font-mono)" }}>
-            {error.message}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || !snapshot) {
-    return (
-      <div className="board-shell">
-        <div className="board-header">
-          <div className="board-header-left">
-            <h1 className="board-title">noodle</h1>
-          </div>
-        </div>
-        <div className="board-columns">
-          <p style={{ color: "var(--text-2)", fontFamily: "var(--font-mono)" }}>
-            loading...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const columns = deriveKanbanColumns(snapshot);
   const maxCooks = snapshot.max_cooks || 4;
@@ -111,11 +77,9 @@ export function Board() {
 
   function handleQueueDrop(_e: React.DragEvent, dropIndex: number) {
     const id = dragItemId.current;
-    if (!id || !snapshot) return;
+    if (!id) return;
     const srcIndex = columns.queued.findIndex((item) => item.id === id);
     if (srcIndex < 0 || srcIndex === dropIndex) return;
-    // The backend reorder operates on the full queue (including active items),
-    // so we need to map from the filtered queued index to the full queue index.
     const fullQueueIndex = snapshot.queue.findIndex(
       (item) => item.id === columns.queued[dropIndex]?.id,
     );
@@ -140,9 +104,7 @@ export function Board() {
     e.preventDefault();
     const id = dragItemId.current;
     if (!id) return;
-    // Move item to front of queue so it gets picked up next cycle.
     send({ action: "reorder", item: id, value: "0" });
-    // If already at max concurrency, bump it by 1.
     if (columns.cooking.length >= maxCooks) {
       send({
         action: "set-max-cooks",

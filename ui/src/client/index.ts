@@ -17,6 +17,6 @@ export { deriveKanbanColumns } from "./types";
 export { fetchSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
 export { connectSSE, SNAPSHOT_KEY } from "./sse";
 export type { SSEStatus } from "./sse";
-export { useSnapshot, useSessionEvents, useSendControl, useSSEStatus } from "./hooks";
+export { useSnapshot, useSuspenseSnapshot, useSessionEvents, useSendControl, useSSEStatus } from "./hooks";
 export { useConfig } from "./config";
 export { middleTruncate } from "./format";
