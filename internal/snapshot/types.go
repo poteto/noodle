@@ -71,6 +71,7 @@ type Session struct {
 	StuckThresholdSeconds int64     `json:"stuck_threshold_seconds"`
 	LoopState             string    `json:"loop_state"`
 	RemoteHost            string    `json:"remote_host,omitempty"`
+	DispatchWarning       string    `json:"dispatch_warning,omitempty"`
 }
 
 // QueueItem is one entry in the task queue.

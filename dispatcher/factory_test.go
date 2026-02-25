@@ -2,6 +2,8 @@ package dispatcher
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -81,5 +83,68 @@ func TestDispatcherFactoryRegisterRejectsNilDispatcher(t *testing.T) {
 	factory := NewDispatcherFactory()
 	if err := factory.Register("tmux", nil); err == nil {
 		t.Fatal("expected register error for nil dispatcher")
+	}
+}
+
+type failingDispatcherStub struct {
+	err error
+}
+
+func (s *failingDispatcherStub) Dispatch(_ context.Context, _ DispatchRequest) (Session, error) {
+	return nil, s.err
+}
+
+func TestDispatcherFactoryFallsBackToTmuxOnRemoteFailure(t *testing.T) {
+	factory := NewDispatcherFactory()
+	tmuxStub := &factoryDispatcherStub{session: &factorySessionStub{id: "fallback-1", status: "running"}}
+	spritesStub := &failingDispatcherStub{err: fmt.Errorf("clone on sprite: remote: Invalid username or token")}
+
+	if err := factory.Register("tmux", tmuxStub); err != nil {
+		t.Fatalf("register tmux: %v", err)
+	}
+	if err := factory.Register("sprites", spritesStub); err != nil {
+		t.Fatalf("register sprites: %v", err)
+	}
+
+	session, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: "sprites"})
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if session.ID() != "fallback-1" {
+		t.Fatalf("session ID = %q, want fallback-1", session.ID())
+	}
+	if tmuxStub.lastReq.Runtime != "tmux" {
+		t.Fatalf("runtime = %q, want tmux", tmuxStub.lastReq.Runtime)
+	}
+	if !strings.Contains(tmuxStub.lastReq.DispatchWarning, "sprites dispatch failed") {
+		t.Fatalf("dispatch warning = %q, want sprites dispatch failed", tmuxStub.lastReq.DispatchWarning)
+	}
+}
+
+func TestDispatcherFactoryNoFallbackForTmuxFailure(t *testing.T) {
+	factory := NewDispatcherFactory()
+	tmuxStub := &failingDispatcherStub{err: fmt.Errorf("tmux not found")}
+
+	if err := factory.Register("tmux", tmuxStub); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+
+	_, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: "tmux"})
+	if err == nil {
+		t.Fatal("expected tmux dispatch error")
+	}
+}
+
+func TestDispatcherFactoryNoFallbackWithoutTmux(t *testing.T) {
+	factory := NewDispatcherFactory()
+	spritesStub := &failingDispatcherStub{err: fmt.Errorf("clone failed")}
+
+	if err := factory.Register("sprites", spritesStub); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+
+	_, err := factory.Dispatch(context.Background(), DispatchRequest{Name: "cook", Runtime: "sprites"})
+	if err == nil {
+		t.Fatal("expected sprites dispatch error with no tmux fallback")
 	}
 }

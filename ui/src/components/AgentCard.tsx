@@ -57,6 +57,14 @@ export function AgentCard({
         <span>{formatDuration(session.duration_seconds)}</span>
         <span className="footer-sep">/</span>
         <span>{formatCost(session.total_cost_usd)}</span>
+        {session.dispatch_warning && (
+          <span
+            className="dispatch-warning"
+            title={session.dispatch_warning}
+          >
+            !
+          </span>
+        )}
         <span className="model-tag">{session.model}</span>
       </div>
     </div>

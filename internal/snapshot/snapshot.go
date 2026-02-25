@@ -157,6 +157,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			IdleSeconds:           meta.IdleSeconds,
 			StuckThresholdSeconds: meta.StuckThresholdSeconds,
 			LoopState:             strings.TrimSpace(meta.LoopState),
+			DispatchWarning:       readDispatchWarning(runtimeDir, sessionID),
 		})
 	}
 
@@ -604,6 +605,22 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 		})
 	}
 	return events
+}
+
+// readDispatchWarning reads the dispatch_warning field from a session's spawn.json.
+func readDispatchWarning(runtimeDir, sessionID string) string {
+	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		DispatchWarning string `json:"dispatch_warning"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.DispatchWarning)
 }
 
 // InferTaskType extracts a task type from a session ID convention.

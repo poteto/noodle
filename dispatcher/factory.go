@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"context"
 	"fmt"
+	"os"
 )
 
 // DispatcherFactory routes dispatch requests to a runtime-specific dispatcher.
@@ -38,7 +39,17 @@ func (f *DispatcherFactory) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, fmt.Errorf("runtime %q not configured", runtime)
 	}
 	req.Runtime = runtime
-	return dispatcher.Dispatch(ctx, req)
+	session, err := dispatcher.Dispatch(ctx, req)
+	if err != nil && runtime != "tmux" {
+		fallback, hasFallback := f.runtimes["tmux"]
+		if hasFallback {
+			fmt.Fprintf(os.Stderr, "dispatch: %s runtime failed, falling back to tmux: %v\n", runtime, err)
+			req.Runtime = "tmux"
+			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtime, err)
+			return fallback.Dispatch(ctx, req)
+		}
+	}
+	return session, err
 }
 
 var _ Dispatcher = (*DispatcherFactory)(nil)

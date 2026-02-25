@@ -283,12 +283,30 @@ html, body {
 
 .footer-sep { color: var(--text-3); }
 
+.dispatch-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  margin-left: auto;
+  cursor: help;
+}
+
 .model-tag {
   padding: 1px 6px;
   background: var(--bg-3);
   font-size: 0.6875rem;
   color: var(--text-2);
   margin-left: auto;
+}
+
+.card-footer:has(.dispatch-warning) .model-tag {
+  margin-left: 0;
 }
 
 /* Type badges */

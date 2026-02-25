@@ -40,6 +40,7 @@ export interface Session {
   stuck_threshold_seconds: number;
   loop_state: string;
   remote_host?: string;
+  dispatch_warning?: string;
 }
 
 export interface QueueItem {
