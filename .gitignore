@@ -17,6 +17,7 @@ Thumbs.db
 # Claude
 *.skill
 .claude/settings.local.json
+.claude/worktrees/
 .codex-output/
 
 # Git worktrees
@@ -29,7 +30,6 @@ Thumbs.db
 
 # Obsidian
 brain/.obsidian/
-.worktrees/
 
 # Slidev
 brain/vision/slides/node_modules/
