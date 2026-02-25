@@ -4,6 +4,7 @@ import { useSessionEvents } from "~/client";
 import { Badge } from "./Badge";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
+import { Tooltip } from "./Tooltip";
 
 export function ChatPanel({
   session,
@@ -27,7 +28,7 @@ export function ChatPanel({
     if (e.target === backdropRef.current) onClose();
   }
 
-  const taskKey = session.display_name.split("-")[0] ?? "";
+  const taskKey = session.task_key ?? "";
 
   return (
     <div
@@ -40,7 +41,14 @@ export function ChatPanel({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {taskKey && <Badge type={taskKey} />}
-              <span className="font-bold text-[1.125rem] text-text-0">{session.display_name}</span>
+              <Tooltip content={session.display_name}>
+                <span className="inline-flex items-center justify-center w-6 h-6 bg-bg-3 font-mono text-[0.625rem] font-bold text-text-2 uppercase shrink-0 select-none">
+                  {session.display_name.slice(0, 2)}
+                </span>
+              </Tooltip>
+              <span className="font-bold text-[1.125rem] text-text-0 whitespace-nowrap overflow-hidden text-ellipsis">
+                {session.title || session.display_name}
+              </span>
             </div>
             <button
               className="bg-transparent border-2 border-border py-0.5 px-[10px] font-mono text-[0.8125rem] font-bold cursor-pointer text-text-1 hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active"
