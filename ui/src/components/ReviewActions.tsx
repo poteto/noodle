@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ControlCommand } from "~/client";
 import { useSendControl } from "~/client";
 
 export function ReviewActions({ itemId }: { itemId: string }) {
@@ -7,16 +6,12 @@ export function ReviewActions({ itemId }: { itemId: string }) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
 
-  function dispatch(cmd: ControlCommand) {
-    send(cmd);
-  }
-
   function handleMerge() {
-    dispatch({ action: "merge", item: itemId });
+    send({ action: "merge", item: itemId });
   }
 
   function handleReject() {
-    dispatch({ action: "reject", item: itemId });
+    send({ action: "reject", item: itemId });
   }
 
   function handleRequestChanges() {
@@ -24,7 +19,7 @@ export function ReviewActions({ itemId }: { itemId: string }) {
       setShowFeedback(true);
       return;
     }
-    dispatch({
+    send({
       action: "request-changes",
       item: itemId,
       prompt: feedback,
