@@ -1,4 +1,4 @@
-import type { Snapshot, LoopState as LoopStateType } from "~/client";
+import type { Snapshot } from "~/client";
 import { LoopState } from "./LoopState";
 import { LoopControls } from "./LoopControls";
 import { StatBadge } from "./StatBadge";
@@ -15,12 +15,12 @@ export function BoardHeader({
       <div className="board-header-left">
         <h1 className="board-title">noodle</h1>
         <div className="board-stats">
-          <LoopState state={snapshot.loop_state as LoopStateType} />
+          <LoopState state={snapshot.loop_state} />
           <StatBadge label="" value={`$${snapshot.total_cost_usd.toFixed(2)}`} />
         </div>
       </div>
       <div className="board-header-right">
-        <LoopControls loopState={snapshot.loop_state as LoopStateType} />
+        <LoopControls loopState={snapshot.loop_state} />
         <button className="new-task-btn" onClick={onNewTask}>
           + new task
         </button>
