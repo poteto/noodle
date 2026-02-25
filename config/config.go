@@ -24,7 +24,6 @@ const (
 
 // Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
-	Phases      map[string]string        `toml:"phases"`
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
 	Prioritize  PrioritizeConfig         `toml:"prioritize"`
 	Routing     RoutingConfig            `toml:"routing"`
@@ -44,7 +43,6 @@ type AdapterConfig struct {
 }
 
 type PrioritizeConfig struct {
-	Skill string `toml:"skill"`
 	Run   string `toml:"run"`
 	Model string `toml:"model"`
 }
@@ -170,13 +168,8 @@ func filterDiagnostics(in []ConfigDiagnostic, severity DiagnosticSeverity) []Con
 // DefaultConfig returns the full no-config-file defaults.
 func DefaultConfig() Config {
 	return Config{
-		Phases: map[string]string{
-			"oops":      "oops",
-			"debugging": "debugging",
-		},
 		Adapters: defaultAdapters(),
 		Prioritize: PrioritizeConfig{
-			Skill: "prioritize",
 			Run:   "after-each",
 			Model: "claude-sonnet",
 		},
@@ -260,25 +253,12 @@ func Parse(data []byte) (Config, error) {
 }
 
 func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
-	if config.Phases == nil {
-		config.Phases = map[string]string{}
-	}
-	if _, ok := config.Phases["oops"]; !ok {
-		config.Phases["oops"] = "oops"
-	}
-	if _, ok := config.Phases["debugging"]; !ok {
-		config.Phases["debugging"] = "debugging"
-	}
-
 	if !metadata.IsDefined("skills", "paths") || len(config.Skills.Paths) == 0 {
 		config.Skills.Paths = defaultSkillPaths()
 	}
 
 	if !metadata.IsDefined("prioritize", "run") {
 		config.Prioritize.Run = "after-each"
-	}
-	if !metadata.IsDefined("prioritize", "skill") {
-		config.Prioritize.Skill = "prioritize"
 	}
 	if !metadata.IsDefined("prioritize", "model") {
 		config.Prioritize.Model = "claude-sonnet"
@@ -390,9 +370,6 @@ func validateParsedValues(config Config) error {
 			"prioritize.run: unsupported value %q (expected after-each, after-n, manual)",
 			config.Prioritize.Run,
 		)
-	}
-	if strings.TrimSpace(config.Prioritize.Skill) == "" {
-		return fmt.Errorf("prioritize.skill: skill is required")
 	}
 
 	if config.Recovery.MaxRetries < 0 {

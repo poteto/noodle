@@ -10,20 +10,11 @@ import (
 func TestDefaultConfigValues(t *testing.T) {
 	config := DefaultConfig()
 
-	if config.Phases["oops"] != "oops" {
-		t.Fatalf("phases.oops default = %q", config.Phases["oops"])
-	}
-	if config.Phases["debugging"] != "debugging" {
-		t.Fatalf("phases.debugging default = %q", config.Phases["debugging"])
-	}
 	if got := strings.Join(config.Skills.Paths, ","); got != ".agents/skills" {
 		t.Fatalf("skills.paths default = %q", got)
 	}
 	if config.Prioritize.Run != "after-each" {
 		t.Fatalf("prioritize.run default = %q", config.Prioritize.Run)
-	}
-	if config.Prioritize.Skill != "prioritize" {
-		t.Fatalf("prioritize.skill default = %q", config.Prioritize.Skill)
 	}
 	if config.Prioritize.Model != "claude-sonnet" {
 		t.Fatalf("prioritize.model default = %q", config.Prioritize.Model)
@@ -82,9 +73,6 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 	if config.Prioritize.Run != "after-each" {
 		t.Fatalf("expected default prioritize run, got %q", config.Prioritize.Run)
 	}
-	if config.Prioritize.Skill != "prioritize" {
-		t.Fatalf("expected default prioritize skill, got %q", config.Prioritize.Skill)
-	}
 	if _, ok := config.Adapters["backlog"]; !ok {
 		t.Fatal("expected default backlog adapter when config file is missing")
 	}
@@ -92,12 +80,7 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 
 func TestParseConfigRoundTrip(t *testing.T) {
 	tomlPayload := `
-[phases]
-oops = "custom-oops"
-debugging = "custom-debug"
-
 [prioritize]
-skill = "priority-chef"
 run = "manual"
 model = "claude-sonnet"
 
@@ -141,14 +124,8 @@ on_done = "remove"
 		t.Fatalf("Parse config: %v", err)
 	}
 
-	if config.Phases["oops"] != "custom-oops" {
-		t.Fatalf("oops phase = %q", config.Phases["oops"])
-	}
 	if config.Prioritize.Run != "manual" {
 		t.Fatalf("prioritize.run = %q", config.Prioritize.Run)
-	}
-	if config.Prioritize.Skill != "priority-chef" {
-		t.Fatalf("prioritize.skill = %q", config.Prioritize.Skill)
 	}
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
@@ -182,9 +159,6 @@ model = "claude-sonnet-4-6"
 
 	if config.Prioritize.Run != "after-each" {
 		t.Fatalf("expected default prioritize.run, got %q", config.Prioritize.Run)
-	}
-	if config.Prioritize.Skill != "prioritize" {
-		t.Fatalf("expected default prioritize.skill, got %q", config.Prioritize.Skill)
 	}
 	if config.Autonomy != "auto" {
 		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
@@ -223,18 +197,6 @@ model = "x"
 run = "sometimes"
 `,
 			wantErr: "prioritize.run",
-		},
-		{
-			name: "empty prioritize skill",
-			payload: `
-[routing.defaults]
-provider = "claude"
-model = "x"
-
-[prioritize]
-skill = ""
-`,
-			wantErr: "prioritize.skill",
 		},
 		{
 			name: "invalid duration",

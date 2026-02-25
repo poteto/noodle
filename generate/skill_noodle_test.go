@@ -53,7 +53,6 @@ func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
 		"routing.defaults.provider",
 		"routing.defaults.model",
 		"skills.paths",
-		"prioritize.skill",
 		"prioritize.run",
 		"concurrency.max_cooks",
 		"plans.on_done",

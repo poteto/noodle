@@ -37,7 +37,6 @@ var fieldDescriptions = map[string]string{
 	"routing.defaults.model":        "Default model name for cook sessions",
 	"routing.tags":                  "Per-tag model overrides keyed by tag name",
 	"skills.paths":                  "Ordered search paths for skill resolution",
-	"prioritize.skill":              "Skill name loaded for scheduling sessions",
 	"prioritize.run":                "When to run scheduling: after-each, after-n, or manual",
 	"prioritize.model":              "Model used for scheduling sessions",
 	"adapters":                      "Adapter configs keyed by adapter name (e.g. backlog)",
@@ -52,7 +51,6 @@ var fieldDescriptions = map[string]string{
 	"agents.codex.args":             "Extra CLI arguments for Codex CLI",
 	"runtime.default":               "Default runtime command template for spawning cooks",
 	"plans.on_done":                 "What to do with completed plans: keep or remove",
-	"phases":                        "Map of phase names to skill names for lifecycle hooks",
 }
 
 // GenerateSkillContent produces the full SKILL.md content.

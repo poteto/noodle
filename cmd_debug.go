@@ -22,7 +22,6 @@ type debugDump struct {
 
 type debugConfigDump struct {
 	RoutingDefaults debugRoutingDefaults `json:"routing_defaults"`
-	Phases          map[string]string    `json:"phases,omitempty"`
 }
 
 type debugRoutingDefaults struct {
@@ -111,15 +110,6 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 		return debugDump{}, err
 	}
 
-	phases := map[string]string{}
-	for key, value := range cfg.Phases {
-		key = strings.TrimSpace(key)
-		if key == "" {
-			continue
-		}
-		phases[key] = strings.TrimSpace(value)
-	}
-
 	return debugDump{
 		SchemaVersion: 1,
 		Config: debugConfigDump{
@@ -127,7 +117,6 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 				Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 				Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
 			},
-			Phases: phases,
 		},
 		Runtime: debugRuntime{
 			LoopState:       stringx.FirstNonEmpty(loopState, "running"),

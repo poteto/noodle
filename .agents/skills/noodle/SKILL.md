@@ -48,11 +48,9 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
 | `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |
-| `phases` | table | {debugging, oops} | Map of phase names to skill names for lifecycle hooks |
 | `plans.on_done` | string | "keep" | What to do with completed plans: keep or remove |
 | `prioritize.model` | string | "claude-sonnet" | Model used for scheduling sessions |
 | `prioritize.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
-| `prioritize.skill` | string | "prioritize" | Skill name loaded for scheduling sessions |
 | `recovery.max_retries` | integer | 3 | Maximum retry attempts for failed cooks |
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |

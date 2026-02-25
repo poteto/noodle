@@ -31,7 +31,6 @@ type loopFixtureSetup struct {
 	FailedTargets                 map[string]string          `json:"failed_targets"`
 	ActiveSessions                []loopFixtureActiveSession `json:"active_sessions"`
 	AdoptedTargets                []loopFixtureAdoptedTarget `json:"adopted_targets"`
-	Phases                        map[string]string          `json:"phases"`
 	RecoveryMaxRetries            *int                       `json:"recovery_max_retries"`
 	RunningRuntimeRepairSessionID string                     `json:"running_runtime_repair_session_id"`
 }
@@ -86,7 +85,6 @@ type loopFixtureSpawnDump struct {
 }
 
 type fixtureConfigOverride struct {
-	Phases  map[string]string `toml:"phases"`
 	Routing struct {
 		Defaults struct {
 			Provider string `toml:"provider"`
@@ -281,12 +279,6 @@ func applySessionStatusInput(t *testing.T, sp *fakeDispatcher, input loopFixture
 }
 
 func applySetupConfig(cfg *config.Config, setup loopFixtureSetup) {
-	if cfg.Phases == nil {
-		cfg.Phases = map[string]string{}
-	}
-	for key, value := range setup.Phases {
-		cfg.Phases[strings.TrimSpace(key)] = strings.TrimSpace(value)
-	}
 	if setup.RecoveryMaxRetries != nil {
 		cfg.Recovery.MaxRetries = *setup.RecoveryMaxRetries
 	}
@@ -418,12 +410,6 @@ func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) 
 	if _, err := toml.Decode(string(data), &override); err != nil {
 		t.Fatalf("parse config override %s: %v", overridePath, err)
 	}
-	if cfg.Phases == nil {
-		cfg.Phases = map[string]string{}
-	}
-	for key, value := range override.Phases {
-		cfg.Phases[strings.TrimSpace(key)] = strings.TrimSpace(value)
-	}
 	if provider := strings.TrimSpace(override.Routing.Defaults.Provider); provider != "" {
 		cfg.Routing.Defaults.Provider = provider
 	}
@@ -433,14 +419,7 @@ func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) 
 }
 
 func cloneConfig(in config.Config) config.Config {
-	out := in
-	if in.Phases != nil {
-		out.Phases = make(map[string]string, len(in.Phases))
-		for key, value := range in.Phases {
-			out.Phases[key] = value
-		}
-	}
-	return out
+	return in
 }
 
 func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runtimeDir string) {

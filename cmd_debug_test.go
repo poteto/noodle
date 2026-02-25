@@ -57,8 +57,6 @@ func TestRunDebugOutputsDeterministicDump(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Routing.Defaults.Provider = "codex"
 	cfg.Routing.Defaults.Model = "gpt-5.3-codex"
-	cfg.Phases = map[string]string{"debugging": "oops"}
-
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
