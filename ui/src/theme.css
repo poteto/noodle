@@ -594,3 +594,175 @@ html, body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Loop controls */
+.loop-control-btn {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  background: var(--border);
+  color: var(--bg-0);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.loop-control-btn:hover {
+  filter: brightness(1.2);
+}
+.loop-control-btn.paused {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+/* New task button */
+.new-task-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  background: var(--border);
+  color: var(--bg-0);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 2px solid var(--border);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.new-task-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 rgba(0,0,0,0.3);
+}
+
+/* Task editor modal */
+.task-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,20,0,0.3);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-editor {
+  width: 520px;
+  max-width: 90vw;
+  background: var(--bg-1);
+  border: 3px solid var(--border);
+  box-shadow: 8px 8px 0 var(--border);
+}
+
+.task-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 2px solid var(--border);
+}
+
+.task-editor-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+.task-editor-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-editor-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-2);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.task-editor-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  border: 2px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+}
+.task-editor-textarea:focus {
+  border-color: var(--yellow);
+}
+
+.task-editor-row {
+  display: flex;
+  gap: 12px;
+}
+
+.task-editor-field {
+  flex: 1;
+}
+
+.task-editor-select,
+.task-editor-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border: 2px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  outline: none;
+}
+.task-editor-select:focus,
+.task-editor-input:focus {
+  border-color: var(--yellow);
+}
+
+.task-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 2px solid var(--border);
+}
+
+.task-editor-cancel {
+  padding: 6px 16px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--bg-1);
+  color: var(--text-1);
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+.task-editor-cancel:hover {
+  background: var(--bg-hover);
+}
+
+.task-editor-submit {
+  padding: 6px 20px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  background: var(--border);
+  color: var(--bg-0);
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+.task-editor-submit:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+.task-editor-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

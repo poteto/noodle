@@ -1,8 +1,15 @@
 import type { Snapshot, LoopState as LoopStateType } from "~/client";
 import { LoopState } from "./LoopState";
+import { LoopControls } from "./LoopControls";
 import { StatBadge } from "./StatBadge";
 
-export function BoardHeader({ snapshot }: { snapshot: Snapshot }) {
+export function BoardHeader({
+  snapshot,
+  onNewTask,
+}: {
+  snapshot: Snapshot;
+  onNewTask: () => void;
+}) {
   const doneCount = snapshot.recent.filter((s) => s.status !== "failed").length;
   const failedCount = snapshot.recent.filter((s) => s.status === "failed").length;
 
@@ -12,6 +19,7 @@ export function BoardHeader({ snapshot }: { snapshot: Snapshot }) {
         <h1 className="board-title">noodle</h1>
         <div className="board-stats">
           <LoopState state={snapshot.loop_state as LoopStateType} />
+          <LoopControls loopState={snapshot.loop_state as LoopStateType} />
           <StatBadge label="cooking" value={snapshot.active.length} />
           {snapshot.pending_review_count > 0 && (
             <StatBadge label="review" value={snapshot.pending_review_count} />
@@ -23,6 +31,9 @@ export function BoardHeader({ snapshot }: { snapshot: Snapshot }) {
           <StatBadge label="" value={`$${snapshot.total_cost_usd.toFixed(2)}`} />
         </div>
       </div>
+      <button className="new-task-btn" onClick={onNewTask}>
+        + new task
+      </button>
     </div>
   );
 }
