@@ -1537,28 +1537,23 @@ func TestNoDoubleSpawnAfterFailedRetryRepair(t *testing.T) {
 	repairSession.status = "completed"
 	close(repairSession.done)
 
-	// Record spawn count before cycle 3
-	spawnsBefore := len(sp.calls)
-
-	// --- Cycle 3: repair clears, cycle resumes ---
+	// --- Cycle 3: repair clears, pending retry fires ---
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 3: %v", err)
 	}
 
-	// Count new non-repair spawns — the bug causes a fresh spawn of "37"
-	freshSpawns := 0
-	for _, call := range sp.calls[spawnsBefore:] {
-		if !strings.HasPrefix(call.Name, "repair-runtime-") {
-			freshSpawns++
-		}
+	// After repair, the pending retry should fire with the correct attempt
+	// counter (1, not 0). The bug caused a fresh spawn via planCycleSpawns
+	// with attempt 0 because activeByTarget lost tracking of the item.
+	cook37, ok := l.activeByTarget["37"]
+	if !ok {
+		t.Fatal("expected item 37 in activeByTarget after cycle 3 (pending retry should have fired)")
 	}
-
-	if freshSpawns > 0 {
+	if cook37.attempt == 0 {
 		t.Errorf(
-			"BUG: item '37' was spawned %d time(s) fresh after repair "+
+			"BUG: item '37' was spawned fresh (attempt 0) after repair "+
 				"(attempt counter lost, activeByTarget tracking gap between "+
 				"failed retry and repair completion)",
-			freshSpawns,
 		)
 	}
 }

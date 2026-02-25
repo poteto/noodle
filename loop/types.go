@@ -82,6 +82,13 @@ type pendingReviewCook struct {
 	sessionID    string
 }
 
+// pendingRetryCook is an item whose retry dispatch failed, waiting for
+// runtime repair before retrying.
+type pendingRetryCook struct {
+	item    QueueItem
+	attempt int // the next attempt to use (already incremented)
+}
+
 type Dispatcher interface {
 	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
 }
@@ -133,6 +140,7 @@ type Loop struct {
 	adoptedSessions []string
 	failedTargets   map[string]string
 	pendingReview   map[string]*pendingReviewCook
+	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
 
 	runtimeRepairAttempts map[string]int

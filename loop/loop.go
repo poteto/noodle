@@ -78,6 +78,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		adoptedSessions:       []string{},
 		failedTargets:         map[string]string{},
 		pendingReview:         map[string]*pendingReviewCook{},
+		pendingRetry:          map[string]*pendingRetryCook{},
 		processedIDs:          map[string]struct{}{},
 		runtimeRepairAttempts: map[string]int{},
 	}
@@ -226,6 +227,9 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if l.runtimeRepairInFlight != nil {
 		return false, nil
 	}
+	if err := l.processPendingRetries(ctx); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -313,6 +317,10 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 	}
 
 	for targetID := range pendingTargets {
+		busyTargets[targetID] = struct{}{}
+	}
+
+	for targetID := range l.pendingRetry {
 		busyTargets[targetID] = struct{}{}
 	}
 

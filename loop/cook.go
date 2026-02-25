@@ -86,6 +86,12 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 		delete(l.activeByTarget, cook.queueItem.ID)
 		if err := l.handleCompletion(ctx, cook); err != nil {
 			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+				// Retry dispatch failed — track so planCycleSpawns won't
+				// respawn the item fresh while runtime repair runs.
+				l.pendingRetry[cook.queueItem.ID] = &pendingRetryCook{
+					item:    cook.queueItem,
+					attempt: cook.attempt + 1,
+				}
 				return conflictErr
 			}
 		}
@@ -332,6 +338,20 @@ func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 		filtered = append(filtered, id)
 	}
 	l.adoptedSessions = filtered
+}
+
+func (l *Loop) processPendingRetries(ctx context.Context) error {
+	if len(l.pendingRetry) == 0 {
+		return nil
+	}
+	pending := l.pendingRetry
+	l.pendingRetry = map[string]*pendingRetryCook{}
+	for _, p := range pending {
+		if err := l.spawnCook(ctx, p.item, p.attempt, ""); err != nil {
+			return l.handleRuntimeIssue(ctx, "loop.pending-retry", err, nil)
+		}
+	}
+	return nil
 }
 
 func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
