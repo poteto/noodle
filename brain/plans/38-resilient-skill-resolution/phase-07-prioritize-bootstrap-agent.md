@@ -27,24 +27,28 @@ The next cycle picks up the new skill and runs real prioritization.
   - `git add` and `git commit` the new skill
   - Exit
 
+**Add `SystemPrompt` field to dispatch request:**
+- `dispatcher/types.go` — add `SystemPrompt string` field to `DispatchRequest`. When set, use it directly and skip skill resolution. This lets the bootstrap agent dispatch without a skill file existing yet.
+- `dispatcher/tmux_dispatcher.go` — check `req.SystemPrompt` before calling `loadSkillBundle()`. If set, construct `loadedSkill` from it directly.
+- `dispatcher/sprites_dispatcher.go` — same treatment.
+
 **Change prioritize bootstrap flow:**
 - `loop/prioritize.go` — in the prioritize dispatch path, before building the dispatch request:
   1. Call `ensureSkillFresh("prioritize")` (phase 6)
   2. If found → dispatch normally (current behavior)
-  3. If not found → dispatch bootstrap agent using `DispatchRequest.SystemPrompt` (from phase 3)
+  3. If not found → dispatch bootstrap agent using `DispatchRequest.SystemPrompt`
   4. Tag the session name with a `bootstrap-` prefix so the loop can distinguish it from real prioritize sessions
 
 **Backoff and idempotency:**
-- Track bootstrap attempts using the same fingerprint + attempt mechanism as runtime repair (`runtime_repair.go` lines 67-76). Fingerprint key: `"bootstrap-prioritize"` (static). Max 3 attempts.
-- After 3 failed bootstraps: mark as exhausted. The loop continues running — it can still dispatch existing queue items, just can't create new prioritize cycles. This requires a new code path: when bootstrap is exhausted, the "empty queue" check in `runCycleMaintenance` should skip the prioritize bootstrap and return nil (no error) instead of escalating. Add a `bootstrapExhausted bool` field on Loop.
+- Track bootstrap attempts with a simple `bootstrapAttempts int` counter on Loop. Max 3 attempts.
+- After 3 failed bootstraps: mark as exhausted via `bootstrapExhausted bool` on Loop. The loop continues running — it can still dispatch existing queue items, just can't create new prioritize cycles. When bootstrap is exhausted, the "empty queue" check skips the prioritize bootstrap and returns nil (no error).
 - On noodle restart: attempt counter resets (it's in-memory), so bootstrap gets 3 fresh tries.
 
 **Critical: bypass `retryCook` for bootstrap sessions.**
-- Bootstrap sessions must NOT flow through the normal `retryCook` path (`cook.go:358-360`), which hard-errors after retries and would kill the loop. Instead:
-  - In the session completion handler, check for `bootstrap-` prefix on session name.
-  - If bootstrap session failed: increment bootstrap attempt counter and set `bootstrapExhausted` if at max. Do NOT call `retryCook`. Return nil so the loop continues.
+- Bootstrap sessions must NOT flow through the normal `retryCook` path, which hard-errors after retries and would kill the loop. Instead:
+  - In `collectCompleted`, check for `bootstrap-` prefix on session name.
+  - If bootstrap session failed: increment `bootstrapAttempts` and set `bootstrapExhausted` if at max. Do NOT call `retryCook`. Return nil so the loop continues.
   - If bootstrap session succeeded: trigger `rebuildRegistry()` to pick up the new skill. Write bootstrap completion event.
-- This is the same pattern as runtime repair sessions, which have their own completion handler separate from cook retry logic.
 
 **Bootstrap completion event:**
 - On bootstrap session completion (detected in monitor/reconciliation via `bootstrap-` session name prefix), write a `queue-events.ndjson` entry with `type: "bootstrap"` and a message like `"created prioritize skill from workflow analysis"`. This is the producer contract for phase 8's `"bootstrap"` feed category.
@@ -61,8 +65,9 @@ The next cycle picks up the new skill and runs real prioritization.
 ## Data structures
 
 - `builtinBootstrapPrompt` — embedded string constant in `loop/builtin_bootstrap.go`
-- `Loop.bootstrapExhausted bool` — set after 3 failed attempts, reset on restart
-- Bootstrap attempt tracking: reuse `runtimeIssue` fingerprint mechanism with key `"bootstrap-prioritize"`
+- `DispatchRequest.SystemPrompt string` — when set, takes precedence over `Skill`
+- `Loop.bootstrapAttempts int` — simple counter, reset on restart
+- `Loop.bootstrapExhausted bool` — set after 3 failed attempts
 
 ## Verification
 

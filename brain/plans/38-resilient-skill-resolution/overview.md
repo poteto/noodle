@@ -8,16 +8,16 @@ status: active
 
 ## Context
 
-Noodle currently treats missing skills as fatal errors. If the prioritize skill is missing, the loop can't bootstrap. If oops/debugging skills are missing, runtime repair is impossible. Any dispatch-time skill resolution failure kills the session. This creates a fragile system that can't self-heal.
+Noodle currently treats missing skills as fatal errors. If the prioritize skill is missing, the loop can't bootstrap. Any dispatch-time skill resolution failure kills the session. The runtime repair system was supposed to self-heal infrastructure failures but has never succeeded — all repair sessions fail with duration 0, and the repair state machine creates a double-spawn race condition where queue items fall out of all tracking maps.
 
-The design goal: `noodle start` should work no matter what state the project is in. The only truly fatal error is "cannot spawn an agent at all" (tmux dead, binary missing). Everything else is recoverable by spawning an agent to fix it.
+The design goal: `noodle start` should work no matter what state the project is in. Transient failures recover via retry. Fatal failures bubble up to the human. No intermediate repair layer.
 
 ## Scope
 
 **In:**
 - Remove dead skill-name config fields from `.noodle.toml` (`phases`, `prioritize.skill`)
 - Non-fatal skill resolution — dispatch proceeds without methodology, warns
-- Built-in oops fallback prompt (hardcoded, user skill override wins)
+- Remove runtime repair entirely — delete `runtime_repair.go`, fix the `pendingRetry` double-spawn race
 - Prioritize bootstrap agent — inspects `.claude/`/`.codex/` history, creates prioritize skill
 - fsnotify hot-reload of skill registry with debounce
 - Queue audit after registry rebuild — drop stale items, warn via TUI feed
@@ -44,9 +44,10 @@ The design goal: `noodle start` should work no matter what state the project is 
 
 ## Alternatives considered
 
-1. **Config-driven fallbacks** — keep `prioritize.skill` config but add a fallback chain. Rejected: adds complexity to config when discovery already handles skill lookup. Subtract before you add.
-2. **Virtual skills in resolver** — register built-in skills as in-memory entries in the resolver. Rejected: conflates "user-provided skill files" with "hardcoded system prompts." Cleaner to have the caller decide.
-3. **Chosen: caller-level fallback + prompt injection** — runtime_repair.go tries resolver first, falls back to hardcoded prompt. Dispatcher gets a `SystemPrompt` field to skip resolution when caller provides prompt directly. Clean separation between user skills and built-in behavior.
+1. **Improve runtime repair** (original plan 38 phase 3) — make repair always available via hardcoded oops prompt. Rejected: repair has 0% success rate, adds state machine complexity, and causes double-spawn race. Subtract before you add.
+2. **Config-driven fallbacks** — keep `prioritize.skill` config but add a fallback chain. Rejected: adds complexity to config when discovery already handles skill lookup.
+3. **Virtual skills in resolver** — register built-in skills as in-memory entries. Rejected: conflates "user-provided skill files" with "hardcoded system prompts."
+4. **Chosen: delete repair, caller-level fallback for bootstrap only** — remove runtime repair entirely. Bootstrap agent uses `SystemPrompt` field to dispatch without a skill file. All other error paths use retry or fatal exit.
 
 ## Applicable skills
 
@@ -57,7 +58,7 @@ The design goal: `noodle start` should work no matter what state the project is 
 
 - [[plans/38-resilient-skill-resolution/phase-01-remove-dead-skill-config]]
 - [[plans/38-resilient-skill-resolution/phase-02-non-fatal-skill-resolution]]
-- [[plans/38-resilient-skill-resolution/phase-03-builtin-oops-fallback]]
+- [[plans/38-resilient-skill-resolution/phase-03-remove-runtime-repair]]
 - [[plans/38-resilient-skill-resolution/phase-04-fsnotify-skill-watcher]]
 - [[plans/38-resilient-skill-resolution/phase-05-registry-rebuild-queue-audit]]
 - [[plans/38-resilient-skill-resolution/phase-06-dispatch-rescan-fallback]]
@@ -116,31 +117,10 @@ EOF
 ```
 Verify: fsnotify picks up new skill. Next prioritize cycle can schedule deploy tasks.
 
-**Full project (runtime repair without oops skill):**
+**Spawn failure resilience:**
 ```bash
 cd "$(scripts/sandbox.sh full)"
-rm -rf .agents/skills/quality  # remove a skill referenced in queue
-# Corrupt queue.json to trigger runtime repair
-echo '[{"target":"bad","task_type":"nonexistent"}]' > .noodle/queue.json
+# Simulate spawn failures by misconfiguring provider
 noodle start
 ```
-Verify: built-in oops prompt handles the repair. No user-provided oops skill needed.
-
-**Full project (user oops skill overrides built-in):**
-```bash
-cd "$(scripts/sandbox.sh full)"
-mkdir -p .agents/skills/oops
-cat > .agents/skills/oops/SKILL.md <<'EOF'
----
-name: oops
-noodle:
-  schedule: "Fix runtime issues"
----
-# Custom Oops
-My project-specific repair instructions.
-EOF
-noodle start &
-# Corrupt queue.json to trigger runtime repair
-echo '{"items":[{"id":"x","task_key":"nonexistent"}]}' > .noodle/queue.json
-```
-Verify: user's oops skill is used instead of built-in fallback.
+Verify: failed spawns retry via `retryCook`. After `maxRetries`, item marked failed and skipped. Loop continues to next item. No repair sessions spawned. No double-spawn.

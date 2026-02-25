@@ -16,7 +16,7 @@ Also fix the registry error path: currently `runCycleMaintenance()` hard-returns
 - `loop/loop.go` — after rebuilding, call `auditQueue()` (new method). Return a `RegistryDiff` so callers can see what changed.
 
 **Fix registry error path in cycle:**
-- `loop/loop.go` — change `runCycleMaintenance()` (line 192): instead of `return false, l.registryErr`, route through `handleRuntimeIssue()` with scope `"loop.registry"`. This lets the built-in oops fallback (phase 3) attempt to fix the issue. Only after runtime repair exhausts its attempts (3 max) does the error propagate as fatal.
+- `loop/loop.go` — change `runCycleMaintenance()` (line 192): instead of `return false, l.registryErr`, log the error to stderr, skip the current cycle (`return false, nil`), and set a `registryStale` flag so the next cycle retries discovery. If discovery fails 3 consecutive times, return the error as fatal. This prevents a single transient filesystem error from killing the loop while still surfacing persistent problems.
 
 **Queue audit after rebuild:**
 - `loop/queue_audit.go` (new file) — `auditQueue()` reads `queue.json`, validates each item against the new registry. Items with unknown task types are removed. Returns list of dropped items with reasons.
@@ -62,5 +62,5 @@ go test ./loop/... && go vet ./...
 
 Unit tests:
 - Start with registry containing skill X. Write a queue item targeting X. Delete skill X from disk. Trigger rebuild. Verify item is removed from queue.json. Verify event written to queue-events.ndjson. Verify stderr output.
-- Registry discovery failure during rebuild: verify error routes through `handleRuntimeIssue("loop.registry")`, not hard-return.
+- Registry discovery failure during rebuild: verify error is logged, cycle skipped, and retried next cycle. After 3 consecutive failures, verify fatal error propagated.
 - queue-events.ndjson with 300 lines: after write, verify truncated to 200.

@@ -12,12 +12,12 @@ Belt-and-suspenders for fsnotify: if the registry is stale, force a synchronous 
 
 The key constraint: unknown task types are rejected during queue normalization (`NormalizeAndValidate` in `queuex/queue.go`), which runs *before* dispatch. A pre-dispatch check is too late. The re-scan must happen at the queue validation layer.
 
-Additionally, the current code routes *any* normalize/validate error into `handleRuntimeIssue()`, which pauses the loop for oops repair. For "unknown task type" errors specifically, we should drop the item and continue — not trigger runtime repair. This requires distinguishing "unknown task type" from other validation errors.
+Additionally, the current code returns normalize/validate errors as fatal. For "unknown task type" errors specifically, we should drop the item and continue — not kill the loop. This requires distinguishing "unknown task type" from other validation errors.
 
 Combined with phase 2 (non-fatal resolution at dispatch) and phase 4 (fsnotify), the full flow becomes:
 1. Queue normalization finds an unknown task type
 2. Instead of immediately rejecting → force `rebuildRegistry()` + re-validate
-3. Still unknown after re-scan → drop the item with audit event (phase 5 pattern), **not** runtime repair
+3. Still unknown after re-scan → drop the item with audit event (phase 5 pattern), continue loop
 4. At dispatch time, if skill file is still missing → soft-fail from phase 2 (session runs without methodology)
 
 This ensures new skills added between cycles are caught at every layer.
@@ -32,12 +32,12 @@ This ensures new skills added between cycles are caught at every layer.
   1. Run validation
   2. If errors include `ErrUnknownTaskType`: call `rebuildRegistry()` once and retry validation
   3. After retry, any remaining `ErrUnknownTaskType` errors → drop those items from queue using `auditQueue()` pattern (phase 5), write audit events, log to stderr. Do NOT route through `handleRuntimeIssue`.
-  4. Non-unknown-task-type errors still route to `handleRuntimeIssue` as before (these are real problems like malformed JSON).
+  4. Non-unknown-task-type errors are fatal (these are real problems like malformed JSON).
 
 **Pre-dispatch skill file check:**
 - `loop/cook.go` — `ensureSkillFresh(skillName string) bool` helper: tries `resolver.Resolve()`, if not found calls `rebuildRegistry()`, retries. Returns true if skill was found. Call this from `spawnCook()` before building the dispatch request as an additional safety net for skill file existence (registry says the task type exists, but the SKILL.md file may have been deleted after the last scan).
 - `loop/prioritize.go` — same pre-check before dispatch. For prioritize specifically, if still not found after re-scan, fall through to bootstrap agent (phase 7).
-- `loop/runtime_repair.go` — same pre-check for oops skill before dispatch. If still not found, fall through to built-in prompt (phase 3).
+- Runtime repair is deleted (phase 3) — no oops pre-check needed.
 
 ## Quality reference inventory for this phase
 
@@ -69,6 +69,6 @@ go test ./loop/... && go test ./internal/queuex/... && go vet ./...
 
 Tests:
 - Queue contains item with task_type matching a skill added to disk after startup (not yet in registry). Validation fails with `ErrUnknownTaskType`, triggers re-scan, retry succeeds. Item is dispatched.
-- Queue contains item with genuinely nonexistent task_type. Re-scan still doesn't find it. Item is dropped with audit event. Loop does NOT pause for runtime repair.
-- Queue contains item with malformed JSON. Error is NOT `ErrUnknownTaskType`. Routes to `handleRuntimeIssue` as before.
+- Queue contains item with genuinely nonexistent task_type. Re-scan still doesn't find it. Item is dropped with audit event. Loop continues.
+- Queue contains item with malformed JSON. Error is NOT `ErrUnknownTaskType`. Returns fatal error.
 - Skill file deleted after registry rebuild but before dispatch. `ensureSkillFresh` triggers re-scan, file still missing. Dispatch proceeds with soft-fail (phase 2).
