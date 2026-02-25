@@ -217,6 +217,10 @@ func mapEventLines(events []event.Event) []EventLine {
 			line.Label = label
 			line.Body = body
 			line.Category = category
+		case event.EventStateChange:
+			line.Label = "State"
+			line.Category = traceFilterAll
+			line.Body = formatStateChange(ev.Payload)
 		default:
 			line.Label = strings.Title(strings.ReplaceAll(string(ev.Type), "_", " "))
 			line.Body = summarizePayload(ev.Payload)
@@ -325,6 +329,28 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 		body = summarizePayload(payload)
 	}
 	return label, body, category
+}
+
+func formatStateChange(payload json.RawMessage) string {
+	var body struct {
+		ToStatus string `json:"to_status"`
+		Reason   string `json:"reason"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		return summarizePayload(payload)
+	}
+	status := strings.TrimSpace(body.ToStatus)
+	reason := strings.TrimSpace(body.Reason)
+	if status != "" && reason != "" {
+		return status + ": " + reason
+	}
+	if reason != "" {
+		return reason
+	}
+	if status != "" {
+		return status
+	}
+	return summarizePayload(payload)
 }
 
 func summarizePayload(payload json.RawMessage) string {
