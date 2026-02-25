@@ -19,9 +19,19 @@ export function QueueCard({
   onDragEnd?: () => void;
   isDragOver?: boolean;
 }) {
+  const isSchedule = item.task_key === "schedule";
+  const classes = [
+    "board-card",
+    "draggable",
+    isDragOver && "drag-over",
+    isSchedule && "schedule-card",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
-      className={`board-card draggable${isDragOver ? " drag-over" : ""}`}
+      className={classes}
       draggable
       onDragStart={(e) => onDragStart?.(e, index ?? 0)}
       onDragOver={(e) => {
@@ -45,6 +55,9 @@ export function QueueCard({
             ? item.prompt.slice(0, 120) + "..."
             : item.prompt}
         </div>
+      )}
+      {item.rationale && isSchedule && (
+        <div className="card-rationale">{item.rationale}</div>
       )}
       <div className="card-footer">
         <span className="model-tag">{item.model}</span>

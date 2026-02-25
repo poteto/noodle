@@ -11,6 +11,7 @@ import { ChatPanel } from "./ChatPanel";
 import { TaskEditor } from "./TaskEditor";
 import { QueueAddCard } from "./QueueAddCard";
 import { ConcurrencyBadge } from "./ConcurrencyBadge";
+import { SkeletonCard } from "./SkeletonCard";
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
@@ -85,6 +86,12 @@ export function Board() {
 
   const columns = deriveKanbanColumns(snapshot);
   const maxCooks = snapshot.max_cooks || 4;
+  // Show skeleton when loop just started and scheduler hasn't produced items yet.
+  const showQueueSkeleton =
+    snapshot.loop_state === "running" &&
+    columns.queued.length === 0 &&
+    columns.cooking.length === 0 &&
+    columns.done.length === 0;
 
   const liveSession = selectedSession
     ? snapshot.sessions.find((s) => s.id === selectedSession.id) ?? selectedSession
@@ -159,7 +166,13 @@ export function Board() {
       />
 
       <div className="board-columns">
-        <BoardColumn title="Queued" count={columns.queued.length} footer={<QueueAddCard />} emptyText="No tasks queued">
+        <BoardColumn
+          title="Queued"
+          count={columns.queued.length}
+          footer={<QueueAddCard />}
+          emptyText={showQueueSkeleton ? undefined : "No tasks queued"}
+        >
+          {showQueueSkeleton && <SkeletonCard />}
           {columns.queued.map((item, i) => (
             <QueueCard
               key={item.id}
