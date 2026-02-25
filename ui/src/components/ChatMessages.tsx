@@ -23,13 +23,17 @@ function MessageBubble({ event }: { event: EventLine }) {
           <span className="chat-msg-divider">{event.label}</span>
         </div>
       );
-    default:
+    case "all":
       return (
         <div className="chat-msg chat-msg-default">
           <span className="chat-msg-label">{event.label}</span>
           <div className="chat-msg-body">{event.body}</div>
         </div>
       );
+    default: {
+      const _exhaustive: never = event.category;
+      return _exhaustive;
+    }
   }
 }
 
