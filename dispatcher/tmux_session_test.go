@@ -155,7 +155,7 @@ func TestTmuxSessionLogsInjectedPromptOnInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new event writer: %v", err)
 	}
-	prompt := "Use Skill(prioritize) to refresh .noodle/queue.json from .noodle/mise.json."
+	prompt := "Use Skill(schedule) to refresh .noodle/queue.json from .noodle/mise.json."
 
 	session := newTmuxSession(
 		"session-a",
@@ -376,7 +376,7 @@ func TestParseActionMessage(t *testing.T) {
 		{"Write /path/to/file.go", "Write", "/path/to/file.go"},
 		{"Glob **/*.go", "Glob", "**/*.go"},
 		{"Grep pattern", "Grep", "pattern"},
-		{"Skill prioritize", "Skill", "prioritize"},
+		{"Skill schedule", "Skill", "schedule"},
 		// Tool without detail
 		{"Skill", "Skill", ""},
 		{"TodoWrite", "TodoWrite", ""},
@@ -406,7 +406,7 @@ func TestEventFromCanonicalActionStructure(t *testing.T) {
 	}{
 		{"bash command", "$ go build ./...", "Bash", "go build ./..."},
 		{"read file", "Read /path/to/file", "Read", "/path/to/file"},
-		{"skill call", "Skill prioritize", "Skill", "prioritize"},
+		{"skill call", "Skill schedule", "Skill", "schedule"},
 		{"think text", "text:analyzing code", "Think", "analyzing code"},
 		{"user prompt", "user:Work on item 15", "Prompt", "Work on item 15"},
 	}

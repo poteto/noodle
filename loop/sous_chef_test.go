@@ -8,13 +8,13 @@ import (
 func TestBuildQueueTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
 	prompt := buildQueueTaskTypesPrompt([]TaskType{
 		{
-			Key:      "prioritize",
+			Key:      "schedule",
 			CanMerge: false,
 			Schedule: "When the queue is empty",
 		},
 	})
 
-	if !strings.Contains(prompt, "- prioritize: When the queue is empty") {
+	if !strings.Contains(prompt, "- schedule: When the queue is empty") {
 		t.Fatalf("unexpected prompt: %q", prompt)
 	}
 }

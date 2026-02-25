@@ -10,8 +10,8 @@ import (
 func testLoopRegistry() taskreg.Registry {
 	return taskreg.NewFromSkills([]skill.SkillMeta{
 		{
-			Name: "prioritize",
-			Path: "/skills/prioritize",
+			Name: "schedule",
+			Path: "/skills/schedule",
 			Frontmatter: skill.Frontmatter{
 				Noodle: &skill.NoodleMeta{
 					Permissions: skill.Permissions{Merge: boolPtr(false)},
@@ -63,8 +63,8 @@ func testLoopRegistry() taskreg.Registry {
 func TestTaskSkillFallback(t *testing.T) {
 	reg := testLoopRegistry()
 
-	if got := taskSkill(reg, "prioritize", "fallback"); got != "prioritize" {
-		t.Fatalf("got %q, want prioritize", got)
+	if got := taskSkill(reg, "schedule", "fallback"); got != "schedule" {
+		t.Fatalf("got %q, want schedule", got)
 	}
 	if got := taskSkill(reg, "nonexistent", "fallback"); got != "fallback" {
 		t.Fatalf("got %q, want fallback", got)
@@ -88,7 +88,7 @@ func TestResolveByExplicitTaskKey(t *testing.T) {
 func TestResolveByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := testLoopRegistry()
 	if _, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
-		ID: "prioritize-20260222-123456",
+		ID: "schedule-20260222-123456",
 	}); ok {
 		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
 	}

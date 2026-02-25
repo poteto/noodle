@@ -9,8 +9,8 @@ import (
 func testSkills() []skill.SkillMeta {
 	return []skill.SkillMeta{
 		{
-			Name: "prioritize",
-			Path: "/skills/prioritize",
+			Name: "schedule",
+			Path: "/skills/schedule",
 			Frontmatter: skill.Frontmatter{
 				Noodle: &skill.NoodleMeta{
 					Permissions: skill.Permissions{
@@ -61,11 +61,11 @@ func TestNewFromSkillsExcludesUtilitySkills(t *testing.T) {
 
 func TestByKey(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ByKey("prioritize")
+	tt, ok := reg.ByKey("schedule")
 	if !ok {
-		t.Fatal("expected prioritize")
+		t.Fatal("expected schedule")
 	}
-	if tt.Key != "prioritize" {
+	if tt.Key != "schedule" {
 		t.Fatalf("key = %q", tt.Key)
 	}
 	if tt.CanMerge {
@@ -83,15 +83,15 @@ func TestResolveQueueItemByTaskKey(t *testing.T) {
 
 func TestResolveQueueItemBySkill(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "prioritize", ID: "x"})
-	if !ok || tt.Key != "prioritize" {
+	tt, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "schedule", ID: "x"})
+	if !ok || tt.Key != "schedule" {
 		t.Fatalf("resolve by skill = %+v, %v", tt, ok)
 	}
 }
 
 func TestResolveQueueItemByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "prioritize-20260222-123456-1"}); ok {
+	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "schedule-20260222-123456-1"}); ok {
 		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
 	}
 }

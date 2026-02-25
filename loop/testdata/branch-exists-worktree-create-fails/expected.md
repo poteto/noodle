@@ -17,8 +17,8 @@ source_hash: d134c048d03494f8e763aed96f94a7409d0caf095fc928758c8674ceefd85ec6
       "normal_spawn_calls": 1,
       "created_worktrees": 0,
       "first_spawn": {
-        "name": "prioritize",
-        "skill": "prioritize",
+        "name": "schedule",
+        "skill": "schedule",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }

@@ -21,8 +21,8 @@ func testQueueRegistry() taskreg.Registry {
 			},
 		},
 		{
-			Name: "prioritize",
-			Path: "/skills/prioritize",
+			Name: "schedule",
+			Path: "/skills/schedule",
 			Frontmatter: skill.Frontmatter{
 				Noodle: &skill.NoodleMeta{Schedule: "When queue is empty"},
 			},
@@ -68,7 +68,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Routing.Defaults.Provider = "codex"
 	cfg.Routing.Defaults.Model = "gpt-5.3-codex"
-	cfg.Routing.Tags["prioritize"] = config.ModelPolicy{
+	cfg.Routing.Tags["schedule"] = config.ModelPolicy{
 		Provider: "claude",
 		Model:    "claude-opus-4-6",
 	}
@@ -77,7 +77,7 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 		Items: []QueueItem{
 			{
 				ID:       "task-1",
-				TaskKey:  "prioritize",
+				TaskKey:  "schedule",
 				Provider: "",
 				Model:    "",
 			},

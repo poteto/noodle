@@ -214,16 +214,16 @@ func TestDiscoverTaskTypesFiltersCorrectly(t *testing.T) {
 	dir := t.TempDir()
 
 	// Task type skill (has noodle: block)
-	mustMkdirAll(t, filepath.Join(dir, "prioritize"))
-	mustWriteFile(t, filepath.Join(dir, "prioritize", "SKILL.md"), `---
-name: prioritize
+	mustMkdirAll(t, filepath.Join(dir, "schedule"))
+	mustWriteFile(t, filepath.Join(dir, "schedule", "SKILL.md"), `---
+name: schedule
 description: Queue scheduler
 noodle:
   permissions:
     merge: false
   schedule: "When the queue is empty"
 ---
-# Prioritize
+# Schedule
 `)
 
 	// Utility skill (no noodle: block)
@@ -263,8 +263,8 @@ noodle:
 			t.Fatalf("%s should be a task type", tt.Name)
 		}
 	}
-	if !names["prioritize"] || !names["execute"] {
-		t.Fatalf("expected prioritize and execute, got %v", names)
+	if !names["schedule"] || !names["execute"] {
+		t.Fatalf("expected schedule and execute, got %v", names)
 	}
 }
 

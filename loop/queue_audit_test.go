@@ -29,7 +29,7 @@ func TestAuditQueueAllValid(t *testing.T) {
 		GeneratedAt: time.Now().UTC(),
 		Items: []QueueItem{
 			{ID: "execute-1", TaskKey: "execute"},
-			{ID: "prioritize-1", TaskKey: "prioritize"},
+			{ID: "schedule-1", TaskKey: "schedule"},
 		},
 	}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
@@ -74,7 +74,7 @@ func TestAuditQueueDropsNonexistentSkill(t *testing.T) {
 		Items: []QueueItem{
 			{ID: "execute-1", TaskKey: "execute"},
 			{ID: "deploy-1", TaskKey: "deploy"},
-			{ID: "prioritize-1", TaskKey: "prioritize"},
+			{ID: "schedule-1", TaskKey: "schedule"},
 		},
 	}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
@@ -84,7 +84,7 @@ func TestAuditQueueDropsNonexistentSkill(t *testing.T) {
 	l := &Loop{
 		projectDir: projectDir,
 		runtimeDir: runtimeDir,
-		registry:   testLoopRegistry(), // has execute, prioritize, reflect, meditate, oops, review — no deploy
+		registry:   testLoopRegistry(), // has execute, schedule, reflect, meditate, oops, review — no deploy
 		deps: Dependencies{
 			QueueFile: queuePath,
 			Now:       time.Now,
@@ -402,7 +402,7 @@ func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
 	}
 
 	// Create execute skill on disk so rebuild finds it.
-	for _, name := range []string{"execute", "prioritize"} {
+	for _, name := range []string{"execute", "schedule"} {
 		skillDir := filepath.Join(homeDir, ".noodle", "skills", name)
 		if err := os.MkdirAll(skillDir, 0o755); err != nil {
 			t.Fatalf("mkdir skill: %v", err)

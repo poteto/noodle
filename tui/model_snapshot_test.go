@@ -52,9 +52,9 @@ func TestFormatActionToolTypes(t *testing.T) {
 	}{
 		{
 			name:      "skill tool",
-			payload:   map[string]any{"tool": "Skill", "summary": "prioritize"},
+			payload:   map[string]any{"tool": "Skill", "summary": "schedule"},
 			wantLabel: "Skill",
-			wantBody:  "prioritize",
+			wantBody:  "schedule",
 		},
 		{
 			name:      "task tool",
@@ -152,7 +152,7 @@ func TestReadQueueEvents(t *testing.T) {
 	if events[2].Label != "Bootstrap" {
 		t.Errorf("event[2] label = %q, want Bootstrap", events[2].Label)
 	}
-	if events[2].Body != "Creating prioritize skill from workflow analysis" {
+	if events[2].Body != "Creating schedule skill from workflow analysis" {
 		t.Errorf("event[2] body = %q", events[2].Body)
 	}
 

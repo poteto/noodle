@@ -383,8 +383,8 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
-		t.Fatalf("expected prioritize bootstrap item after completion, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule bootstrap item after completion, got %#v", updated.Items)
 	}
 }
 
@@ -460,7 +460,7 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 	// Simulate new plans appearing
 	fm.brief = mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 
-	// Second cycle: idle → running, bootstraps prioritize
+	// Second cycle: idle → running, bootstraps schedule
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 2: %v", err)
 	}
@@ -470,12 +470,12 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 	if len(sp.calls) != 1 {
 		t.Fatalf("expected 1 spawn call after wake, got %d", len(sp.calls))
 	}
-	if sp.calls[0].Skill != "prioritize" {
-		t.Fatalf("expected prioritize spawn, got skill %q", sp.calls[0].Skill)
+	if sp.calls[0].Skill != "schedule" {
+		t.Fatalf("expected schedule spawn, got skill %q", sp.calls[0].Skill)
 	}
 }
 
-func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
+func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -503,10 +503,10 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	if len(sp.calls) != 1 {
 		t.Fatalf("spawn calls = %d", len(sp.calls))
 	}
-	if sp.calls[0].Skill != "prioritize" {
+	if sp.calls[0].Skill != "schedule" {
 		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(prioritize) to refresh the queue from .noodle/mise.json.") {
+	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(schedule) to refresh the queue from .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing skill invocation: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "queue-next.json") {
@@ -518,7 +518,7 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "- prioritize: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
+	if !strings.Contains(sp.calls[0].Prompt, "- schedule: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
 		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", sp.calls[0].Prompt)
 	}
 	if strings.Contains(sp.calls[0].Prompt, "| config: ") || strings.Contains(sp.calls[0].Prompt, "| synthetic: ") {
@@ -540,7 +540,7 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 		t.Fatalf("spawn prompt must not include mise schema: %q", sp.calls[0].Prompt)
 	}
 	if !sp.calls[0].AllowPrimaryCheckout {
-		t.Fatal("expected prioritize spawn to allow primary checkout")
+		t.Fatal("expected schedule spawn to allow primary checkout")
 	}
 	if sp.calls[0].WorktreePath != projectDir {
 		t.Fatalf("worktree path = %q, want %q", sp.calls[0].WorktreePath, projectDir)
@@ -553,10 +553,10 @@ func TestCycleBootstrapsPrioritizeUsesRegistrySkill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
-		t.Fatalf("expected prioritize queue bootstrap item, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule queue bootstrap item, got %#v", updated.Items)
 	}
-	if updated.Items[0].Skill != "prioritize" {
+	if updated.Items[0].Skill != "schedule" {
 		t.Fatalf("queue skill = %q", updated.Items[0].Skill)
 	}
 }
@@ -659,12 +659,12 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue: %v", err)
 	}
-	if len(parsed.Items) != 1 || parsed.Items[0].ID != PrioritizeTaskKey() {
-		t.Fatalf("expected prioritize bootstrap item after max retries, got %#v", parsed.Items)
+	if len(parsed.Items) != 1 || parsed.Items[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule bootstrap item after max retries, got %#v", parsed.Items)
 	}
 }
 
-func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
+func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -702,14 +702,14 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 
 	err := l.Cycle(context.Background())
 	if err == nil {
-		t.Fatal("expected Cycle to return error for exited prioritize session")
+		t.Fatal("expected Cycle to return error for exited schedule session")
 	}
-	if !strings.Contains(err.Error(), "prioritize failed after retries") {
+	if !strings.Contains(err.Error(), "schedule failed after retries") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
+func TestSteerScheduleRegeneratesQueueWithPromptRationale(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -730,8 +730,8 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 		QueueFile: queuePath,
 	})
 
-	if err := l.steer(PrioritizeTaskKey(), "prioritize security tasks"); err != nil {
-		t.Fatalf("steer prioritize: %v", err)
+	if err := l.steer(ScheduleTaskKey(), "schedule security tasks"); err != nil {
+		t.Fatalf("steer schedule: %v", err)
 	}
 	queue, err := readQueue(queuePath)
 	if err != nil {
@@ -740,16 +740,16 @@ func TestSteerPrioritizeRegeneratesQueueWithPromptRationale(t *testing.T) {
 	if len(queue.Items) != 1 {
 		t.Fatalf("queue items = %d", len(queue.Items))
 	}
-	if queue.Items[0].ID != PrioritizeTaskKey() {
+	if queue.Items[0].ID != ScheduleTaskKey() {
 		t.Fatalf("unexpected id: %q", queue.Items[0].ID)
 	}
-	if queue.Items[0].Skill != "prioritize" {
+	if queue.Items[0].Skill != "schedule" {
 		t.Fatalf("unexpected skill: %q", queue.Items[0].Skill)
 	}
 	if queue.Items[0].Title == "Fix" {
-		t.Fatalf("expected prioritize bootstrap item, got backlog item title %q", queue.Items[0].Title)
+		t.Fatalf("expected schedule bootstrap item, got backlog item title %q", queue.Items[0].Title)
 	}
-	if queue.Items[0].Rationale != "Chef steer: prioritize security tasks" {
+	if queue.Items[0].Rationale != "Chef steer: schedule security tasks" {
 		t.Fatalf("unexpected rationale: %q", queue.Items[0].Rationale)
 	}
 }
@@ -831,14 +831,14 @@ func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 	}
 }
 
-func TestReadSessionTargetDetectsPrioritizePrompt(t *testing.T) {
+func TestReadSessionTargetDetectsSchedulePrompt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "prompt.txt")
-	content := "Use Skill(prioritize) to refresh the queue from .noodle/mise.json."
+	content := "Use Skill(schedule) to refresh the queue from .noodle/mise.json."
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write prompt: %v", err)
 	}
 	target := readSessionTarget(path)
-	if target != PrioritizeTaskKey() {
+	if target != ScheduleTaskKey() {
 		t.Fatalf("target = %q", target)
 	}
 }
@@ -1047,8 +1047,8 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after adopted completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
-		t.Fatalf("expected prioritize bootstrap item after adopted completion, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule bootstrap item after adopted completion, got %#v", updated.Items)
 	}
 }
 
@@ -1206,8 +1206,8 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read queue after conflict: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != PrioritizeTaskKey() {
-		t.Fatalf("expected prioritize bootstrap item after conflict, got %#v", updated.Items)
+	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule bootstrap item after conflict, got %#v", updated.Items)
 	}
 }
 

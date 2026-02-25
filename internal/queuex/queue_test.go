@@ -22,8 +22,8 @@ func testRegistry() taskreg.Registry {
 			},
 		},
 		{
-			Name: "prioritize",
-			Path: "/skills/prioritize",
+			Name: "schedule",
+			Path: "/skills/schedule",
 			Frontmatter: skill.Frontmatter{
 				Noodle: &skill.NoodleMeta{Schedule: "When queue is empty"},
 			},
@@ -127,12 +127,12 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	}
 }
 
-func TestNormalizeAndValidateAllowsPrioritizeWhenRegistryEmpty(t *testing.T) {
+func TestNormalizeAndValidateAllowsScheduleWhenRegistryEmpty(t *testing.T) {
 	cfg := config.DefaultConfig()
 	emptyRegistry := taskreg.NewFromSkills(nil)
 	queue := Queue{
 		Items: []Item{
-			{ID: "prioritize", Skill: "prioritize"},
+			{ID: "schedule", Skill: "schedule"},
 		},
 	}
 
@@ -143,8 +143,8 @@ func TestNormalizeAndValidateAllowsPrioritizeWhenRegistryEmpty(t *testing.T) {
 	if !changed {
 		t.Fatal("expected changed")
 	}
-	if got.Items[0].TaskKey != "prioritize" {
-		t.Fatalf("task key = %q, want prioritize", got.Items[0].TaskKey)
+	if got.Items[0].TaskKey != "schedule" {
+		t.Fatalf("task key = %q, want schedule", got.Items[0].TaskKey)
 	}
 }
 

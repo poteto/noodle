@@ -13,11 +13,11 @@ func TestDefaultConfigValues(t *testing.T) {
 	if got := strings.Join(config.Skills.Paths, ","); got != ".agents/skills" {
 		t.Fatalf("skills.paths default = %q", got)
 	}
-	if config.Prioritize.Run != "after-each" {
-		t.Fatalf("prioritize.run default = %q", config.Prioritize.Run)
+	if config.Schedule.Run != "after-each" {
+		t.Fatalf("schedule.run default = %q", config.Schedule.Run)
 	}
-	if config.Prioritize.Model != "claude-sonnet" {
-		t.Fatalf("prioritize.model default = %q", config.Prioritize.Model)
+	if config.Schedule.Model != "claude-sonnet" {
+		t.Fatalf("schedule.model default = %q", config.Schedule.Model)
 	}
 	if config.Routing.Defaults.Provider != "claude" {
 		t.Fatalf("routing.defaults.provider default = %q", config.Routing.Defaults.Provider)
@@ -70,8 +70,8 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load missing config: %v", err)
 	}
-	if config.Prioritize.Run != "after-each" {
-		t.Fatalf("expected default prioritize run, got %q", config.Prioritize.Run)
+	if config.Schedule.Run != "after-each" {
+		t.Fatalf("expected default schedule run, got %q", config.Schedule.Run)
 	}
 	if _, ok := config.Adapters["backlog"]; !ok {
 		t.Fatal("expected default backlog adapter when config file is missing")
@@ -80,7 +80,7 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 
 func TestParseConfigRoundTrip(t *testing.T) {
 	tomlPayload := `
-[prioritize]
+[schedule]
 run = "manual"
 model = "claude-sonnet"
 
@@ -124,8 +124,8 @@ on_done = "remove"
 		t.Fatalf("Parse config: %v", err)
 	}
 
-	if config.Prioritize.Run != "manual" {
-		t.Fatalf("prioritize.run = %q", config.Prioritize.Run)
+	if config.Schedule.Run != "manual" {
+		t.Fatalf("schedule.run = %q", config.Schedule.Run)
 	}
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
@@ -157,8 +157,8 @@ model = "claude-sonnet-4-6"
 		t.Fatalf("Parse minimal config: %v", err)
 	}
 
-	if config.Prioritize.Run != "after-each" {
-		t.Fatalf("expected default prioritize.run, got %q", config.Prioritize.Run)
+	if config.Schedule.Run != "after-each" {
+		t.Fatalf("expected default schedule.run, got %q", config.Schedule.Run)
 	}
 	if config.Autonomy != "auto" {
 		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
@@ -193,10 +193,10 @@ model = "x"
 provider = "claude"
 model = "x"
 
-[prioritize]
+[schedule]
 run = "sometimes"
 `,
-			wantErr: "prioritize.run",
+			wantErr: "schedule.run",
 		},
 		{
 			name: "invalid duration",

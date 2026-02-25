@@ -6,13 +6,13 @@ import (
 
 const bootstrapSessionPrefix = "bootstrap-"
 
-const bootstrapPromptTemplate = `# Bootstrap: Create Prioritize Skill
+const bootstrapPromptTemplate = `# Bootstrap: Create Schedule Skill
 
-You are a bootstrap agent. Your only job is to create a prioritize skill for this Noodle project, then exit.
+You are a bootstrap agent. Your only job is to create a schedule skill for this Noodle project, then exit.
 
 ## Steps
 
-1. Check if the file ` + "`" + `.agents/skills/prioritize/SKILL.md` + "`" + ` already exists. If it does, exit immediately — nothing to do.
+1. Check if the file ` + "`" + `.agents/skills/schedule/SKILL.md` + "`" + ` already exists. If it does, exit immediately — nothing to do.
 
 2. Inspect the project to understand its shape:
    - Read ` + "`" + `brain/todos.md` + "`" + ` if it exists (backlog items)
@@ -21,23 +21,23 @@ You are a bootstrap agent. Your only job is to create a prioritize skill for thi
    - Read ` + "`" + `.noodle.toml` + "`" + ` for project configuration
    - Skim the top-level directory structure
 
-3. Create ` + "`" + `.agents/skills/prioritize/SKILL.md` + "`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and prioritization criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
+3. Create ` + "`" + `.agents/skills/schedule/SKILL.md` + "`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and prioritization criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
 
-4. Run ` + "`" + `git add .agents/skills/prioritize/SKILL.md` + "`" + ` and commit with message ` + "`" + `feat: bootstrap prioritize skill` + "`" + `.
+4. Run ` + "`" + `git add .agents/skills/schedule/SKILL.md` + "`" + ` and commit with message ` + "`" + `feat: bootstrap schedule skill` + "`" + `.
 
-5. Exit immediately. Do NOT perform prioritization — that happens in the next cycle.
+5. Exit immediately. Do NOT perform scheduling — that happens in the next cycle.
 
-## Example Prioritize Skill
+## Example Schedule Skill
 
 ` + "```" + `markdown
 ---
-name: prioritize
+name: schedule
 description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue-next.json.
 noodle:
   schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 
-# Prioritize
+# Schedule
 
 Read ` + "`.noodle/mise.json`" + `, write ` + "`.noodle/queue-next.json`" + `.
 The loop atomically promotes queue-next.json to queue.json — never write queue.json directly.
@@ -67,7 +67,7 @@ After scheduling a task, consider what naturally follows:
 
 - Do NOT modify any existing files except to create the new skill
 - Do NOT run ` + "`" + `noodle` + "`" + ` commands
-- Do NOT perform prioritization — just create the skill file
+- Do NOT perform scheduling — just create the skill file
 - Keep the skill concise but complete enough to schedule work effectively
 `
 

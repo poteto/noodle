@@ -50,7 +50,7 @@ func TestDeriveQueueStatusNoPlan(t *testing.T) {
 }
 
 func TestDeriveQueueStatusReady(t *testing.T) {
-	for _, taskKey := range []string{"reflect", "prioritize", "review"} {
+	for _, taskKey := range []string{"reflect", "schedule", "review"} {
 		item := QueueItem{ID: "task-5", TaskKey: taskKey}
 		active := map[string]struct{}{}
 		action := map[string]struct{}{}
@@ -147,8 +147,8 @@ func TestQueueStatusAllLifecycleStates(t *testing.T) {
 			want: QueueStatusReady,
 		},
 		{
-			name: "ready — prioritize",
-			item: QueueItem{ID: "f", TaskKey: "prioritize"},
+			name: "ready — schedule",
+			item: QueueItem{ID: "f", TaskKey: "schedule"},
 			want: QueueStatusReady,
 		},
 		{

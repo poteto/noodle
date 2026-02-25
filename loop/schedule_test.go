@@ -2,7 +2,7 @@ package loop
 
 import "testing"
 
-func TestHasNonPrioritizeItems(t *testing.T) {
+func TestHasNonScheduleItems(t *testing.T) {
 	testCases := []struct {
 		name  string
 		queue Queue
@@ -14,16 +14,16 @@ func TestHasNonPrioritizeItems(t *testing.T) {
 			want:  false,
 		},
 		{
-			name: "only prioritize item",
+			name: "only schedule item",
 			queue: Queue{
 				Items: []QueueItem{
-					{ID: "prioritize"},
+					{ID: "schedule"},
 				},
 			},
 			want: false,
 		},
 		{
-			name: "one non-prioritize item",
+			name: "one non-schedule item",
 			queue: Queue{
 				Items: []QueueItem{
 					{ID: "42"},
@@ -32,10 +32,10 @@ func TestHasNonPrioritizeItems(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "mixed prioritize and non-prioritize items",
+			name: "mixed schedule and non-schedule items",
 			queue: Queue{
 				Items: []QueueItem{
-					{ID: "prioritize"},
+					{ID: "schedule"},
 					{ID: "42"},
 				},
 			},
@@ -45,15 +45,15 @@ func TestHasNonPrioritizeItems(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			got := hasNonPrioritizeItems(testCase.queue)
+			got := hasNonScheduleItems(testCase.queue)
 			if got != testCase.want {
-				t.Fatalf("hasNonPrioritizeItems() = %t, want %t", got, testCase.want)
+				t.Fatalf("hasNonScheduleItems() = %t, want %t", got, testCase.want)
 			}
 		})
 	}
 }
 
-func TestFilterStalePrioritizeItems(t *testing.T) {
+func TestFilterStaleScheduleItems(t *testing.T) {
 	testCases := []struct {
 		name    string
 		queue   Queue
@@ -65,16 +65,16 @@ func TestFilterStalePrioritizeItems(t *testing.T) {
 			wantIDs: nil,
 		},
 		{
-			name: "only prioritize item",
+			name: "only schedule item",
 			queue: Queue{
 				Items: []QueueItem{
-					{ID: "prioritize"},
+					{ID: "schedule"},
 				},
 			},
 			wantIDs: []string{},
 		},
 		{
-			name: "non-prioritize items unchanged",
+			name: "non-schedule items unchanged",
 			queue: Queue{
 				Items: []QueueItem{
 					{ID: "42"},
@@ -84,11 +84,11 @@ func TestFilterStalePrioritizeItems(t *testing.T) {
 			wantIDs: []string{"42", "43"},
 		},
 		{
-			name: "mixed items remove prioritize",
+			name: "mixed items remove schedule",
 			queue: Queue{
 				Items: []QueueItem{
 					{ID: "42"},
-					{ID: "prioritize"},
+					{ID: "schedule"},
 					{ID: "43"},
 				},
 			},
@@ -98,7 +98,7 @@ func TestFilterStalePrioritizeItems(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			filtered := filterStalePrioritizeItems(testCase.queue)
+			filtered := filterStaleScheduleItems(testCase.queue)
 			if len(filtered.Items) != len(testCase.wantIDs) {
 				t.Fatalf("len(items) = %d, want %d", len(filtered.Items), len(testCase.wantIDs))
 			}

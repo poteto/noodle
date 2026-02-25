@@ -15,9 +15,9 @@ import (
 	"github.com/poteto/noodle/skill"
 )
 
-// testRegistryWithoutPrioritize returns a registry that has execute but no
-// prioritize skill — simulating the "missing prioritize" scenario.
-func testRegistryWithoutPrioritize() taskreg.Registry {
+// testRegistryWithoutSchedule returns a registry that has execute but no
+// schedule skill — simulating the "missing schedule" scenario.
+func testRegistryWithoutSchedule() taskreg.Registry {
 	return taskreg.NewFromSkills([]skill.SkillMeta{
 		{
 			Name: "execute",
@@ -30,7 +30,7 @@ func testRegistryWithoutPrioritize() taskreg.Registry {
 }
 
 // bootstrapMise returns a mise brief with a plan so the loop bootstraps
-// a prioritize queue instead of going idle.
+// a schedule queue instead of going idle.
 func bootstrapMise() *fakeMise {
 	return &fakeMise{
 		brief: mise.Brief{
@@ -39,7 +39,7 @@ func bootstrapMise() *fakeMise {
 	}
 }
 
-func TestMissingPrioritizeSkillTriggersBootstrap(t *testing.T) {
+func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -54,7 +54,7 @@ func TestMissingPrioritizeSkillTriggersBootstrap(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -105,7 +105,7 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -125,7 +125,7 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 	if req.Skill != "" {
 		t.Fatalf("Skill should be empty for bootstrap, got %q", req.Skill)
 	}
-	if !strings.Contains(req.SystemPrompt, "Create Prioritize Skill") {
+	if !strings.Contains(req.SystemPrompt, "Create Schedule Skill") {
 		t.Fatal("SystemPrompt does not contain expected bootstrap instructions")
 	}
 }
@@ -145,7 +145,7 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -195,7 +195,7 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -246,7 +246,7 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -264,7 +264,7 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 	session.status = "completed"
 	close(session.done)
 
-	// Collect completion — the cycle will also try to re-dispatch prioritize
+	// Collect completion — the cycle will also try to re-dispatch schedule
 	// (still missing on disk) which triggers another bootstrap.
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 2: %v", err)
@@ -296,9 +296,9 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	// Queue has both prioritize and a normal item.
+	// Queue has both schedule and a normal item.
 	queue := Queue{Items: []QueueItem{
-		{ID: "prioritize", Provider: "claude", Model: "claude-opus-4-6", Skill: "prioritize"},
+		{ID: "schedule", Provider: "claude", Model: "claude-opus-4-6", Skill: "schedule"},
 		{ID: "42", Title: "fix bug", Provider: "claude", Model: "claude-opus-4-6", Skill: "execute", TaskKey: "execute"},
 	}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
@@ -312,7 +312,7 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
 		Monitor:    fakeMonitor{},
-		Registry:   testRegistryWithoutPrioritize(),
+		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
 	})
@@ -322,7 +322,7 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	// With bootstrap exhausted and prioritize skill missing, the prioritize
+	// With bootstrap exhausted and schedule skill missing, the schedule
 	// item should be silently skipped. The normal execute item should still
 	// be dispatched (if execute skill exists in registry).
 	normalCalls := 0
@@ -354,11 +354,11 @@ func TestBootstrapPromptContainsHistoryDirForProvider(t *testing.T) {
 }
 
 func TestIsBootstrapSession(t *testing.T) {
-	if !isBootstrapSession("bootstrap-prioritize") {
-		t.Fatal("expected bootstrap-prioritize to be bootstrap session")
+	if !isBootstrapSession("bootstrap-schedule") {
+		t.Fatal("expected bootstrap-schedule to be bootstrap session")
 	}
-	if isBootstrapSession("prioritize") {
-		t.Fatal("expected prioritize to NOT be bootstrap session")
+	if isBootstrapSession("schedule") {
+		t.Fatal("expected schedule to NOT be bootstrap session")
 	}
 	if isBootstrapSession("cook-42") {
 		t.Fatal("expected cook-42 to NOT be bootstrap session")
