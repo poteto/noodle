@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSuspenseSnapshot, deriveKanbanColumns, useSendControl } from "~/client";
-import type { Session } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
@@ -23,7 +22,7 @@ function isInputFocused(): boolean {
 export function Board() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send } = useSendControl();
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [cookingDragOver, setCookingDragOver] = useState(false);
@@ -60,8 +59,8 @@ export function Board() {
     columns.cooking.length === 0 &&
     columns.done.length === 0;
 
-  const liveSession = selectedSession
-    ? snapshot.sessions.find((s) => s.id === selectedSession.id) ?? selectedSession
+  const selectedSession = selectedSessionId
+    ? snapshot.sessions.find((s) => s.id === selectedSessionId) ?? null
     : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
@@ -176,7 +175,7 @@ export function Board() {
               <AgentCard
                 key={session.id}
                 session={session}
-                onClick={() => setSelectedSession(session)}
+                onClick={() => setSelectedSessionId(session.id)}
               />
             ))}
           </div>
@@ -195,10 +194,10 @@ export function Board() {
         </BoardColumn>
       </div>
 
-      {liveSession && (
+      {selectedSession && (
         <ChatPanel
-          session={liveSession}
-          onClose={() => setSelectedSession(null)}
+          session={selectedSession}
+          onClose={() => setSelectedSessionId(null)}
         />
       )}
 
