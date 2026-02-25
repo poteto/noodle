@@ -13,7 +13,7 @@ import (
 )
 
 // consumeQueueNext atomically promotes queue-next.json to queue.json.
-// Prioritize sessions write to queue-next.json so they never race with
+// Schedule sessions write to queue-next.json so they never race with
 // loop state stamps on queue.json. The loop is the single writer of
 // queue.json — this function is the handoff point.
 //

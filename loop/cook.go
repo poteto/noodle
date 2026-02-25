@@ -30,8 +30,8 @@ func (l *Loop) ensureSkillFresh(skillName string) bool {
 }
 
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	if isPrioritizeItem(item) {
-		return l.spawnPrioritize(ctx, item, attempt, resumePrompt)
+	if isScheduleItem(item) {
+		return l.spawnSchedule(ctx, item, attempt, resumePrompt)
 	}
 
 	// Belt-and-suspenders: give the registry one last chance to pick up
@@ -158,7 +158,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
 	success := status == "completed"
 	if success {
-		if isPrioritizeItem(cook.queueItem) {
+		if isScheduleItem(cook.queueItem) {
 			return l.skipQueueItem(cook.queueItem.ID)
 		}
 		canMerge := l.canMergeQueueItem(cook.queueItem)
@@ -256,7 +256,7 @@ func (l *Loop) handleMergeConflict(cook *activeCook, err error) error {
 	if !errors.As(err, &conflictErr) {
 		return err
 	}
-	if isPrioritizeItem(cook.queueItem) {
+	if isScheduleItem(cook.queueItem) {
 		return err
 	}
 	if markErr := l.markFailed(cook.queueItem.ID, conflictErr.Error()); markErr != nil {
@@ -430,8 +430,8 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 	resolvedReason := retryFailureReason(reason, info)
 	fmt.Fprintf(os.Stderr, "session %s failed: %s\n", cook.session.ID(), resolvedReason)
 	if nextAttempt > l.config.Recovery.MaxRetries {
-		if isPrioritizeItem(cook.queueItem) {
-			return fmt.Errorf("prioritize failed after retries: %s", resolvedReason)
+		if isScheduleItem(cook.queueItem) {
+			return fmt.Errorf("schedule failed after retries: %s", resolvedReason)
 		}
 		if err := l.markFailed(cook.queueItem.ID, resolvedReason); err != nil {
 			return err
@@ -507,8 +507,8 @@ func (l *Loop) steer(target string, prompt string) error {
 	if target == "" {
 		return fmt.Errorf("steer requires target")
 	}
-	if strings.EqualFold(target, PrioritizeTaskKey()) {
-		return l.reprioritizeForChefPrompt(prompt)
+	if strings.EqualFold(target, ScheduleTaskKey()) {
+		return l.rescheduleForChefPrompt(prompt)
 	}
 	for _, cook := range l.activeByID {
 		if cook.worktreeName != target && cook.session.ID() != target {

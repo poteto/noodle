@@ -586,7 +586,7 @@ func (m *Model) submitSteer() (tea.Cmd, bool) {
 }
 
 func (m Model) steerTargets() []string {
-	scheduler := loop.PrioritizeTaskKey()
+	scheduler := loop.ScheduleTaskKey()
 	targets := []string{scheduler}
 	seen := map[string]struct{}{scheduler: {}}
 	for _, session := range m.snapshot.Active {

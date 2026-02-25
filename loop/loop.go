@@ -303,8 +303,8 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 }
 
 func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue, bool, error) {
-	// Consume queue-next.json if the prioritize session wrote one.
-	// The loop is the single writer of queue.json — prioritize writes
+	// Consume queue-next.json if the schedule session wrote one.
+	// The loop is the single writer of queue.json — schedule writes
 	// to queue-next.json to avoid racing with loop state stamps.
 	// Errors are non-fatal: a transient/partial write shouldn't crash
 	// the loop — log and continue.
@@ -359,8 +359,8 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 		return Queue{}, false, fmt.Errorf("mise.sync: %s", strings.Join(warnings, "; "))
 	}
 	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
-		if hasNonPrioritizeItems(queue) {
-			filtered := filterStalePrioritizeItems(queue)
+		if hasNonScheduleItems(queue) {
+			filtered := filterStaleScheduleItems(queue)
 			if len(filtered.Items) != len(queue.Items) {
 				filtered.GeneratedAt = l.deps.Now().UTC()
 				queue = filtered
@@ -373,7 +373,7 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 				l.state = StateIdle
 				return Queue{}, false, nil
 			}
-			queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
+			queue = bootstrapScheduleQueue(l.config, "", l.deps.Now().UTC())
 			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 				return Queue{}, false, err
 			}

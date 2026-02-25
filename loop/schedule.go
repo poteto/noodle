@@ -12,29 +12,29 @@ import (
 	"github.com/poteto/noodle/internal/schemadoc"
 )
 
-const prioritizeQueueID = "prioritize"
+const scheduleQueueID = "schedule"
 
-func isPrioritizeItem(item QueueItem) bool {
-	return strings.EqualFold(strings.TrimSpace(item.ID), prioritizeQueueID)
+func isScheduleItem(item QueueItem) bool {
+	return strings.EqualFold(strings.TrimSpace(item.ID), scheduleQueueID)
 }
 
-func hasNonPrioritizeItems(queue Queue) bool {
+func hasNonScheduleItems(queue Queue) bool {
 	for _, item := range queue.Items {
-		if !isPrioritizeItem(item) {
+		if !isScheduleItem(item) {
 			return true
 		}
 	}
 	return false
 }
 
-func filterStalePrioritizeItems(queue Queue) Queue {
+func filterStaleScheduleItems(queue Queue) Queue {
 	if len(queue.Items) == 0 {
 		return queue
 	}
 	filtered := queue
 	filtered.Items = make([]QueueItem, 0, len(queue.Items))
 	for _, item := range queue.Items {
-		if isPrioritizeItem(item) {
+		if isScheduleItem(item) {
 			continue
 		}
 		filtered.Items = append(filtered.Items, item)
@@ -42,20 +42,20 @@ func filterStalePrioritizeItems(queue Queue) Queue {
 	return filtered
 }
 
-func bootstrapPrioritizeQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
+func bootstrapScheduleQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
 	return Queue{
 		GeneratedAt: generatedAt,
-		Items:       []QueueItem{prioritizeQueueItem(cfg, prompt)},
+		Items:       []QueueItem{scheduleQueueItem(cfg, prompt)},
 	}
 }
 
-func prioritizeQueueItem(cfg config.Config, prompt string) QueueItem {
+func scheduleQueueItem(cfg config.Config, prompt string) QueueItem {
 	item := QueueItem{
-		ID:       prioritizeQueueID,
-		Title:    "prioritizing tasks based on your backlog",
+		ID:       scheduleQueueID,
+		Title:    "scheduling tasks based on your backlog",
 		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
-		Skill:    "prioritize",
+		Skill:    "schedule",
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt != "" {
@@ -64,11 +64,11 @@ func prioritizeQueueItem(cfg config.Config, prompt string) QueueItem {
 	return item
 }
 
-func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	name := prioritizeQueueID
+func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
+	name := scheduleQueueID
 
-	skillName := nonEmpty(item.Skill, "prioritize")
-	// Belt-and-suspenders: ensure the prioritize skill is fresh before dispatch.
+	skillName := nonEmpty(item.Skill, "schedule")
+	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
 	if !l.ensureSkillFresh(skillName) {
 		return l.spawnBootstrapIfNeeded(ctx, item)
 	}
@@ -76,7 +76,7 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildPrioritizePrompt(skillName, taskTypesPrompt, item, resumePrompt),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, item, resumePrompt),
 		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(item.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -100,7 +100,7 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 }
 
 // spawnBootstrapIfNeeded dispatches a bootstrap agent to create the
-// prioritize skill. Returns nil in all cases — the loop continues
+// schedule skill. Returns nil in all cases — the loop continues
 // regardless of bootstrap status.
 func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error {
 	if l.bootstrapExhausted {
@@ -113,10 +113,10 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	provider := nonEmpty(item.Provider, l.config.Routing.Defaults.Provider)
 	model := nonEmpty(item.Model, l.config.Routing.Defaults.Model)
 
-	name := bootstrapSessionPrefix + prioritizeQueueID
+	name := bootstrapSessionPrefix + scheduleQueueID
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
-		Prompt:               "Create a prioritize skill for this project. Follow the system prompt instructions exactly.",
+		Prompt:               "Create a schedule skill for this project. Follow the system prompt instructions exactly.",
 		Provider:             provider,
 		Model:                model,
 		SystemPrompt:         buildBootstrapPrompt(provider),
@@ -141,7 +141,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	return nil
 }
 
-func buildPrioritizePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh the queue from .noodle/mise.json.",
 		"Write to `.noodle/queue-next.json` (not queue.json). The loop promotes it atomically.",
@@ -181,8 +181,8 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 	return b.String()
 }
 
-func (l *Loop) reprioritizeForChefPrompt(prompt string) error {
-	queue := bootstrapPrioritizeQueue(l.config, prompt, l.deps.Now().UTC())
+func (l *Loop) rescheduleForChefPrompt(prompt string) error {
+	queue := bootstrapScheduleQueue(l.config, prompt, l.deps.Now().UTC())
 	return writeQueueAtomic(l.deps.QueueFile, queue)
 }
 
