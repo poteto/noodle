@@ -1,7 +1,7 @@
 ---
 id: 46
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Web UI
@@ -63,16 +63,16 @@ Not yet prototyped (design during implementation):
 
 ## Phases
 
-1. [[plans/46-web-ui/phase-01-extract-snapshot-package]] — Extract snapshot types + add RemoteHost, WorktreePath, document enums
-2. [[plans/46-web-ui/phase-02-go-http-server-with-sse]] — HTTP server, SSE, control POST with ack, config endpoint
-3. [[plans/46-web-ui/phase-03-server-integration-and-browser-launch]] — Wire into `noodle start`, browser launch, embed.FS
-4. [[plans/46-web-ui/phase-04-typescript-project-scaffold]] — TanStack Start SPA scaffold (can parallel with 1-3)
-5. [[plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]] — TS types, SSE hook, React Query, kanban column derivation (blocks 6-10)
-6. [[plans/46-web-ui/phase-06-feed-view]] — Kanban board with four columns + agent/queue/review cards (parallel with 7)
-7. [[plans/46-web-ui/phase-07-queue-view]] — Board header: title, stats, loop state, new task button (parallel with 6)
-8. [[plans/46-web-ui/phase-08-reviews-view]] — Review actions: merge/reject/request-changes in Review column (parallel with 9, 10)
-9. [[plans/46-web-ui/phase-09-session-detail-view]] — Slack-style chat panel with event stream, steer input, @mention (parallel with 8, 10)
-10. [[plans/46-web-ui/phase-10-controls-steer-pause-task-editor]] — Pause/resume, task editor modal, keyboard shortcuts (parallel with 8, 9)
+1. [[archived_plans/46-web-ui/phase-01-extract-snapshot-package]] — Extract snapshot types + add RemoteHost, WorktreePath, document enums
+2. [[archived_plans/46-web-ui/phase-02-go-http-server-with-sse]] — HTTP server, SSE, control POST with ack, config endpoint
+3. [[archived_plans/46-web-ui/phase-03-server-integration-and-browser-launch]] — Wire into `noodle start`, browser launch, embed.FS
+4. [[archived_plans/46-web-ui/phase-04-typescript-project-scaffold]] — TanStack Start SPA scaffold (can parallel with 1-3)
+5. [[archived_plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]] — TS types, SSE hook, React Query, kanban column derivation (blocks 6-10)
+6. [[archived_plans/46-web-ui/phase-06-feed-view]] — Kanban board with four columns + agent/queue/review cards (parallel with 7)
+7. [[archived_plans/46-web-ui/phase-07-queue-view]] — Board header: title, stats, loop state, new task button (parallel with 6)
+8. [[archived_plans/46-web-ui/phase-08-reviews-view]] — Review actions: merge/reject/request-changes in Review column (parallel with 9, 10)
+9. [[archived_plans/46-web-ui/phase-09-session-detail-view]] — Slack-style chat panel with event stream, steer input, @mention (parallel with 8, 10)
+10. [[archived_plans/46-web-ui/phase-10-controls-steer-pause-task-editor]] — Pause/resume, task editor modal, keyboard shortcuts (parallel with 8, 9)
 
 ## Verification
 

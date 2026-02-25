@@ -1,4 +1,4 @@
-Back to [[plans/46-web-ui/overview]]
+Back to [[archived_plans/46-web-ui/overview]]
 
 # Phase 1: Extract Snapshot Package
 

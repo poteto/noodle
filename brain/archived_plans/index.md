@@ -15,3 +15,4 @@
 - [x] [[archived_plans/38-resilient-skill-resolution/overview]]
 - [x] [[archived_plans/28-rename-prioritize-to-schedule/overview]]
 - [x] [[archived_plans/37-skip-prioritize-with-queue/overview]]
+- [x] [[archived_plans/46-web-ui/overview]]

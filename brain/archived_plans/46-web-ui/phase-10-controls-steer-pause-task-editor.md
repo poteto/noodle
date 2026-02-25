@@ -1,4 +1,4 @@
-Back to [[plans/46-web-ui/overview]]
+Back to [[archived_plans/46-web-ui/overview]]
 
 # Phase 10: Controls — Pause, Task Editor, Keyboard Shortcuts
 

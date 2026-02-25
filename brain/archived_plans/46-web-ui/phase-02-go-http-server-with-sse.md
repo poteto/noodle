@@ -1,4 +1,4 @@
-Back to [[plans/46-web-ui/overview]]
+Back to [[archived_plans/46-web-ui/overview]]
 
 # Phase 2: Go HTTP Server with SSE
 
