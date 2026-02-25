@@ -25,6 +25,7 @@ export function Board() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [cookingDragOver, setCookingDragOver] = useState(false);
   const dragItemId = useRef<string | null>(null);
 
@@ -67,6 +68,7 @@ export function Board() {
     const item = columns.queued[index];
     if (!item) return;
     dragItemId.current = item.id;
+    setDraggingId(item.id);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.id);
   }
@@ -117,6 +119,7 @@ export function Board() {
   function resetDrag() {
     dragItemId.current = null;
     setDragOverIndex(null);
+    setDraggingId(null);
     setCookingDragOver(false);
   }
 
@@ -145,6 +148,7 @@ export function Board() {
               onDrop={handleQueueDrop}
               onDragEnd={resetDrag}
               isDragOver={dragOverIndex === i}
+              isDragging={draggingId === item.id}
             />
           ))}
         </BoardColumn>

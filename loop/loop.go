@@ -431,7 +431,7 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 
 func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
 	for _, item := range items {
-		if err := l.spawnCook(ctx, item, 0, ""); err != nil {
+		if err := l.spawnCook(ctx, item, spawnOptions{}); err != nil {
 			return err
 		}
 	}

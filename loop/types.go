@@ -71,6 +71,7 @@ type activeCook struct {
 	worktreeName string
 	worktreePath string
 	attempt      int
+	displayName  string // stable kitchen name, preserved across retries
 }
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.
@@ -84,8 +85,9 @@ type pendingReviewCook struct {
 // pendingRetryCook is an item whose retry dispatch failed, waiting for
 // runtime repair before retrying.
 type pendingRetryCook struct {
-	item    QueueItem
-	attempt int // the next attempt to use (already incremented)
+	item        QueueItem
+	attempt     int    // the next attempt to use (already incremented)
+	displayName string // stable kitchen name from original spawn
 }
 
 type Dispatcher interface {

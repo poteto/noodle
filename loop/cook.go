@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/recover"
 	"github.com/poteto/noodle/worktree"
@@ -29,9 +30,15 @@ func (l *Loop) ensureSkillFresh(skillName string) bool {
 	return ok
 }
 
-func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
+type spawnOptions struct {
+	attempt     int
+	resume      string
+	displayName string // preserved across retries; empty = compute from session ID
+}
+
+func (l *Loop) spawnCook(ctx context.Context, item QueueItem, opts spawnOptions) error {
 	if isScheduleItem(item) {
-		return l.spawnSchedule(ctx, item, attempt, resumePrompt)
+		return l.spawnSchedule(ctx, item, opts.attempt, opts.resume)
 	}
 
 	// Belt-and-suspenders: give the registry one last chance to pick up
@@ -47,6 +54,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		return fmt.Errorf("create worktree %s: %w", name, err)
 	}
 
+	resumePrompt := opts.resume
 	worktreePath := l.worktreePath(name)
 	if !created {
 		if hint := worktreeResumeContext(worktreePath, name); hint != "" {
@@ -65,6 +73,8 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		WorktreePath: worktreePath,
 		TaskKey:      taskType.Key,
 		Runtime:      nonEmpty(item.Runtime, "tmux"),
+		DisplayName:  opts.displayName,
+		RetryCount:   opts.attempt,
 	}
 	if taskType.Key == "execute" {
 		if adapter, exists := l.config.Adapters["backlog"]; exists {
@@ -78,12 +88,19 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		}
 		return err
 	}
+
+	displayName := strings.TrimSpace(opts.displayName)
+	if displayName == "" {
+		displayName = stringx.KitchenName(session.ID())
+	}
+
 	cook := &activeCook{
 		queueItem:    item,
 		session:      session,
 		worktreeName: name,
 		worktreePath: req.WorktreePath,
-		attempt:      attempt,
+		attempt:      opts.attempt,
+		displayName:  displayName,
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
@@ -109,8 +126,9 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 				// Retry dispatch failed — track so planCycleSpawns won't
 				// respawn the item fresh while runtime repair runs.
 				l.pendingRetry[cook.queueItem.ID] = &pendingRetryCook{
-					item:    cook.queueItem,
-					attempt: cook.attempt + 1,
+					item:        cook.queueItem,
+					attempt:     cook.attempt + 1,
+					displayName: cook.displayName,
 				}
 				return conflictErr
 			}
@@ -402,7 +420,10 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 	pending := l.pendingRetry
 	l.pendingRetry = map[string]*pendingRetryCook{}
 	for _, p := range pending {
-		if err := l.spawnCook(ctx, p.item, p.attempt, ""); err != nil {
+		if err := l.spawnCook(ctx, p.item, spawnOptions{
+			attempt:     p.attempt,
+			displayName: p.displayName,
+		}); err != nil {
 			if p.attempt >= l.config.Recovery.MaxRetries {
 				fmt.Fprintf(os.Stderr, "loop.pending-retry: %s exhausted retries: %v\n", p.item.ID, err)
 				if markErr := l.markFailed(p.item.ID, err.Error()); markErr != nil {
@@ -412,8 +433,9 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 				continue
 			}
 			l.pendingRetry[p.item.ID] = &pendingRetryCook{
-				item:    p.item,
-				attempt: p.attempt + 1,
+				item:        p.item,
+				attempt:     p.attempt + 1,
+				displayName: p.displayName,
 			}
 			continue
 		}
@@ -446,7 +468,11 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		info.ExitReason = resolvedReason
 	}
 	resume := recover.BuildResumeContext(info, nextAttempt, l.config.Recovery.MaxRetries)
-	return l.spawnCook(ctx, cook.queueItem, nextAttempt, resume.Summary)
+	return l.spawnCook(ctx, cook.queueItem, spawnOptions{
+		attempt:     nextAttempt,
+		resume:      resume.Summary,
+		displayName: cook.displayName,
+	})
 }
 
 func retryFailureReason(base string, info recover.RecoveryInfo) string {
@@ -527,7 +553,11 @@ func (l *Loop) steer(target string, prompt string) error {
 		}
 		delete(l.activeByID, cook.session.ID())
 		delete(l.activeByTarget, cook.queueItem.ID)
-		return l.spawnCook(context.Background(), cook.queueItem, cook.attempt, steerPrompt)
+		return l.spawnCook(context.Background(), cook.queueItem, spawnOptions{
+			attempt:     cook.attempt,
+			resume:      steerPrompt,
+			displayName: cook.displayName,
+		})
 	}
 	return errors.New("session not found")
 }

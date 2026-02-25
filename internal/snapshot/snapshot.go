@@ -141,9 +141,19 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			meta.StuckThresholdSeconds,
 		)
 
+		spawnInfo := readSpawnInfo(runtimeDir, sessionID)
+		displayName := spawnInfo.displayName
+		if displayName == "" {
+			displayName = stringx.KitchenName(sessionID)
+		}
+		retryCount := spawnInfo.retryCount
+		if retryCount == 0 {
+			retryCount = meta.RetryCount
+		}
+
 		sessions = append(sessions, Session{
 			ID:                    sessionID,
-			DisplayName:           stringx.KitchenName(sessionID),
+			DisplayName:           displayName,
 			Status:                stringx.NonEmpty(status, "running"),
 			Runtime:               strings.TrimSpace(meta.Runtime),
 			Provider:              strings.TrimSpace(meta.Provider),
@@ -154,12 +164,12 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			CurrentAction:         strings.TrimSpace(meta.CurrentAction),
 			Health:                health,
 			ContextWindowUsagePct: meta.ContextWindowUsagePct,
-			RetryCount:            meta.RetryCount,
+			RetryCount:            retryCount,
 			IdleSeconds:           meta.IdleSeconds,
 			StuckThresholdSeconds: meta.StuckThresholdSeconds,
 			LoopState:             strings.TrimSpace(meta.LoopState),
-			DispatchWarning:       readDispatchWarning(runtimeDir, sessionID),
-			WorktreeName:          readWorktreeName(runtimeDir, sessionID),
+			DispatchWarning:       spawnInfo.dispatchWarning,
+			WorktreeName:          spawnInfo.worktreeName,
 			TaskKey:               InferTaskType(sessionID),
 		})
 	}
@@ -612,46 +622,46 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 	return events
 }
 
-// readDispatchWarning reads the dispatch_warning field from a session's spawn.json.
-func readDispatchWarning(runtimeDir, sessionID string) string {
+type spawnInfo struct {
+	dispatchWarning string
+	worktreeName    string
+	displayName     string
+	retryCount      int
+}
+
+// readSpawnInfo reads all display-relevant fields from a session's spawn.json in one pass.
+func readSpawnInfo(runtimeDir, sessionID string) spawnInfo {
 	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return ""
+		return spawnInfo{}
 	}
 	var payload struct {
 		DispatchWarning string `json:"dispatch_warning"`
+		WorktreePath    string `json:"worktree_path"`
+		DisplayName     string `json:"display_name"`
+		RetryCount      int    `json:"retry_count"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return ""
+		return spawnInfo{}
 	}
-	return strings.TrimSpace(payload.DispatchWarning)
-}
 
-// readWorktreeName reads the worktree name from a session's spawn.json.
-// If the session runs on the primary checkout (not inside .worktrees/),
-// returns the current git branch name instead of the project directory name.
-func readWorktreeName(runtimeDir, sessionID string) string {
-	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	var payload struct {
-		WorktreePath string `json:"worktree_path"`
-	}
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return ""
-	}
+	wtName := ""
 	wtPath := strings.TrimSpace(payload.WorktreePath)
-	if wtPath == "" {
-		return ""
+	if wtPath != "" {
+		if !strings.Contains(wtPath, ".worktrees"+string(filepath.Separator)) {
+			wtName = readGitBranch(wtPath)
+		} else {
+			wtName = filepath.Base(wtPath)
+		}
 	}
-	// Primary checkout: worktree_path doesn't contain .worktrees/
-	if !strings.Contains(wtPath, ".worktrees"+string(filepath.Separator)) {
-		return readGitBranch(wtPath)
+
+	return spawnInfo{
+		dispatchWarning: strings.TrimSpace(payload.DispatchWarning),
+		worktreeName:    wtName,
+		displayName:     strings.TrimSpace(payload.DisplayName),
+		retryCount:      payload.RetryCount,
 	}
-	return filepath.Base(wtPath)
 }
 
 // readGitBranch reads the current branch from a git checkout directory.

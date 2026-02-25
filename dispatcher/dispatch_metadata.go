@@ -19,6 +19,8 @@ type dispatchMetadata struct {
 	WorktreePath    string    `json:"worktree_path,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	DispatchWarning string    `json:"dispatch_warning,omitempty"`
+	DisplayName     string    `json:"display_name,omitempty"`
+	RetryCount      int       `json:"retry_count,omitempty"`
 }
 
 func writeDispatchMetadata(
@@ -47,6 +49,8 @@ func writeDispatchMetadata(
 		WorktreePath:    strings.TrimSpace(req.WorktreePath),
 		CreatedAt:       createdAt.UTC(),
 		DispatchWarning: strings.TrimSpace(req.DispatchWarning),
+		DisplayName:     strings.TrimSpace(req.DisplayName),
+		RetryCount:      req.RetryCount,
 	})
 	if err != nil {
 		return fmt.Errorf("encode spawn metadata: %w", err)

@@ -1,6 +1,5 @@
 import type { QueueItem } from "~/client";
 import { Badge } from "./Badge";
-import { GripVertical } from "lucide-react";
 
 export function QueueCard({
   item,
@@ -10,6 +9,7 @@ export function QueueCard({
   onDrop,
   onDragEnd,
   isDragOver,
+  isDragging,
 }: {
   item: QueueItem;
   index?: number;
@@ -18,11 +18,13 @@ export function QueueCard({
   onDrop?: (e: React.DragEvent, index: number) => void;
   onDragEnd?: () => void;
   isDragOver?: boolean;
+  isDragging?: boolean;
 }) {
   const isSchedule = item.task_key === "schedule";
   const classes = [
-    "bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-x-0.5 hover:-translate-y-1 hover:shadow-card-hover cursor-grab active:cursor-grabbing",
+    "bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-x-0.5 hover:-translate-y-1 hover:shadow-card-hover",
     isDragOver && "border-t-[3px] border-t-nyellow pt-[15px]",
+    isDragging && "rotate-[-2deg] opacity-60 scale-[1.02] shadow-poster-md",
     isSchedule && "border-l-4 border-l-norange bg-norange-bg",
   ]
     .filter(Boolean)
@@ -44,7 +46,6 @@ export function QueueCard({
       onDragEnd={onDragEnd}
     >
       <div className="flex items-center gap-1.5 mb-2">
-        <span className="flex items-center text-text-3 cursor-grab active:cursor-grabbing shrink-0"><GripVertical size={14} /></span>
         {item.task_key && <Badge type={item.task_key} />}
       </div>
       <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{item.title || item.id}</div>

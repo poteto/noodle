@@ -34,7 +34,12 @@ export function AgentCard({
         )}
       </div>
 
-      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{session.display_name}</div>
+      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">
+        {session.display_name}
+        {session.retry_count > 0 && (
+          <span className="ml-1.5 font-mono text-xs font-semibold text-norange">retry {session.retry_count}</span>
+        )}
+      </div>
       <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
         {middleTruncate(session.current_action || "working...", 80)}
       </div>

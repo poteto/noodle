@@ -25,6 +25,8 @@ type DispatchRequest struct {
 	Runtime              string // runtime kind from queue item (e.g., "tmux", "sprites")
 	SystemPrompt         string // if set, used directly as system prompt — skips skill resolution
 	DispatchWarning      string // set by factory on runtime fallback — carries the original dispatch error
+	DisplayName          string // stable short name preserved across retries
+	RetryCount           int    // attempt number (0 = first try)
 }
 
 // Validate ensures required request fields are set at the boundary.
