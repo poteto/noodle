@@ -1,0 +1,8 @@
+{
+  "active_sessions": [
+    {
+      "id": "session-1",
+      "target": "already-running-target"
+    }
+  ]
+}
