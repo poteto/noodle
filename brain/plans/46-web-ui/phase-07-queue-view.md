@@ -1,25 +1,25 @@
 Back to [[plans/46-web-ui/overview]]
 
-# Phase 7: Queue View
+# Phase 7: Board Header and Stats
 
 ## Goal
 
-Build the Queue tab — a table showing queued work items with status indicators. Parity with `tui/queue.go`.
+Build the board header bar — title, live stats, loop state indicator, and new task button. The header is the top-level control surface.
 
 ## Changes
 
-- **`ui/src/routes/queue.tsx`** — Queue route (`/queue`). Uses `useSnapshot()` hook for `queue`, `activeQueueIDs`, `actionNeeded`, `loopState`.
-- **`ui/src/components/QueueTable.tsx`** — Table with columns: #, Type, Item, Status. Row selection/highlight on click. Status derived from activeIDs/actionNeeded (cooking, reviewing, ready, planned, no plan).
-- **`ui/src/components/QueueProgress.tsx`** — Progress bar header showing "X/Y cooked" with visual bar.
-- **Empty state** — Message varies by loop state (idle vs paused vs running with empty queue).
+- **`ui/src/components/BoardHeader.tsx`** — Header with: "noodle" title (Outfit 800, 3.5rem), stats badges (cooking count, done count, failed count, total cost), loop state pulse indicator, new task button.
+- **`ui/src/components/LoopState.tsx`** — Animated pulse dot + state label. Reflects current loop state (running/paused/draining/idle).
+- **`ui/src/components/StatBadge.tsx`** — Inverted badge (dark bg, accent text) showing a stat value.
+- **New task button** — Opens task editor modal (wired in phase 10).
 
 ## Data structures
 
-- Queue item status derivation: same logic as `tui/queue.go:statusForItem()` — check `activeIDs`, `actionNeeded`, presence of `Plan`, task type.
+- Stats derived from `Snapshot`: `active.length`, `recent` filtered by status, `totalCostUSD`, `loopState`
 
 ## Routing
 
-Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` skill.
+Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` and `interaction-design` skills.
 
 ## Verification
 
@@ -27,7 +27,6 @@ Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` skill
 - `npm run typecheck` and `npm run build` pass
 
 ### Runtime
-- Queue table shows items with correct statuses
-- Progress bar reflects cooked/total ratio
-- Clicking a row selects it (preparation for detail view navigation in phase 9)
-- Empty state displays correctly per loop state
+- Stats update live as sessions change
+- Loop state indicator pulses when running, stops when paused
+- New task button triggers modal (or placeholder click handler)

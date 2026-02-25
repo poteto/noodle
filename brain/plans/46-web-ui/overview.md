@@ -57,16 +57,16 @@ Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban boar
 
 ## Phases
 
-1. [[plans/46-web-ui/phase-01-extract-snapshot-package]]
-2. [[plans/46-web-ui/phase-02-go-http-server-with-sse]]
-3. [[plans/46-web-ui/phase-03-server-integration-and-browser-launch]]
-4. [[plans/46-web-ui/phase-04-typescript-project-scaffold]]
-5. [[plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]]
-6. [[plans/46-web-ui/phase-06-feed-view]]
-7. [[plans/46-web-ui/phase-07-queue-view]]
-8. [[plans/46-web-ui/phase-08-reviews-view]]
-9. [[plans/46-web-ui/phase-09-session-detail-view]]
-10. [[plans/46-web-ui/phase-10-controls-steer-pause-task-editor]]
+1. [[plans/46-web-ui/phase-01-extract-snapshot-package]] — Extract snapshot types + add RemoteHost, WorktreePath, document enums
+2. [[plans/46-web-ui/phase-02-go-http-server-with-sse]] — HTTP server, SSE, control POST with ack, config endpoint
+3. [[plans/46-web-ui/phase-03-server-integration-and-browser-launch]] — Wire into `noodle start`, browser launch, embed.FS
+4. [[plans/46-web-ui/phase-04-typescript-project-scaffold]] — TanStack Start SPA scaffold
+5. [[plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]] — TS types, SSE hook, React Query, kanban column derivation
+6. [[plans/46-web-ui/phase-06-feed-view]] — Kanban board with four columns + agent/queue/review cards
+7. [[plans/46-web-ui/phase-07-queue-view]] — Board header: title, stats, loop state, new task button
+8. [[plans/46-web-ui/phase-08-reviews-view]] — Review actions: merge/reject/request-changes in Review column
+9. [[plans/46-web-ui/phase-09-session-detail-view]] — Slack-style chat panel with event stream, steer input, @mention
+10. [[plans/46-web-ui/phase-10-controls-steer-pause-task-editor]] — Pause/resume, task editor modal, keyboard shortcuts
 
 ## Verification
 

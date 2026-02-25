@@ -17,7 +17,10 @@ Helper functions that are pure TUI rendering (`healthDot`, `statusIcon`, `modelL
 ## Data structures
 
 - `snapshot.Snapshot` — same fields as current `tui.Snapshot`, with `json:"..."` tags
-- `snapshot.Session`, `snapshot.QueueItem`, `snapshot.EventLine`, `snapshot.FeedEvent` — same, JSON-tagged
+- `snapshot.Session` — add `RemoteHost string` field (sprite instance name, cursor host, empty for local tmux). Populated from dispatcher metadata.
+- `snapshot.QueueItem`, `snapshot.EventLine`, `snapshot.FeedEvent` — same, JSON-tagged
+- `snapshot.PendingReviewItem` — include `WorktreePath string` field
+- Document valid values for `LoopState` (running, paused, draining, idle) and `Session.Health` (healthy, idle, stuck, failed) as constants or comments
 
 ## Routing
 

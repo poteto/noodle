@@ -17,7 +17,18 @@ Build the TypeScript data layer: types mirroring Go structs, SSE client, and Rea
 ## Data structures
 
 - TypeScript `Snapshot` interface — mirrors Go `snapshot.Snapshot` JSON output
+- `Session` interface — includes `remoteHost: string | null` for cloud icon display
 - `ControlCommand` interface — mirrors `loop.ControlCommand`
+- `ControlAck` interface — mirrors Go `ControlAck` (status, message, at)
+- `ConfigDefaults` interface — mirrors `GET /api/config` response
+
+## Kanban column derivation
+
+The UI derives kanban columns client-side from the flat snapshot:
+- **Queued:** `snapshot.queue` items where ID is NOT in `snapshot.activeQueueIDs`
+- **Cooking:** `snapshot.active` sessions
+- **Review:** `snapshot.pendingReviews`
+- **Done:** `snapshot.recent` sessions (completed + failed)
 
 ## Routing
 

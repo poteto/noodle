@@ -1,27 +1,26 @@
 Back to [[plans/46-web-ui/overview]]
 
-# Phase 8: Reviews View
+# Phase 8: Review Actions
 
 ## Goal
 
-Build the Reviews tab — a list of pending reviews with merge/reject/request-changes actions. Parity with `tui/reviews_tab.go`.
+Build the review workflow — merge/reject/request-changes actions on review cards in the Review column. Not a separate view — reviews live in the kanban board's Review column.
 
 ## Changes
 
-- **`ui/src/routes/reviews.tsx`** — Reviews route (`/reviews`). Uses `useSnapshot()` for `pendingReviews`.
-- **`ui/src/components/ReviewItem.tsx`** — Review card showing: ID, task type, model, title/summary, worktree path. Selection on click.
-- **Action buttons** — Merge, Reject, Request Changes. Each sends a `POST /api/control` with the appropriate action and item ID via `useSendControl()`.
-- **Tab badge** — Reviews tab in navigation shows pending count when > 0.
-- **Empty state** — "No pending reviews" message.
+- **`ui/src/components/ReviewCard.tsx`** — Extend the review card from phase 6 with full action buttons: Merge, Reject, Request Changes. Request Changes opens a text input for the prompt.
+- **`ui/src/components/ReviewActions.tsx`** — Button group component. Merge is primary (green), Reject is secondary. Each sends `POST /api/control` via `useSendControl()`.
+- **Confirmation** — Merge/Reject trigger immediately. Request Changes shows inline text input before submitting.
+- **Optimistic update** — Remove card from Review column on action, restore if control command fails.
 
 ## Data structures
 
-- Props from `Snapshot.pendingReviews: PendingReviewItem[]`
-- Control commands: `{action: "merge", item: id}`, `{action: "reject", item: id}`, `{action: "request-changes", item: id}`
+- Props from `Snapshot.pendingReviews: PendingReviewItem[]` — includes worktree path
+- Control commands: `{action: "merge", item: id}`, `{action: "reject", item: id}`, `{action: "request-changes", item: id, prompt: string}`
 
 ## Routing
 
-Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` skill.
+Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` and `interaction-design` skills.
 
 ## Verification
 
@@ -29,7 +28,6 @@ Provider: `claude` | Model: `claude-opus-4-6` — invoke `frontend-design` skill
 - `npm run typecheck` and `npm run build` pass
 
 ### Runtime
-- Reviews list shows pending items
-- Clicking Merge/Reject/Request Changes sends control command and item disappears on next snapshot update
-- Tab badge shows count
-- Empty state renders correctly
+- Merge/Reject buttons send control commands, card moves to Done on next snapshot
+- Request Changes shows text input, submits with prompt
+- Failed actions restore the card

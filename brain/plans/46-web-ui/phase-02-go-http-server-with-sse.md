@@ -12,7 +12,8 @@ Build the HTTP server that serves snapshot data via SSE and accepts control comm
   - `GET /api/events` — SSE stream. On connect, sends full snapshot immediately. Then watches `.noodle/` via fsnotify (debounced ~1s) and pushes snapshot diffs. Each message: `data: {json}\n\n`.
   - `GET /api/snapshot` — Current snapshot as JSON (for initial page load before SSE connects).
   - `GET /api/sessions/{id}/events` — Event log for a session. Optional `?after=` query param for incremental fetches.
-  - `POST /api/control` — Accepts `loop.ControlCommand` JSON, appends to `control.ndjson` (same mechanism as `tui.sendControlCmd`).
+  - `POST /api/control` — Accepts `loop.ControlCommand` JSON, appends to `control.ndjson` (same mechanism as `tui.sendControlCmd`). Returns `ControlAck` JSON in the response body so the UI gets immediate feedback.
+  - `GET /api/config` — Returns default provider, model, skill, and available options from `.noodle.toml`. Used by the task editor to populate dropdowns.
   - `GET /` — Serves embedded SPA (wired in phase 3, placeholder for now).
 - **SSE client management** — Mutex-protected client list. Each client gets a channel. Broadcast goroutine fans out snapshots. Clean up on client disconnect.
 - **CORS** — Allow `localhost:*` origins for dev (Vite on different port).
