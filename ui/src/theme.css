@@ -1099,3 +1099,19 @@ html, body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  padding: 4px 10px;
+  background: var(--border);
+  color: var(--bg-0);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 200;
+  box-shadow: var(--shadow-sm);
+}

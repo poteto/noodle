@@ -3,6 +3,7 @@ import { middleTruncate, formatDuration, formatCost, useSendControl } from "~/cl
 import { WorktreeLabel } from "./WorktreeLabel";
 import { Badge } from "./Badge";
 import { Square } from "lucide-react";
+import { Tooltip } from "./Tooltip";
 
 export function AgentCard({
   session,
@@ -24,9 +25,9 @@ export function AgentCard({
       <div className="card-top">
         {taskKey && <Badge type={taskKey} />}
         {session.remote_host && (
-          <span className="card-remote" title={session.remote_host}>
-            cloud
-          </span>
+          <Tooltip content={session.remote_host}>
+            <span className="card-remote">cloud</span>
+          </Tooltip>
         )}
       </div>
 
@@ -53,22 +54,20 @@ export function AgentCard({
         <span className="footer-sep">/</span>
         <span>{formatCost(session.total_cost_usd)}</span>
         {session.dispatch_warning && (
-          <span
-            className="dispatch-warning"
-            title={session.dispatch_warning}
-          >
-            !
-          </span>
+          <Tooltip content={session.dispatch_warning}>
+            <span className="dispatch-warning">!</span>
+          </Tooltip>
         )}
         <span className="model-tag">{session.model}</span>
+        <Tooltip content="Stop and return to queue">
         <button
           className="card-action-btn stop-btn"
           onClick={handleStop}
           disabled={isPending}
-          title="Stop and return to queue"
         >
           <Square size={10} fill="currentColor" />
         </button>
+        </Tooltip>
       </div>
     </div>
   );

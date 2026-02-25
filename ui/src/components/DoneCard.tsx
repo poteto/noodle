@@ -3,6 +3,7 @@ import { useSendControl, formatCost } from "~/client";
 import { Badge } from "./Badge";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { RotateCcw } from "lucide-react";
+import { Tooltip } from "./Tooltip";
 
 export function DoneCard({ session }: { session: Session }) {
   const { mutate: send, isPending } = useSendControl();
@@ -41,14 +42,15 @@ export function DoneCard({ session }: { session: Session }) {
         <WorktreeLabel name={session.worktree_name} />
         <span>{formatCost(session.total_cost_usd)}</span>
         <span className="model-tag">{session.model}</span>
+        <Tooltip content={failed ? "Retry" : "Replay"}>
         <button
           className="card-action-btn replay-btn"
           onClick={handleReplay}
           disabled={isPending}
-          title={failed ? "Retry" : "Replay"}
         >
           <RotateCcw size={12} />
         </button>
+        </Tooltip>
       </div>
     </div>
   );

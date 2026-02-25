@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSendControl } from "~/client";
+import { Tooltip } from "./Tooltip";
 
 export function ConcurrencyBadge({
   active,
@@ -44,12 +45,13 @@ export function ConcurrencyBadge({
   }
 
   return (
+    <Tooltip content="Click to edit max concurrency">
     <button
       className="concurrency-badge"
       onClick={startEdit}
-      title="Click to edit max concurrency"
     >
       {active}/{maxCooks}
     </button>
+    </Tooltip>
   );
 }

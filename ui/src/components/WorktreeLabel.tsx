@@ -1,10 +1,13 @@
 import { middleTruncate } from "~/client";
+import { Tooltip } from "./Tooltip";
 
 export function WorktreeLabel({ name }: { name?: string }) {
   if (!name) return null;
   return (
-    <span className="worktree-label" title={name}>
-      {middleTruncate(name, 20)}
-    </span>
+    <Tooltip content={name}>
+      <span className="worktree-label">
+        {middleTruncate(name, 20)}
+      </span>
+    </Tooltip>
   );
 }
