@@ -73,6 +73,7 @@ type Session struct {
 	LoopState             string    `json:"loop_state"`
 	RemoteHost            string    `json:"remote_host,omitempty"`
 	DispatchWarning       string    `json:"dispatch_warning,omitempty"`
+	WorktreeName          string    `json:"worktree_name,omitempty"`
 }
 
 // QueueItem is one entry in the task queue.

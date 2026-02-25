@@ -159,6 +159,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			StuckThresholdSeconds: meta.StuckThresholdSeconds,
 			LoopState:             strings.TrimSpace(meta.LoopState),
 			DispatchWarning:       readDispatchWarning(runtimeDir, sessionID),
+			WorktreeName:          readWorktreeName(runtimeDir, sessionID),
 		})
 	}
 
@@ -624,6 +625,26 @@ func readDispatchWarning(runtimeDir, sessionID string) string {
 		return ""
 	}
 	return strings.TrimSpace(payload.DispatchWarning)
+}
+
+// readWorktreeName reads the worktree name from a session's spawn.json.
+func readWorktreeName(runtimeDir, sessionID string) string {
+	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		WorktreePath string `json:"worktree_path"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return ""
+	}
+	wtPath := strings.TrimSpace(payload.WorktreePath)
+	if wtPath == "" {
+		return ""
+	}
+	return filepath.Base(wtPath)
 }
 
 // InferTaskType extracts a task type from a session ID convention.

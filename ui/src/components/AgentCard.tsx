@@ -1,5 +1,6 @@
 import type { Session } from "~/client";
 import { middleTruncate, useSendControl } from "~/client";
+import { WorktreeLabel } from "./WorktreeLabel";
 import { Badge } from "./Badge";
 import { Square } from "lucide-react";
 
@@ -61,6 +62,7 @@ export function AgentCard({
       </div>
 
       <div className="card-footer">
+        <WorktreeLabel name={session.worktree_name} />
         <span>{formatDuration(session.duration_seconds)}</span>
         <span className="footer-sep">/</span>
         <span>{formatCost(session.total_cost_usd)}</span>

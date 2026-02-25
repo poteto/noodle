@@ -42,6 +42,7 @@ export interface Session {
   loop_state: string;
   remote_host?: string;
   dispatch_warning?: string;
+  worktree_name?: string;
 }
 
 export interface QueueItem {

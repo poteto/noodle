@@ -1,5 +1,6 @@
 import type { PendingReviewItem } from "~/client";
 import { Badge } from "./Badge";
+import { WorktreeLabel } from "./WorktreeLabel";
 import { ReviewActions } from "./ReviewActions";
 
 export function ReviewCard({ item }: { item: PendingReviewItem }) {
@@ -16,6 +17,10 @@ export function ReviewCard({ item }: { item: PendingReviewItem }) {
             : item.prompt}
         </div>
       )}
+      <div className="card-footer">
+        <WorktreeLabel name={item.worktree_name} />
+        {item.model && <span className="model-tag">{item.model}</span>}
+      </div>
       <ReviewActions itemId={item.id} />
     </div>
   );

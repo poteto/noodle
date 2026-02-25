@@ -1,6 +1,7 @@
 import type { Session } from "~/client";
 import { useSendControl } from "~/client";
 import { Badge } from "./Badge";
+import { WorktreeLabel } from "./WorktreeLabel";
 import { RotateCcw } from "lucide-react";
 
 function formatCost(usd: number): string {
@@ -42,6 +43,7 @@ export function DoneCard({ session }: { session: Session }) {
       )}
       <div className="card-name">{session.display_name}</div>
       <div className="card-footer">
+        <WorktreeLabel name={session.worktree_name} />
         <span>{formatCost(session.total_cost_usd)}</span>
         <span className="model-tag">{session.model}</span>
         <button

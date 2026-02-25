@@ -326,6 +326,18 @@ html, body {
 
 .footer-sep { color: var(--text-3); }
 
+.worktree-label {
+  padding: 1px 6px;
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-dim);
+  font-size: 0.6875rem;
+  color: var(--blue);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dispatch-warning {
   display: inline-flex;
   align-items: center;
