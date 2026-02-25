@@ -11,3 +11,4 @@
 - [x] [[archived_plans/42-requires-approval-gate/overview]]
 - [x] [[archived_plans/38-resilient-skill-resolution/overview]]
 - [x] [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]
+- [x] [[archived_plans/45-task-editor-overhaul/overview]]
