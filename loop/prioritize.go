@@ -8,7 +8,6 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/schemadoc"
-	"github.com/poteto/noodle/recover"
 )
 
 const prioritizeQueueID = "prioritize"
@@ -41,13 +40,6 @@ func prioritizeQueueItem(cfg config.Config, prompt string) QueueItem {
 
 func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
 	name := prioritizeQueueID
-	if attempt > 0 {
-		nextName, err := recover.NextRecoveryName(name, attempt, l.config.Recovery.RetrySuffixPattern)
-		if err != nil {
-			return err
-		}
-		name = nextName
-	}
 
 	skillName := nonEmpty(item.Skill, "prioritize")
 	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())

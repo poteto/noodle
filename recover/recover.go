@@ -47,26 +47,6 @@ func RecoveryChainLength(name string) int {
 	return value
 }
 
-// NextRecoveryName appends retry suffix according to configured pattern.
-func NextRecoveryName(base string, attempt int, suffixPattern string) (string, error) {
-	base = strings.TrimSpace(base)
-	if base == "" {
-		return "", fmt.Errorf("base name is required")
-	}
-	if attempt <= 0 {
-		return "", fmt.Errorf("attempt must be greater than 0")
-	}
-	pattern := strings.TrimSpace(suffixPattern)
-	if pattern == "" {
-		pattern = "-recover-%d"
-	}
-	if !strings.Contains(pattern, "%d") {
-		return "", fmt.Errorf("recovery suffix pattern must include %%d placeholder")
-	}
-	root := recoverySuffixRegexp.ReplaceAllString(base, "")
-	return root + fmt.Sprintf(pattern, attempt), nil
-}
-
 // BuildResumeContext formats a concise retry summary for prompt injection.
 func BuildResumeContext(info RecoveryInfo, attempt int, maxRetries int) ResumeContext {
 	files := normalizeFiles(info.FilesChanged)

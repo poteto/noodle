@@ -42,7 +42,6 @@ var fieldDescriptions = map[string]string{
 	"prioritize.model":              "Model used for scheduling sessions",
 	"adapters":                      "Adapter configs keyed by adapter name (e.g. backlog)",
 	"recovery.max_retries":          "Maximum retry attempts for failed cooks",
-	"recovery.retry_suffix_pattern": "Naming pattern for retry sessions (must include %d)",
 	"monitor.stuck_threshold":       "Duration before a cook is considered stuck",
 	"monitor.ticket_stale":          "Duration before a ticket is considered stale",
 	"monitor.poll_interval":         "How often the monitor checks session status",

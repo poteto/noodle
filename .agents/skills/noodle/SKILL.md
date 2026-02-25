@@ -54,7 +54,6 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `prioritize.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
 | `prioritize.skill` | string | "prioritize" | Skill name loaded for scheduling sessions |
 | `recovery.max_retries` | integer | 3 | Maximum retry attempts for failed cooks |
-| `recovery.retry_suffix_pattern` | string | "-recover-%d" | Naming pattern for retry sessions (must include %d) |
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
 | `routing.tags` | table | {} | Per-tag model overrides keyed by tag name |

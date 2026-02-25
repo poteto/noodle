@@ -22,15 +22,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 		return l.spawnPrioritize(ctx, item, attempt, resumePrompt)
 	}
 
-	baseName := cookBaseName(item)
-	name := baseName
-	if attempt > 0 {
-		var err error
-		name, err = recover.NextRecoveryName(baseName, attempt, l.config.Recovery.RetrySuffixPattern)
-		if err != nil {
-			return err
-		}
-	}
+	name := cookBaseName(item)
 
 	created, err := l.ensureWorktree(name)
 	if err != nil {
@@ -367,9 +359,6 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		info.ExitReason = resolvedReason
 	}
 	resume := recover.BuildResumeContext(info, nextAttempt, l.config.Recovery.MaxRetries)
-	if strings.TrimSpace(cook.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
-	}
 	return l.spawnCook(ctx, cook.queueItem, nextAttempt, resume.Summary)
 }
 

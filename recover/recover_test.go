@@ -28,21 +28,6 @@ func TestRecoveryChainLength(t *testing.T) {
 	}
 }
 
-func TestNextRecoveryName(t *testing.T) {
-	next, err := NextRecoveryName("task-1", 2, "-recover-%d")
-	if err != nil {
-		t.Fatalf("next recovery name: %v", err)
-	}
-	if next != "task-1-recover-2" {
-		t.Fatalf("next name = %q", next)
-	}
-
-	_, err = NextRecoveryName("task-1", 1, "-recover")
-	if err == nil {
-		t.Fatal("expected invalid pattern error")
-	}
-}
-
 func TestBuildResumeContext(t *testing.T) {
 	ctx := BuildResumeContext(RecoveryInfo{
 		ExitReason:   "tmux session died",
