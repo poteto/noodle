@@ -1,4 +1,4 @@
-Back to [[plans/37-skip-prioritize-with-queue/overview]]
+Back to [[archived_plans/37-skip-prioritize-with-queue/overview]]
 
 # Phase 1: Add bootstrap skip logic
 

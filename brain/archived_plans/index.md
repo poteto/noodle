@@ -14,3 +14,4 @@
 - [x] [[archived_plans/45-task-editor-overhaul/overview]]
 - [x] [[archived_plans/38-resilient-skill-resolution/overview]]
 - [x] [[archived_plans/28-rename-prioritize-to-schedule/overview]]
+- [x] [[archived_plans/37-skip-prioritize-with-queue/overview]]

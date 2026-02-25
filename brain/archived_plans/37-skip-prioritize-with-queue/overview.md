@@ -1,7 +1,7 @@
 ---
 id: 37
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Skip Schedule With Queue
@@ -46,8 +46,8 @@ When `queue.Items` is non-empty, the code falls through to routing defaults and 
 
 ## Phases
 
-- [[plans/37-skip-prioritize-with-queue/phase-01-add-bootstrap-skip-logic]]
-- [[plans/37-skip-prioritize-with-queue/phase-02-tests]]
+- [[archived_plans/37-skip-prioritize-with-queue/phase-01-add-bootstrap-skip-logic]]
+- [[archived_plans/37-skip-prioritize-with-queue/phase-02-tests]]
 
 ## Verification
 
