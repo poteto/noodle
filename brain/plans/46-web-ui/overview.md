@@ -6,13 +6,7 @@ status: ready
 
 # Web UI
 
-Replace the Bubble Tea TUI with a React/TypeScript web UI served from the Go binary. `noodle start` launches a local HTTP server, opens the browser, and streams state updates via SSE.
-
-## Context
-
-The current TUI is a Bubble Tea app (~2k lines across 17 files in `tui/`) that polls `.noodle/` files every 2 seconds. It has three tabs (Feed, Queue, Reviews), a session detail view, steer input, task editor, and a side rail. The TUI reads file state directly — there is no API layer.
-
-A web UI unlocks richer interactions (syntax-highlighted diffs, clickable links, responsive layout, mobile access) and is easier to extend. The TUI deletion is deferred to a follow-up — this plan adds the web UI alongside it.
+Replace the Bubble Tea TUI with a React/TypeScript web UI served from the Go binary. `noodle start` launches a local HTTP server, opens the browser, and streams state updates via SSE. The design direction is established in the `ui_prototype/` — a kanban board with Slack-style agent chat, not a port of the TUI's tab layout.
 
 ## Prototype
 
@@ -29,16 +23,16 @@ Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban boar
 - Go HTTP server with SSE streaming (`server/` package)
 - Extract `tui/model_snapshot.go` logic into reusable `internal/snapshot/` package
 - TanStack Start SPA in `ui/` directory (SPA mode, no SSR)
-- Feature parity with current TUI: Feed, Queue, Reviews tabs, session detail, steer, pause/resume, task editor
+- Kanban board: Queued → Cooking → Review → Done columns
+- Agent detail: Slack-style chat panel with event stream, steer input, @mention
+- Task editor, pause/resume, new task creation
+- Remote agent indicator (cloud icon with host)
 - Go embeds built SPA output via `embed.FS`
 - `noodle start` opens browser by default, `--headless` skips both TUI and server
-- Layout exploration phase using `frontend-design` skill
 
 **Out of scope:**
 - Deleting the Go TUI (deferred)
-- Features beyond current TUI parity (syntax diffs, cost charts, etc.)
 - Authentication/remote access
-- Ink terminal TUI
 
 ## Constraints
 
@@ -57,7 +51,8 @@ Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban boar
 ## Applicable skills
 
 - `go-best-practices` — Go server phases (1-3)
-- `frontend-design` — Layout exploration phase (6) and all React component phases (7-11)
+- `frontend-design` — All React component phases — Poster theme, bold typography, distinctive aesthetic
+- `interaction-design` — Microinteractions, transitions, scroll animations, loading states across UI phases
 - `testing` — Verification across all phases
 
 ## Phases
