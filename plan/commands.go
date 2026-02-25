@@ -58,8 +58,8 @@ func Done(plansDir string, planID int, onDone string) error {
 	if updated == content {
 		updated = strings.Replace(content, "status: active", "status: done", 1)
 	}
-	if updated == content {
-		return fmt.Errorf("plan %d status not ready or active", planID)
+	if updated == content && !strings.Contains(content, "status: done") {
+		return fmt.Errorf("plan %d has no recognized status field", planID)
 	}
 
 	if err := os.WriteFile(overviewPath, []byte(updated), 0o644); err != nil {

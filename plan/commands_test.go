@@ -146,11 +146,8 @@ func TestDone_ErrorsOnAlreadyDone(t *testing.T) {
 		"---\nid: 12\ncreated: 2026-02-20\nstatus: done\n---\n\n# Done Plan\n")
 
 	err := Done(plansDir, 12, "keep")
-	if err == nil {
-		t.Fatal("expected error for already-done plan")
-	}
-	if !strings.Contains(err.Error(), "not ready or active") {
-		t.Errorf("unexpected error: %v", err)
+	if err != nil {
+		t.Fatalf("already-done plan should succeed idempotently: %v", err)
 	}
 }
 
