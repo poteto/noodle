@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useSendControl, useConfig } from "~/client";
 
 export function QueueAddCard() {
@@ -6,13 +6,6 @@ export function QueueAddCard() {
   const [prompt, setPrompt] = useState("");
   const { data: config } = useConfig();
   const { mutate: send, isPending } = useSendControl();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (open && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [open]);
 
   function handleSubmit() {
     const text = prompt.trim();
@@ -57,8 +50,8 @@ export function QueueAddCard() {
   return (
     <div className="queue-add-form">
       <textarea
-        ref={textareaRef}
         className="queue-add-textarea"
+        autoFocus
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={handleKeyDown}
