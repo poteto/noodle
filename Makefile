@@ -1,4 +1,4 @@
-.PHONY: help setup ui build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
+.PHONY: help setup build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -15,7 +15,6 @@ help:
 	@echo ""
 	@printf "  %-40s %s\n" "make setup" "Install all dependencies (Go + UI)"
 	@printf "  %-40s %s\n" "make build" "Build noodle binary (includes UI)"
-	@printf "  %-40s %s\n" "make ui" "Build UI only"
 	@printf "  %-40s %s\n" "make test" "Run all tests"
 	@printf "  %-40s %s\n" "make test-short" "Run short tests"
 	@printf "  %-40s %s\n" "make vet" "Run go vet"
@@ -43,10 +42,8 @@ $(UI_MODULES): ui/package.json ui/package-lock.json
 setup: $(UI_MODULES)
 	@echo "dependencies installed"
 
-ui: $(UI_MODULES)
+build: $(UI_MODULES)
 	cd ui && npm run build
-
-build: ui
 	$(GO) build -o $(BIN) .
 
 generate:
@@ -64,7 +61,7 @@ vet:
 lintarch:
 	./scripts/lint-arch.sh
 
-ci: ui test vet lintarch fixtures-loop fixtures-hash
+ci: build test vet lintarch fixtures-loop fixtures-hash
 
 reset:
 	@for runtime in .noodle .noodles; do \
@@ -129,7 +126,7 @@ bugs:
 		fi; \
 	done
 
-watch: ui
+watch: $(UI_MODULES)
 	@trap 'kill 0' EXIT; \
 	cd ui && npm run dev & \
 	if $(GO) tool -n air >/dev/null 2>&1; then \
