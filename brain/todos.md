@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 47 -->
+<!-- next-id: 48 -->
 
 ## Tooling
 
@@ -28,10 +28,11 @@
 35. [ ] Silent plan/skill discovery warnings — missing frontmatter, wrong directory structure, missing adapter scripts all fail silently. Plans just don't appear in mise.json with no indication why. `noodle debug` should surface discovery issues, and mise builder should emit warnings.
 37. [ ] Skip schedule when queue already has items — every fresh start requires a 60-120s schedule session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new schedule cycle. Or add a `--queue` flag to pre-seed the queue. [[archived_plans/37-skip-prioritize-with-queue/overview]]
 38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, schedule bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[archived_plans/38-resilient-skill-resolution/overview]]
-46. [ ] Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]
+47. [ ] Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[plans/47-delete-go-tui/overview]]
 
 ## Done
 
+46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
 1. [x] Noodle open-source architecture: redesign Noodle for OSS adoption — kitchen brigade naming (Chef/Sous Chef/Taster/Cook/Mise), skills as the only extension point, LLM-powered prioritization replacing deterministic scoring, adapter pattern for backlog/plans, aggressive Go code deletion, bootstrap skill. [[archived_plans/01-noodle-extensible-skill-layering/overview]]
 2. [x] ~~Investigate automated post-reflect/meditate learning step~~ — superseded by the schedule agent, which already does LLM-powered learning and queue scheduling based on session history and measured evidence.
 39. [x] ~~Upgrade Bubble Tea to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbletea/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]~~ — dependency is already on `charm.land/bubbletea/v2`.
