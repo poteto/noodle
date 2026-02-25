@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 46 -->
+<!-- next-id: 47 -->
 
 ## Tooling
 
@@ -27,10 +27,8 @@
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command.
 35. [ ] Silent plan/skill discovery warnings — missing frontmatter, wrong directory structure, missing adapter scripts all fail silently. Plans just don't appear in mise.json with no indication why. `noodle debug` should surface discovery issues, and mise builder should emit warnings.
 37. [ ] Skip prioritize when queue already has items — every fresh start requires a 60-120s prioritize session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new prioritize cycle. Or add a `--queue` flag to pre-seed the queue. [[plans/37-skip-prioritize-with-queue/overview]]
-38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[plans/38-resilient-skill-resolution/overview]]
-43. [ ] Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[plans/43-deterministic-self-healing-and-status-split/overview]]
-44. [ ] TUI feed notifications for deterministic repairs — surface self-healing events (file resets, dir creation, stale cleanup) in the TUI feed so users can see what Go fixed silently.
-45. [ ] Task editor overhaul — consolidate Type+Skill into single dynamic Skill field, overlay dropdowns for enum fields, multiline prompt with visible cursor, context-sensitive up/down navigation. [[plans/45-task-editor-overhaul/overview]]
+38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, prioritize bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[archived_plans/38-resilient-skill-resolution/overview]]
+46. [ ] Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Feature parity with current TUI. Includes feed notifications for deterministic repairs (formerly #44). [[plans/46-web-ui/overview]]
 
 ## Done
 
@@ -62,4 +60,7 @@
 36. [x] ~~Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.~~ — default is now 3.
 14. [x] ~~Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup~~ — marked complete per user confirmation.
 42. [x] ~~Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[archived_plans/42-requires-approval-gate/overview]]~~ — completed. `permissions.merge` frontmatter implemented, autonomy config simplified to `auto`/`approve`, plan archived.
+43. [x] ~~Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]~~ — done.
+44. [x] ~~TUI feed notifications for deterministic repairs~~ — folded into #46 (web UI).
+45. [x] ~~Task editor overhaul — consolidate Type+Skill, overlay dropdowns, multiline prompt.~~ — superseded by #46 (web UI will build the task editor from scratch). [[plans/45-task-editor-overhaul/overview]]
 8. [x] ~~Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.~~ — decided not to do.
