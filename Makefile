@@ -1,4 +1,4 @@
-.PHONY: help ui build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
+.PHONY: help setup ui build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -6,13 +6,16 @@ NOODLE ?= $(GO) run .
 AIR ?= air
 AIR_FLAGS ?=
 AIR_CONFIG ?= .air.toml
+UI_MODULES ?= ui/node_modules/.package-lock.json
 
 .DEFAULT_GOAL := help
 
 help:
 	@echo "Noodle convenience commands"
 	@echo ""
-	@printf "  %-40s %s\n" "make build" "Build noodle binary"
+	@printf "  %-40s %s\n" "make setup" "Install all dependencies (Go + UI)"
+	@printf "  %-40s %s\n" "make build" "Build noodle binary (includes UI)"
+	@printf "  %-40s %s\n" "make ui" "Build UI only"
 	@printf "  %-40s %s\n" "make test" "Run all tests"
 	@printf "  %-40s %s\n" "make test-short" "Run short tests"
 	@printf "  %-40s %s\n" "make vet" "Run go vet"
@@ -20,7 +23,7 @@ help:
 	@printf "  %-40s %s\n" "make ci" "Run full local CI checks"
 	@printf "  %-40s %s\n" "make reset" "Delete runtime state files for debugging"
 	@printf "  %-40s %s\n" "make run" "Alias for start"
-	@printf "  %-40s %s\n" "make start" "Run scheduling loop"
+	@printf "  %-40s %s\n" "make start" "Run scheduling loop (builds UI first)"
 	@printf "  %-40s %s\n" "make status" "Show runtime status"
 	@printf "  %-40s %s\n" "make skills" "List resolved skills"
 	@printf "  %-40s %s\n" "make fixtures-loop MODE=check|record" "Verify or regenerate loop runtime dump fixtures"
@@ -29,10 +32,18 @@ help:
 	@printf "  %-40s %s\n" "make watch" "Rebuild on changes with Air (silent mode)"
 	@printf "  %-40s %s\n" "make watch-verbose" "Rebuild on changes with Air (debug file events)"
 	@printf "  %-40s %s\n" "make generate" "Regenerate auto-generated files"
-	@printf "  %-40s %s\n" "make clean" "Remove built binary"
+	@printf "  %-40s %s\n" "make clean" "Remove built binary and UI dist"
 	@printf "  %-40s %s\n" "make sandbox STAGE=bare|init|wip|full" "Create a temp sandbox project"
 
-ui:
+# Install UI dependencies when package.json changes.
+$(UI_MODULES): ui/package.json ui/package-lock.json
+	cd ui && npm install
+	@touch $@
+
+setup: $(UI_MODULES)
+	@echo "dependencies installed"
+
+ui: $(UI_MODULES)
 	cd ui && npm run build
 
 build: ui
@@ -53,7 +64,7 @@ vet:
 lintarch:
 	./scripts/lint-arch.sh
 
-ci: test vet lintarch fixtures-loop fixtures-hash
+ci: ui test vet lintarch fixtures-loop fixtures-hash
 
 reset:
 	@for runtime in .noodle .noodles; do \
@@ -137,3 +148,4 @@ sandbox:
 
 clean:
 	rm -f $(BIN)
+	rm -rf ui/dist/client/assets ui/dist/client/index.html
