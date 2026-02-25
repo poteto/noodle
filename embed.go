@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed ui/dist/client
+//go:embed all:ui/dist/client
 var uiDistClient embed.FS
 
 // uiClientFS returns an fs.FS rooted at ui/dist/client, or nil if the

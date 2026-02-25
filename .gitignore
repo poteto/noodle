@@ -40,5 +40,8 @@ ui_prototype/node_modules/
 
 # UI
 ui/node_modules/
-ui/dist/
+ui/dist/*
+!ui/dist/client/
+ui/dist/client/*
+!ui/dist/client/.gitkeep
 ui/.output/

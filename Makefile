@@ -1,4 +1,4 @@
-.PHONY: help build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
+.PHONY: help ui build generate test test-short vet lintarch ci reset run start status skills fixtures-loop fixtures-hash bugs watch watch-verbose clean sandbox
 
 GO ?= go
 BIN ?= ./bin/noodle
@@ -32,7 +32,10 @@ help:
 	@printf "  %-40s %s\n" "make clean" "Remove built binary"
 	@printf "  %-40s %s\n" "make sandbox STAGE=bare|init|wip|full" "Create a temp sandbox project"
 
-build:
+ui:
+	cd ui && npm run build
+
+build: ui
 	$(GO) build -o $(BIN) .
 
 generate:
@@ -61,7 +64,7 @@ reset:
 
 run: start
 
-start:
+start: ui
 	$(NOODLE) start
 
 status:
