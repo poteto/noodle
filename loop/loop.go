@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
@@ -314,7 +316,37 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 		return Queue{}, false, err
 	}
 	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
-		return Queue{}, false, err
+		if !errors.Is(err, queuex.ErrUnknownTaskType) {
+			return Queue{}, false, err
+		}
+		// Unknown task type — rebuild registry and retry.
+		l.rebuildRegistry()
+		if normalizedQueue, changed, err = normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
+			if !errors.Is(err, queuex.ErrUnknownTaskType) {
+				return Queue{}, false, err
+			}
+			// Still unknown after re-scan — drop offending items via audit and continue.
+			fmt.Fprintf(os.Stderr, "loop.queue-rescan: %v — dropping unknown items\n", err)
+			l.auditQueue()
+			queue, err = readQueue(l.deps.QueueFile)
+			if err != nil {
+				return Queue{}, false, err
+			}
+			if normalizedQueue, changed, err = normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
+				return Queue{}, false, err
+			}
+			if changed {
+				queue = normalizedQueue
+				if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+					return Queue{}, false, err
+				}
+			}
+		} else if changed {
+			queue = normalizedQueue
+			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+				return Queue{}, false, err
+			}
+		}
 	} else if changed {
 		queue = normalizedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {

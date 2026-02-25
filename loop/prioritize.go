@@ -66,6 +66,8 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 	name := prioritizeQueueID
 
 	skillName := nonEmpty(item.Skill, "prioritize")
+	// Belt-and-suspenders: ensure the prioritize skill is fresh before dispatch.
+	l.ensureSkillFresh(skillName)
 	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
 	req := dispatcher.DispatchRequest{
 		Name:                 name,

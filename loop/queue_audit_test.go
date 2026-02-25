@@ -13,6 +13,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -286,6 +287,237 @@ func TestRegistryErrorResetOnRebuild(t *testing.T) {
 	}
 	if l.registryFailCount != 0 {
 		t.Fatalf("registryFailCount should be 0 after rebuild, got: %d", l.registryFailCount)
+	}
+}
+
+func TestPrepareQueueRescanRecoversMissingSkill(t *testing.T) {
+	// Simulate: queue has an item with a task type that only appears
+	// after a registry rebuild (e.g., skill was just installed and
+	// fsnotify hasn't fired yet).
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	queue := Queue{
+		GeneratedAt: time.Now().UTC(),
+		Items: []QueueItem{
+			{ID: "deploy-1", TaskKey: "deploy", Skill: "deploy", Provider: "claude", Model: "opus"},
+		},
+	}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	// Start with a registry that does NOT have "deploy".
+	initialReg := testLoopRegistry()
+
+	// Create the deploy skill on disk so rebuildRegistry() will find it.
+	skillDir := filepath.Join(homeDir, ".noodle", "skills", "deploy")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("mkdir skill: %v", err)
+	}
+	content := "---\nname: deploy\ndescription: Deploy\nnoodle:\n  schedule: \"After execute\"\n---\n# Deploy\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{"~/.noodle/skills"}
+
+	l := &Loop{
+		projectDir: projectDir,
+		runtimeDir: runtimeDir,
+		config:     cfg,
+		registry:   initialReg,
+		deps: Dependencies{
+			Dispatcher: &fakeDispatcher{},
+			Worktree:   &fakeWorktree{},
+			Adapter:    &fakeAdapterRunner{},
+			Mise:       &fakeMise{},
+			Monitor:    fakeMonitor{},
+			Now:        time.Now,
+			QueueFile:  queuePath,
+			StatusFile: filepath.Join(runtimeDir, "status.json"),
+		},
+		state:          StateRunning,
+		activeByTarget: map[string]*activeCook{},
+		activeByID:     map[string]*activeCook{},
+		adoptedTargets: map[string]string{},
+		failedTargets:  map[string]string{},
+		pendingReview:  map[string]*pendingReviewCook{},
+		pendingRetry:   map[string]*pendingRetryCook{},
+		processedIDs:   map[string]struct{}{},
+	}
+
+	brief := mise.Brief{NeedsScheduling: nil}
+	result, shouldContinue, err := l.prepareQueueForCycle(brief, nil)
+	if err != nil {
+		t.Fatalf("prepareQueueForCycle: %v", err)
+	}
+	if !shouldContinue {
+		t.Fatal("expected cycle to continue")
+	}
+	// The deploy item should still be in the queue — registry was rebuilt.
+	found := false
+	for _, item := range result.Items {
+		if item.ID == "deploy-1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("deploy-1 should be in queue after re-scan, got: %+v", result.Items)
+	}
+	// Verify the registry now has deploy.
+	if _, ok := l.registry.ByKey("deploy"); !ok {
+		t.Fatal("registry should contain deploy after rebuild")
+	}
+}
+
+func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
+	// Simulate: queue has an item with a task type that doesn't exist
+	// even after rebuild — should be dropped via auditQueue.
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	queue := Queue{
+		GeneratedAt: time.Now().UTC(),
+		Items: []QueueItem{
+			{ID: "execute-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus"},
+			{ID: "bogus-1", TaskKey: "bogus", Skill: "bogus", Provider: "claude", Model: "opus"},
+		},
+	}
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	// Create execute skill on disk so rebuild finds it.
+	for _, name := range []string{"execute", "prioritize"} {
+		skillDir := filepath.Join(homeDir, ".noodle", "skills", name)
+		if err := os.MkdirAll(skillDir, 0o755); err != nil {
+			t.Fatalf("mkdir skill: %v", err)
+		}
+		content := "---\nname: " + name + "\ndescription: " + name + "\nnoodle:\n  schedule: \"x\"\n---\n# " + name + "\n"
+		if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{"~/.noodle/skills"}
+
+	l := &Loop{
+		projectDir: projectDir,
+		runtimeDir: runtimeDir,
+		config:     cfg,
+		registry:   testLoopRegistry(),
+		deps: Dependencies{
+			Dispatcher: &fakeDispatcher{},
+			Worktree:   &fakeWorktree{},
+			Adapter:    &fakeAdapterRunner{},
+			Mise:       &fakeMise{},
+			Monitor:    fakeMonitor{},
+			Now:        time.Now,
+			QueueFile:  queuePath,
+			StatusFile: filepath.Join(runtimeDir, "status.json"),
+		},
+		state:          StateRunning,
+		activeByTarget: map[string]*activeCook{},
+		activeByID:     map[string]*activeCook{},
+		adoptedTargets: map[string]string{},
+		failedTargets:  map[string]string{},
+		pendingReview:  map[string]*pendingReviewCook{},
+		pendingRetry:   map[string]*pendingRetryCook{},
+		processedIDs:   map[string]struct{}{},
+	}
+
+	brief := mise.Brief{NeedsScheduling: nil}
+	result, shouldContinue, err := l.prepareQueueForCycle(brief, nil)
+	if err != nil {
+		t.Fatalf("prepareQueueForCycle: %v", err)
+	}
+	if !shouldContinue {
+		t.Fatal("expected cycle to continue after dropping unknown items")
+	}
+	// bogus-1 should be gone, execute-1 should remain.
+	for _, item := range result.Items {
+		if item.ID == "bogus-1" {
+			t.Fatal("bogus-1 should have been dropped")
+		}
+	}
+	// Verify execute-1 survived.
+	found := false
+	for _, item := range result.Items {
+		if item.ID == "execute-1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("execute-1 should still be in queue, got: %+v", result.Items)
+	}
+}
+
+func TestEnsureSkillFreshExistingSkill(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	l := &Loop{
+		projectDir: projectDir,
+		runtimeDir: runtimeDir,
+		config:     config.DefaultConfig(),
+		registry:   testLoopRegistry(),
+		deps: Dependencies{
+			Mise:      &fakeMise{},
+			Now:       time.Now,
+			QueueFile: filepath.Join(runtimeDir, "queue.json"),
+		},
+	}
+
+	if !l.ensureSkillFresh("execute") {
+		t.Fatal("ensureSkillFresh should return true for existing skill")
+	}
+}
+
+func TestEnsureSkillFreshMissingSkill(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{"~/.noodle/skills"}
+
+	l := &Loop{
+		projectDir: projectDir,
+		runtimeDir: runtimeDir,
+		config:     cfg,
+		registry:   testLoopRegistry(),
+		deps: Dependencies{
+			Mise:      &fakeMise{},
+			Now:       time.Now,
+			QueueFile: filepath.Join(runtimeDir, "queue.json"),
+		},
+	}
+
+	// "nonexistent" is not in the registry and not on disk.
+	if l.ensureSkillFresh("nonexistent") {
+		t.Fatal("ensureSkillFresh should return false for missing skill")
 	}
 }
 

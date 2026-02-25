@@ -2,6 +2,7 @@ package queuex
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -13,6 +14,10 @@ import (
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 )
+
+// ErrUnknownTaskType is returned when a queue item references a task type
+// not present in the registry.
+var ErrUnknownTaskType = errors.New("unknown task type")
 
 const prioritizeTaskKey = "prioritize"
 
@@ -164,7 +169,7 @@ func NormalizeAndValidate(
 			ok = true
 		}
 		if !ok {
-			return queue, false, fmt.Errorf("queue item %q has unknown task type", id)
+			return queue, false, fmt.Errorf("queue item %q: %w", id, ErrUnknownTaskType)
 		}
 
 		if strings.TrimSpace(items[i].TaskKey) != taskType.Key {

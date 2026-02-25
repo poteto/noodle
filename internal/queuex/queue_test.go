@@ -1,6 +1,7 @@
 package queuex
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,6 +156,23 @@ func TestNormalizeAndValidateAllowsAdHocExecuteWithoutPlan(t *testing.T) {
 	_, _, err := NormalizeAndValidate(queue, []int{42}, reg, cfg)
 	if err != nil {
 		t.Fatalf("ad-hoc execute task should be allowed without a plan: %v", err)
+	}
+}
+
+func TestNormalizeAndValidateReturnsErrUnknownTaskType(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := testRegistry()
+	queue := Queue{Items: []Item{{ID: "synth-1", TaskKey: "nonexistent", Title: "unknown skill"}}}
+
+	_, _, err := NormalizeAndValidate(queue, nil, reg, cfg)
+	if err == nil {
+		t.Fatal("expected error for unknown task type")
+	}
+	if !errors.Is(err, ErrUnknownTaskType) {
+		t.Fatalf("expected error to wrap ErrUnknownTaskType, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "synth-1") {
+		t.Fatalf("expected error to mention item ID, got: %v", err)
 	}
 }
 

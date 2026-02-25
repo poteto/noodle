@@ -17,9 +17,27 @@ import (
 	"github.com/poteto/noodle/worktree"
 )
 
+// ensureSkillFresh verifies the skill is resolvable via the registry.
+// If not found, it rebuilds the registry once and retries.
+// Returns true if the skill exists after potential rebuild.
+func (l *Loop) ensureSkillFresh(skillName string) bool {
+	if _, ok := l.registry.ByKey(skillName); ok {
+		return true
+	}
+	l.rebuildRegistry()
+	_, ok := l.registry.ByKey(skillName)
+	return ok
+}
+
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
 	if isPrioritizeItem(item) {
 		return l.spawnPrioritize(ctx, item, attempt, resumePrompt)
+	}
+
+	// Belt-and-suspenders: give the registry one last chance to pick up
+	// the skill before dispatch, in case fsnotify missed an event.
+	if skillName := strings.TrimSpace(item.Skill); skillName != "" {
+		l.ensureSkillFresh(skillName)
 	}
 
 	name := cookBaseName(item)
