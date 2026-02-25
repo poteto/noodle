@@ -1,0 +1,107 @@
+/* ═══ noodle prototype — shared design tokens ═══ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Poster ─────────────────────────────────────
+   Design festival. Yellow screams. Black anchors.
+   Outfit display — bold geometric sans.
+   Cards are white cutouts on yellow ground.
+   Hard drop shadows. Zero radius. Pure conviction. */
+[data-theme="poster"] {
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --display-weight: 400;
+  --display-size: 3.5rem;
+
+  --bg-0: #fbbf24;
+  --bg-1: #fff;
+  --bg-2: #f5eed8;
+  --bg-3: #e8dfc0;
+  --bg-hover: #f0e8c8;
+  --bg-selected: #fff3c0;
+  --border: #1a1400;
+  --border-subtle: #d4c090;
+  --text-0: #1a1400;
+  --text-1: #4a4020;
+  --text-2: #7a6830;
+  --text-3: #b0a060;
+
+  --accent: #1a1400;
+  --accent-dim: #3a3020;
+  --accent-glow: rgba(26,20,0,0.08);
+  --accent-on: #fbbf24;
+
+  --green: #1a7a3a; --green-dim: #c8ecd0; --green-bg: rgba(26,122,58,0.1);
+  --yellow: #8a6800; --yellow-dim: #f0e0a0; --yellow-bg: rgba(138,104,0,0.08);
+  --orange: #b85a20; --orange-bg: rgba(184,90,32,0.08);
+  --red: #a82020; --red-dim: #f0c8c8;
+  --blue: #1858a0; --blue-dim: #c8d8f0; --blue-bg: rgba(24,88,160,0.08);
+  --pink: #a04070; --pink-bg: rgba(160,64,112,0.08);
+  --purple: #5830a0; --purple-bg: rgba(88,48,160,0.06);
+
+  --shadow-sm: 3px 3px 0 #1a1400;
+  --shadow-md: 5px 5px 0 #1a1400;
+  --shadow-lg: 7px 7px 0 #1a1400;
+  --radius-sm: 0; --radius: 0; --radius-lg: 0; --radius-xl: 0;
+}
+
+/* ── Shared Tokens ──────────────────────────── */
+:root {
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.625rem;
+  --nav-h: 40px;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--text-0);
+  background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ── Proto Nav ─────────────────────────────── */
+.proto-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: #fbbf24;
+  border-bottom: 2px solid #1a1400;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 200;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.proto-nav-left, .proto-nav-right {
+  display: flex; align-items: center; gap: 3px;
+}
+.proto-nav a, .proto-nav button {
+  padding: 4px 10px;
+  border-radius: 0;
+  text-decoration: none;
+  font-family: inherit; font-size: inherit; font-weight: 500;
+  border: 1px solid transparent;
+  background: none;
+  color: #4a4020;
+  cursor: pointer;
+  transition: all 0.12s ease-out;
+}
+.proto-nav a:hover, .proto-nav button:hover {
+  color: #1a1400; background: rgba(26,20,0,0.08);
+}
+.proto-nav a.active {
+  color: #1a1400; background: rgba(26,20,0,0.1); border-color: #1a1400;
+}

@@ -16,7 +16,7 @@ A web UI unlocks richer interactions (syntax-highlighted diffs, clickable links,
 
 ## Prototype
 
-Static HTML/CSS/JS prototype at `scrawl:prototype/noodle/` (`pnpm dev` to run). Kanban board layout with Poster theme (bold yellow, hard drop shadows, Outfit + DM Sans). Includes:
+Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban board layout with Poster theme (bold yellow, hard drop shadows, Outfit + DM Sans). Includes:
 - Board with Queued → Cooking → Review → Done columns
 - Slack-style chat detail panel (click any agent card)
 - @mention autocomplete for cross-agent steering

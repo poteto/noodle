@@ -1,0 +1,10 @@
+{
+  "name": "noodle-prototype",
+  "private": true,
+  "scripts": {
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}
