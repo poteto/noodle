@@ -2,6 +2,7 @@ package loop
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -39,6 +40,16 @@ func titleFromPrompt(prompt string, maxWords int) string {
 		return strings.Join(words, " ")
 	}
 	return strings.Join(words[:maxWords], " ") + "..."
+}
+
+func joinPromptParts(parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, strings.TrimSpace(p))
+		}
+	}
+	return strings.Join(out, "\n\n")
 }
 
 func nonEmpty(value, fallback string) string {
@@ -196,4 +207,23 @@ func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
 		}
 	}
 	return false
+}
+
+// worktreeResumeContext checks if a worktree has commits ahead of main.
+// Returns a resume hint for the agent prompt, or empty string if the
+// worktree is fresh.
+func worktreeResumeContext(worktreePath, name string) string {
+	out, err := exec.Command("git", "-C", worktreePath, "log", "main..HEAD", "--oneline").Output()
+	if err != nil {
+		return ""
+	}
+	lines := strings.TrimSpace(string(out))
+	if lines == "" {
+		return ""
+	}
+	commits := strings.Split(lines, "\n")
+	return fmt.Sprintf(
+		"You are resuming work in worktree %q which has %d prior commit(s):\n%s\n\nReview what was done and continue with the remaining work.",
+		name, len(commits), lines,
+	)
 }

@@ -38,6 +38,11 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 	}
 
 	worktreePath := l.worktreePath(name)
+	if !created {
+		if hint := worktreeResumeContext(worktreePath, name); hint != "" {
+			resumePrompt = joinPromptParts(hint, resumePrompt)
+		}
+	}
 	prompt := buildCookPrompt(item, resumePrompt)
 
 	taskType, _ := l.registry.ByKey(item.TaskKey)
