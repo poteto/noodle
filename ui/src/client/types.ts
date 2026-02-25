@@ -39,7 +39,7 @@ export interface Session {
   retry_count: number;
   idle_seconds: number;
   stuck_threshold_seconds: number;
-  loop_state: string;
+  loop_state: LoopState;
   remote_host?: string;
   dispatch_warning?: string;
   worktree_name?: string;
