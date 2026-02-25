@@ -245,6 +245,35 @@ html, body {
   padding: 40px 20px;
 }
 
+/* Concurrency badge */
+.concurrency-badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding: 2px 8px;
+  background: var(--bg-1);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.concurrency-badge:hover {
+  border-color: var(--border);
+  background: var(--bg-hover);
+}
+.concurrency-input {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  width: 48px;
+  padding: 2px 6px;
+  border: 1.5px solid var(--yellow);
+  background: var(--bg-1);
+  color: var(--text-0);
+  outline: none;
+  text-align: center;
+}
+
 .col-footer {
   flex-shrink: 0;
   padding-top: 8px;

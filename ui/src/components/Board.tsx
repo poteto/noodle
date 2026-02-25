@@ -10,6 +10,7 @@ import { DoneCard } from "./DoneCard";
 import { ChatPanel } from "./ChatPanel";
 import { TaskEditor } from "./TaskEditor";
 import { QueueAddCard } from "./QueueAddCard";
+import { ConcurrencyBadge } from "./ConcurrencyBadge";
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
@@ -99,7 +100,17 @@ export function Board() {
           ))}
         </BoardColumn>
 
-        <BoardColumn title="Cooking" count={columns.cooking.length} emptyText="No active cooks">
+        <BoardColumn
+          title="Cooking"
+          count={columns.cooking.length}
+          emptyText="No active cooks"
+          headerExtra={
+            <ConcurrencyBadge
+              active={columns.cooking.length}
+              maxCooks={snapshot.max_cooks || 4}
+            />
+          }
+        >
           {columns.cooking.map((session) => (
             <AgentCard
               key={session.id}
