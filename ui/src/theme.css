@@ -222,6 +222,12 @@ html, body {
   color: var(--bg-0);
 }
 
+.col-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .col-cards {
   display: flex;
   flex-direction: column;
@@ -229,6 +235,14 @@ html, body {
   padding-bottom: 20px;
   overflow-y: auto;
   min-height: 0;
+}
+
+.col-empty {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: 40px 20px;
 }
 
 .col-footer {

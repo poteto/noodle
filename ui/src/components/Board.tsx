@@ -93,13 +93,13 @@ export function Board() {
       />
 
       <div className="board-columns">
-        <BoardColumn title="Queued" count={columns.queued.length} footer={<QueueAddCard />}>
+        <BoardColumn title="Queued" count={columns.queued.length} footer={<QueueAddCard />} emptyText="No tasks queued">
           {columns.queued.map((item) => (
             <QueueCard key={item.id} item={item} />
           ))}
         </BoardColumn>
 
-        <BoardColumn title="Cooking" count={columns.cooking.length}>
+        <BoardColumn title="Cooking" count={columns.cooking.length} emptyText="No active cooks">
           {columns.cooking.map((session) => (
             <AgentCard
               key={session.id}
@@ -109,13 +109,13 @@ export function Board() {
           ))}
         </BoardColumn>
 
-        <BoardColumn title="Review" count={columns.review.length}>
+        <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">
           {columns.review.map((item) => (
             <ReviewCard key={item.id} item={item} />
           ))}
         </BoardColumn>
 
-        <BoardColumn title="Done" count={columns.done.length}>
+        <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
           {columns.done.map((session) => (
             <DoneCard key={session.id} session={session} />
           ))}
