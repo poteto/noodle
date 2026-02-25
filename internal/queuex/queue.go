@@ -53,7 +53,12 @@ func Read(path string) (Queue, error) {
 	if strings.TrimSpace(string(data)) == "" {
 		return Queue{}, nil
 	}
-	return decodeQueue(data, true)
+	q, err := decodeQueue(data, true)
+	if err != nil {
+		// Corrupted queue — treat as empty rather than blocking the loop.
+		return Queue{}, nil
+	}
+	return q, nil
 }
 
 // ParseStrict validates queue bytes without reading from disk.
