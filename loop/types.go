@@ -132,8 +132,9 @@ type Loop struct {
 	registryErr error
 	deps        Dependencies
 
-	state         State
-	registryStale atomic.Bool
+	state            State
+	registryStale    atomic.Bool
+	registryFailCount int
 
 	activeByTarget  map[string]*activeCook
 	activeByID      map[string]*activeCook

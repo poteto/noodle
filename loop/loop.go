@@ -99,6 +99,7 @@ func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, e
 }
 
 func (l *Loop) rebuildRegistry() {
+	oldRegistry := l.registry
 	registry, err := discoverRegistry(l.projectDir, l.config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "skill.rebuild-registry: %v\n", err)
@@ -106,9 +107,27 @@ func (l *Loop) rebuildRegistry() {
 	}
 	l.registry = registry
 	l.registryErr = nil
+	l.registryFailCount = 0
 	if builder, ok := l.deps.Mise.(*mise.Builder); ok {
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
 	}
+
+	// Track what changed and emit events.
+	diff := diffRegistryKeys(oldRegistry, registry)
+	if len(diff.Added) > 0 || len(diff.Removed) > 0 {
+		fmt.Fprintf(os.Stderr, "skill registry rebuilt: added %v, removed %v\n", diff.Added, diff.Removed)
+	}
+
+	eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
+	rebuildEvent := QueueAuditEvent{
+		At:      l.deps.Now().UTC(),
+		Type:    "registry_rebuild",
+		Added:   diff.Added,
+		Removed: diff.Removed,
+	}
+	appendQueueEvent(eventsPath, rebuildEvent)
+
+	l.auditQueue()
 }
 
 // Shutdown kills all active agent sessions. Called during process exit.
@@ -244,7 +263,12 @@ func (l *Loop) Cycle(ctx context.Context) error {
 
 func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if l.registryErr != nil {
-		return false, l.registryErr
+		l.registryFailCount++
+		if l.registryFailCount >= 3 {
+			return false, l.registryErr
+		}
+		fmt.Fprintf(os.Stderr, "skill registry error (attempt %d/3, skipping cycle): %v\n", l.registryFailCount, l.registryErr)
+		return false, nil
 	}
 	if err := l.processControlCommands(); err != nil {
 		return false, err

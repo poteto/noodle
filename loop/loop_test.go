@@ -774,7 +774,7 @@ func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
 	}
 }
 
-func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
+func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -783,24 +783,36 @@ func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
 
 	// Create a loop with a registry error (simulates discovery failure)
 	l := &Loop{
-		projectDir:            projectDir,
-		runtimeDir:            runtimeDir,
+		projectDir:     projectDir,
+		runtimeDir:     runtimeDir,
 		registryErr:    errors.New("task type discovery failed: bad frontmatter"),
 		activeByTarget: map[string]*activeCook{},
 		activeByID:     map[string]*activeCook{},
 		adoptedTargets: map[string]string{},
 		failedTargets:  map[string]string{},
 		processedIDs:   map[string]struct{}{},
+		pendingReview:  map[string]*pendingReviewCook{},
+		pendingRetry:   map[string]*pendingRetryCook{},
 		deps: Dependencies{
-			Mise:    &fakeMise{brief: mise.Brief{}},
-			Monitor: fakeMonitor{},
+			Mise:       &fakeMise{brief: mise.Brief{}},
+			Monitor:    fakeMonitor{},
+			Now:        time.Now,
+			StatusFile: filepath.Join(runtimeDir, "status.json"),
 		},
 	}
 
-	// Cycle (the --once path) should fail with the registry error
+	// First two cycles skip with no error (resilient path).
+	for i := 0; i < 2; i++ {
+		err := l.Cycle(context.Background())
+		if err != nil {
+			t.Fatalf("cycle %d: expected no error, got: %v", i+1, err)
+		}
+	}
+
+	// Third cycle returns the fatal registry error.
 	err := l.Cycle(context.Background())
 	if err == nil {
-		t.Fatal("expected Cycle to return registry error")
+		t.Fatal("expected Cycle to return registry error after 3 failures")
 	}
 	if !strings.Contains(err.Error(), "task type discovery failed") {
 		t.Fatalf("wrong error: %v", err)
