@@ -10,20 +10,12 @@ export function BoardHeader({
   snapshot: Snapshot;
   onNewTask: () => void;
 }) {
-  const failedCount = snapshot.recent.filter((s) => s.status === "failed").length;
-
   return (
     <div className="board-header">
       <div className="board-header-left">
         <h1 className="board-title">noodle</h1>
         <div className="board-stats">
           <LoopState state={snapshot.loop_state as LoopStateType} />
-          {snapshot.pending_review_count > 0 && (
-            <StatBadge label="review" value={snapshot.pending_review_count} />
-          )}
-          {failedCount > 0 && (
-            <StatBadge label="failed" value={failedCount} />
-          )}
           <StatBadge label="" value={`$${snapshot.total_cost_usd.toFixed(2)}`} />
         </div>
       </div>
