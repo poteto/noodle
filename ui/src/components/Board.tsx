@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSnapshot, deriveKanbanColumns, useSendControl } from "~/client";
 import type { Session } from "~/client";
 import { BoardHeader } from "./BoardHeader";
@@ -24,6 +24,9 @@ export function Board() {
   const { mutate: send } = useSendControl();
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [cookingDragOver, setCookingDragOver] = useState(false);
+  const dragItemId = useRef<string | null>(null);
 
   const handleKeyboard = useCallback(
     (e: KeyboardEvent) => {
@@ -81,10 +84,72 @@ export function Board() {
   }
 
   const columns = deriveKanbanColumns(snapshot);
+  const maxCooks = snapshot.max_cooks || 4;
 
   const liveSession = selectedSession
     ? snapshot.sessions.find((s) => s.id === selectedSession.id) ?? selectedSession
     : null;
+
+  function handleQueueDragStart(e: React.DragEvent, index: number) {
+    const item = columns.queued[index];
+    if (!item) return;
+    dragItemId.current = item.id;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.id);
+  }
+
+  function handleQueueDragOver(_e: React.DragEvent, index: number) {
+    setDragOverIndex(index);
+  }
+
+  function handleQueueDrop(_e: React.DragEvent, dropIndex: number) {
+    const id = dragItemId.current;
+    if (!id || !snapshot) return;
+    const srcIndex = columns.queued.findIndex((item) => item.id === id);
+    if (srcIndex < 0 || srcIndex === dropIndex) return;
+    // The backend reorder operates on the full queue (including active items),
+    // so we need to map from the filtered queued index to the full queue index.
+    const fullQueueIndex = snapshot.queue.findIndex(
+      (item) => item.id === columns.queued[dropIndex]?.id,
+    );
+    if (fullQueueIndex >= 0) {
+      send({ action: "reorder", item: id, value: String(fullQueueIndex) });
+    }
+    resetDrag();
+  }
+
+  function handleCookingDragOver(e: React.DragEvent) {
+    if (dragItemId.current) {
+      e.preventDefault();
+      setCookingDragOver(true);
+    }
+  }
+
+  function handleCookingDragLeave() {
+    setCookingDragOver(false);
+  }
+
+  function handleCookingDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const id = dragItemId.current;
+    if (!id) return;
+    // Move item to front of queue so it gets picked up next cycle.
+    send({ action: "reorder", item: id, value: "0" });
+    // If already at max concurrency, bump it by 1.
+    if (columns.cooking.length >= maxCooks) {
+      send({
+        action: "set-max-cooks",
+        value: String(columns.cooking.length + 1),
+      });
+    }
+    resetDrag();
+  }
+
+  function resetDrag() {
+    dragItemId.current = null;
+    setDragOverIndex(null);
+    setCookingDragOver(false);
+  }
 
   return (
     <div className="board-shell">
@@ -95,29 +160,50 @@ export function Board() {
 
       <div className="board-columns">
         <BoardColumn title="Queued" count={columns.queued.length} footer={<QueueAddCard />} emptyText="No tasks queued">
-          {columns.queued.map((item) => (
-            <QueueCard key={item.id} item={item} />
+          {columns.queued.map((item, i) => (
+            <QueueCard
+              key={item.id}
+              item={item}
+              index={i}
+              onDragStart={handleQueueDragStart}
+              onDragOver={handleQueueDragOver}
+              onDrop={handleQueueDrop}
+              onDragEnd={resetDrag}
+              isDragOver={dragOverIndex === i}
+            />
           ))}
         </BoardColumn>
 
         <BoardColumn
           title="Cooking"
           count={columns.cooking.length}
-          emptyText="No active cooks"
           headerExtra={
             <ConcurrencyBadge
               active={columns.cooking.length}
-              maxCooks={snapshot.max_cooks || 4}
+              maxCooks={maxCooks}
             />
           }
         >
-          {columns.cooking.map((session) => (
-            <AgentCard
-              key={session.id}
-              session={session}
-              onClick={() => setSelectedSession(session)}
-            />
-          ))}
+          <div
+            className={`cooking-drop-zone${cookingDragOver ? " drag-over" : ""}`}
+            onDragOver={handleCookingDragOver}
+            onDragLeave={handleCookingDragLeave}
+            onDrop={handleCookingDrop}
+          >
+            {columns.cooking.length === 0 && !cookingDragOver && (
+              <div className="col-empty">No active cooks</div>
+            )}
+            {cookingDragOver && columns.cooking.length === 0 && (
+              <div className="col-empty drop-hint">Drop to start cooking</div>
+            )}
+            {columns.cooking.map((session) => (
+              <AgentCard
+                key={session.id}
+                session={session}
+                onClick={() => setSelectedSession(session)}
+              />
+            ))}
+          </div>
         </BoardColumn>
 
         <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">

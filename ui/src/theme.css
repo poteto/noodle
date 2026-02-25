@@ -352,6 +352,44 @@ html, body {
   margin-left: 0;
 }
 
+/* Drag and drop */
+.board-card.draggable {
+  cursor: grab;
+}
+.board-card.draggable:active {
+  cursor: grabbing;
+}
+.board-card.drag-over {
+  border-top: 3px solid var(--yellow);
+  padding-top: 15px;
+}
+.drag-handle {
+  display: flex;
+  align-items: center;
+  color: var(--text-3);
+  cursor: grab;
+  flex-shrink: 0;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+.cooking-drop-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 60px;
+  transition: background 0.15s;
+}
+.cooking-drop-zone.drag-over {
+  background: var(--yellow-bg);
+  outline: 2px dashed var(--yellow);
+  outline-offset: -2px;
+}
+.drop-hint {
+  color: var(--yellow) !important;
+  font-weight: 600;
+}
+
 /* Card action buttons (stop, replay) */
 .card-action-btn {
   display: flex;
