@@ -1,6 +1,7 @@
 import type { Session } from "~/client";
-import { middleTruncate } from "~/client";
+import { middleTruncate, useSendControl } from "~/client";
 import { Badge } from "./Badge";
+import { Square } from "lucide-react";
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -23,7 +24,13 @@ export function AgentCard({
   session: Session;
   onClick?: () => void;
 }) {
+  const { mutate: send, isPending } = useSendControl();
   const taskKey = session.display_name.split("-")[0] ?? "";
+
+  function handleStop(e: React.MouseEvent) {
+    e.stopPropagation();
+    send({ action: "stop", name: session.id });
+  }
 
   return (
     <div className="board-card clickable" onClick={onClick}>
@@ -66,6 +73,14 @@ export function AgentCard({
           </span>
         )}
         <span className="model-tag">{session.model}</span>
+        <button
+          className="card-action-btn stop-btn"
+          onClick={handleStop}
+          disabled={isPending}
+          title="Stop and return to queue"
+        >
+          <Square size={12} />
+        </button>
       </div>
     </div>
   );

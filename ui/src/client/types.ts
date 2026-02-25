@@ -20,6 +20,7 @@ export interface Snapshot {
   pending_reviews: PendingReviewItem[];
   pending_review_count: number;
   autonomy: string;
+  max_cooks: number;
 }
 
 export interface Session {

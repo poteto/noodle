@@ -1,5 +1,7 @@
 import type { Session } from "~/client";
+import { useSendControl } from "~/client";
 import { Badge } from "./Badge";
+import { RotateCcw } from "lucide-react";
 
 function formatCost(usd: number): string {
   if (usd < 0.01) return "<$0.01";
@@ -7,8 +9,26 @@ function formatCost(usd: number): string {
 }
 
 export function DoneCard({ session }: { session: Session }) {
+  const { mutate: send, isPending } = useSendControl();
   const failed = session.status === "failed";
   const taskKey = session.display_name.split("-")[0] ?? "";
+
+  function handleReplay(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (failed) {
+      send({ action: "requeue", item: session.id });
+    } else {
+      const id = `replay-${Date.now()}`;
+      send({
+        action: "enqueue",
+        item: id,
+        task_key: taskKey || "execute",
+        prompt: `Replay: ${session.display_name}`,
+        model: session.model,
+        provider: session.provider,
+      });
+    }
+  }
 
   return (
     <div className={`board-card${failed ? " failed" : ""}`}>
@@ -24,6 +44,14 @@ export function DoneCard({ session }: { session: Session }) {
       <div className="card-footer">
         <span>{formatCost(session.total_cost_usd)}</span>
         <span className="model-tag">{session.model}</span>
+        <button
+          className="card-action-btn replay-btn"
+          onClick={handleReplay}
+          disabled={isPending}
+          title={failed ? "Retry" : "Replay"}
+        >
+          <RotateCcw size={12} />
+        </button>
       </div>
     </div>
   );

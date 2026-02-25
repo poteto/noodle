@@ -309,6 +309,41 @@ html, body {
   margin-left: 0;
 }
 
+/* Card action buttons (stop, replay) */
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s;
+}
+.card-action-btn:hover:not(:disabled) {
+  border-color: var(--border);
+  color: var(--text-0);
+  background: var(--bg-hover);
+}
+.card-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.card-action-btn.stop-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-dim);
+}
+.card-action-btn.replay-btn:hover:not(:disabled) {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+
 /* Type badges */
 .badge {
   font-family: var(--font-mono);
