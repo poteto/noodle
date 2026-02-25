@@ -67,8 +67,14 @@ func DeriveSessionMeta(
 	}
 
 	durationSeconds := int64(0)
-	if !claims.FirstEventAt.IsZero() && now.After(claims.FirstEventAt) {
-		durationSeconds = int64(now.Sub(claims.FirstEventAt).Seconds())
+	if !claims.FirstEventAt.IsZero() {
+		end := now
+		if !observation.Alive && !claims.LastEventAt.IsZero() {
+			end = claims.LastEventAt
+		}
+		if end.After(claims.FirstEventAt) {
+			durationSeconds = int64(end.Sub(claims.FirstEventAt).Seconds())
+		}
 	}
 
 	provider := strings.TrimSpace(claims.Provider)
