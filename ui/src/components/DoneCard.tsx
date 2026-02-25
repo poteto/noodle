@@ -30,7 +30,7 @@ export function DoneCard({ session }: { session: Session }) {
   return (
     <div className={`board-card${failed ? " failed" : ""}`}>
       <div className="card-top">
-        {taskKey && <Badge type={taskKey} />}
+        {taskKey ? <Badge type={taskKey} /> : null}
       </div>
       {failed ? (
         <div className="card-failed-status">failed</div>

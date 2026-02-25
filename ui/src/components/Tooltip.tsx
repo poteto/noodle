@@ -1,4 +1,6 @@
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
+
+const triggerStyle = { display: "inline-flex" } as const;
 
 export function Tooltip({
   content,
@@ -14,6 +16,10 @@ export function Tooltip({
   });
   const triggerRef = useRef<HTMLSpanElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => clearTimeout(timeoutRef.current);
+  }, []);
 
   const show = useCallback(() => {
     clearTimeout(timeoutRef.current);
@@ -41,7 +47,7 @@ export function Tooltip({
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
-        style={{ display: "inline-flex" }}
+        style={triggerStyle}
       >
         {children}
       </span>

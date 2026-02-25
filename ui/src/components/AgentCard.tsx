@@ -23,7 +23,7 @@ export function AgentCard({
   return (
     <div className="board-card clickable" onClick={onClick}>
       <div className="card-top">
-        {taskKey && <Badge type={taskKey} />}
+        {taskKey ? <Badge type={taskKey} /> : null}
         {session.remote_host && (
           <Tooltip content={session.remote_host}>
             <span className="card-remote">cloud</span>
