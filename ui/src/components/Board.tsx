@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useSnapshot, deriveKanbanColumns } from "~/client";
+import type { Session } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
 import { QueueCard } from "./QueueCard";
 import { ReviewCard } from "./ReviewCard";
 import { DoneCard } from "./DoneCard";
+import { ChatPanel } from "./ChatPanel";
 
 export function Board() {
   const { data: snapshot, isLoading, error } = useSnapshot();
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
   if (isLoading || !snapshot) {
     return (
@@ -45,6 +49,11 @@ export function Board() {
 
   const columns = deriveKanbanColumns(snapshot);
 
+  // Keep selected session fresh from latest snapshot data.
+  const liveSession = selectedSession
+    ? snapshot.sessions.find((s) => s.id === selectedSession.id) ?? selectedSession
+    : null;
+
   return (
     <div className="board-shell">
       <BoardHeader snapshot={snapshot} />
@@ -58,7 +67,11 @@ export function Board() {
 
         <BoardColumn title="Cooking" count={columns.cooking.length}>
           {columns.cooking.map((session) => (
-            <AgentCard key={session.id} session={session} />
+            <AgentCard
+              key={session.id}
+              session={session}
+              onClick={() => setSelectedSession(session)}
+            />
           ))}
         </BoardColumn>
 
@@ -74,6 +87,13 @@ export function Board() {
           ))}
         </BoardColumn>
       </div>
+
+      {liveSession && (
+        <ChatPanel
+          session={liveSession}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
     </div>
   );
 }

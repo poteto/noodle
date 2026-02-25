@@ -15,11 +15,17 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-export function AgentCard({ session }: { session: Session }) {
+export function AgentCard({
+  session,
+  onClick,
+}: {
+  session: Session;
+  onClick?: () => void;
+}) {
   const taskKey = session.display_name.split("-")[0] ?? "";
 
   return (
-    <div className="board-card clickable">
+    <div className="board-card clickable" onClick={onClick}>
       <div className="card-top">
         {taskKey && <Badge type={taskKey} />}
         {session.remote_host && (
