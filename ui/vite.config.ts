@@ -11,6 +11,7 @@ export default defineConfig({
   ],
   build: {
     outDir: "dist/client",
+    sourcemap: !!process.env.NOODLE_DEV,
   },
   server: {
     proxy: {

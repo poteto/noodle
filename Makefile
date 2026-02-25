@@ -128,7 +128,7 @@ bugs:
 
 watch: $(UI_MODULES)
 	@trap 'kill 0' EXIT; \
-	cd ui && npm run dev & \
+	(cd ui && npm run dev) & \
 	if $(GO) tool -n air >/dev/null 2>&1; then \
 		$(GO) tool air $(AIR_FLAGS) -c $(AIR_CONFIG); \
 	elif command -v $(AIR) >/dev/null 2>&1; then \
