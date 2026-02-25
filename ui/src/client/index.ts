@@ -19,4 +19,4 @@ export { connectSSE, SNAPSHOT_KEY } from "./sse";
 export type { SSEStatus } from "./sse";
 export { useSnapshot, useSuspenseSnapshot, useSessionEvents, useSendControl, useSSEStatus } from "./hooks";
 export { useConfig } from "./config";
-export { middleTruncate } from "./format";
+export { middleTruncate, formatCost, formatDuration } from "./format";

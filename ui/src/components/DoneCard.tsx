@@ -1,13 +1,8 @@
 import type { Session } from "~/client";
-import { useSendControl } from "~/client";
+import { useSendControl, formatCost } from "~/client";
 import { Badge } from "./Badge";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { RotateCcw } from "lucide-react";
-
-function formatCost(usd: number): string {
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
-}
 
 export function DoneCard({ session }: { session: Session }) {
   const { mutate: send, isPending } = useSendControl();

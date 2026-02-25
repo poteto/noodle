@@ -1,22 +1,8 @@
 import type { Session } from "~/client";
-import { middleTruncate, useSendControl } from "~/client";
+import { middleTruncate, formatDuration, formatCost, useSendControl } from "~/client";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { Badge } from "./Badge";
 import { Square } from "lucide-react";
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (m < 60) return `${m}m${s > 0 ? ` ${s}s` : ""}`;
-  const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
-}
-
-function formatCost(usd: number): string {
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
-}
 
 export function AgentCard({
   session,
