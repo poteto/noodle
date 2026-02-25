@@ -121,13 +121,13 @@ export function Board() {
   }
 
   return (
-    <div className="board-shell">
+    <div className="flex flex-col h-screen bg-bg-0">
       <BoardHeader
         snapshot={snapshot}
         onNewTask={() => setShowTaskEditor(true)}
       />
 
-      <div className="board-columns">
+      <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
         <BoardColumn
           title="Queued"
           count={columns.queued.length}
@@ -160,16 +160,16 @@ export function Board() {
           }
         >
           <div
-            className={`cooking-drop-zone${cookingDragOver ? " drag-over" : ""}`}
+            className={`flex flex-col gap-2.5 min-h-[60px] transition-[background] duration-150${cookingDragOver ? " bg-nyellow-bg outline-2 outline-dashed outline-nyellow -outline-offset-2" : ""}`}
             onDragOver={handleCookingDragOver}
             onDragLeave={handleCookingDragLeave}
             onDrop={handleCookingDrop}
           >
             {columns.cooking.length === 0 && !cookingDragOver && (
-              <div className="col-empty">No active cooks</div>
+              <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">No active cooks</div>
             )}
             {cookingDragOver && columns.cooking.length === 0 && (
-              <div className="col-empty drop-hint">Drop to start cooking</div>
+              <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-600">Drop to start cooking</div>
             )}
             {columns.cooking.map((session) => (
               <AgentCard

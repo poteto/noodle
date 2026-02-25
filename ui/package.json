@@ -8,11 +8,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5",
     "@tanstack/react-router": "^1",
     "lucide-react": "^0.575.0",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1",

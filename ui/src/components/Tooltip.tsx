@@ -1,7 +1,5 @@
 import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 
-const triggerStyle = { display: "inline-flex" } as const;
-
 export function Tooltip({
   content,
   children,
@@ -47,13 +45,13 @@ export function Tooltip({
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
-        style={triggerStyle}
+        className="inline-flex"
       >
         {children}
       </span>
       {visible && (
         <div
-          className="tooltip"
+          className="fixed -translate-x-1/2 -translate-y-full px-2.5 py-1 bg-border text-bg-0 font-mono text-xs font-semibold whitespace-nowrap pointer-events-none z-[200] shadow-poster-sm animate-tooltip"
           style={{ top: position.top, left: position.left }}
           role="tooltip"
         >

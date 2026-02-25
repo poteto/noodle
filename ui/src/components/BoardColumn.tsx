@@ -16,23 +16,23 @@ export function BoardColumn({
   headerExtra?: ReactNode;
 }) {
   return (
-    <div className="board-col">
-      <div className="col-header">
-        <div className="col-header-inner">
-          <span className="col-title">{title}</span>
-          <div className="col-header-right">
+    <div className="flex-1 min-w-[280px] max-w-[380px] flex flex-col max-h-full">
+      <div className="border-t-5 border-border bg-bg-2 shrink-0 pb-3">
+        <div className="flex items-center justify-between pt-2.5">
+          <span className="font-display font-800 text-[1.75rem] tracking-[-0.01em] text-text-0">{title}</span>
+          <div className="flex items-center gap-2">
             {headerExtra}
-            <span className="col-count">{count}</span>
+            <span className="font-mono text-[0.8125rem] font-700 px-2.5 py-0.5 bg-border text-bg-0">{count}</span>
           </div>
         </div>
       </div>
-      <div className="col-cards">
+      <div className="flex flex-col gap-2.5 pb-5 overflow-y-auto min-h-0">
         {count === 0 && emptyText && (
-          <div className="col-empty">{emptyText}</div>
+          <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">{emptyText}</div>
         )}
         {children}
       </div>
-      {footer && <div className="col-footer">{footer}</div>}
+      {footer && <div className="shrink-0 pt-2">{footer}</div>}
     </div>
   );
 }

@@ -30,10 +30,10 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="chat-input-bar">
+    <div className="flex gap-2 px-5 py-3 border-t-2 border-border bg-bg-1 shrink-0">
       <textarea
         ref={textareaRef}
-        className="chat-textarea"
+        className="flex-1 resize-none px-3 py-2 font-body text-[0.8125rem] border-2 border-border bg-bg-1 text-text-0 outline-none min-h-9 max-h-[120px] focus:border-nyellow"
         placeholder="Steer this agent..."
         value={value}
         onChange={(e) => {
@@ -45,7 +45,7 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
         disabled={isPending}
       />
       <button
-        className="chat-send-btn"
+        className="px-4 py-1.5 font-display text-[0.8125rem] font-bold bg-border text-bg-0 border-2 border-border cursor-pointer self-end [&:hover:not(:disabled)]:brightness-[1.2] disabled:opacity-40 disabled:cursor-not-allowed [&:active:not(:disabled)]:translate-x-px [&:active:not(:disabled)]:translate-y-px [&:active:not(:disabled)]:shadow-btn-active"
         onClick={handleSubmit}
         disabled={isPending || !value.trim()}
       >

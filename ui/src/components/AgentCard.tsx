@@ -21,47 +21,50 @@ export function AgentCard({
   }
 
   return (
-    <div className="board-card clickable" onClick={onClick}>
-      <div className="card-top">
+    <div
+      className="bg-bg-1 border-2 border-border p-[18px] cursor-pointer shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-x-0.5 hover:-translate-y-1 hover:shadow-card-hover"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-1.5 mb-2">
         {taskKey ? <Badge type={taskKey} /> : null}
         {session.remote_host && (
           <Tooltip content={session.remote_host}>
-            <span className="card-remote">cloud</span>
+            <span className="relative flex items-center text-text-3">cloud</span>
           </Tooltip>
         )}
       </div>
 
-      <div className="card-name">{session.display_name}</div>
-      <div className="card-task">
+      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{session.display_name}</div>
+      <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
         {middleTruncate(session.current_action || "working...", 80)}
       </div>
 
-      <div className="card-progress">
-        <div className="card-progress-track">
+      <div className="mb-2">
+        <div className="h-1.5 bg-bg-3 overflow-hidden mb-1">
           <div
-            className="card-progress-fill"
+            className="h-full bg-border progress-fill"
             style={{ width: `${Math.round(session.context_window_usage_pct)}%` }}
           />
         </div>
-        <div className="card-progress-label">
+        <div className="font-mono text-xs text-text-3 text-right">
           ctx {Math.round(session.context_window_usage_pct)}%
         </div>
       </div>
 
-      <div className="card-footer">
+      <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
         <WorktreeLabel name={session.worktree_name} />
         <span>{formatDuration(session.duration_seconds)}</span>
-        <span className="footer-sep">/</span>
+        <span className="text-text-3">/</span>
         <span>{formatCost(session.total_cost_usd)}</span>
         {session.dispatch_warning && (
           <Tooltip content={session.dispatch_warning}>
-            <span className="dispatch-warning">!</span>
+            <span className="inline-flex items-center justify-center w-4 h-4 bg-norange text-white text-[0.625rem] font-extrabold ml-auto cursor-help">!</span>
           </Tooltip>
         )}
-        <span className="model-tag">{session.model}</span>
+        <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">{session.model}</span>
         <Tooltip content="Stop and return to queue">
         <button
-          className="card-action-btn stop-btn"
+          className="flex items-center justify-center w-6 h-6 p-0 bg-transparent border-[1.5px] border-border-subtle text-text-2 cursor-pointer shrink-0 transition-all duration-[0.12s] hover:not-disabled:border-nred hover:not-disabled:text-nred hover:not-disabled:bg-nred-dim active:not-disabled:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
           onClick={handleStop}
           disabled={isPending}
         >

@@ -6,7 +6,7 @@ export function StatBadge({
   value: string | number;
 }) {
   return (
-    <span className="stat-item">
+    <span className="flex items-center gap-[5px] px-2.5 py-1 bg-border text-bg-0 border border-border font-semibold">
       {value} {label}
     </span>
   );

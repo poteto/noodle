@@ -29,7 +29,7 @@ export function ConcurrencyBadge({
   if (editing) {
     return (
       <input
-        className="concurrency-input"
+        className="font-mono text-xs font-bold w-12 px-1.5 py-0.5 border-[1.5px] border-nyellow bg-bg-1 text-text-0 outline-none text-center"
         type="number"
         min={1}
         value={draft}
@@ -47,7 +47,7 @@ export function ConcurrencyBadge({
   return (
     <Tooltip content="Click to edit max concurrency">
     <button
-      className="concurrency-badge"
+      className="font-mono text-xs font-bold px-2 py-0.5 bg-bg-1 border-[1.5px] border-border-subtle text-text-1 cursor-pointer transition-all duration-[0.12s] hover:border-border hover:bg-bg-hover"
       onClick={startEdit}
     >
       {active}/{maxCooks}

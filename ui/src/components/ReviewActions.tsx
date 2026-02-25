@@ -29,10 +29,10 @@ export function ReviewActions({ itemId }: { itemId: string }) {
   return (
     <>
       {showFeedback && (
-        <div className="review-feedback">
+        <div className="mt-2 mb-1">
           <input
             type="text"
-            className="review-feedback-input"
+            className="w-full px-[10px] py-[6px] font-body text-[0.8125rem] border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
             placeholder="What needs to change?"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
@@ -44,14 +44,26 @@ export function ReviewActions({ itemId }: { itemId: string }) {
           />
         </div>
       )}
-      <div className="card-review-actions">
-        <button className="merge-btn" onClick={handleMerge} disabled={isPending}>
+      <div className="flex gap-[6px] mt-[10px]">
+        <button
+          className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 cursor-pointer transition-all duration-[0.12s] bg-ngreen text-white border-ngreen hover:brightness-110"
+          onClick={handleMerge}
+          disabled={isPending}
+        >
           merge
         </button>
-        <button className="changes-btn" onClick={handleRequestChanges} disabled={isPending}>
+        <button
+          className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 cursor-pointer transition-all duration-[0.12s] bg-nyellow-bg border-nyellow-dim text-nyellow hover:brightness-95"
+          onClick={handleRequestChanges}
+          disabled={isPending}
+        >
           {showFeedback ? "send" : "changes"}
         </button>
-        <button className="reject-btn" onClick={handleReject} disabled={isPending}>
+        <button
+          className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 border-border bg-bg-1 text-text-1 cursor-pointer transition-all duration-[0.12s] hover:bg-nred-dim hover:border-nred hover:text-nred"
+          onClick={handleReject}
+          disabled={isPending}
+        >
           reject
         </button>
       </div>
