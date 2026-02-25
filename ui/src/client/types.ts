@@ -125,7 +125,7 @@ export interface ControlCommand {
 
 export interface ControlAck {
   id: string;
-  action: string;
+  action: ControlAction;
   status: "ok" | "error";
   message?: string;
   at: string;
