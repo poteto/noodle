@@ -1,4 +1,4 @@
-import type { LoopState as LoopStateType, SSEStatus } from "~/client";
+import type { LoopState as LoopStateType } from "~/client";
 import { useSSEStatus } from "~/client";
 
 export function LoopState({ state }: { state: LoopStateType }) {
