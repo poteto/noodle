@@ -1,6 +1,7 @@
 package skill
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,47 @@ func TestResolveMissingSkillReturnsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveMissingSkillReturnsErrNotFound(t *testing.T) {
+	resolver := Resolver{
+		SearchPaths: []string{t.TempDir()},
+	}
+
+	_, err := resolver.Resolve("nonexistent-skill")
+	if err == nil {
+		t.Fatal("expected error for missing skill")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "nonexistent-skill") {
+		t.Fatalf("error should contain skill name, got: %v", err)
+	}
+}
+
+func TestResolveStatErrorIsNotErrNotFound(t *testing.T) {
+	// Make the search path directory itself non-readable so that os.Stat on
+	// candidates returns a permission error (not ErrNotExist).
+	dir := t.TempDir()
+	skillDir := filepath.Join(dir, "broken-skill")
+	mustMkdirAll(t, skillDir)
+	mustWriteFile(t, filepath.Join(skillDir, "SKILL.md"), "# Broken")
+
+	// Remove read+execute permission from the search path so stat fails.
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	resolver := Resolver{SearchPaths: []string{dir}}
+	_, err := resolver.Resolve("broken-skill")
+	if err == nil {
+		t.Fatal("expected error for permission-denied search path")
+	}
+	if errors.Is(err, ErrNotFound) {
+		t.Fatalf("permission error should not be ErrNotFound: %v", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,6 +28,11 @@ func loadSkillBundle(
 
 	resolved, err := resolver.Resolve(skillName)
 	if err != nil {
+		if errors.Is(err, skill.ErrNotFound) {
+			return loadedSkill{
+				Warnings: []string{fmt.Sprintf("skill %q not found, proceeding without methodology", skillName)},
+			}, nil
+		}
 		return loadedSkill{}, err
 	}
 

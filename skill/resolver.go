@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// ErrNotFound is returned when a skill cannot be found in any search path.
+var ErrNotFound = errors.New("skill not found")
+
 // Resolver resolves skills from ordered search paths.
 type Resolver struct {
 	SearchPaths []string
@@ -60,7 +63,7 @@ func (r Resolver) Resolve(name string) (SkillPath, error) {
 		}, nil
 	}
 
-	return SkillPath{}, fmt.Errorf("skill %q not found", name)
+	return SkillPath{}, fmt.Errorf("skill %q: %w", name, ErrNotFound)
 }
 
 // List returns resolved skills from configured paths, with first match winning.

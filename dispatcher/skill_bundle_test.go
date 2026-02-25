@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -196,5 +197,48 @@ func TestLoadSkillBundleStripsFrontmatter(t *testing.T) {
 	}
 	if !strings.Contains(loaded.SystemPrompt, "# FM Skill") {
 		t.Fatal("body content should be present")
+	}
+}
+
+func TestLoadSkillBundleMissingSkillIsWarning(t *testing.T) {
+	resolver := skill.Resolver{SearchPaths: []string{t.TempDir()}}
+	loaded, err := loadSkillBundle(resolver, "claude", "nonexistent-skill")
+	if err != nil {
+		t.Fatalf("missing skill should not be a hard error: %v", err)
+	}
+	if loaded.SystemPrompt != "" {
+		t.Fatalf("expected empty system prompt, got: %s", loaded.SystemPrompt)
+	}
+	if len(loaded.Warnings) == 0 {
+		t.Fatal("expected warning for missing skill")
+	}
+	if !strings.Contains(loaded.Warnings[0], "nonexistent-skill") {
+		t.Fatalf("warning should mention skill name: %s", loaded.Warnings[0])
+	}
+}
+
+func TestLoadSkillBundleFilesystemErrorIsHardFail(t *testing.T) {
+	// Remove read+execute permission from the search path so stat on
+	// candidates returns a permission error, not ErrNotFound.
+	dir := t.TempDir()
+	skillDir := filepath.Join(dir, "broken-skill")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# Broken"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	resolver := skill.Resolver{SearchPaths: []string{dir}}
+	_, err := loadSkillBundle(resolver, "claude", "broken-skill")
+	if err == nil {
+		t.Fatal("expected hard error for filesystem failure")
+	}
+	if errors.Is(err, skill.ErrNotFound) {
+		t.Fatalf("filesystem error should not be ErrNotFound: %v", err)
 	}
 }
