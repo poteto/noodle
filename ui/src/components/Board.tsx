@@ -1,4 +1,5 @@
 import { useSnapshot, deriveKanbanColumns } from "~/client";
+import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
 import { QueueCard } from "./QueueCard";
@@ -46,23 +47,7 @@ export function Board() {
 
   return (
     <div className="board-shell">
-      <div className="board-header">
-        <div className="board-header-left">
-          <h1 className="board-title">noodle</h1>
-          <div className="board-stats">
-            <span className="loop-indicator">
-              <span className="pulse-dot" />
-              {snapshot.loop_state}
-            </span>
-            <span className="stat-item">
-              {snapshot.active.length} cooking
-            </span>
-            <span className="stat-item">
-              ${snapshot.total_cost_usd.toFixed(2)}
-            </span>
-          </div>
-        </div>
-      </div>
+      <BoardHeader snapshot={snapshot} />
 
       <div className="board-columns">
         <BoardColumn title="Queued" count={columns.queued.length}>
