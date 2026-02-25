@@ -12,3 +12,4 @@
 - [x] [[archived_plans/38-resilient-skill-resolution/overview]]
 - [x] [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]
 - [x] [[archived_plans/45-task-editor-overhaul/overview]]
+- [x] [[archived_plans/38-resilient-skill-resolution/overview]]

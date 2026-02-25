@@ -2,7 +2,6 @@
 
 
 - [ ] [[plans/15-bootstrap-onboarding/overview]]
-- [ ] [[plans/38-resilient-skill-resolution/overview]]
 - [ ] [[plans/28-rename-prioritize-to-schedule/overview]]
 - [ ] [[plans/29-queue-item-context-passthrough/overview]]
 - [ ] [[plans/31-structured-loop-logging/overview]]

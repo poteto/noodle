@@ -1,4 +1,4 @@
-Back to [[plans/38-resilient-skill-resolution/overview]]
+Back to [[archived_plans/38-resilient-skill-resolution/overview]]
 
 # Phase 8: TUI feed events for skill lifecycle
 

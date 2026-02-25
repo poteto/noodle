@@ -1,7 +1,7 @@
 ---
 id: 38
 created: 2026-02-24
-status: active
+status: done
 ---
 
 # Resilient Skill Resolution
@@ -56,14 +56,14 @@ The design goal: `noodle start` should work no matter what state the project is 
 
 ## Phases
 
-- [[plans/38-resilient-skill-resolution/phase-01-remove-dead-skill-config]]
-- [[plans/38-resilient-skill-resolution/phase-02-non-fatal-skill-resolution]]
-- [[plans/38-resilient-skill-resolution/phase-03-remove-runtime-repair]]
-- [[plans/38-resilient-skill-resolution/phase-04-fsnotify-skill-watcher]]
-- [[plans/38-resilient-skill-resolution/phase-05-registry-rebuild-queue-audit]]
-- [[plans/38-resilient-skill-resolution/phase-06-dispatch-rescan-fallback]]
-- [[plans/38-resilient-skill-resolution/phase-07-prioritize-bootstrap-agent]]
-- [[plans/38-resilient-skill-resolution/phase-08-tui-skill-lifecycle-events]]
+- [[archived_plans/38-resilient-skill-resolution/phase-01-remove-dead-skill-config]]
+- [[archived_plans/38-resilient-skill-resolution/phase-02-non-fatal-skill-resolution]]
+- [[archived_plans/38-resilient-skill-resolution/phase-03-remove-runtime-repair]]
+- [[archived_plans/38-resilient-skill-resolution/phase-04-fsnotify-skill-watcher]]
+- [[archived_plans/38-resilient-skill-resolution/phase-05-registry-rebuild-queue-audit]]
+- [[archived_plans/38-resilient-skill-resolution/phase-06-dispatch-rescan-fallback]]
+- [[archived_plans/38-resilient-skill-resolution/phase-07-prioritize-bootstrap-agent]]
+- [[archived_plans/38-resilient-skill-resolution/phase-08-tui-skill-lifecycle-events]]
 
 ## Verification
 
