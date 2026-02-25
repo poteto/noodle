@@ -1,4 +1,4 @@
-Back to [[plans/28-rename-prioritize-to-schedule/overview]]
+Back to [[archived_plans/28-rename-prioritize-to-schedule/overview]]
 
 # Phase 3: Rename loop functions and logic
 

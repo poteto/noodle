@@ -1,7 +1,7 @@
 ---
 id: 28
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Rename Prioritize To Schedule
@@ -48,13 +48,13 @@ This is a wide mechanical rename touching ~82 files across Go source, config, sk
 
 ## Phases
 
-- [[plans/28-rename-prioritize-to-schedule/phase-01-update-constants-and-types]]
-- [[plans/28-rename-prioritize-to-schedule/phase-02-rename-config-struct-and-toml-section]]
-- [[plans/28-rename-prioritize-to-schedule/phase-03-rename-loop-functions-and-logic]]
-- [[plans/28-rename-prioritize-to-schedule/phase-04-rename-skill-directory-and-frontmatter]]
-- [[plans/28-rename-prioritize-to-schedule/phase-05-update-tui-references]]
-- [[plans/28-rename-prioritize-to-schedule/phase-06-update-tests-and-test-data]]
-- [[plans/28-rename-prioritize-to-schedule/phase-07-update-docs-brain-and-generated-code]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-01-update-constants-and-types]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-02-rename-config-struct-and-toml-section]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-03-rename-loop-functions-and-logic]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-04-rename-skill-directory-and-frontmatter]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-05-update-tui-references]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-06-update-tests-and-test-data]]
+- [[archived_plans/28-rename-prioritize-to-schedule/phase-07-update-docs-brain-and-generated-code]]
 
 ## Verification
 

@@ -1,4 +1,4 @@
-Back to [[plans/28-rename-prioritize-to-schedule/overview]]
+Back to [[archived_plans/28-rename-prioritize-to-schedule/overview]]
 
 # Phase 6: Update tests and test data
 
