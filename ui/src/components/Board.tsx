@@ -93,11 +93,10 @@ export function Board() {
       />
 
       <div className="board-columns">
-        <BoardColumn title="Queued" count={columns.queued.length}>
+        <BoardColumn title="Queued" count={columns.queued.length} footer={<QueueAddCard />}>
           {columns.queued.map((item) => (
             <QueueCard key={item.id} item={item} />
           ))}
-          <QueueAddCard />
         </BoardColumn>
 
         <BoardColumn title="Cooking" count={columns.cooking.length}>

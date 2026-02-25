@@ -1,4 +1,5 @@
 import type { Session } from "~/client";
+import { middleTruncate } from "~/client";
 import { Badge } from "./Badge";
 
 function formatDuration(seconds: number): string {
@@ -36,7 +37,9 @@ export function AgentCard({
       </div>
 
       <div className="card-name">{session.display_name}</div>
-      <div className="card-task">{session.current_action || "working..."}</div>
+      <div className="card-task">
+        {middleTruncate(session.current_action || "working...", 80)}
+      </div>
 
       <div className="card-progress">
         <div className="card-progress-track">

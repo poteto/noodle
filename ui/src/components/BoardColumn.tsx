@@ -4,10 +4,12 @@ export function BoardColumn({
   title,
   count,
   children,
+  footer,
 }: {
   title: string;
   count: number;
   children: ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <div className="board-col">
@@ -18,6 +20,7 @@ export function BoardColumn({
         </div>
       </div>
       <div className="col-cards">{children}</div>
+      {footer && <div className="col-footer">{footer}</div>}
     </div>
   );
 }

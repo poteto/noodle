@@ -5,7 +5,7 @@ import {
   useMutation,
   type QueryClient,
 } from "@tanstack/react-query";
-import { connectSSE, SNAPSHOT_KEY } from "./sse";
+import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY, type SSEStatus } from "./sse";
 import { fetchSnapshot, fetchSessionEvents, sendControl } from "./api";
 import type { Snapshot, EventLine, ControlCommand, ControlAck } from "./types";
 
@@ -34,6 +34,17 @@ export function useSessionEvents(sessionId: string | undefined) {
     enabled: !!sessionId,
     refetchInterval: 3000,
   });
+}
+
+export function useSSEStatus(): SSEStatus {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<SSEStatus>({
+    queryKey: [...SSE_STATUS_KEY],
+    queryFn: () => queryClient.getQueryData(SSE_STATUS_KEY) ?? "connecting",
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  return data ?? "connecting";
 }
 
 export function useSendControl() {

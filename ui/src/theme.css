@@ -100,6 +100,12 @@ html, body {
   gap: 24px;
 }
 
+.board-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .board-title {
   font-family: var(--font-display);
   font-weight: 800;
@@ -147,6 +153,18 @@ html, body {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.loop-indicator.disconnected {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+.pulse-dot.dot-off {
+  background: #fff;
+  animation: none;
+  opacity: 0.5;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
@@ -157,9 +175,11 @@ html, body {
   display: flex;
   flex: 1;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 32px 40px;
   gap: 24px;
   background: var(--bg-2);
+  min-height: 0;
 }
 
 .board-col {
@@ -168,6 +188,7 @@ html, body {
   max-width: 380px;
   display: flex;
   flex-direction: column;
+  max-height: 100%;
 }
 
 .col-header {
@@ -206,6 +227,13 @@ html, body {
   flex-direction: column;
   gap: 10px;
   padding-bottom: 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.col-footer {
+  flex-shrink: 0;
+  padding-top: 8px;
 }
 
 /* Cards */
@@ -213,16 +241,13 @@ html, body {
   background: var(--bg-1);
   border: 2px solid var(--border);
   padding: 18px;
-  cursor: default;
+  cursor: pointer;
   box-shadow: 4px 4px 0 var(--border);
   transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 .board-card:hover {
   transform: translate(-2px, -4px);
   box-shadow: 6px 8px 0 var(--border);
-}
-.board-card.clickable {
-  cursor: pointer;
 }
 
 .card-top {
