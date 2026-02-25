@@ -4,7 +4,6 @@ import {
   useSuspenseQuery,
   useQueryClient,
   useMutation,
-  type QueryClient,
 } from "@tanstack/react-query";
 import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY, type SSEStatus } from "./sse";
 import { fetchSnapshot, fetchSessionEvents, sendControl } from "./api";
@@ -20,7 +19,7 @@ export function useSnapshot() {
   }, [queryClient]);
 
   return useQuery<Snapshot>({
-    queryKey: [...SNAPSHOT_KEY],
+    queryKey: SNAPSHOT_KEY,
     queryFn: fetchSnapshot,
     // SSE handles updates; only fetch once for initial seed.
     refetchOnWindowFocus: false,
@@ -38,7 +37,7 @@ export function useSuspenseSnapshot() {
   }, [queryClient]);
 
   return useSuspenseQuery<Snapshot>({
-    queryKey: [...SNAPSHOT_KEY],
+    queryKey: SNAPSHOT_KEY,
     queryFn: fetchSnapshot,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -57,7 +56,7 @@ export function useSessionEvents(sessionId: string | undefined) {
 export function useSSEStatus(): SSEStatus {
   const queryClient = useQueryClient();
   const { data } = useQuery<SSEStatus>({
-    queryKey: [...SSE_STATUS_KEY],
+    queryKey: SSE_STATUS_KEY,
     queryFn: () => queryClient.getQueryData(SSE_STATUS_KEY) ?? "connecting",
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -71,7 +70,7 @@ export function useSendControl() {
     mutationFn: sendControl,
     onSuccess: () => {
       // Invalidate snapshot so next SSE or refetch picks up changes.
-      queryClient.invalidateQueries({ queryKey: [...SNAPSHOT_KEY] });
+      queryClient.invalidateQueries({ queryKey: SNAPSHOT_KEY });
     },
   });
 }
