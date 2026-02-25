@@ -10,7 +10,7 @@ import (
 	"github.com/poteto/noodle/config"
 )
 
-var testServerCfg = config.ServerConfig{Port: 0}
+var testServerCfg = config.Config{Server: config.ServerConfig{Port: 0}}
 
 type fakeStartLoop struct {
 	cycleErr error
@@ -197,7 +197,7 @@ func TestRunStartWithTUIStartsServer(t *testing.T) {
 	defer cancel()
 
 	// Server enabled with port 0 (auto-assign).
-	cfg := config.ServerConfig{Port: 0}
+	cfg := config.Config{Server: config.ServerConfig{Port: 0}}
 	err := runStartWithTUI(ctx, cancel, loop, t.TempDir(), cfg, true)
 	if err != nil {
 		t.Fatalf("runStartWithTUI returned error: %v", err)

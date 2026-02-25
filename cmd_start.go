@@ -79,7 +79,10 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	serverEnabled := shouldStartServer(app.Config.Server, interactive)
 
 	if interactive {
-		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir, app.Config.Server, serverEnabled)
+		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir, app.Config, serverEnabled)
+	}
+	if serverEnabled {
+		go func() { _ = runWebServer(ctx, runtimeDir, app.Config) }()
 	}
 	return runtimeLoop.Run(ctx)
 }
@@ -109,7 +112,7 @@ func runStartWithTUI(
 	cancel context.CancelFunc,
 	runtimeLoop startRuntimeLoop,
 	runtimeDir string,
-	serverCfg config.ServerConfig,
+	cfg config.Config,
 	serverEnabled bool,
 ) error {
 	loopErrCh := make(chan error, 1)
@@ -126,7 +129,7 @@ func runStartWithTUI(
 	if serverEnabled {
 		serverDone = false
 		go func() {
-			serverErrCh <- runWebServer(ctx, runtimeDir, serverCfg)
+			serverErrCh <- runWebServer(ctx, runtimeDir, cfg)
 		}()
 	}
 
@@ -166,8 +169,8 @@ func runStartWithTUI(
 	return nil
 }
 
-func runWebServer(ctx context.Context, runtimeDir string, cfg config.ServerConfig) error {
-	port := cfg.Port
+func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config) error {
+	port := cfg.Server.Port
 	if port == 0 {
 		port = 3000
 	}
@@ -179,6 +182,7 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.ServerConfi
 		RuntimeDir: runtimeDir,
 		Addr:       addr,
 		UI:         uiClientFS(),
+		Config:     &cfg,
 	})
 
 	errCh := make(chan error, 1)
@@ -186,7 +190,8 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.ServerConfi
 		errCh <- srv.Start(ctx)
 	}()
 
-	openBrowserFunc("http://" + addr)
+	srv.WaitReady()
+	openBrowserFunc("http://" + srv.Addr())
 
 	return <-errCh
 }
@@ -197,7 +202,7 @@ func openBrowser(url string) {
 	case "darwin":
 		cmd = exec.Command("open", url)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
+		cmd = exec.Command("cmd", "/c", "start", "", url)
 	default:
 		cmd = exec.Command("xdg-open", url)
 	}

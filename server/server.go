@@ -26,7 +26,8 @@ type Options struct {
 	RuntimeDir string
 	Addr       string // host:port, defaults to "127.0.0.1:0"
 	Now        func() time.Time
-	UI         fs.FS // embedded SPA assets; nil = placeholder only
+	UI         fs.FS          // embedded SPA assets; nil = placeholder only
+	Config     *config.Config // project config; nil = zero config
 }
 
 // Server serves the web UI API.
@@ -36,6 +37,8 @@ type Server struct {
 	httpServer *http.Server
 	listener   net.Listener
 	sse        *sseHub
+	config     config.Config
+	ready      chan struct{}
 }
 
 // New creates a Server but does not start it.
@@ -53,10 +56,17 @@ func New(opts Options) *Server {
 		now = time.Now
 	}
 
+	var cfg config.Config
+	if opts.Config != nil {
+		cfg = *opts.Config
+	}
+
 	s := &Server{
 		runtimeDir: runtimeDir,
 		now:        now,
 		sse:        newSSEHub(),
+		config:     cfg,
+		ready:      make(chan struct{}),
 	}
 
 	mux := http.NewServeMux()
@@ -98,6 +108,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("listen: %w", err)
 	}
 	s.listener = ln
+	close(s.ready)
 
 	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now)
 
@@ -129,6 +140,9 @@ func (s *Server) Addr() string {
 	}
 	return s.listener.Addr().String()
 }
+
+// WaitReady blocks until the server is listening.
+func (s *Server) WaitReady() { <-s.ready }
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	snap, err := snapshot.LoadSnapshot(s.runtimeDir, s.now())
@@ -188,6 +202,8 @@ type controlRequest struct {
 }
 
 func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64*1024) // 64KB limit
+
 	var req controlRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -196,6 +212,17 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 	action := strings.TrimSpace(req.Action)
 	if action == "" {
 		http.Error(w, "action required", http.StatusBadRequest)
+		return
+	}
+
+	validActions := map[string]bool{
+		"pause": true, "resume": true, "drain": true, "skip": true,
+		"kill": true, "steer": true, "merge": true, "reject": true,
+		"request-changes": true, "autonomy": true, "enqueue": true,
+		"stop-all": true, "requeue": true, "edit-item": true,
+	}
+	if !validActions[action] {
+		http.Error(w, "unknown action: "+action, http.StatusBadRequest)
 		return
 	}
 
@@ -219,28 +246,19 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"id":     cmd.ID,
 		"action": cmd.Action,
-		"status": "queued",
+		"status": "ok",
+		"at":     cmd.At,
 	})
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
-	cfg, _, err := config.Load("")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return a subset relevant to the UI.
 	resp := map[string]any{
-		"autonomy":    cfg.Autonomy,
-		"concurrency": cfg.Concurrency.MaxCooks,
-		"routing": map[string]any{
-			"provider": cfg.Routing.Defaults.Provider,
-			"model":    cfg.Routing.Defaults.Model,
-		},
+		"provider": s.config.Routing.Defaults.Provider,
+		"model":    s.config.Routing.Defaults.Model,
+		"autonomy": s.config.Autonomy,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -269,21 +287,35 @@ func appendControlCommand(runtimeDir string, cmd loop.ControlCommand) error {
 // uiOrPlaceholder returns a handler that serves the embedded SPA if ui is
 // non-nil, falling back to a placeholder HTML page for unmatched paths.
 // If ui is nil, all requests get the placeholder.
+//
+// For SPA client-side routing: "/" serves index.html, known files are served
+// directly, and unknown paths fall back to index.html (client-side routing).
 func uiOrPlaceholder(ui fs.FS) http.Handler {
 	if ui == nil {
 		return http.HandlerFunc(servePlaceholder)
 	}
+
+	// Verify index.html exists; if not, fall back to placeholder.
+	idx, err := ui.Open("index.html")
+	if err != nil {
+		return http.HandlerFunc(servePlaceholder)
+	}
+	idx.Close()
+
 	fileServer := http.FileServer(http.FS(ui))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == "/" || path == "" {
-			servePlaceholder(w, r)
+			r.URL.Path = "/index.html"
+			fileServer.ServeHTTP(w, r)
 			return
 		}
 		// Check if the file exists in the embedded FS.
 		f, err := ui.Open(path[1:]) // strip leading /
 		if err != nil {
-			servePlaceholder(w, r)
+			// SPA fallback: serve index.html for client-side routing.
+			r.URL.Path = "/index.html"
+			fileServer.ServeHTTP(w, r)
 			return
 		}
 		f.Close()

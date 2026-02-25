@@ -135,11 +135,16 @@ func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time) {
 	if err != nil {
 		return
 	}
-	data, err := json.Marshal(snap)
+
+	// Zero volatile field for diff-gating so UpdatedAt doesn't defeat the hash.
+	hashSnap := snap
+	hashSnap.UpdatedAt = time.Time{}
+	hashData, err := json.Marshal(hashSnap)
 	if err != nil {
 		return
 	}
-	hash := sha256.Sum256(data)
+	hash := sha256.Sum256(hashData)
+
 	h.mu.Lock()
 	same := hash == h.lastHash
 	if !same {
@@ -150,7 +155,11 @@ func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time) {
 		return
 	}
 
-	// Format as SSE event (unnamed so onmessage handlers receive it).
+	// Broadcast the full snapshot (with UpdatedAt).
+	data, err := json.Marshal(snap)
+	if err != nil {
+		return
+	}
 	msg := fmt.Appendf(nil, "data: %s\n\n", data)
 	h.broadcast(msg)
 }

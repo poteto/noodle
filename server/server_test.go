@@ -109,8 +109,8 @@ func TestPostControl(t *testing.T) {
 	if ack["action"] != "pause" {
 		t.Fatalf("action = %q, want pause", ack["action"])
 	}
-	if ack["status"] != "queued" {
-		t.Fatalf("status = %q, want queued", ack["status"])
+	if ack["status"] != "ok" {
+		t.Fatalf("status = %q, want ok", ack["status"])
 	}
 	if ack["id"] == "" {
 		t.Fatal("expected non-empty id")
@@ -228,23 +228,17 @@ func TestSSEStream(t *testing.T) {
 		t.Fatalf("content-type = %q, want text/event-stream", ct)
 	}
 
-	// Read the initial snapshot event.
+	// Read the initial snapshot event (unnamed SSE — just data: lines).
 	scanner := bufio.NewScanner(resp.Body)
-	var eventType, dataLine string
+	var dataLine string
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "event: ") {
-			eventType = strings.TrimPrefix(line, "event: ")
-		}
 		if strings.HasPrefix(line, "data: ") {
 			dataLine = strings.TrimPrefix(line, "data: ")
 			break
 		}
 	}
 
-	if eventType != "snapshot" {
-		t.Fatalf("event type = %q, want snapshot", eventType)
-	}
 	if dataLine == "" {
 		t.Fatal("expected non-empty data line")
 	}
@@ -334,8 +328,8 @@ func TestSSEHubDiffGating(t *testing.T) {
 	hub.loadAndBroadcast(dir, now)
 	select {
 	case msg := <-client.ch:
-		if !strings.Contains(string(msg), "event: snapshot") {
-			t.Fatalf("expected snapshot event, got %s", msg)
+		if !strings.Contains(string(msg), "data: ") {
+			t.Fatalf("expected data event, got %s", msg)
 		}
 	default:
 		t.Fatal("expected broadcast on first load")
