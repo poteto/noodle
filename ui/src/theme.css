@@ -374,6 +374,9 @@ html, body {
   color: var(--text-2);
   line-height: 1.4;
   margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-footer {
