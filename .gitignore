@@ -35,9 +35,6 @@ brain/.obsidian/
 brain/vision/slides/node_modules/
 brain/vision/slides/dist/
 
-# UI Prototype
-ui_prototype/node_modules/
-
 # UI
 ui/node_modules/
 ui/dist/*
