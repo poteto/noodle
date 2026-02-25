@@ -10,12 +10,18 @@ Replace the Bubble Tea TUI with a React/TypeScript web UI served from the Go bin
 
 ## Prototype
 
-Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban board layout with Poster theme (bold yellow, hard drop shadows, Outfit + DM Sans). Includes:
+Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Directional on styling and layout, not high fidelity — not every planned interaction is mocked. Kanban board layout with Poster theme (bold yellow, hard drop shadows, Outfit + DM Sans). Includes:
 - Board with Queued → Cooking → Review → Done columns
 - Slack-style chat detail panel (click any agent card)
 - @mention autocomplete for cross-agent steering
 - Remote agent indicator (cloud icon with host tooltip)
 - Mock data: 6 agents, event streams, queue items
+
+Not yet prototyped (design during implementation):
+- Request Changes prompt UI on review cards (phase 8)
+- Pause/resume control in header (phase 10)
+- Task editor modal (phase 10)
+- Keyboard shortcuts (phase 10)
 
 ## Scope
 
@@ -60,13 +66,13 @@ Static HTML/CSS/JS prototype at `ui_prototype/` (`pnpm dev` to run). Kanban boar
 1. [[plans/46-web-ui/phase-01-extract-snapshot-package]] — Extract snapshot types + add RemoteHost, WorktreePath, document enums
 2. [[plans/46-web-ui/phase-02-go-http-server-with-sse]] — HTTP server, SSE, control POST with ack, config endpoint
 3. [[plans/46-web-ui/phase-03-server-integration-and-browser-launch]] — Wire into `noodle start`, browser launch, embed.FS
-4. [[plans/46-web-ui/phase-04-typescript-project-scaffold]] — TanStack Start SPA scaffold
-5. [[plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]] — TS types, SSE hook, React Query, kanban column derivation
-6. [[plans/46-web-ui/phase-06-feed-view]] — Kanban board with four columns + agent/queue/review cards
-7. [[plans/46-web-ui/phase-07-queue-view]] — Board header: title, stats, loop state, new task button
-8. [[plans/46-web-ui/phase-08-reviews-view]] — Review actions: merge/reject/request-changes in Review column
-9. [[plans/46-web-ui/phase-09-session-detail-view]] — Slack-style chat panel with event stream, steer input, @mention
-10. [[plans/46-web-ui/phase-10-controls-steer-pause-task-editor]] — Pause/resume, task editor modal, keyboard shortcuts
+4. [[plans/46-web-ui/phase-04-typescript-project-scaffold]] — TanStack Start SPA scaffold (can parallel with 1-3)
+5. [[plans/46-web-ui/phase-05-shared-client-package-types-and-sse-hook]] — TS types, SSE hook, React Query, kanban column derivation (blocks 6-10)
+6. [[plans/46-web-ui/phase-06-feed-view]] — Kanban board with four columns + agent/queue/review cards (parallel with 7)
+7. [[plans/46-web-ui/phase-07-queue-view]] — Board header: title, stats, loop state, new task button (parallel with 6)
+8. [[plans/46-web-ui/phase-08-reviews-view]] — Review actions: merge/reject/request-changes in Review column (parallel with 9, 10)
+9. [[plans/46-web-ui/phase-09-session-detail-view]] — Slack-style chat panel with event stream, steer input, @mention (parallel with 8, 10)
+10. [[plans/46-web-ui/phase-10-controls-steer-pause-task-editor]] — Pause/resume, task editor modal, keyboard shortcuts (parallel with 8, 9)
 
 ## Verification
 

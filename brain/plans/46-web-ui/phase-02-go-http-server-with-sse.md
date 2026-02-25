@@ -15,7 +15,7 @@ Build the HTTP server that serves snapshot data via SSE and accepts control comm
   - `POST /api/control` — Accepts `loop.ControlCommand` JSON, appends to `control.ndjson` (same mechanism as `tui.sendControlCmd`). Returns `ControlAck` JSON in the response body so the UI gets immediate feedback.
   - `GET /api/config` — Returns default provider, model, skill, and available options from `.noodle.toml`. Used by the task editor to populate dropdowns.
   - `GET /` — Serves embedded SPA (wired in phase 3, placeholder for now).
-- **SSE client management** — Mutex-protected client list. Each client gets a channel. Broadcast goroutine fans out snapshots. Clean up on client disconnect.
+- **SSE client management** — Mutex-protected client list. Each client gets a channel. Broadcast goroutine fans out snapshots. Clean up on client disconnect. Skip push if snapshot hasn't changed since last send (diff-gate) to avoid churn under rapid `.noodle/` writes.
 - **CORS** — Allow `localhost:*` origins for dev (Vite on different port).
 
 ## Data structures
