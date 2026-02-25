@@ -43,6 +43,7 @@ export interface Session {
   remote_host?: string;
   dispatch_warning?: string;
   worktree_name?: string;
+  task_key?: string;
 }
 
 export interface QueueItem {

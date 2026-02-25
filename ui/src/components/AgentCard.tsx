@@ -12,7 +12,7 @@ export function AgentCard({
   onClick?: () => void;
 }) {
   const { mutate: send, isPending } = useSendControl();
-  const taskKey = session.display_name.split("-")[0] ?? "";
+  const taskKey = session.task_key ?? "";
 
   function handleStop(e: React.MouseEvent) {
     e.stopPropagation();

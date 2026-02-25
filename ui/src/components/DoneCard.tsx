@@ -7,7 +7,7 @@ import { RotateCcw } from "lucide-react";
 export function DoneCard({ session }: { session: Session }) {
   const { mutate: send, isPending } = useSendControl();
   const failed = session.status === "failed";
-  const taskKey = session.display_name.split("-")[0] ?? "";
+  const taskKey = session.task_key ?? "";
 
   function handleReplay(e: React.MouseEvent) {
     e.stopPropagation();

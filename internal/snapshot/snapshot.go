@@ -160,6 +160,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			LoopState:             strings.TrimSpace(meta.LoopState),
 			DispatchWarning:       readDispatchWarning(runtimeDir, sessionID),
 			WorktreeName:          readWorktreeName(runtimeDir, sessionID),
+			TaskKey:               InferTaskType(sessionID),
 		})
 	}
 
