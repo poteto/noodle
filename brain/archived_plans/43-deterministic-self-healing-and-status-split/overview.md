@@ -1,7 +1,7 @@
 ---
 id: 43
 created: 2026-02-24
-status: active
+status: done
 ---
 
 # Status File Split
@@ -35,8 +35,8 @@ The original plan also included deterministic self-healing (fixer interface, tri
 
 ## Phases
 
-- [[plans/43-deterministic-self-healing-and-status-split/phase-01-status-file-split]]
-- [[plans/43-deterministic-self-healing-and-status-split/phase-05-update-schema-and-skill-references]]
+- [[archived_plans/43-deterministic-self-healing-and-status-split/phase-01-status-file-split]]
+- [[archived_plans/43-deterministic-self-healing-and-status-split/phase-05-update-schema-and-skill-references]]
 
 ## Verification
 

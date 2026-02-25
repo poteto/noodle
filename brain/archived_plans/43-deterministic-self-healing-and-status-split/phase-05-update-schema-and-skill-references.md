@@ -1,4 +1,4 @@
-Back to [[plans/43-deterministic-self-healing-and-status-split/overview]]
+Back to [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]
 
 # Phase 5: Update schema and skill references
 
