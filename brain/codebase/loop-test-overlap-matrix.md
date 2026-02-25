@@ -3,19 +3,17 @@
 This matrix maps `loop/loop_test.go` cases to `loop/testdata` fixture coverage.
 The goal is to prune only true duplicates and keep narrow unit diagnostics.
 
-## Pruned As Fixture-Equivalent
+## Pruned — Runtime Repair Removed
 
-- `TestCycleSchedulesRuntimeRepairForMiseErrors`
-  - Fixture coverage: `runtime-repair-adopt-running-session`,
-    `runtime-repair-max-attempts`, `runtime-repair-spawn-fatal`,
-    `runtime-repair-oops-fallback-custom-routing`
-  - Reason: fixture suite already asserts repair scheduling, oops task routing,
-    in-flight state transitions, and worktree creation behavior.
+The runtime repair system was deleted in plan 38 phase 3. All repair-specific
+tests and fixtures were removed:
 
-- `TestCycleResumesSchedulingAfterRepairCompletion`
-  - Fixture coverage: `runtime-repair-completed-resumes-queue`
-  - Reason: fixture suite already validates two-cycle behavior where repair
-    completion clears in-flight state and queued work resumes.
+- `TestCycleSchedulesRuntimeRepairForMiseErrors` — deleted (repair no longer exists)
+- `TestCycleResumesSchedulingAfterRepairCompletion` — deleted (repair no longer exists)
+- All `runtime-repair-*` fixtures — deleted
+- All `missing-sync-*` fixtures — deleted (depended on repair)
+- `prioritize-exited-without-complete-should-fail` — deleted (depended on repair session status)
+- `prioritize-failed-retries-should-surface-*` — deleted (tested repair retry chains)
 
 ## Kept As Unit-Only Or Narrow Diagnostics
 

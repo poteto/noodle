@@ -8,7 +8,7 @@ status: ready
 
 ## Context
 
-The loop package produces zero structured output. All lifecycle events — dispatch, completion, retry, failure, state transitions, control commands, runtime repair — are silent. The only output is 3 ad-hoc `fmt.Fprintf(os.Stderr, ...)` calls: a session failure message in `cook.go`, a nil-entry warning in `pending_review.go`, and a sprite config warning in `defaults.go`. Errors return up the call stack and most are handled by the runtime repair system, but operators have no way to observe what the loop is doing without reading filesystem state.
+The loop package produces zero structured output. All lifecycle events — dispatch, completion, retry, failure, state transitions, control commands — are silent. The only output is ad-hoc `fmt.Fprintf(os.Stderr, ...)` calls for session failures and warnings. Errors return up the call stack, but operators have no way to observe what the loop is doing without reading filesystem state.
 
 This plan adds structured logging to the loop using Go's stdlib `log/slog`. Every significant lifecycle event gets a log line with consistent key-value attributes. The logger writes to stderr in text format by default. The 3 existing `fmt.Fprintf` calls are replaced with slog equivalents.
 
@@ -17,7 +17,7 @@ This plan adds structured logging to the loop using Go's stdlib `log/slog`. Ever
 **In:**
 - `log/slog.Logger` field on the `Loop` struct, injected via `Dependencies`
 - Default to `slog.New(slog.NewTextHandler(os.Stderr, nil))` when not provided
-- Log lines for: dispatch (cook, prioritize, runtime repair), completion (success, retry, failure, merge, park-for-review), queue mutations (consume-next, bootstrap-prioritize, skip, normalize), state transitions, control commands, runtime repair lifecycle
+- Log lines for: dispatch (cook, prioritize), completion (success, retry, failure, merge, park-for-review), queue mutations (consume-next, bootstrap-prioritize, skip, normalize), state transitions, control commands
 - Replace the 3 existing `fmt.Fprintf(os.Stderr, ...)` calls with slog
 - Tests that verify log output for key events
 
@@ -46,8 +46,7 @@ This plan adds structured logging to the loop using Go's stdlib `log/slog`. Ever
 - [[plans/31-structured-loop-logging/phase-02-inject-logger-into-loop]]
 - [[plans/31-structured-loop-logging/phase-03-log-dispatch-and-completion-events]]
 - [[plans/31-structured-loop-logging/phase-04-log-queue-mutations-and-state-transitions]]
-- [[plans/31-structured-loop-logging/phase-05-log-retry-failure-and-repair-events]]
-- [[plans/31-structured-loop-logging/phase-06-tests]]
+- [[plans/31-structured-loop-logging/phase-05-tests]]
 
 ## Verification
 

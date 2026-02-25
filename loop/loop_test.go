@@ -274,8 +274,8 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	})
 
 	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "runtime repair unavailable") {
-		t.Fatalf("expected runtime repair error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
+		t.Fatalf("expected spawn error, got %v", err)
 	}
 	for _, name := range wt.cleaned {
 		if name == "42" {
@@ -310,8 +310,8 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	})
 
 	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "runtime repair unavailable") {
-		t.Fatalf("expected runtime repair error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
+		t.Fatalf("expected spawn error, got %v", err)
 	}
 	created42 := false
 	for _, name := range wt.created {
@@ -700,17 +700,12 @@ func TestExitedStatusCountsAsFailureForPrioritize(t *testing.T) {
 	sp.sessions[0].status = "exited"
 	close(sp.sessions[0].done)
 
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle with exited prioritize session: %v", err)
+	err := l.Cycle(context.Background())
+	if err == nil {
+		t.Fatal("expected Cycle to return error for exited prioritize session")
 	}
-	if l.runtimeRepairInFlight == nil {
-		t.Fatal("expected runtime repair to be scheduled")
-	}
-	if len(sp.calls) != 2 {
-		t.Fatalf("spawn calls = %d, want 2", len(sp.calls))
-	}
-	if !strings.HasPrefix(sp.calls[1].Name, "repair-runtime-") {
-		t.Fatalf("expected repair spawn, got %q", sp.calls[1].Name)
+	if !strings.Contains(err.Error(), "prioritize failed after retries") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -790,13 +785,12 @@ func TestCycleRegistryErrorBlocksOnce(t *testing.T) {
 	l := &Loop{
 		projectDir:            projectDir,
 		runtimeDir:            runtimeDir,
-		registryErr:           errors.New("task type discovery failed: bad frontmatter"),
-		activeByTarget:        map[string]*activeCook{},
-		activeByID:            map[string]*activeCook{},
-		adoptedTargets:        map[string]string{},
-		failedTargets:         map[string]string{},
-		processedIDs:          map[string]struct{}{},
-		runtimeRepairAttempts: map[string]int{},
+		registryErr:    errors.New("task type discovery failed: bad frontmatter"),
+		activeByTarget: map[string]*activeCook{},
+		activeByID:     map[string]*activeCook{},
+		adoptedTargets: map[string]string{},
+		failedTargets:  map[string]string{},
+		processedIDs:   map[string]struct{}{},
 		deps: Dependencies{
 			Mise:    &fakeMise{brief: mise.Brief{}},
 			Monitor: fakeMonitor{},
@@ -1137,7 +1131,7 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 	}
 }
 
-func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T) {
+func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -1189,9 +1183,6 @@ func TestCycleMergeConflictMarksFailedAndSkipsWithoutRuntimeRepair(t *testing.T)
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
-	}
-	if l.runtimeRepairInFlight != nil {
-		t.Fatalf("expected no runtime repair in flight, got %#v", l.runtimeRepairInFlight)
 	}
 	if reason, ok := l.failedTargets["42"]; !ok {
 		t.Fatal("expected target to be marked failed")
@@ -1444,23 +1435,18 @@ func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.Disp
 	return s, nil
 }
 
-// TestNoDoubleSpawnAfterFailedRetryRepair reproduces a bug where a queue item
-// gets spawned fresh after a failed retry triggers runtime repair.
+// TestNoDoubleSpawnAfterFailedRetry verifies that when a retry dispatch fails,
+// the item stays in pendingRetry and is retried next cycle — never spawned
+// fresh via planCycleSpawns with a reset attempt counter.
 //
 // Sequence:
 //  1. Cycle 1: item "37" spawns session A
 //  2. Session A fails (Done fires)
-//  3. Cycle 2: collectCompleted picks up A, deletes from activeByTarget,
-//     retryCook→spawnCook fails (dispatch error) → handleRuntimeIssue
-//     starts repair → returns nil. activeByTarget["37"] is now EMPTY.
-//  4. Repair completes
-//  5. Cycle 3: planCycleSpawns sees "37" not in activeByTarget → spawns fresh
-//
-// This is a bug: the item's tracking is lost between the failed retry and
-// repair completion, causing a duplicate spawn (attempt counter resets to 0).
-// In production with tmux, if the previous session was still alive (false
-// Done signal), two agents would run simultaneously for the same item.
-func TestNoDoubleSpawnAfterFailedRetryRepair(t *testing.T) {
+//  3. Cycle 2: collectCompleted picks up A, retryCook→spawnCook fails,
+//     item lands in pendingRetry. Cycle returns the spawn error.
+//  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
+//     Item is in activeByTarget with attempt > 0.
+func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -1481,9 +1467,8 @@ func TestNoDoubleSpawnAfterFailedRetryRepair(t *testing.T) {
 	}
 
 	// Call 0: cycle 1 spawns "37" → succeeds
-	// Call 1: cycle 2 retry of "37" → fails (triggers runtime repair)
-	// Call 2: cycle 2 repair session → succeeds
-	// Call 3+: cycle 3 onward → succeeds (bug: fresh spawn of "37")
+	// Call 1: cycle 2 retry of "37" → fails (transient dispatch error)
+	// Call 2+: cycle 3 onward → succeeds
 	sp := &selectiveErrDispatcher{
 		failAt: map[int]error{1: errors.New("tmux unavailable")},
 	}
@@ -1525,39 +1510,28 @@ func TestNoDoubleSpawnAfterFailedRetryRepair(t *testing.T) {
 		t.Fatalf("mkdir worktree: %v", err)
 	}
 
-	// --- Cycle 2: collect A, retry fails, repair starts ---
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 2: %v", err)
+	// --- Cycle 2: collect A, retry fails, item goes to pendingRetry ---
+	err := l.Cycle(context.Background())
+	if err == nil {
+		t.Fatal("expected cycle 2 to return error from failed retry dispatch")
 	}
-	if l.runtimeRepairInFlight == nil {
-		t.Fatal("expected runtime repair in flight after cycle 2")
-	}
-	if _, ok := l.activeByTarget["37"]; ok {
-		t.Log("activeByTarget still has 37 after failed retry — good (not the bug path)")
+	if _, ok := l.pendingRetry["37"]; !ok {
+		t.Fatal("expected item 37 in pendingRetry after failed retry dispatch")
 	}
 
-	// Simulate: repair session completes
-	repairSession := sp.sessions[len(sp.sessions)-1]
-	repairSession.status = "completed"
-	close(repairSession.done)
-
-	// --- Cycle 3: repair clears, pending retry fires ---
+	// --- Cycle 3: pendingRetry fires, spawnCook succeeds ---
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 3: %v", err)
 	}
 
-	// After repair, the pending retry should fire with the correct attempt
-	// counter (1, not 0). The bug caused a fresh spawn via planCycleSpawns
-	// with attempt 0 because activeByTarget lost tracking of the item.
 	cook37, ok := l.activeByTarget["37"]
 	if !ok {
 		t.Fatal("expected item 37 in activeByTarget after cycle 3 (pending retry should have fired)")
 	}
 	if cook37.attempt == 0 {
 		t.Errorf(
-			"BUG: item '37' was spawned fresh (attempt 0) after repair "+
-				"(attempt counter lost, activeByTarget tracking gap between "+
-				"failed retry and repair completion)",
+			"BUG: item '37' was spawned fresh (attempt 0) instead of via "+
+				"pendingRetry (attempt counter lost between failed retry and next cycle)",
 		)
 	}
 }

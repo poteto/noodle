@@ -348,7 +348,19 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 	l.pendingRetry = map[string]*pendingRetryCook{}
 	for _, p := range pending {
 		if err := l.spawnCook(ctx, p.item, p.attempt, ""); err != nil {
-			return l.handleRuntimeIssue(ctx, "loop.pending-retry", err, nil)
+			if p.attempt >= l.config.Recovery.MaxRetries {
+				fmt.Fprintf(os.Stderr, "loop.pending-retry: %s exhausted retries: %v\n", p.item.ID, err)
+				if markErr := l.markFailed(p.item.ID, err.Error()); markErr != nil {
+					fmt.Fprintf(os.Stderr, "loop.pending-retry: mark failed %s: %v\n", p.item.ID, markErr)
+				}
+				_ = l.skipQueueItem(p.item.ID)
+				continue
+			}
+			l.pendingRetry[p.item.ID] = &pendingRetryCook{
+				item:    p.item,
+				attempt: p.attempt + 1,
+			}
+			continue
 		}
 	}
 	return nil

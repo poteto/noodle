@@ -42,7 +42,7 @@ In `skipQueueItem`, after successful write, log:
 l.logger.Info("queue item skipped", "item", id)
 ```
 
-### Log state transitions (`loop.go`, `control.go`, `runtime_repair.go`)
+### Log state transitions (`loop.go`, `control.go`)
 
 State changes happen in multiple places. Add a helper method:
 
@@ -64,12 +64,6 @@ Replace all direct `l.state = ...` assignments with `l.setState(...)`, except th
 - `control.go:145` — `StatePaused` from pause command
 - `control.go:147` — `StateRunning` from resume command
 - `control.go:149` — `StateDraining` from drain command
-- `runtime_repair.go:79-81` — `StatePaused` when repair starts
-- `runtime_repair.go:106-108` — `StatePaused` when repair adopted
-- `runtime_repair.go:181-183` — `StatePaused` while repair in-flight
-- `runtime_repair.go:200` — `StatePaused` in `advanceRuntimeRepair` `else if` branch (adopted repair where `inFlight.Session == nil` but `inFlight.SessionID != ""`)
-- `runtime_repair.go:207` — restore `StateBefore` in the same `else if` branch when adopted repair completes
-- `runtime_repair.go:214` — restore `StateBefore` when repair completes
 
 ### Log control commands (`control.go`)
 

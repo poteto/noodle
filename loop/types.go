@@ -143,23 +143,4 @@ type Loop struct {
 	processedIDs    map[string]struct{}
 
 	lastStatus statusfile.Status
-
-	runtimeRepairAttempts map[string]int
-	runtimeRepairInFlight *runtimeRepairState
-}
-
-type runtimeIssue struct {
-	Scope    string
-	Message  string
-	Warnings []string
-	Stack    string
-}
-
-type runtimeRepairState struct {
-	Fingerprint string
-	Issue       runtimeIssue
-	Attempt     int
-	SessionID   string
-	Session     dispatcher.Session
-	StateBefore State
 }

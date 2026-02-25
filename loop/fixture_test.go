@@ -22,17 +22,14 @@ import (
 	"github.com/poteto/noodle/mise"
 )
 
-var runtimeRepairNamePattern = regexp.MustCompile(`repair-runtime-\d{8}-\d{6}-\d+`)
-
 type loopFixtureSetup struct {
-	DispatcherError               string                     `json:"dispatcher_error"`
-	WorktreeCreateError           string                     `json:"worktree_create_error"`
-	WorktreeCreateErrorNames      []string                   `json:"worktree_create_error_names"`
-	FailedTargets                 map[string]string          `json:"failed_targets"`
-	ActiveSessions                []loopFixtureActiveSession `json:"active_sessions"`
-	AdoptedTargets                []loopFixtureAdoptedTarget `json:"adopted_targets"`
-	RecoveryMaxRetries            *int                       `json:"recovery_max_retries"`
-	RunningRuntimeRepairSessionID string                     `json:"running_runtime_repair_session_id"`
+	DispatcherError          string                     `json:"dispatcher_error"`
+	WorktreeCreateError      string                     `json:"worktree_create_error"`
+	WorktreeCreateErrorNames []string                   `json:"worktree_create_error_names"`
+	FailedTargets            map[string]string          `json:"failed_targets"`
+	ActiveSessions           []loopFixtureActiveSession `json:"active_sessions"`
+	AdoptedTargets           []loopFixtureAdoptedTarget `json:"adopted_targets"`
+	RecoveryMaxRetries       *int                       `json:"recovery_max_retries"`
 }
 
 type loopFixtureActiveSession struct {
@@ -53,9 +50,7 @@ type loopFixtureMiseRun struct {
 }
 
 type loopFixtureStateInput struct {
-	MiseResult                 loopFixtureMiseRun `json:"mise_result"`
-	RuntimeRepairSessionStatus string             `json:"runtime_repair_session_status"`
-	RuntimeRepairSessionIndex  *int               `json:"runtime_repair_session_index"`
+	MiseResult loopFixtureMiseRun `json:"mise_result"`
 }
 
 type loopFixtureRuntimeDump struct {
@@ -63,18 +58,13 @@ type loopFixtureRuntimeDump struct {
 }
 
 type loopFixtureStateDump struct {
-	CycleError             string                `json:"cycle_error,omitempty"`
-	Transition             string                `json:"transition"`
-	RuntimeRepairInFlight  bool                  `json:"runtime_repair_in_flight"`
-	RepairTaskScheduled    bool                  `json:"repair_task_scheduled"`
-	OopsTaskScheduled      bool                  `json:"oops_task_scheduled"`
-	NormalTaskScheduled    bool                  `json:"normal_task_scheduled"`
-	SpawnCalls             int                   `json:"spawn_calls"`
-	RuntimeRepairSpawnCall int                   `json:"runtime_repair_spawn_calls"`
-	NormalSpawnCalls       int                   `json:"normal_spawn_calls"`
-	CreatedWorktrees       int                   `json:"created_worktrees"`
-	FirstSpawn             *loopFixtureSpawnDump `json:"first_spawn,omitempty"`
-	RuntimeRepairSpawn     *loopFixtureSpawnDump `json:"runtime_repair_spawn,omitempty"`
+	CycleError          string                `json:"cycle_error,omitempty"`
+	Transition          string                `json:"transition"`
+	NormalTaskScheduled bool                  `json:"normal_task_scheduled"`
+	SpawnCalls          int                   `json:"spawn_calls"`
+	NormalSpawnCalls    int                   `json:"normal_spawn_calls"`
+	CreatedWorktrees    int                   `json:"created_worktrees"`
+	FirstSpawn          *loopFixtureSpawnDump `json:"first_spawn,omitempty"`
 }
 
 type loopFixtureSpawnDump struct {
@@ -187,7 +177,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			observed := loopFixtureRuntimeDump{
 				States: make(map[string]loopFixtureStateDump, len(fixtureCase.States)),
 			}
-			for index, state := range fixtureCase.States {
+			for _, state := range fixtureCase.States {
 				applyStateRuntimeSnapshot(t, state, runtimeDir)
 				cfg := cloneConfig(baseCfg)
 				if path := strings.TrimSpace(state.ConfigScope.StateOverridePath); path != "" {
@@ -195,29 +185,18 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				}
 				l.config = cfg
 
-				applySessionStatusInput(t, sp, stateInputs[index], index)
-
 				err := l.Cycle(context.Background())
-				repairCalls := runtimeRepairCalls(sp.calls)
-				normalCalls := normalSpawnCalls(sp.calls)
 
 				stateDump := loopFixtureStateDump{
-					CycleError:             normalizeDynamicText(errorString(err)),
-					Transition:             strings.ToLower(strings.TrimSpace(string(l.state))),
-					RuntimeRepairInFlight:  l.runtimeRepairInFlight != nil,
-					RepairTaskScheduled:    len(repairCalls) > 0,
-					OopsTaskScheduled:      hasSkill(repairCalls, "oops"),
-					NormalTaskScheduled:    len(normalCalls) > 0,
-					SpawnCalls:             len(sp.calls),
-					RuntimeRepairSpawnCall: len(repairCalls),
-					NormalSpawnCalls:       len(normalCalls),
-					CreatedWorktrees:       len(wt.created),
+					CycleError:          normalizeDynamicText(errorString(err)),
+					Transition:          strings.ToLower(strings.TrimSpace(string(l.state))),
+					NormalTaskScheduled: len(sp.calls) > 0,
+					SpawnCalls:          len(sp.calls),
+					NormalSpawnCalls:    len(sp.calls),
+					CreatedWorktrees:    len(wt.created),
 				}
-				if len(normalCalls) > 0 {
-					stateDump.FirstSpawn = requestDump(normalCalls[0])
-				}
-				if len(repairCalls) > 0 {
-					stateDump.RuntimeRepairSpawn = requestDump(repairCalls[0])
+				if len(sp.calls) > 0 {
+					stateDump.FirstSpawn = requestDump(sp.calls[0])
 				}
 
 				observed.States[state.ID] = stateDump
@@ -252,30 +231,6 @@ func buildMiseResults(stateInputs []loopFixtureStateInput) []fakeMiseResult {
 		})
 	}
 	return results
-}
-
-func applySessionStatusInput(t *testing.T, sp *fakeDispatcher, input loopFixtureStateInput, defaultIndex int) {
-	t.Helper()
-	status := strings.TrimSpace(input.RuntimeRepairSessionStatus)
-	if status == "" {
-		return
-	}
-	sessionIndex := defaultIndex - 1
-	if sessionIndex < 0 {
-		sessionIndex = 0
-	}
-	if input.RuntimeRepairSessionIndex != nil {
-		sessionIndex = *input.RuntimeRepairSessionIndex
-	}
-	if sessionIndex < 0 || sessionIndex >= len(sp.sessions) {
-		t.Fatalf("missing runtime repair session at index %d for status %q", sessionIndex, status)
-	}
-	sp.sessions[sessionIndex].status = status
-	select {
-	case <-sp.sessions[sessionIndex].done:
-	default:
-		close(sp.sessions[sessionIndex].done)
-	}
 }
 
 func applySetupConfig(cfg *config.Config, setup loopFixtureSetup) {
@@ -454,35 +409,6 @@ func assertRuntimeDumpCoverage(t *testing.T, fixtureCase fixturedir.FixtureCase,
 	}
 }
 
-func runtimeRepairCalls(calls []dispatcher.DispatchRequest) []dispatcher.DispatchRequest {
-	out := make([]dispatcher.DispatchRequest, 0, len(calls))
-	for _, call := range calls {
-		if strings.HasPrefix(call.Name, "repair-runtime-") {
-			out = append(out, call)
-		}
-	}
-	return out
-}
-
-func normalSpawnCalls(calls []dispatcher.DispatchRequest) []dispatcher.DispatchRequest {
-	out := make([]dispatcher.DispatchRequest, 0, len(calls))
-	for _, call := range calls {
-		if !strings.HasPrefix(call.Name, "repair-runtime-") {
-			out = append(out, call)
-		}
-	}
-	return out
-}
-
-func hasSkill(calls []dispatcher.DispatchRequest, skill string) bool {
-	for _, call := range calls {
-		if strings.EqualFold(strings.TrimSpace(call.Skill), strings.TrimSpace(skill)) {
-			return true
-		}
-	}
-	return false
-}
-
 func errorString(err error) string {
 	if err == nil {
 		return ""
@@ -492,7 +418,7 @@ func errorString(err error) string {
 
 func requestDump(request dispatcher.DispatchRequest) *loopFixtureSpawnDump {
 	dump := &loopFixtureSpawnDump{
-		Name:     normalizeSpawnName(request.Name),
+		Name:     strings.TrimSpace(request.Name),
 		Skill:    strings.TrimSpace(request.Skill),
 		Provider: strings.TrimSpace(request.Provider),
 		Model:    strings.TrimSpace(request.Model),
@@ -500,20 +426,8 @@ func requestDump(request dispatcher.DispatchRequest) *loopFixtureSpawnDump {
 	return dump
 }
 
-func normalizeSpawnName(name string) string {
-	name = strings.TrimSpace(name)
-	if strings.HasPrefix(name, "repair-runtime-") {
-		return "repair-runtime-*"
-	}
-	return name
-}
-
 func normalizeDynamicText(input string) string {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return ""
-	}
-	return runtimeRepairNamePattern.ReplaceAllString(input, "repair-runtime-*")
+	return strings.TrimSpace(input)
 }
 
 func mustJSON(value any) string {

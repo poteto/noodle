@@ -86,7 +86,6 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		pendingReview:         map[string]*pendingReviewCook{},
 		pendingRetry:          map[string]*pendingRetryCook{},
 		processedIDs:          map[string]struct{}{},
-		runtimeRepairAttempts: map[string]int{},
 	}
 }
 
@@ -199,7 +198,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	queue, shouldContinue, err := l.prepareQueueForCycle(ctx, brief, warnings)
+	queue, shouldContinue, err := l.prepareQueueForCycle(brief, warnings)
 	if err != nil {
 		return err
 	}
@@ -219,19 +218,13 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 		return false, l.registryErr
 	}
 	if err := l.processControlCommands(); err != nil {
-		return false, l.handleRuntimeIssue(ctx, "loop.control", err, nil)
-	}
-	if err := l.collectCompleted(ctx); err != nil {
-		return false, l.handleRuntimeIssue(ctx, "loop.collect", err, nil)
-	}
-	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
-		return false, l.handleRuntimeIssue(ctx, "loop.monitor", err, nil)
-	}
-	if err := l.advanceRuntimeRepair(ctx); err != nil {
 		return false, err
 	}
-	if l.runtimeRepairInFlight != nil {
-		return false, nil
+	if err := l.collectCompleted(ctx); err != nil {
+		return false, err
+	}
+	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
+		return false, err
 	}
 	if err := l.processPendingRetries(ctx); err != nil {
 		return false, err
@@ -243,7 +236,7 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 	l.refreshAdoptedTargets()
 	brief, warnings, err := l.deps.Mise.Build(ctx)
 	if err != nil {
-		return mise.Brief{}, warnings, false, l.handleRuntimeIssue(ctx, "mise.build", err, warnings)
+		return mise.Brief{}, warnings, false, err
 	}
 	if l.state != StateRunning && l.state != StateIdle {
 		return brief, warnings, false, nil
@@ -254,21 +247,21 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 	return brief, warnings, true, nil
 }
 
-func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warnings []string) (Queue, bool, error) {
+func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue, bool, error) {
 	// Consume queue-next.json if the prioritize session wrote one.
 	// The loop is the single writer of queue.json — prioritize writes
 	// to queue-next.json to avoid racing with loop state stamps.
 	// Errors are non-fatal: a transient/partial write shouldn't crash
-	// the loop — route through runtime repair instead.
+	// the loop — log and continue.
 	if err := consumeQueueNext(l.deps.QueueNextFile, l.deps.QueueFile); err != nil {
-		return Queue{}, false, l.handleRuntimeIssue(ctx, "loop.queue-next", err, nil)
+		fmt.Fprintf(os.Stderr, "loop.queue-next: %v\n", err)
 	}
 	queue, err := readQueue(l.deps.QueueFile)
 	if err != nil {
 		return Queue{}, false, err
 	}
 	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
-		return Queue{}, false, l.handleRuntimeIssue(ctx, "loop.queue", err, nil)
+		return Queue{}, false, err
 	} else if changed {
 		queue = normalizedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
@@ -278,7 +271,7 @@ func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warni
 	if shouldRecoverMissingSyncScripts(warnings, queue) &&
 		len(l.activeByID) == 0 &&
 		len(l.adoptedTargets) == 0 {
-		return Queue{}, false, l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
+		return Queue{}, false, fmt.Errorf("mise.sync: %s", strings.Join(warnings, "; "))
 	}
 	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
 		if hasNonPrioritizeItems(queue) {
@@ -354,7 +347,7 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
 	for _, item := range items {
 		if err := l.spawnCook(ctx, item, 0, ""); err != nil {
-			return l.handleRuntimeIssue(ctx, "loop.spawn", err, nil)
+			return err
 		}
 	}
 	return nil
