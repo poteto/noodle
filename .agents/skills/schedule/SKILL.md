@@ -1,11 +1,11 @@
 ---
-name: prioritize
+name: schedule
 description: Queue scheduler. Reads .noodle/mise.json, writes .noodle/queue-next.json. Schedules work based on backlog state, plan phases, session history, and task type schedules.
 noodle:
   schedule: "When the queue is empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 
-# Prioritize
+# Schedule
 
 Read `.noodle/mise.json`, write `.noodle/queue-next.json`.
 The loop atomically promotes `queue-next.json` to `queue.json` — never write `queue.json` directly.
@@ -55,7 +55,7 @@ These are starting points, not a closed list. If the `task_types` registry conta
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every queue item must cite which principle or rule drove its placement.
 - **Work around blockers**: If the top-priority item is blocked, schedule the next viable item — never idle.
-- **Timebox failures**: If an item has failed 2+ times in `recent_history`, deprioritize or split it.
+- **Timebox failures**: If an item has failed 2+ times in `recent_history`, deschedule or split it.
 
 ## Model Routing
 
