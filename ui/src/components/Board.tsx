@@ -29,6 +29,8 @@ export function Board() {
   const [cookingDragOver, setCookingDragOver] = useState(false);
   const dragItemId = useRef<string | null>(null);
 
+  const isPaused = snapshot.loop_state === "paused";
+
   const handleKeyboard = useCallback(
     (e: KeyboardEvent) => {
       if (isInputFocused()) return;
@@ -38,11 +40,10 @@ export function Board() {
       }
       if (e.key === "p") {
         e.preventDefault();
-        const isPaused = snapshot.loop_state === "paused";
         send({ action: isPaused ? "resume" : "pause" });
       }
     },
-    [snapshot, send],
+    [isPaused, send],
   );
 
   useEffect(() => {
