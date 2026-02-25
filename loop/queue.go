@@ -8,6 +8,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/filex"
 	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 )
 
@@ -85,7 +86,7 @@ func toQueueX(queue Queue) queuex.Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy, LoopState: queue.LoopState}
+	return queuex.Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
 }
 
 func fromQueueX(queue queuex.Queue) Queue {
@@ -104,36 +105,37 @@ func fromQueueX(queue queuex.Queue) Queue {
 			Rationale: item.Rationale,
 		})
 	}
-	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, Active: queue.Active, ActionNeeded: queue.ActionNeeded, Autonomy: queue.Autonomy, LoopState: queue.LoopState}
+	return Queue{GeneratedAt: queue.GeneratedAt, Items: items, ActionNeeded: queue.ActionNeeded}
 }
 
-// stampLoopState writes active IDs and autonomy into queue.json so the TUI
-// can derive cooking status and display the current autonomy mode.
+// stampStatus writes active IDs, loop state, and autonomy into status.json
+// so the TUI can derive cooking status and display the current autonomy mode.
 // Skips the write when nothing changed, avoiding fs-watcher feedback loops.
-func (l *Loop) stampLoopState() error {
-	queue, err := readQueue(l.deps.QueueFile)
-	if err != nil {
-		return err
-	}
-
+func (l *Loop) stampStatus() error {
 	active := make([]string, 0, len(l.activeByTarget))
 	for targetID := range l.activeByTarget {
 		active = append(active, targetID)
 	}
 	sort.Strings(active)
 
-	autonomy := l.config.Autonomy
-	loopState := string(l.state)
+	status := statusfile.Status{
+		Active:    active,
+		LoopState: string(l.state),
+		Autonomy:  l.config.Autonomy,
+	}
 
 	// Skip write if nothing changed.
-	if slicesEqual(queue.Active, active) && queue.Autonomy == autonomy && queue.LoopState == loopState {
+	if slicesEqual(l.lastStatus.Active, status.Active) &&
+		l.lastStatus.LoopState == status.LoopState &&
+		l.lastStatus.Autonomy == status.Autonomy {
 		return nil
 	}
 
-	queue.Active = active
-	queue.Autonomy = autonomy
-	queue.LoopState = loopState
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	if err := statusfile.WriteAtomic(l.deps.StatusFile, status); err != nil {
+		return err
+	}
+	l.lastStatus = status
+	return nil
 }
 
 func slicesEqual(a, b []string) bool {

@@ -14,6 +14,7 @@ import (
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/sessionmeta"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 )
@@ -24,6 +25,10 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	qr, err := readQueue(filepath.Join(runtimeDir, "queue.json"))
+	if err != nil {
+		return Snapshot{}, err
+	}
+	sr, err := readStatus(filepath.Join(runtimeDir, "status.json"))
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -45,7 +50,7 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	active := make([]Session, 0, len(sessions))
 	recent := make([]Session, 0, len(sessions))
 	totalCost := 0.0
-	loopState := normalizeLoopState(qr.LoopState)
+	loopState := normalizeLoopState(sr.LoopState)
 	if loopState == "" {
 		loopState = "running"
 	}
@@ -89,7 +94,7 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	}
 	pendingCount := len(pendingReviews)
 
-	autonomy := qr.Autonomy
+	autonomy := sr.Autonomy
 	if autonomy == "" {
 		autonomy = config.AutonomyAuto
 	}
@@ -101,7 +106,7 @@ func loadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		Active:             active,
 		Recent:             recent,
 		Queue:              qr.Items,
-		ActiveQueueIDs:     qr.Active,
+		ActiveQueueIDs:     sr.Active,
 		ActionNeeded:       qr.ActionNeeded,
 		EventsBySession:    eventsBySession,
 		FeedEvents:         feedEvents,
@@ -161,10 +166,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 
 type queueResult struct {
 	Items        []QueueItem
-	Active       []string
 	ActionNeeded []string
-	Autonomy     string
-	LoopState    string
 }
 
 func readQueue(path string) (queueResult, error) {
@@ -187,10 +189,25 @@ func readQueue(path string) (queueResult, error) {
 	}
 	return queueResult{
 		Items:        items,
-		Active:       queue.Active,
 		ActionNeeded: queue.ActionNeeded,
-		Autonomy:     queue.Autonomy,
-		LoopState:    queue.LoopState,
+	}, nil
+}
+
+type statusResult struct {
+	Active    []string
+	Autonomy  string
+	LoopState string
+}
+
+func readStatus(path string) (statusResult, error) {
+	status, err := statusfile.Read(path)
+	if err != nil {
+		return statusResult{}, err
+	}
+	return statusResult{
+		Active:    status.Active,
+		Autonomy:  status.Autonomy,
+		LoopState: status.LoopState,
 	}, nil
 }
 

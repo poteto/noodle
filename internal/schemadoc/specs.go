@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -112,15 +113,25 @@ var schemaTargets = []targetSpec{
 			"items[].plan[]":    {Description: "linked plan path(s), e.g. plans/15-bootstrap-onboarding/overview"},
 			"items[].prompt":    {Description: "full prompt text for the dispatched session"},
 			"items[].rationale": {Description: "placement reason citing a rule or principle"},
-			"active[]":          {Description: "queue item IDs currently being cooked"},
 			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},
-			"autonomy":          {Description: "current runtime autonomy mode (auto, approve)"},
-			"loop_state":        {Description: "current loop state (running, paused, draining, idle)"},
 		},
 		Constraints: []string{
 			"Items must respect workflow order from configured task-type schedules.",
 			"Task keys must match a `task_types[].key` from mise.",
 			"Each `rationale` should cite a specific scheduling rule or principle.",
+		},
+	},
+	{
+		Info: TargetInfo{
+			Name:        "status",
+			FileName:    "status.json",
+			Description: "Runtime state written by the loop; read by TUI and CLI.",
+		},
+		RootType: reflect.TypeOf(statusfile.Status{}),
+		FieldDocs: map[string]FieldDoc{
+			"active[]":   {Description: "queue item IDs currently being cooked"},
+			"loop_state": {Description: "current loop state (running, paused, draining, idle)"},
+			"autonomy":   {Description: "current runtime autonomy mode (auto, approve)"},
 		},
 	},
 }

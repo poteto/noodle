@@ -7,6 +7,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
@@ -24,10 +25,7 @@ const (
 type Queue struct {
 	GeneratedAt  time.Time   `json:"generated_at"`
 	Items        []QueueItem `json:"items"`
-	Active       []string    `json:"active,omitempty"`
 	ActionNeeded []string    `json:"action_needed,omitempty"`
-	Autonomy     string      `json:"autonomy,omitempty"`
-	LoopState    string      `json:"loop_state,omitempty"`
 }
 
 type QueueItem struct {
@@ -122,6 +120,7 @@ type Dependencies struct {
 	Now           func() time.Time
 	QueueFile     string
 	QueueNextFile string
+	StatusFile    string
 }
 
 type Loop struct {
@@ -142,6 +141,8 @@ type Loop struct {
 	pendingReview   map[string]*pendingReviewCook
 	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
+
+	lastStatus statusfile.Status
 
 	runtimeRepairAttempts map[string]int
 	runtimeRepairInFlight *runtimeRepairState

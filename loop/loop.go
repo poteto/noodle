@@ -44,6 +44,9 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		if deps.QueueNextFile == "" {
 			deps.QueueNextFile = defaults.QueueNextFile
 		}
+		if deps.StatusFile == "" {
+			deps.StatusFile = defaults.StatusFile
+		}
 	}
 	if deps.Now == nil {
 		deps.Now = time.Now
@@ -53,6 +56,9 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 	if deps.QueueNextFile == "" {
 		deps.QueueNextFile = filepath.Join(runtimeDir, "queue-next.json")
+	}
+	if deps.StatusFile == "" {
+		deps.StatusFile = filepath.Join(runtimeDir, "status.json")
 	}
 
 	registry := deps.Registry
@@ -182,7 +188,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !ready {
-		return l.stampLoopState()
+		return l.stampStatus()
 	}
 
 	brief, warnings, running, err := l.buildCycleBrief(ctx)
@@ -190,7 +196,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !running {
-		return l.stampLoopState()
+		return l.stampStatus()
 	}
 
 	queue, shouldContinue, err := l.prepareQueueForCycle(ctx, brief, warnings)
@@ -198,14 +204,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !shouldContinue {
-		return l.stampLoopState()
+		return l.stampStatus()
 	}
 
 	plan := l.planCycleSpawns(queue, brief)
 	if err := l.spawnPlannedItems(ctx, plan); err != nil {
 		return err
 	}
-	return l.stampLoopState()
+	return l.stampStatus()
 }
 
 func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {

@@ -84,6 +84,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		Now:           time.Now,
 		QueueFile:     filepath.Join(runtimeDir, "queue.json"),
 		QueueNextFile: filepath.Join(runtimeDir, "queue-next.json"),
+		StatusFile:    filepath.Join(runtimeDir, "status.json"),
 	}
 }
 

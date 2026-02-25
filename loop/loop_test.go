@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	"github.com/poteto/noodle/worktree"
@@ -417,12 +418,13 @@ func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
 		t.Fatalf("expected no spawn calls when idle, got %d", len(sp.calls))
 	}
 
-	queue, err := readQueue(queuePath)
+	statusPath := filepath.Join(runtimeDir, "status.json")
+	status, err := statusfile.Read(statusPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read status: %v", err)
 	}
-	if queue.LoopState != "idle" {
-		t.Fatalf("queue loop_state = %q, want idle", queue.LoopState)
+	if status.LoopState != "idle" {
+		t.Fatalf("status loop_state = %q, want idle", status.LoopState)
 	}
 }
 
@@ -922,12 +924,13 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	updated, err := readQueue(queuePath)
+	statusPath := filepath.Join(runtimeDir, "status.json")
+	status, err := statusfile.Read(statusPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read status: %v", err)
 	}
-	if updated.Autonomy != "approve" {
-		t.Fatalf("autonomy = %q, want approve", updated.Autonomy)
+	if status.Autonomy != "approve" {
+		t.Fatalf("autonomy = %q, want approve", status.Autonomy)
 	}
 }
 
@@ -961,12 +964,13 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	updated, err := readQueue(queuePath)
+	statusPath := filepath.Join(runtimeDir, "status.json")
+	status, err := statusfile.Read(statusPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read status: %v", err)
 	}
-	if updated.Autonomy != "auto" {
-		t.Fatalf("autonomy = %q, want auto", updated.Autonomy)
+	if status.Autonomy != "auto" {
+		t.Fatalf("autonomy = %q, want auto", status.Autonomy)
 	}
 }
 
