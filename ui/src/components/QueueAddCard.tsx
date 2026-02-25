@@ -63,7 +63,7 @@ export function QueueAddCard() {
       />
       <div className="flex items-center gap-2 mt-2">
         <button
-          className="py-[5px] px-4 font-display text-[0.8125rem] font-bold bg-border text-bg-0 border-2 border-border cursor-pointer hover:enabled:brightness-120 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="py-[5px] px-4 font-display text-[0.8125rem] font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer hover:enabled:brightness-120 disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={handleSubmit}
           disabled={isPending || !prompt.trim()}
         >

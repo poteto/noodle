@@ -42,7 +42,7 @@ export function AgentCard({
       <div className="mb-2">
         <div className="h-1.5 bg-bg-3 overflow-hidden mb-1">
           <div
-            className="h-full bg-border progress-fill"
+            className="h-full bg-accent progress-fill"
             style={{ width: `${Math.round(session.context_window_usage_pct)}%` }}
           />
         </div>

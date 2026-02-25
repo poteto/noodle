@@ -11,7 +11,7 @@ export function LoopState({ state }: { state: LoopStateType }) {
       className={`flex items-center gap-[5px] px-2.5 py-1 font-semibold border ${
         disconnected
           ? "bg-nred text-white border-nred"
-          : "bg-border text-bg-0 border-border"
+          : "bg-accent text-bg-0 border-border"
       }`}
     >
       <span

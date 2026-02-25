@@ -51,7 +51,7 @@ export function Tooltip({
       </span>
       {visible && (
         <div
-          className="fixed -translate-x-1/2 -translate-y-full px-2.5 py-1 bg-border text-bg-0 font-mono text-xs font-semibold whitespace-nowrap pointer-events-none z-[200] shadow-poster-sm animate-tooltip"
+          className="fixed -translate-x-1/2 -translate-y-full px-2.5 py-1 bg-accent text-bg-0 font-mono text-xs font-semibold whitespace-nowrap pointer-events-none z-[200] shadow-poster-sm animate-tooltip"
           style={{ top: position.top, left: position.left }}
           role="tooltip"
         >

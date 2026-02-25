@@ -60,7 +60,7 @@ export function ChatPanel({
           </div>
           <div className="h-1 bg-bg-3 overflow-hidden">
             <div
-              className="h-full bg-border progress-fill"
+              className="h-full bg-accent progress-fill"
               style={{ width: `${Math.round(session.context_window_usage_pct)}%` }}
             />
           </div>

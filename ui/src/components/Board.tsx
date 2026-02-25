@@ -169,7 +169,7 @@ export function Board() {
               <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">No active cooks</div>
             )}
             {cookingDragOver && columns.cooking.length === 0 && (
-              <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-600">Drop to start cooking</div>
+              <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-semibold">Drop to start cooking</div>
             )}
             {columns.cooking.map((session) => (
               <AgentCard

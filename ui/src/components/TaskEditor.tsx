@@ -66,16 +66,16 @@ export function TaskEditor({
     <div className="fixed inset-0 bg-[rgba(26,20,0,0.3)] z-100 flex items-center justify-center animate-fade-in" ref={backdropRef} onClick={handleBackdropClick}>
       <div className="w-[520px] max-w-[90vw] bg-bg-1 border-3 border-border shadow-modal animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b-2 border-border">
-          <span className="font-display font-800 text-2xl">
+          <span className="font-display font-extrabold text-2xl">
             {editItemId ? "Edit Task" : "New Task"}
           </span>
-          <button className="bg-transparent border-2 border-border px-2.5 py-0.5 font-mono text-[0.8125rem] font-700 cursor-pointer text-text-1 hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onClose}>
+          <button className="bg-transparent border-2 border-border px-2.5 py-0.5 font-mono text-[0.8125rem] font-bold cursor-pointer text-text-1 hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onClose}>
             x
           </button>
         </div>
 
         <div className="p-5 flex flex-col gap-3">
-          <label className="font-mono text-xs font-600 text-text-2 block mb-1">Prompt</label>
+          <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Prompt</label>
           <textarea
             className="w-full px-3 py-2 font-body text-[0.8125rem] border-2 border-border bg-bg-1 text-text-0 resize-y min-h-[80px] outline-none focus:border-nyellow"
             value={prompt}
@@ -87,7 +87,7 @@ export function TaskEditor({
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="font-mono text-xs font-600 text-text-2 block mb-1">Type</label>
+              <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Type</label>
               <select
                 className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
                 value={taskKey}
@@ -102,7 +102,7 @@ export function TaskEditor({
             </div>
 
             <div className="flex-1">
-              <label className="font-mono text-xs font-600 text-text-2 block mb-1">Provider</label>
+              <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Provider</label>
               <select
                 className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
                 value={provider}
@@ -114,7 +114,7 @@ export function TaskEditor({
             </div>
 
             <div className="flex-1">
-              <label className="font-mono text-xs font-600 text-text-2 block mb-1">Model</label>
+              <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Model</label>
               <input
                 className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
                 value={model}
@@ -124,7 +124,7 @@ export function TaskEditor({
           </div>
 
           <div className="flex-1">
-            <label className="font-mono text-xs font-600 text-text-2 block mb-1">Skill (optional)</label>
+            <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Skill (optional)</label>
             <input
               className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
               value={skill}
@@ -135,11 +135,11 @@ export function TaskEditor({
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t-2 border-border">
-          <button className="px-4 py-1.5 font-body text-[0.8125rem] font-600 bg-bg-1 text-text-1 border-2 border-border cursor-pointer hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onClose}>
+          <button className="px-4 py-1.5 font-body text-[0.8125rem] font-semibold bg-bg-1 text-text-1 border-2 border-border cursor-pointer hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onClose}>
             cancel
           </button>
           <button
-            className="px-5 py-1.5 font-display text-[0.8125rem] font-700 bg-border text-bg-0 border-2 border-border cursor-pointer hover:not-disabled:brightness-120 disabled:opacity-40 disabled:cursor-not-allowed active:translate-x-px active:translate-y-px active:shadow-btn-active"
+            className="px-5 py-1.5 font-display text-[0.8125rem] font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer hover:not-disabled:brightness-120 disabled:opacity-40 disabled:cursor-not-allowed active:translate-x-px active:translate-y-px active:shadow-btn-active"
             onClick={handleSubmit}
             disabled={isPending || !prompt.trim()}
           >

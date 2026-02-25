@@ -45,7 +45,7 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
         disabled={isPending}
       />
       <button
-        className="px-4 py-1.5 font-display text-[0.8125rem] font-bold bg-border text-bg-0 border-2 border-border cursor-pointer self-end [&:hover:not(:disabled)]:brightness-[1.2] disabled:opacity-40 disabled:cursor-not-allowed [&:active:not(:disabled)]:translate-x-px [&:active:not(:disabled)]:translate-y-px [&:active:not(:disabled)]:shadow-btn-active"
+        className="px-4 py-1.5 font-display text-[0.8125rem] font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer self-end [&:hover:not(:disabled)]:brightness-[1.2] disabled:opacity-40 disabled:cursor-not-allowed [&:active:not(:disabled)]:translate-x-px [&:active:not(:disabled)]:translate-y-px [&:active:not(:disabled)]:shadow-btn-active"
         onClick={handleSubmit}
         disabled={isPending || !value.trim()}
       >
