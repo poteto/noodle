@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
+	"github.com/poteto/noodle/server"
 	"github.com/poteto/noodle/tui"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +30,7 @@ var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) 
 }
 
 var runStartTUI = runTUI
+var openBrowserFunc = openBrowser
 
 type startOptions struct {
 	once     bool
@@ -70,10 +74,23 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	defer runtimeLoop.Shutdown()
-	if !opts.headless && isInteractiveTerminal() {
-		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir)
+
+	interactive := !opts.headless && isInteractiveTerminal()
+	serverEnabled := shouldStartServer(app.Config.Server, interactive)
+
+	if interactive {
+		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir, app.Config.Server, serverEnabled)
 	}
 	return runtimeLoop.Run(ctx)
+}
+
+// shouldStartServer determines if the web server should start.
+// If Enabled is explicitly set, use that. Otherwise auto-enable for interactive.
+func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
+	if cfg.Enabled != nil {
+		return *cfg.Enabled
+	}
+	return interactive
 }
 
 func runTUI(ctx context.Context, runtimeDir string) error {
@@ -92,9 +109,12 @@ func runStartWithTUI(
 	cancel context.CancelFunc,
 	runtimeLoop startRuntimeLoop,
 	runtimeDir string,
+	serverCfg config.ServerConfig,
+	serverEnabled bool,
 ) error {
 	loopErrCh := make(chan error, 1)
 	tuiErrCh := make(chan error, 1)
+	serverErrCh := make(chan error, 1)
 	go func() {
 		loopErrCh <- runtimeLoop.Run(ctx)
 	}()
@@ -102,11 +122,19 @@ func runStartWithTUI(
 		tuiErrCh <- runStartTUI(ctx, runtimeDir)
 	}()
 
+	serverDone := true // assume done unless we actually start it
+	if serverEnabled {
+		serverDone = false
+		go func() {
+			serverErrCh <- runWebServer(ctx, runtimeDir, serverCfg)
+		}()
+	}
+
 	var loopErr error
 	var tuiErr error
 	loopDone := false
 	tuiDone := false
-	for !loopDone || !tuiDone {
+	for !loopDone || !tuiDone || !serverDone {
 		select {
 		case err := <-loopErrCh:
 			loopDone = true
@@ -120,6 +148,12 @@ func runStartWithTUI(
 				tuiErr = err
 			}
 			cancel()
+		case err := <-serverErrCh:
+			serverDone = true
+			if err != nil && !errors.Is(err, context.Canceled) {
+				// Server errors are non-fatal; log but don't propagate.
+				fmt.Fprintf(os.Stderr, "web server: %v\n", err)
+			}
 		}
 	}
 
@@ -130,4 +164,43 @@ func runStartWithTUI(
 		return tuiErr
 	}
 	return nil
+}
+
+func runWebServer(ctx context.Context, runtimeDir string, cfg config.ServerConfig) error {
+	port := cfg.Port
+	if port == 0 {
+		port = 3000
+	}
+	addr, err := server.FindPort(port)
+	if err != nil {
+		return err
+	}
+	srv := server.New(server.Options{
+		RuntimeDir: runtimeDir,
+		Addr:       addr,
+		UI:         uiClientFS(),
+	})
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Start(ctx)
+	}()
+
+	openBrowserFunc("http://" + addr)
+
+	return <-errCh
+}
+
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	// Best-effort; ignore errors (e.g. no display, no browser).
+	_ = cmd.Start()
 }

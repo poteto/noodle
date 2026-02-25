@@ -35,6 +35,7 @@ type Config struct {
 	Agents      AgentsConfig             `toml:"agents"`
 	Runtime     RuntimeConfig            `toml:"runtime"`
 	Plans       PlansConfig              `toml:"plans"`
+	Server      ServerConfig             `toml:"server"`
 }
 
 type AdapterConfig struct {
@@ -111,6 +112,12 @@ type CursorConfig struct {
 // PlansConfig controls plan lifecycle behavior.
 type PlansConfig struct {
 	OnDone string `toml:"on_done"` // "keep" | "remove"
+}
+
+// ServerConfig controls the web UI server.
+type ServerConfig struct {
+	Port    int   `toml:"port"`
+	Enabled *bool `toml:"enabled"` // nil = auto (enabled in interactive, disabled in headless)
 }
 
 type DiagnosticSeverity string
@@ -201,6 +208,9 @@ func DefaultConfig() Config {
 		},
 		Plans: PlansConfig{
 			OnDone: "keep",
+		},
+		Server: ServerConfig{
+			Port: 3000,
 		},
 	}
 }
@@ -305,6 +315,10 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Plans.OnDone = "keep"
 	}
 
+	if !metadata.IsDefined("server", "port") {
+		config.Server.Port = 3000
+	}
+
 	if metadata.IsDefined("adapters") {
 		if config.Adapters == nil {
 			config.Adapters = map[string]AdapterConfig{}
@@ -386,6 +400,10 @@ func validateParsedValues(config Config) error {
 			"plans.on_done: unsupported value %q (expected keep, remove)",
 			config.Plans.OnDone,
 		)
+	}
+
+	if config.Server.Port < 0 || config.Server.Port > 65535 {
+		return fmt.Errorf("server.port: must be between 0 and 65535")
 	}
 
 	if err := validatePositiveDuration("monitor.stuck_threshold", config.Monitor.StuckThreshold); err != nil {

@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -365,6 +367,38 @@ func TestGetIndex(t *testing.T) {
 	ct := resp.Header.Get("Content-Type")
 	if !strings.HasPrefix(ct, "text/html") {
 		t.Fatalf("content-type = %q, want text/html", ct)
+	}
+}
+
+func TestFindPort(t *testing.T) {
+	addr, err := FindPort(0)
+	if err != nil {
+		t.Fatalf("FindPort(0): %v", err)
+	}
+	if addr == "" {
+		t.Fatal("expected non-empty addr")
+	}
+	if !strings.HasPrefix(addr, "127.0.0.1:") {
+		t.Fatalf("addr = %q, want 127.0.0.1:*", addr)
+	}
+}
+
+func TestFindPortSkipsBusy(t *testing.T) {
+	// Occupy a port, then verify FindPort skips it.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+
+	port := ln.Addr().(*net.TCPAddr).Port
+	addr, err := FindPort(port)
+	if err != nil {
+		t.Fatalf("FindPort(%d): %v", port, err)
+	}
+	// Should have found port+1 or later.
+	if addr == fmt.Sprintf("127.0.0.1:%d", port) {
+		t.Fatalf("FindPort returned the busy port %d", port)
 	}
 }
 

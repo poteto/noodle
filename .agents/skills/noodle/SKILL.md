@@ -63,6 +63,8 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `runtime.sprites.token_env` | string | "" |  |
 | `schedule.model` | string | "claude-sonnet" | Model used for scheduling sessions |
 | `schedule.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
+| `server.enabled` | ptr | <nil> |  |
+| `server.port` | integer | 3000 |  |
 | `skills.paths` | array | [".agents/skills"] | Ordered search paths for skill resolution |
 
 ### Minimal config

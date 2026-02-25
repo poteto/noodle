@@ -10,6 +10,8 @@ import (
 	"github.com/poteto/noodle/config"
 )
 
+var testServerCfg = config.ServerConfig{Port: 0}
+
 type fakeStartLoop struct {
 	cycleErr error
 	runErr   error
@@ -77,7 +79,7 @@ func TestRunStartWithTUIStopsLoopOnExit(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle")
+	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
 	if err != nil {
 		t.Fatalf("runStartWithTUI returned error: %v", err)
 	}
@@ -92,7 +94,7 @@ func TestRunStartWithTUIPropagatesLoopError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle")
+	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
 	if err == nil || err.Error() != "loop failed" {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +114,7 @@ func TestRunStartWithTUIExitsWhenLoopFailsBeforeTUIExits(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- runStartWithTUI(ctx, cancel, loop, ".noodle")
+		errCh <- runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
 	}()
 
 	select {
@@ -143,8 +145,64 @@ func TestRunStartWithTUIPropagatesTUIError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle")
+	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
 	if err == nil || err.Error() != "tui failed" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestShouldStartServer(t *testing.T) {
+	boolPtr := func(v bool) *bool { return &v }
+
+	tests := []struct {
+		name        string
+		enabled     *bool
+		interactive bool
+		want        bool
+	}{
+		{"nil+interactive", nil, true, true},
+		{"nil+headless", nil, false, false},
+		{"true+headless", boolPtr(true), false, true},
+		{"false+interactive", boolPtr(false), true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.ServerConfig{Enabled: tt.enabled}
+			got := shouldStartServer(cfg, tt.interactive)
+			if got != tt.want {
+				t.Fatalf("shouldStartServer(%v, %v) = %v, want %v", tt.enabled, tt.interactive, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunStartWithTUIStartsServer(t *testing.T) {
+	originalRunStartTUI := runStartTUI
+	runStartTUI = func(context.Context, string) error { return nil }
+	defer func() { runStartTUI = originalRunStartTUI }()
+
+	originalOpenBrowser := openBrowserFunc
+	var browserURL string
+	openBrowserFunc = func(url string) { browserURL = url }
+	defer func() { openBrowserFunc = originalOpenBrowser }()
+
+	loop := &fakeStartLoop{
+		runFn: func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Server enabled with port 0 (auto-assign).
+	cfg := config.ServerConfig{Port: 0}
+	err := runStartWithTUI(ctx, cancel, loop, t.TempDir(), cfg, true)
+	if err != nil {
+		t.Fatalf("runStartWithTUI returned error: %v", err)
+	}
+	if browserURL == "" {
+		t.Fatal("openBrowser was not called")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ type Options struct {
 	RuntimeDir string
 	Addr       string // host:port, defaults to "127.0.0.1:0"
 	Now        func() time.Time
+	UI         fs.FS // embedded SPA assets; nil = placeholder only
 }
 
 // Server serves the web UI API.
@@ -59,13 +61,29 @@ func New(opts Options) *Server {
 	mux.HandleFunc("GET /api/sessions/{id}/events", s.handleSessionEvents)
 	mux.HandleFunc("POST /api/control", s.handleControl)
 	mux.HandleFunc("GET /api/config", s.handleConfig)
-	mux.HandleFunc("GET /", handleIndex)
+	mux.Handle("GET /", uiOrPlaceholder(opts.UI))
 
 	s.httpServer = &http.Server{
 		Addr:    addr,
 		Handler: corsMiddleware(mux),
 	}
 	return s
+}
+
+// FindPort tries to listen on startPort, incrementing up to 10 times if busy.
+// Returns the addr string "127.0.0.1:PORT" that succeeded, or an error.
+func FindPort(startPort int) (string, error) {
+	const maxAttempts = 10
+	for i := 0; i < maxAttempts; i++ {
+		addr := fmt.Sprintf("127.0.0.1:%d", startPort+i)
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			continue
+		}
+		ln.Close()
+		return addr, nil
+	}
+	return "", fmt.Errorf("no available port in range %d-%d", startPort, startPort+maxAttempts-1)
 }
 
 // Start begins listening and serving. It starts the SSE file watcher in the
@@ -244,7 +262,32 @@ func appendControlCommand(runtimeDir string, cmd loop.ControlCommand) error {
 	return nil
 }
 
-func handleIndex(w http.ResponseWriter, r *http.Request) {
+// uiOrPlaceholder returns a handler that serves the embedded SPA if ui is
+// non-nil, falling back to a placeholder HTML page for unmatched paths.
+// If ui is nil, all requests get the placeholder.
+func uiOrPlaceholder(ui fs.FS) http.Handler {
+	if ui == nil {
+		return http.HandlerFunc(servePlaceholder)
+	}
+	fileServer := http.FileServer(http.FS(ui))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if path == "/" || path == "" {
+			servePlaceholder(w, r)
+			return
+		}
+		// Check if the file exists in the embedded FS.
+		f, err := ui.Open(path[1:]) // strip leading /
+		if err != nil {
+			servePlaceholder(w, r)
+			return
+		}
+		f.Close()
+		fileServer.ServeHTTP(w, r)
+	})
+}
+
+func servePlaceholder(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, `<!DOCTYPE html><html><head><title>noodle</title></head><body><p>noodle web ui</p></body></html>`)
 }
