@@ -352,8 +352,35 @@ html, body {
 .card-review-actions .merge-btn:hover {
   filter: brightness(1.1);
 }
+.card-review-actions .changes-btn {
+  background: var(--yellow-bg);
+  border-color: var(--yellow-dim);
+  color: var(--yellow);
+}
+.card-review-actions .changes-btn:hover {
+  filter: brightness(0.95);
+}
 .card-review-actions .reject-btn:hover {
   background: var(--red-dim);
   border-color: var(--red);
   color: var(--red);
+}
+
+/* Review feedback input */
+.review-feedback {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+.review-feedback-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  border: 2px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  outline: none;
+}
+.review-feedback-input:focus {
+  border-color: var(--yellow);
 }

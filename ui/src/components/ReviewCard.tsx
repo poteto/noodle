@@ -1,19 +1,12 @@
-import type { PendingReviewItem, ControlCommand } from "~/client";
-import { useSendControl } from "~/client";
+import { useState } from "react";
+import type { PendingReviewItem } from "~/client";
 import { Badge } from "./Badge";
+import { ReviewActions } from "./ReviewActions";
 
 export function ReviewCard({ item }: { item: PendingReviewItem }) {
-  const { mutate: send, isPending } = useSendControl();
+  const [dismissed, setDismissed] = useState(false);
 
-  function handleMerge() {
-    const cmd: ControlCommand = { action: "merge", item: item.id };
-    send(cmd);
-  }
-
-  function handleReject() {
-    const cmd: ControlCommand = { action: "reject", item: item.id };
-    send(cmd);
-  }
+  if (dismissed) return null;
 
   return (
     <div className="board-card">
@@ -28,22 +21,7 @@ export function ReviewCard({ item }: { item: PendingReviewItem }) {
             : item.prompt}
         </div>
       )}
-      <div className="card-review-actions">
-        <button
-          className="merge-btn"
-          onClick={handleMerge}
-          disabled={isPending}
-        >
-          merge
-        </button>
-        <button
-          className="reject-btn"
-          onClick={handleReject}
-          disabled={isPending}
-        >
-          reject
-        </button>
-      </div>
+      <ReviewActions itemId={item.id} onOptimistic={() => setDismissed(true)} onRevert={() => setDismissed(false)} />
     </div>
   );
 }
