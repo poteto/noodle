@@ -67,7 +67,7 @@ export function AgentCard({
           disabled={isPending}
           title="Stop and return to queue"
         >
-          <Square size={12} />
+          <Square size={10} fill="currentColor" />
         </button>
       </div>
     </div>
