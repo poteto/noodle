@@ -17,7 +17,7 @@ This plan adds structured logging to the loop using Go's stdlib `log/slog`. Ever
 **In:**
 - `log/slog.Logger` field on the `Loop` struct, injected via `Dependencies`
 - Default to `slog.New(slog.NewTextHandler(os.Stderr, nil))` when not provided
-- Log lines for: dispatch (cook, prioritize), completion (success, retry, failure, merge, park-for-review), queue mutations (consume-next, bootstrap-prioritize, skip, normalize), state transitions, control commands
+- Log lines for: dispatch (cook, schedule), completion (success, retry, failure, merge, park-for-review), queue mutations (consume-next, bootstrap-schedule, skip, normalize), state transitions, control commands
 - Replace the 3 existing `fmt.Fprintf(os.Stderr, ...)` calls with slog
 - Tests that verify log output for key events
 

@@ -16,19 +16,19 @@ After successful dispatch (after `l.deps.Dispatcher.Dispatch` returns without er
 l.logger.Info("cook dispatched", "item", item.ID, "session", session.ID(), "worktree", name, "attempt", attempt)
 ```
 
-### Log dispatch in spawnPrioritize (`prioritize.go`)
+### Log dispatch in spawnSchedule (`schedule.go`)
 
 After successful dispatch, log:
 
 ```
-l.logger.Info("prioritize dispatched", "session", session.ID(), "attempt", attempt)
+l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 ```
 
 ### Log completion in handleCompletion (`cook.go`)
 
 At the top of `handleCompletion`, log the outcome. The function branches on success vs. failure — log at each branch entry:
 
-- Success + prioritize: `l.logger.Info("prioritize completed", "session", cook.session.ID())`
+- Success + schedule: `l.logger.Info("schedule completed", "session", cook.session.ID())`
 - Success + park for review: `l.logger.Info("cook parked for review", "item", cook.queueItem.ID, "session", cook.session.ID())`
 - Success + merge: `l.logger.Info("cook completing", "item", cook.queueItem.ID, "session", cook.session.ID())` — logged at the branch entry, before `mergeCook` is called. The actual success is confirmed by the "cook merged" log inside `mergeCook`. Do NOT log "cook completed" here since `mergeCook` can still fail after this point
 - Failure (falls through to `retryCook`): logged in phase 5
@@ -75,5 +75,5 @@ go test ./... && go vet ./...
 ### Runtime
 - Dispatch a cook item → verify "cook dispatched" in log with item ID, session ID, worktree name
 - Complete a cook → verify "cook completing" then "cook merged", or "cook parked for review"
-- Dispatch a prioritize item → verify "prioritize dispatched"
-- Complete a prioritize → verify "prioritize completed"
+- Dispatch a schedule item → verify "schedule dispatched"
+- Complete a schedule → verify "schedule completed"

@@ -37,8 +37,8 @@ var fieldDescriptions = map[string]string{
 	"routing.defaults.model":        "Default model name for cook sessions",
 	"routing.tags":                  "Per-tag model overrides keyed by tag name",
 	"skills.paths":                  "Ordered search paths for skill resolution",
-	"prioritize.run":                "When to run scheduling: after-each, after-n, or manual",
-	"prioritize.model":              "Model used for scheduling sessions",
+	"schedule.run":                  "When to run scheduling: after-each, after-n, or manual",
+	"schedule.model":                "Model used for scheduling sessions",
 	"adapters":                      "Adapter configs keyed by adapter name (e.g. backlog)",
 	"recovery.max_retries":          "Maximum retry attempts for failed cooks",
 	"monitor.stuck_threshold":       "Duration before a cook is considered stuck",
@@ -221,7 +221,7 @@ Noodle is an open-source AI coding framework. Skills are the only extension poin
 
 ## Task-Type Skill Frontmatter
 
-Skills with a ` + "`" + `noodle:` + "`" + ` block in their YAML frontmatter are discovered as task types by the scheduling loop. The prioritize skill reads ` + "`" + `task_types[].schedule` + "`" + ` from mise to decide when to schedule each type.
+Skills with a ` + "`" + `noodle:` + "`" + ` block in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads ` + "`" + `task_types[].schedule` + "`" + ` from mise to decide when to schedule each type.
 
 ` + "```" + `yaml
 ---
@@ -236,7 +236,7 @@ noodle:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| ` + "`" + `noodle.schedule` + "`" + ` | yes | — | Hint for the prioritize skill on when to schedule this type |
+| ` + "`" + `noodle.schedule` + "`" + ` | yes | — | Hint for the schedule skill on when to schedule this type |
 | ` + "`" + `noodle.permissions.merge` + "`" + ` | no | ` + "`" + `true` + "`" + ` | Auto-merge worktree on success. Set ` + "`" + `false` + "`" + ` to park for human approval |
 
 When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves via the TUI Reviews tab.

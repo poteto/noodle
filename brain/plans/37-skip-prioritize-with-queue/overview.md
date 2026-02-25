@@ -4,11 +4,11 @@ created: 2026-02-24
 status: ready
 ---
 
-# Skip Prioritize With Queue
+# Skip Schedule With Queue
 
 ## Context
 
-Every fresh `noodle start` with an empty queue triggers a prioritize bootstrap that takes 60-120s before any work dispatches. If a previous run left a populated queue.json with real work items, the loop ignores them because `prepareQueueForCycle()` only checks `len(queue.Items) == 0`. It never considers the case where items already exist and could be dispatched immediately.
+Every fresh `noodle start` with an empty queue triggers a schedule bootstrap that takes 60-120s before any work dispatches. If a previous run left a populated queue.json with real work items, the loop ignores them because `prepareQueueForCycle()` only checks `len(queue.Items) == 0`. It never considers the case where items already exist and could be dispatched immediately.
 
 The bootstrap decision lives in `loop/loop.go:273-284`:
 
@@ -20,7 +20,7 @@ if len(queue.Items) == 0 &&
         l.state = StateIdle
         return Queue{}, false, nil
     }
-    queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
+    queue = bootstrapScheduleQueue(l.config, "", l.deps.Now().UTC())
 }
 ```
 
@@ -29,20 +29,20 @@ When `queue.Items` is non-empty, the code falls through to routing defaults and 
 ## Scope
 
 **In:**
-- Modify `prepareQueueForCycle()` to skip the prioritize bootstrap when queue.json already contains non-prioritize items
-- Filter out stale prioritize items from a previous run's queue (a leftover `"id":"prioritize"` item should not block fresh scheduling)
-- Add fixture tests for the new skip path and the stale-prioritize-filter path
+- Modify `prepareQueueForCycle()` to skip the schedule bootstrap when queue.json already contains non-schedule items
+- Filter out stale schedule items from a previous run's queue (a leftover `"id":"schedule"` item should not block fresh scheduling)
+- Add fixture tests for the new skip path and the stale-schedule-filter path
 
 **Out:**
 - Staleness detection based on timestamps or age -- items from a previous run are safe to re-dispatch because the dispatch/spawn path is already idempotent (busy-target checks, failed-target checks, worktree dedup all exist in `planCycleSpawns`)
 - Changes to `consumeQueueNext()` or the queue-next promotion path
-- Changes to the prioritize skill or its prompt
+- Changes to the schedule skill or its prompt
 
 ## Constraints
 
 - The existing `normalizeAndValidateQueue()` call (line 260) already strips items with invalid task keys or missing fields. Items that survive validation are safe to dispatch.
-- `planCycleSpawns()` already skips items whose targets are busy, adopted, or failed. Stale items referencing targets that no longer exist in the mise brief will simply never match a plan and sit harmlessly until the next prioritize cycle cleans them up.
-- The bootstrap condition must still fire when queue.json is truly empty (no items at all) and there is schedulable work. The change only affects the case where non-prioritize items already exist.
+- `planCycleSpawns()` already skips items whose targets are busy, adopted, or failed. Stale items referencing targets that no longer exist in the mise brief will simply never match a plan and sit harmlessly until the next schedule cycle cleans them up.
+- The bootstrap condition must still fire when queue.json is truly empty (no items at all) and there is schedulable work. The change only affects the case where non-schedule items already exist.
 
 ## Phases
 

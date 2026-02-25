@@ -10,7 +10,7 @@ Noodle is an open-source AI coding framework. Skills are the only extension poin
 
 ## Task-Type Skill Frontmatter
 
-Skills with a `noodle:` block in their YAML frontmatter are discovered as task types by the scheduling loop. The prioritize skill reads `task_types[].schedule` from mise to decide when to schedule each type.
+Skills with a `noodle:` block in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads `task_types[].schedule` from mise to decide when to schedule each type.
 
 ```yaml
 ---
@@ -25,7 +25,7 @@ noodle:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `noodle.schedule` | yes | — | Hint for the prioritize skill on when to schedule this type |
+| `noodle.schedule` | yes | — | Hint for the schedule skill on when to schedule this type |
 | `noodle.permissions.merge` | no | `true` | Auto-merge worktree on success. Set `false` to park for human approval |
 
 When `permissions.merge` is `false`, the loop parks the completed worktree instead of auto-merging. The human reviews and approves via the TUI Reviews tab.
@@ -49,8 +49,6 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
 | `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |
 | `plans.on_done` | string | "keep" | What to do with completed plans: keep or remove |
-| `prioritize.model` | string | "claude-sonnet" | Model used for scheduling sessions |
-| `prioritize.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
 | `recovery.max_retries` | integer | 3 | Maximum retry attempts for failed cooks |
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
@@ -63,6 +61,8 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `runtime.sprites.git_token_env` | string | "" |  |
 | `runtime.sprites.sprite_name` | string | "" |  |
 | `runtime.sprites.token_env` | string | "" |  |
+| `schedule.model` | string | "claude-sonnet" | Model used for scheduling sessions |
+| `schedule.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
 | `skills.paths` | array | [".agents/skills"] | Ordered search paths for skill resolution |
 
 ### Minimal config

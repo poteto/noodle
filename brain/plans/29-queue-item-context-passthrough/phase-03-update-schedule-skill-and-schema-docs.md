@@ -1,14 +1,14 @@
 Back to [[plans/29-queue-item-context-passthrough/overview]]
 
-# Phase 3: Update prioritize skill and schema docs
+# Phase 3: Update schedule skill and schema docs
 
 ## Goal
 
-Document the `extra_prompt` field so the prioritize agent knows it exists and how to use it. The schemadoc FieldDoc entry was already added in phase 1 to keep `noodle schema queue` valid from the start.
+Document the `extra_prompt` field so the schedule agent knows it exists and how to use it. The schemadoc FieldDoc entry was already added in phase 1 to keep `noodle schema queue` valid from the start.
 
 ## Changes
 
-### Update `.agents/skills/prioritize/SKILL.md`
+### Update `.agents/skills/schedule/SKILL.md`
 
 Add guidance in the **Output** section (or a new subsection near it) explaining the `extra_prompt` field:
 
@@ -37,4 +37,4 @@ noodle schema queue
 
 ### Runtime
 - Run `noodle schema queue`, verify `extra_prompt` appears in the output with its description
-- Run the prioritize agent, verify it can produce `extra_prompt` in `queue-next.json` (manual or integration test)
+- Run the schedule agent, verify it can produce `extra_prompt` in `queue-next.json` (manual or integration test)

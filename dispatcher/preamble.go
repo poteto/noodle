@@ -7,7 +7,7 @@ You are running inside a Noodle cook session — an autonomous coding agent mana
 ## State Files
 
 - ` + "`" + `.noodle/mise.json` + "`" + ` — Current project state snapshot (backlog, plans, active cooks, resources, routing)
-- ` + "`" + `.noodle/queue.json` + "`" + ` — Prioritized work queue
+- ` + "`" + `.noodle/queue.json` + "`" + ` — Scheduled work queue
 - ` + "`" + `.noodle/tickets.json` + "`" + ` — Active tickets and escalations
 - ` + "`" + `.noodle/quality/` + "`" + ` — Post-cook quality verdict files
 - ` + "`" + `brain/plans/` + "`" + ` — Implementation plans with phased execution

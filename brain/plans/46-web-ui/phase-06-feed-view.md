@@ -14,7 +14,7 @@ Build the main board view — a kanban layout with Queued → Cooking → Review
 - **`ui/src/components/AgentCard.tsx`** — Card for active/recent sessions. Shows: type badge, name, task description, context progress bar, duration, cost, model tag. Remote agents show cloud icon with host tooltip. Clickable — opens chat panel (phase 9).
 - **`ui/src/components/QueueCard.tsx`** — Card for queued items. Shows: type badge, name, task description. Simpler than agent cards (no progress/cost).
 - **`ui/src/components/ReviewCard.tsx`** — Card in Review column. Shows: type badge, name, task, merge/reject buttons inline.
-- **`ui/src/components/Badge.tsx`** — Task type badge (execute, plan, review, reflect, prioritize) with per-type warm palette colors.
+- **`ui/src/components/Badge.tsx`** — Task type badge (execute, plan, review, reflect, schedule) with per-type warm palette colors.
 - **Stats bar** — Active count, done count, failed count, total cost, loop state pulse.
 
 ## Data structures

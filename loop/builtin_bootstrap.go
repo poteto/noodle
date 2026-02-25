@@ -21,7 +21,7 @@ You are a bootstrap agent. Your only job is to create a schedule skill for this 
    - Read ` + "`" + `.noodle.toml` + "`" + ` for project configuration
    - Skim the top-level directory structure
 
-3. Create ` + "`" + `.agents/skills/schedule/SKILL.md` + "`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and prioritization criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
+3. Create ` + "`" + `.agents/skills/schedule/SKILL.md` + "`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and scheduling criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
 
 4. Run ` + "`" + `git add .agents/skills/schedule/SKILL.md` + "`" + ` and commit with message ` + "`" + `feat: bootstrap schedule skill` + "`" + `.
 

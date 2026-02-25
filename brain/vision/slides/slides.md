@@ -191,7 +191,7 @@ Each skill you add makes the system more capable
 
 ```mermaid {scale: 0.85}
 graph LR
-  P["prioritize"]
+  P["schedule"]
   E["execute"]
   Q["quality"]
   R["reflect"]
@@ -228,7 +228,7 @@ These are actual skills from noodle's own `.agents/skills/` directory
 
 | Skill | Schedule | Blocking |
 |-------|----------|----------|
-| **prioritize** | When the queue is empty, after backlog changes, or when session history suggests re-evaluation | yes |
+| **schedule** | When the queue is empty, after backlog changes, or when session history suggests re-evaluation | yes |
 | **execute** | When backlog items with linked plans are ready for implementation | no |
 | **quality** | After each cook session completes | no |
 | **reflect** | After a cook session completes | no |
@@ -265,7 +265,7 @@ Skills communicate through files
 
 <v-clicks>
 
-- **prioritize** reads `mise.json`, writes `queue-next.json`
+- **schedule** reads `mise.json`, writes `queue-next.json`
 - **execute** picks an item, works in a worktree, commits
 - **quality** reviews the diff, writes a verdict
 - **reflect** captures learnings to `brain/`

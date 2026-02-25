@@ -4,7 +4,7 @@ Back to [[plans/31-structured-loop-logging/overview]]
 
 ## Goal
 
-Add log lines for queue changes and loop state transitions. These events explain why the loop's behavior changed — queue-next promotion, bootstrap prioritize, item skip, normalization, and state changes between Running/Idle/Paused/Draining.
+Add log lines for queue changes and loop state transitions. These events explain why the loop's behavior changed — queue-next promotion, bootstrap schedule, item skip, normalization, and state changes between Running/Idle/Paused/Draining.
 
 ## Changes
 
@@ -26,12 +26,12 @@ In `prepareQueueForCycle`, when `normalizeAndValidateQueue` returns `changed == 
 l.logger.Info("queue normalized")
 ```
 
-### Log bootstrap prioritize (`loop.go`)
+### Log bootstrap schedule (`loop.go`)
 
-In `prepareQueueForCycle`, when the queue is empty and a prioritize bootstrap is created, log:
+In `prepareQueueForCycle`, when the queue is empty and a schedule bootstrap is created, log:
 
 ```
-l.logger.Info("queue empty, bootstrapping prioritize")
+l.logger.Info("queue empty, bootstrapping schedule")
 ```
 
 ### Log skipQueueItem (`cook.go`)
@@ -99,7 +99,7 @@ go test ./... && go vet ./...
 
 ### Runtime
 - Write a queue-next.json, run a cycle → verify "queue-next promoted" in log
-- Start with empty queue and plans present → verify "queue empty, bootstrapping prioritize"
+- Start with empty queue and plans present → verify "queue empty, bootstrapping schedule"
 - Send a pause control command → verify "control command" and "state changed" logged
 - Send a skip control command → verify "queue item skipped" logged
 - Verify idle cycles produce no log output (no spam)

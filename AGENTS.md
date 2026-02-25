@@ -1,6 +1,6 @@
 # Noodle
 
-Open-source AI coding framework. Skills as the only extension point, LLM-powered prioritization, kitchen brigade model. Built with Go.
+Open-source AI coding framework. Skills as the only extension point, LLM-powered scheduling, kitchen brigade model. Built with Go.
 
 ## Brain
 

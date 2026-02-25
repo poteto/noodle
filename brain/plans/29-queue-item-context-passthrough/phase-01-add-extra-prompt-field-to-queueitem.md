@@ -4,7 +4,7 @@ Back to [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Goal
 
-Add the `ExtraPrompt` field to both QueueItem struct definitions so the prioritize agent can write it and the loop can read it. Include a truncation guardrail in `NormalizeAndValidate()` so oversized values are silently capped rather than rejected. Also add the schemadoc FieldDoc entry so `noodle schema queue` stays valid immediately.
+Add the `ExtraPrompt` field to both QueueItem struct definitions so the schedule agent can write it and the loop can read it. Include a truncation guardrail in `NormalizeAndValidate()` so oversized values are silently capped rather than rejected. Also add the schemadoc FieldDoc entry so `noodle schema queue` stays valid immediately.
 
 ## Changes
 

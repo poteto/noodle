@@ -56,7 +56,7 @@ Write a pause command to control.ndjson, run a cycle. Assert "control command" w
 
 ### Test: queue mutation logging
 
-Set up an empty queue with plans present. Run a cycle. Assert "queue empty, bootstrapping prioritize" appears.
+Set up an empty queue with plans present. Run a cycle. Assert "queue empty, bootstrapping schedule" appears.
 
 ## Data structures
 

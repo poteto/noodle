@@ -73,7 +73,7 @@ func TestSectionNarrow(t *testing.T) {
 }
 
 func TestBadgeTaskType(t *testing.T) {
-	for _, tt := range []string{"Execute", "Plan", "Quality", "Reflect", "Prioritize"} {
+	for _, tt := range []string{"Execute", "Plan", "Quality", "Reflect", "Schedule"} {
 		out := TaskTypeBadge(tt)
 		if out == "" {
 			t.Fatalf("empty badge for %s", tt)

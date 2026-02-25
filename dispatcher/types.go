@@ -20,7 +20,7 @@ type DispatchRequest struct {
 	EnvVars              map[string]string
 	BudgetCap            float64
 	AllowPrimaryCheckout bool
-	TaskKey              string // resolved task type key (e.g., "execute", "prioritize")
+	TaskKey              string // resolved task type key (e.g., "execute", "schedule")
 	DomainSkill          string // for execute: adapter-configured domain skill
 	Runtime              string // runtime kind from queue item (e.g., "tmux", "sprites")
 	SystemPrompt         string // if set, used directly as system prompt — skips skill resolution

@@ -12,8 +12,8 @@ tests and fixtures were removed:
 - `TestCycleResumesSchedulingAfterRepairCompletion` — deleted (repair no longer exists)
 - All `runtime-repair-*` fixtures — deleted
 - All `missing-sync-*` fixtures — deleted (depended on repair)
-- `prioritize-exited-without-complete-should-fail` — deleted (depended on repair session status)
-- `prioritize-failed-retries-should-surface-*` — deleted (tested repair retry chains)
+- `schedule-exited-without-complete-should-fail` — deleted (depended on repair session status)
+- `schedule-failed-retries-should-surface-*` — deleted (tested repair retry chains)
 
 ## Kept As Unit-Only Or Narrow Diagnostics
 
@@ -21,7 +21,7 @@ tests and fixtures were removed:
   `TestCookBaseNameFallsBackToIDWithoutTitle`, `TestTmuxSessionNameMatchesSanitizedLength`)
 - Pure helpers and IO checks (`TestCopyVerdictToRuntime`,
   `TestReadQualityVerdictFile`, `TestReadQualityVerdictFileMissing`,
-  `TestReadSessionTargetAcceptsRichIDs`, `TestReadSessionTargetDetectsPrioritizePrompt`)
+  `TestReadSessionTargetAcceptsRichIDs`, `TestReadSessionTargetDetectsSchedulePrompt`)
 - Control and cancellation behavior (`TestProcessControlCommandsPauseAndAck`,
   `TestRunQualityCancelsSpawnedSessionOnContextDone`)
 - Adopted-session and queue edge cases without direct fixture equivalents

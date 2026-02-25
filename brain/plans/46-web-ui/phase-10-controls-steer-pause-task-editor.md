@@ -9,7 +9,7 @@ Build the remaining interactive controls: pause/resume toggle, task editor modal
 ## Changes
 
 - **`ui/src/components/LoopControls.tsx`** — Pause/Resume button in the board header. Shows current loop state. Sends `{action: "pause"}` or `{action: "resume"}` via `useSendControl()`.
-- **`ui/src/components/TaskEditor.tsx`** — Modal form for creating/editing queue items. Fields: prompt (textarea), type (select: execute/plan/review/reflect/prioritize), model (select), provider (select), skill (text input). Defaults fetched from `GET /api/config`. New task sends `{action: "enqueue", ...}`. Edit sends `{action: "edit-item", item: id, ...}`.
+- **`ui/src/components/TaskEditor.tsx`** — Modal form for creating/editing queue items. Fields: prompt (textarea), type (select: execute/plan/review/reflect/schedule), model (select), provider (select), skill (text input). Defaults fetched from `GET /api/config`. New task sends `{action: "enqueue", ...}`. Edit sends `{action: "edit-item", item: id, ...}`.
 - **Keyboard shortcuts** — `n` for new task, `p` for pause/resume. Only when no input is focused.
 
 ## Data structures
