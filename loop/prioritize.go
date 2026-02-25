@@ -16,6 +16,30 @@ func isPrioritizeItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), prioritizeQueueID)
 }
 
+func hasNonPrioritizeItems(queue Queue) bool {
+	for _, item := range queue.Items {
+		if !isPrioritizeItem(item) {
+			return true
+		}
+	}
+	return false
+}
+
+func filterStalePrioritizeItems(queue Queue) Queue {
+	if len(queue.Items) == 0 {
+		return queue
+	}
+	filtered := queue
+	filtered.Items = make([]QueueItem, 0, len(queue.Items))
+	for _, item := range queue.Items {
+		if isPrioritizeItem(item) {
+			continue
+		}
+		filtered.Items = append(filtered.Items, item)
+	}
+	return filtered
+}
+
 func bootstrapPrioritizeQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
 	return Queue{
 		GeneratedAt: generatedAt,

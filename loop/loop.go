@@ -280,16 +280,25 @@ func (l *Loop) prepareQueueForCycle(ctx context.Context, brief mise.Brief, warni
 		len(l.adoptedTargets) == 0 {
 		return Queue{}, false, l.handleRuntimeIssue(ctx, "mise.sync", nil, warnings)
 	}
-	if len(queue.Items) == 0 &&
-		len(l.activeByID) == 0 &&
-		len(l.adoptedTargets) == 0 {
-		if len(brief.Plans) == 0 && len(brief.NeedsScheduling) == 0 {
-			l.state = StateIdle
-			return Queue{}, false, nil
-		}
-		queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
-		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return Queue{}, false, err
+	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
+		if hasNonPrioritizeItems(queue) {
+			filtered := filterStalePrioritizeItems(queue)
+			if len(filtered.Items) != len(queue.Items) {
+				filtered.GeneratedAt = l.deps.Now().UTC()
+				queue = filtered
+				if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+					return Queue{}, false, err
+				}
+			}
+		} else {
+			if len(brief.Plans) == 0 && len(brief.NeedsScheduling) == 0 {
+				l.state = StateIdle
+				return Queue{}, false, nil
+			}
+			queue = bootstrapPrioritizeQueue(l.config, "", l.deps.Now().UTC())
+			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+				return Queue{}, false, err
+			}
 		}
 	}
 	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.registry, l.config); changed {
