@@ -5,6 +5,7 @@ export type {
   EventLine,
   FeedEvent,
   PendingReviewItem,
+  ControlAction,
   ControlCommand,
   ControlAck,
   ConfigDefaults,

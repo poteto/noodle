@@ -90,9 +90,28 @@ export interface PendingReviewItem {
   session_id?: string;
 }
 
+export type ControlAction =
+  | "pause"
+  | "resume"
+  | "drain"
+  | "skip"
+  | "kill"
+  | "steer"
+  | "merge"
+  | "reject"
+  | "request-changes"
+  | "autonomy"
+  | "enqueue"
+  | "stop-all"
+  | "requeue"
+  | "edit-item"
+  | "reorder"
+  | "stop"
+  | "set-max-cooks";
+
 export interface ControlCommand {
   id?: string;
-  action: string;
+  action: ControlAction;
   item?: string;
   name?: string;
   target?: string;
