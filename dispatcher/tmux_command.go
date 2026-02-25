@@ -133,3 +133,7 @@ func sessionPaths(runtimeDir, sessionID string) (sessionDir, promptPath, stamped
 	stderrPath = filepath.Join(sessionDir, "stderr.log")
 	return
 }
+
+func inputPath(sessionDir string) string {
+	return filepath.Join(sessionDir, "input.txt")
+}

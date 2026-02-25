@@ -17,6 +17,9 @@ func buildCookPrompt(item QueueItem, resumePrompt string) string {
 		header = fmt.Sprintf("Work backlog item %s", item.ID)
 	}
 	parts := []string{header}
+	if skill := strings.TrimSpace(item.Skill); skill != "" {
+		parts = append(parts, fmt.Sprintf("Use Skill(%s) for methodology.", skill))
+	}
 	if strings.TrimSpace(item.Prompt) != "" {
 		parts = append(parts, strings.TrimSpace(item.Prompt))
 	}

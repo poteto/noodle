@@ -107,11 +107,9 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	}
 
 	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
-	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
 	// Sprites always runs claude — system prompt goes via --append-system-prompt.
-	_ = systemPrompt
 
-	if err := os.WriteFile(promptPath, []byte(finalPrompt), 0o644); err != nil {
+	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
 	}
 
@@ -180,7 +178,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		stampedPath:   stampedPath,
 		canonicalPath: canonicalPath,
 		eventWriter:   eventWriter,
-		prompt:        finalPrompt,
+		prompt:        req.Prompt,
 		warnings:      skillBundle.Warnings,
 		remoteURL:     remoteURL,
 	})

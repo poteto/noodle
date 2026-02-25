@@ -135,7 +135,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	}
 
 	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
-	systemPrompt, finalPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
 	runtimeCmd := strings.TrimSpace(s.runtimeDefault)
 	if runtimeCmd != "" &&
 		strings.EqualFold(req.Provider, "claude") &&
@@ -143,11 +143,23 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 		// Runtime command templates are provider-agnostic shell snippets and may
 		// not include Claude-specific flags. Inline the system prompt so skill
 		// guidance is preserved when we cannot inject --append-system-prompt.
-		finalPrompt = finalPrompt + "\n\n---\n\n" + systemPrompt
+		composedPrompt = composedPrompt + "\n\n---\n\n" + systemPrompt
 		systemPrompt = ""
 	}
-	if err := os.WriteFile(promptPath, []byte(finalPrompt), 0o644); err != nil {
+
+	// prompt.txt: user-facing prompt (shown in TUI, debugging).
+	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
+	}
+
+	// input.txt: full composed prompt piped to agent stdin (includes
+	// inlined skill content for providers without system prompt support).
+	stdinPath := promptPath
+	if composedPrompt != req.Prompt {
+		stdinPath = inputPath(sessionDir)
+		if err := os.WriteFile(stdinPath, []byte(composedPrompt), 0o644); err != nil {
+			return nil, fmt.Errorf("write input file: %w", err)
+		}
 	}
 
 	var pipeline string
@@ -155,7 +167,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 		vars := map[string]string{
 			"session": sessionID,
 			"repo":    req.WorktreePath,
-			"prompt":  promptPath,
+			"prompt":  stdinPath,
 			"skill":   req.Skill,
 			"brief":   filepath.Join(s.runtimeDir, "mise.json"),
 		}
@@ -164,7 +176,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	} else {
 		agentBinary := s.resolveAgentBinary(req.Provider)
 		extraArgs := s.resolveExtraArgs(req.Provider)
-		providerCommand := buildProviderCommand(req, promptPath, agentBinary, systemPrompt, stderrPath, extraArgs)
+		providerCommand := buildProviderCommand(req, stdinPath, agentBinary, systemPrompt, stderrPath, extraArgs)
 		pipeline = buildPipelineCommand(providerCommand, s.noodleBin, stampedPath, canonicalPath)
 	}
 
@@ -194,7 +206,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 		req.WorktreePath,
 		buildDispatchEnv(req),
 		canonicalPath,
-		finalPrompt,
+		req.Prompt,
 		eventWriter,
 		skillBundle.Warnings,
 		s.run,
