@@ -139,29 +139,39 @@ func wrapText(s string, maxWidth int) []string {
 			lines = append(lines, "")
 			continue
 		}
-		words := strings.Fields(paragraph)
+		// Preserve leading whitespace so indented content (JSON, code)
+		// keeps its structure.
+		trimmed := strings.TrimLeft(paragraph, " \t")
+		indent := paragraph[:len(paragraph)-len(trimmed)]
+		indentWidth := len(indent)
+
+		words := strings.Fields(trimmed)
+		wrapWidth := maxWidth - indentWidth
+		if wrapWidth < 10 {
+			wrapWidth = 10
+		}
 		var line string
 		for _, word := range words {
 			// Break long words.
-			for len(word) > maxWidth {
+			for len(word) > wrapWidth {
 				if line != "" {
-					lines = append(lines, line)
+					lines = append(lines, indent+line)
 					line = ""
 				}
-				lines = append(lines, word[:maxWidth])
-				word = word[maxWidth:]
+				lines = append(lines, indent+word[:wrapWidth])
+				word = word[wrapWidth:]
 			}
 			if line == "" {
 				line = word
-			} else if len(line)+1+len(word) <= maxWidth {
+			} else if len(line)+1+len(word) <= wrapWidth {
 				line += " " + word
 			} else {
-				lines = append(lines, line)
+				lines = append(lines, indent+line)
 				line = word
 			}
 		}
 		if line != "" {
-			lines = append(lines, line)
+			lines = append(lines, indent+line)
 		}
 	}
 	if len(lines) == 0 {
