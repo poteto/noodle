@@ -43,6 +43,7 @@
 - [[codebase/runtime-routing-owned-by-queue]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
+- [[codebase/ui-npm-install-pnpm-node-modules-gotcha]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
 - [[codebase/worktree-prune-patch-equivalence]]

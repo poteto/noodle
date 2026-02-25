@@ -1,0 +1,91 @@
+.pl-c {
+  color: #b0a060;
+  font-style: italic;
+}
+
+.pl-c1,
+.pl-c2,
+.pl-cm,
+.pl-cp,
+.pl-cpf {
+  color: #8a6800;
+}
+
+.pl-e,
+.pl-ef,
+.pl-ent {
+  color: #5830a0;
+}
+
+.pl-en,
+.pl-fm {
+  color: #1858a0;
+}
+
+.pl-k,
+.pl-ko,
+.pl-kv,
+.pl-ow {
+  color: #a04070;
+}
+
+.pl-s,
+.pl-pds,
+.pl-s1,
+.pl-sa,
+.pl-sb,
+.pl-sc,
+.pl-sd,
+.pl-sh,
+.pl-si,
+.pl-sx,
+.pl-ss {
+  color: #1a7a3a;
+}
+
+.pl-smi,
+.pl-sm {
+  color: #4a4020;
+}
+
+.pl-v,
+.pl-vm,
+.pl-vi {
+  color: #b85a20;
+}
+
+.pl-kos,
+.pl-pse,
+.pl-pde {
+  color: #4a4020;
+}
+
+.pl-mh,
+.pl-ml,
+.pl-mi,
+.pl-mb,
+.pl-md,
+.pl-mo,
+.pl-mn,
+.pl-mx,
+.pl-mr {
+  color: #8a6800;
+}
+
+.pl-sr {
+  color: #1858a0;
+}
+
+.pl-bu {
+  color: #a82020;
+}
+
+.pl-ii {
+  color: #fff;
+  background-color: #a82020;
+}
+
+.pl-err {
+  color: #fff;
+  background-color: #a82020;
+}
