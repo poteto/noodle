@@ -23,7 +23,7 @@ help:
 	@printf "  %-40s %s\n" "make ci" "Run full local CI checks"
 	@printf "  %-40s %s\n" "make reset" "Delete runtime state files for debugging"
 	@printf "  %-40s %s\n" "make run" "Alias for start"
-	@printf "  %-40s %s\n" "make start" "Run scheduling loop (builds UI first)"
+	@printf "  %-40s %s\n" "make start" "Run scheduling loop"
 	@printf "  %-40s %s\n" "make status" "Show runtime status"
 	@printf "  %-40s %s\n" "make skills" "List resolved skills"
 	@printf "  %-40s %s\n" "make fixtures-loop MODE=check|record" "Verify or regenerate loop runtime dump fixtures"
@@ -75,7 +75,7 @@ reset:
 
 run: start
 
-start: ui
+start:
 	$(NOODLE) start
 
 status:
