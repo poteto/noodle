@@ -290,32 +290,37 @@ func appendControlCommand(runtimeDir string, cmd loop.ControlCommand) error {
 //
 // For SPA client-side routing: "/" serves index.html, known files are served
 // directly, and unknown paths fall back to index.html (client-side routing).
+//
+// index.html is served directly from memory rather than via http.FileServer,
+// because FileServer redirects "/index.html" to "/" (causing a loop).
 func uiOrPlaceholder(ui fs.FS) http.Handler {
 	if ui == nil {
 		return http.HandlerFunc(servePlaceholder)
 	}
 
-	// Verify index.html exists; if not, fall back to placeholder.
-	idx, err := ui.Open("index.html")
+	// Read index.html once at startup.
+	indexHTML, err := fs.ReadFile(ui, "index.html")
 	if err != nil {
 		return http.HandlerFunc(servePlaceholder)
 	}
-	idx.Close()
 
 	fileServer := http.FileServer(http.FS(ui))
+	serveIndex := func(w http.ResponseWriter) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexHTML)
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == "/" || path == "" {
-			r.URL.Path = "/index.html"
-			fileServer.ServeHTTP(w, r)
+			serveIndex(w)
 			return
 		}
 		// Check if the file exists in the embedded FS.
 		f, err := ui.Open(path[1:]) // strip leading /
 		if err != nil {
 			// SPA fallback: serve index.html for client-side routing.
-			r.URL.Path = "/index.html"
-			fileServer.ServeHTTP(w, r)
+			serveIndex(w)
 			return
 		}
 		f.Close()
