@@ -66,12 +66,15 @@ export function AgentCard({
         )}
       </div>
 
-      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">
-        {session.display_name}
+      <div className="font-bold text-[1.0625rem] text-text-0 mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+        {session.title || session.display_name}
         {session.retry_count > 0 && (
           <span className="ml-1.5 font-mono text-xs font-semibold text-norange">retry {session.retry_count}</span>
         )}
       </div>
+      {session.title && (
+        <div className="font-mono text-xs text-text-3 mb-1">{session.display_name}</div>
+      )}
       <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
         <CurrentAction action={session.current_action || ""} />
       </div>

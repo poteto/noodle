@@ -44,6 +44,7 @@ export interface Session {
   dispatch_warning?: string;
   worktree_name?: string;
   task_key?: string;
+  title?: string;
 }
 
 export interface QueueItem {

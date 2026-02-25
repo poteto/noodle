@@ -295,6 +295,7 @@ func (l *Loop) controlRequestChanges(itemID, feedback string) error {
 		WorktreePath: path,
 		TaskKey:      taskType.Key,
 		Runtime:      nonEmpty(pending.queueItem.Runtime, "tmux"),
+		Title:        pending.queueItem.Title,
 	}
 	if taskType.Key == "execute" {
 		if adapter, exists := l.config.Adapters["backlog"]; exists {

@@ -75,6 +75,7 @@ type Session struct {
 	DispatchWarning       string    `json:"dispatch_warning,omitempty"`
 	WorktreeName          string    `json:"worktree_name,omitempty"`
 	TaskKey               string    `json:"task_key,omitempty"`
+	Title                 string    `json:"title,omitempty"`
 }
 
 // QueueItem is one entry in the task queue.

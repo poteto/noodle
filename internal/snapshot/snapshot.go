@@ -171,6 +171,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			DispatchWarning:       spawnInfo.dispatchWarning,
 			WorktreeName:          spawnInfo.worktreeName,
 			TaskKey:               InferTaskType(sessionID),
+			Title:                 spawnInfo.title,
 		})
 	}
 
@@ -626,6 +627,7 @@ type spawnInfo struct {
 	dispatchWarning string
 	worktreeName    string
 	displayName     string
+	title           string
 	retryCount      int
 }
 
@@ -640,6 +642,7 @@ func readSpawnInfo(runtimeDir, sessionID string) spawnInfo {
 		DispatchWarning string `json:"dispatch_warning"`
 		WorktreePath    string `json:"worktree_path"`
 		DisplayName     string `json:"display_name"`
+		Title           string `json:"title"`
 		RetryCount      int    `json:"retry_count"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -660,6 +663,7 @@ func readSpawnInfo(runtimeDir, sessionID string) spawnInfo {
 		dispatchWarning: strings.TrimSpace(payload.DispatchWarning),
 		worktreeName:    wtName,
 		displayName:     strings.TrimSpace(payload.DisplayName),
+		title:           strings.TrimSpace(payload.Title),
 		retryCount:      payload.RetryCount,
 	}
 }

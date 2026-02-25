@@ -20,6 +20,7 @@ type dispatchMetadata struct {
 	CreatedAt       time.Time `json:"created_at"`
 	DispatchWarning string    `json:"dispatch_warning,omitempty"`
 	DisplayName     string    `json:"display_name,omitempty"`
+	Title           string    `json:"title,omitempty"`
 	RetryCount      int       `json:"retry_count,omitempty"`
 }
 
@@ -50,6 +51,7 @@ func writeDispatchMetadata(
 		CreatedAt:       createdAt.UTC(),
 		DispatchWarning: strings.TrimSpace(req.DispatchWarning),
 		DisplayName:     strings.TrimSpace(req.DisplayName),
+		Title:           strings.TrimSpace(req.Title),
 		RetryCount:      req.RetryCount,
 	})
 	if err != nil {

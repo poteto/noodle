@@ -74,6 +74,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, opts spawnOptions)
 		TaskKey:      taskType.Key,
 		Runtime:      nonEmpty(item.Runtime, "tmux"),
 		DisplayName:  opts.displayName,
+		Title:        item.Title,
 		RetryCount:   opts.attempt,
 	}
 	if taskType.Key == "execute" {

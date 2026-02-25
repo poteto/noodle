@@ -37,7 +37,12 @@ export function DoneCard({ session }: { session: Session }) {
       ) : (
         <div className="flex items-center gap-1.5 mb-1.5 font-mono text-xs text-ngreen font-medium">done</div>
       )}
-      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{session.display_name}</div>
+      <div className="font-bold text-[1.0625rem] text-text-0 mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+        {session.title || session.display_name}
+      </div>
+      {session.title && (
+        <div className="font-mono text-xs text-text-3 mb-1">{session.display_name}</div>
+      )}
       <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
         <WorktreeLabel name={session.worktree_name} />
         <span>{formatCost(session.total_cost_usd)}</span>
