@@ -39,7 +39,7 @@ export interface Session {
   retry_count: number;
   idle_seconds: number;
   stuck_threshold_seconds: number;
-  loop_state: string;
+  loop_state: LoopState;
   remote_host?: string;
   dispatch_warning?: string;
   worktree_name?: string;
@@ -90,9 +90,28 @@ export interface PendingReviewItem {
   session_id?: string;
 }
 
+export type ControlAction =
+  | "pause"
+  | "resume"
+  | "drain"
+  | "skip"
+  | "kill"
+  | "steer"
+  | "merge"
+  | "reject"
+  | "request-changes"
+  | "autonomy"
+  | "enqueue"
+  | "stop-all"
+  | "requeue"
+  | "edit-item"
+  | "reorder"
+  | "stop"
+  | "set-max-cooks";
+
 export interface ControlCommand {
   id?: string;
-  action: string;
+  action: ControlAction;
   item?: string;
   name?: string;
   target?: string;
@@ -106,7 +125,7 @@ export interface ControlCommand {
 
 export interface ControlAck {
   id: string;
-  action: string;
+  action: ControlAction;
   status: "ok" | "error";
   message?: string;
   at: string;

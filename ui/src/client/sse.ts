@@ -27,7 +27,8 @@ export function connectSSE(queryClient: QueryClient): () => void {
 
     eventSource.onmessage = (event) => {
       try {
-        const snapshot: Snapshot = JSON.parse(event.data);
+        // Same-origin Go API server — earned boundary cast.
+        const snapshot = JSON.parse(event.data) as Snapshot;
         queryClient.setQueryData(SNAPSHOT_KEY, snapshot);
         setStatus("connected");
       } catch {
