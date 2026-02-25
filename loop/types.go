@@ -145,5 +145,9 @@ type Loop struct {
 	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
 
+	bootstrapAttempts  int
+	bootstrapExhausted bool
+	bootstrapInFlight  *activeCook
+
 	lastStatus statusfile.Status
 }

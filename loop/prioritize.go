@@ -2,6 +2,8 @@ package loop
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -67,7 +69,10 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 
 	skillName := nonEmpty(item.Skill, "prioritize")
 	// Belt-and-suspenders: ensure the prioritize skill is fresh before dispatch.
-	l.ensureSkillFresh(skillName)
+	if !l.ensureSkillFresh(skillName) {
+		return l.spawnBootstrapIfNeeded(ctx, item)
+	}
+
 	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
@@ -91,6 +96,48 @@ func (l *Loop) spawnPrioritize(ctx context.Context, item QueueItem, attempt int,
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
+	return nil
+}
+
+// spawnBootstrapIfNeeded dispatches a bootstrap agent to create the
+// prioritize skill. Returns nil in all cases — the loop continues
+// regardless of bootstrap status.
+func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error {
+	if l.bootstrapExhausted {
+		return nil
+	}
+	if l.bootstrapInFlight != nil {
+		return nil
+	}
+
+	provider := nonEmpty(item.Provider, l.config.Routing.Defaults.Provider)
+	model := nonEmpty(item.Model, l.config.Routing.Defaults.Model)
+
+	name := bootstrapSessionPrefix + prioritizeQueueID
+	req := dispatcher.DispatchRequest{
+		Name:                 name,
+		Prompt:               "Create a prioritize skill for this project. Follow the system prompt instructions exactly.",
+		Provider:             provider,
+		Model:                model,
+		SystemPrompt:         buildBootstrapPrompt(provider),
+		WorktreePath:         l.projectDir,
+		AllowPrimaryCheckout: true,
+	}
+	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap dispatch failed: %v\n", err)
+		l.bootstrapAttempts++
+		if l.bootstrapAttempts >= 3 {
+			l.bootstrapExhausted = true
+		}
+		return nil
+	}
+	l.bootstrapInFlight = &activeCook{
+		queueItem:    item,
+		session:      session,
+		worktreeName: name,
+		worktreePath: l.projectDir,
+	}
 	return nil
 }
 

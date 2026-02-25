@@ -91,6 +91,8 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, attempt int, resum
 }
 
 func (l *Loop) collectCompleted(ctx context.Context) error {
+	l.collectBootstrapCompletion()
+
 	completed := make([]*activeCook, 0)
 	for _, cook := range l.activeByID {
 		select {
@@ -115,6 +117,41 @@ func (l *Loop) collectCompleted(ctx context.Context) error {
 		}
 	}
 	return l.collectAdoptedCompletions(ctx)
+}
+
+// collectBootstrapCompletion checks if the bootstrap session has finished
+// and handles success/failure. Bootstrap has its own lifecycle — it does
+// not go through handleCompletion or retryCook.
+func (l *Loop) collectBootstrapCompletion() {
+	if l.bootstrapInFlight == nil {
+		return
+	}
+	select {
+	case <-l.bootstrapInFlight.session.Done():
+	default:
+		return
+	}
+
+	cook := l.bootstrapInFlight
+	l.bootstrapInFlight = nil
+
+	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
+	if status == "completed" {
+		l.rebuildRegistry()
+		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
+		appendQueueEvent(eventsPath, QueueAuditEvent{
+			At:   l.deps.Now().UTC(),
+			Type: "bootstrap_complete",
+		})
+		fmt.Fprintf(os.Stderr, "bootstrap agent completed — registry rebuilt\n")
+		return
+	}
+
+	l.bootstrapAttempts++
+	if l.bootstrapAttempts >= 3 {
+		l.bootstrapExhausted = true
+	}
+	fmt.Fprintf(os.Stderr, "bootstrap agent failed (attempt %d/3): status %s\n", l.bootstrapAttempts, status)
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {

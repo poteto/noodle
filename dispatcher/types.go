@@ -23,6 +23,7 @@ type DispatchRequest struct {
 	TaskKey              string // resolved task type key (e.g., "execute", "prioritize")
 	DomainSkill          string // for execute: adapter-configured domain skill
 	Runtime              string // runtime kind from queue item (e.g., "tmux", "sprites")
+	SystemPrompt         string // if set, used directly as system prompt — skips skill resolution
 }
 
 // Validate ensures required request fields are set at the boundary.
