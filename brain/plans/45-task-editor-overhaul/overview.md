@@ -50,11 +50,12 @@ The task editor ("New Task" modal) has several UX gaps: redundant fields (Type a
 
 ## Phases
 
-1. [[plans/45-task-editor-overhaul/phase-01-consolidate-fields-and-dynamic-skills]]
-2. [[plans/45-task-editor-overhaul/phase-02-dropdown-overlay-component]]
-3. [[plans/45-task-editor-overhaul/phase-03-wire-dropdowns-to-enum-fields]]
-4. [[plans/45-task-editor-overhaul/phase-04-multiline-prompt-textarea-with-cursor]]
-5. [[plans/45-task-editor-overhaul/phase-05-context-sensitive-up-down-navigation]]
+1. [[plans/45-task-editor-overhaul/phase-01-restructure-key-routing]]
+2. [[plans/45-task-editor-overhaul/phase-02-consolidate-fields-and-dynamic-skills]]
+3. [[plans/45-task-editor-overhaul/phase-03-dropdown-overlay-component]]
+4. [[plans/45-task-editor-overhaul/phase-04-wire-dropdowns-to-enum-fields]]
+5. [[plans/45-task-editor-overhaul/phase-05-multiline-prompt-with-cursor]]
+6. [[plans/45-task-editor-overhaul/phase-06-context-sensitive-up-down-navigation]]
 
 ## Verification
 
