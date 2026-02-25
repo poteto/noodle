@@ -2,6 +2,15 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 :root {
   --font-display: 'Outfit', system-ui, sans-serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
@@ -529,6 +538,7 @@ html, body {
 .card-progress-fill {
   height: 100%;
   background: var(--border);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card-progress-label {
   font-family: var(--font-mono);
@@ -645,6 +655,7 @@ html, body {
   z-index: 100;
   display: flex;
   justify-content: flex-end;
+  animation: fade-in 0.2s ease-out;
 }
 
 .chat-panel {
@@ -656,6 +667,7 @@ html, body {
   display: flex;
   flex-direction: column;
   box-shadow: -8px 0 0 var(--border);
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .chat-header {
@@ -720,6 +732,7 @@ html, body {
 .chat-progress-fill {
   height: 100%;
   background: var(--border);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Chat messages */
@@ -982,6 +995,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fade-in 0.2s ease-out;
 }
 
 .task-editor {
@@ -990,6 +1004,7 @@ html, body {
   background: var(--bg-1);
   border: 3px solid var(--border);
   box-shadow: 8px 8px 0 var(--border);
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .task-editor-header {
@@ -1103,6 +1118,36 @@ html, body {
   cursor: not-allowed;
 }
 
+/* Button press feedback */
+.new-task-btn:active,
+.loop-control-btn:active,
+.queue-add-submit:active,
+.task-editor-submit:active,
+.task-editor-cancel:active,
+.chat-send-btn:active:not(:disabled),
+.chat-close:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+}
+
+.card-action-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+/* Keyboard focus rings */
+:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 1px;
+}
+
 /* Tooltip */
 .tooltip {
   position: fixed;
@@ -1117,4 +1162,26 @@ html, body {
   pointer-events: none;
   z-index: 200;
   box-shadow: var(--shadow-sm);
+  animation: tooltip-in 0.15s ease-out;
+}
+
+/* Interaction keyframes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 4px)); }
+  to { opacity: 1; transform: translate(-50%, -100%); }
 }
