@@ -239,10 +239,10 @@ func (m Model) renderActorDetail(width, height int) string {
 		label := fmt.Sprintf("%-*s", labelWidth, ev.Label)
 		label = eventLabel(label)
 
-		wrapped := wrapText(ev.Body, msgWidth)
-		first := ts + strings.Repeat(" ", gap) + label + strings.Repeat(" ", gap) + wrapped[0]
+		bodyLines := renderEventBody(ev.Body, msgWidth)
+		first := ts + strings.Repeat(" ", gap) + label + strings.Repeat(" ", gap) + bodyLines[0]
 		allLines = append(allLines, first)
-		for _, cont := range wrapped[1:] {
+		for _, cont := range bodyLines[1:] {
 			allLines = append(allLines, indent+cont)
 		}
 	}

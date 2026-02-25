@@ -230,6 +230,53 @@ func TestWrapPlainTextSplitsVeryLongTokens(t *testing.T) {
 	}
 }
 
+func TestRenderEventBodyHighlightsCodeBlocks(t *testing.T) {
+	body := "some prose\n```go\nfunc main() {}\n```\nmore prose"
+	lines := renderEventBody(body, 80)
+	// Should have at least: prose line, highlighted code line, more prose line.
+	if len(lines) < 3 {
+		t.Fatalf("expected at least 3 lines, got %d: %v", len(lines), lines)
+	}
+	// The highlighted code line should contain ANSI escape codes.
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "\x1b[") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ANSI codes in highlighted output, got: %v", lines)
+	}
+}
+
+func TestRenderEventBodyNoCodeBlock(t *testing.T) {
+	body := "just plain text with no code"
+	lines := renderEventBody(body, 40)
+	if len(lines) == 0 {
+		t.Fatal("expected non-empty output")
+	}
+	// Should behave like wrapText when there are no code blocks.
+	wrapped := wrapText(body, 40)
+	if len(lines) != len(wrapped) {
+		t.Fatalf("lines = %d, wrapText = %d", len(lines), len(wrapped))
+	}
+}
+
+func TestRenderEventBodyUnknownLanguageFallsBack(t *testing.T) {
+	body := "```unknownlang123\nsome code\n```"
+	lines := renderEventBody(body, 80)
+	// Should still produce output (falls back to plain text).
+	if len(lines) == 0 {
+		t.Fatal("expected non-empty output")
+	}
+	// Should contain the code text.
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "some code") {
+		t.Fatalf("expected code in output: %v", lines)
+	}
+}
+
 func TestDoubleCtrlCQuits(t *testing.T) {
 	fixed := time.Date(2026, 2, 23, 12, 0, 0, 0, time.UTC)
 	m := NewModel(Options{
