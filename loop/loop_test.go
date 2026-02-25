@@ -1421,3 +1421,144 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 		t.Fatalf("pending review file items = %#v", items)
 	}
 }
+
+// selectiveErrDispatcher fails on specific call indices, succeeds on others.
+type selectiveErrDispatcher struct {
+	calls    []dispatcher.DispatchRequest
+	sessions []*fakeSession
+	failAt   map[int]error // call index → error
+}
+
+func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
+	index := len(d.calls)
+	d.calls = append(d.calls, req)
+	if err, ok := d.failAt[index]; ok {
+		return nil, err
+	}
+	s := &fakeSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
+	d.sessions = append(d.sessions, s)
+	return s, nil
+}
+
+// TestNoDoubleSpawnAfterFailedRetryRepair reproduces a bug where a queue item
+// gets spawned fresh after a failed retry triggers runtime repair.
+//
+// Sequence:
+//  1. Cycle 1: item "37" spawns session A
+//  2. Session A fails (Done fires)
+//  3. Cycle 2: collectCompleted picks up A, deletes from activeByTarget,
+//     retryCook→spawnCook fails (dispatch error) → handleRuntimeIssue
+//     starts repair → returns nil. activeByTarget["37"] is now EMPTY.
+//  4. Repair completes
+//  5. Cycle 3: planCycleSpawns sees "37" not in activeByTarget → spawns fresh
+//
+// This is a bug: the item's tracking is lost between the failed retry and
+// repair completion, causing a duplicate spawn (attempt counter resets to 0).
+// In production with tmux, if the previous session was still alive (false
+// Done signal), two agents would run simultaneously for the same item.
+func TestNoDoubleSpawnAfterFailedRetryRepair(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	queue := Queue{Items: []QueueItem{{
+		ID:       "37",
+		TaskKey:  "execute",
+		Skill:    "execute",
+		Provider: "claude",
+		Model:    "claude-opus-4-6",
+		Plan:     []string{"plans/37-test/overview"},
+	}}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	// Call 0: cycle 1 spawns "37" → succeeds
+	// Call 1: cycle 2 retry of "37" → fails (triggers runtime repair)
+	// Call 2: cycle 2 repair session → succeeds
+	// Call 3+: cycle 3 onward → succeeds (bug: fresh spawn of "37")
+	sp := &selectiveErrDispatcher{
+		failAt: map[int]error{1: errors.New("tmux unavailable")},
+	}
+	wt := &fakeWorktree{}
+
+	cfg := config.DefaultConfig()
+	cfg.Recovery.MaxRetries = 3
+
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 37, Status: "open", Title: "Test", Directory: "test"}}}},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	// --- Cycle 1: spawns session A for item "37" ---
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 1: %v", err)
+	}
+	if len(sp.sessions) != 1 {
+		t.Fatalf("expected 1 session after cycle 1, got %d", len(sp.sessions))
+	}
+	if _, ok := l.activeByTarget["37"]; !ok {
+		t.Fatal("expected item 37 in activeByTarget after cycle 1")
+	}
+
+	// Simulate: session A fails
+	sessionA := sp.sessions[0]
+	sessionA.status = "failed"
+	close(sessionA.done)
+
+	// Create the worktree directory so ensureWorktree doesn't call Create again
+	// (mirrors production: worktree exists from cycle 1's dispatch).
+	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "37"), 0o755); err != nil {
+		t.Fatalf("mkdir worktree: %v", err)
+	}
+
+	// --- Cycle 2: collect A, retry fails, repair starts ---
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 2: %v", err)
+	}
+	if l.runtimeRepairInFlight == nil {
+		t.Fatal("expected runtime repair in flight after cycle 2")
+	}
+	if _, ok := l.activeByTarget["37"]; ok {
+		t.Log("activeByTarget still has 37 after failed retry — good (not the bug path)")
+	}
+
+	// Simulate: repair session completes
+	repairSession := sp.sessions[len(sp.sessions)-1]
+	repairSession.status = "completed"
+	close(repairSession.done)
+
+	// Record spawn count before cycle 3
+	spawnsBefore := len(sp.calls)
+
+	// --- Cycle 3: repair clears, cycle resumes ---
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 3: %v", err)
+	}
+
+	// Count new non-repair spawns — the bug causes a fresh spawn of "37"
+	freshSpawns := 0
+	for _, call := range sp.calls[spawnsBefore:] {
+		if !strings.HasPrefix(call.Name, "repair-runtime-") {
+			freshSpawns++
+		}
+	}
+
+	if freshSpawns > 0 {
+		t.Errorf(
+			"BUG: item '37' was spawned %d time(s) fresh after repair "+
+				"(attempt counter lost, activeByTarget tracking gap between "+
+				"failed retry and repair completion)",
+			freshSpawns,
+		)
+	}
+}
