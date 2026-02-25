@@ -127,7 +127,8 @@ bugs:
 	done
 
 watch: $(UI_MODULES)
-	@trap 'kill 0' EXIT; \
+	@mkdir -p ui/dist/client; \
+	trap 'kill 0' EXIT; \
 	(cd ui && pnpm run dev) & \
 	if $(GO) tool -n air >/dev/null 2>&1; then \
 		$(GO) tool air $(AIR_FLAGS) -c $(AIR_CONFIG); \
