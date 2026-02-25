@@ -134,8 +134,8 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 		return nil, err
 	}
 
-	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
-	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, fullSystemPrompt)
+	preamble := buildSessionPreamble()
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 	runtimeCmd := strings.TrimSpace(s.runtimeDefault)
 	if runtimeCmd != "" &&
 		strings.EqualFold(req.Provider, "claude") &&
@@ -300,14 +300,26 @@ func nowUTC() time.Time {
 	return time.Now().UTC()
 }
 
-func composePrompts(provider, requestPrompt, skillSystemPrompt string) (systemPrompt, finalPrompt string) {
+func composePrompts(provider, requestPrompt, preamble, skillSystemPrompt string) (systemPrompt, finalPrompt string) {
 	finalPrompt = requestPrompt
+	fullSystemPrompt := joinNonEmpty(preamble, skillSystemPrompt)
 	if strings.EqualFold(provider, "claude") {
-		systemPrompt = skillSystemPrompt
+		systemPrompt = fullSystemPrompt
 		return systemPrompt, finalPrompt
 	}
-	if strings.EqualFold(provider, "codex") && strings.TrimSpace(skillSystemPrompt) != "" {
-		finalPrompt = requestPrompt + "\n\n---\n\n" + skillSystemPrompt
+	// Codex loads skills natively via Skill(name) — only inline the preamble.
+	if strings.EqualFold(provider, "codex") && strings.TrimSpace(preamble) != "" {
+		finalPrompt = requestPrompt + "\n\n---\n\n" + preamble
 	}
 	return systemPrompt, finalPrompt
+}
+
+func joinNonEmpty(parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, "\n\n")
 }

@@ -106,7 +106,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, err
 	}
 
-	fullSystemPrompt := buildSessionPreamble() + "\n\n" + skillBundle.SystemPrompt
+	fullSystemPrompt := joinNonEmpty(buildSessionPreamble(), skillBundle.SystemPrompt)
 	// Sprites always runs claude — system prompt goes via --append-system-prompt.
 
 	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
