@@ -653,6 +653,87 @@ html, body {
   box-shadow: 5px 5px 0 rgba(0,0,0,0.3);
 }
 
+/* Inline queue add */
+.queue-add-btn {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  background: none;
+  border: 2px dashed var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.queue-add-btn:hover {
+  color: var(--text-0);
+  border-color: var(--border);
+  background: var(--bg-1);
+}
+
+.queue-add-form {
+  background: var(--bg-1);
+  border: 2px solid var(--border);
+  padding: 12px;
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.queue-add-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  border: 2px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-0);
+  resize: vertical;
+  min-height: 60px;
+  outline: none;
+}
+.queue-add-textarea:focus {
+  border-color: var(--yellow);
+}
+
+.queue-add-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.queue-add-submit {
+  padding: 5px 16px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  background: var(--border);
+  color: var(--bg-0);
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+.queue-add-submit:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+.queue-add-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.queue-add-cancel {
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.queue-add-cancel:hover {
+  color: var(--text-0);
+}
+
 /* Task editor modal */
 .task-editor-backdrop {
   position: fixed;

@@ -9,6 +9,7 @@ import { ReviewCard } from "./ReviewCard";
 import { DoneCard } from "./DoneCard";
 import { ChatPanel } from "./ChatPanel";
 import { TaskEditor } from "./TaskEditor";
+import { QueueAddCard } from "./QueueAddCard";
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
@@ -96,6 +97,7 @@ export function Board() {
           {columns.queued.map((item) => (
             <QueueCard key={item.id} item={item} />
           ))}
+          <QueueAddCard />
         </BoardColumn>
 
         <BoardColumn title="Cooking" count={columns.cooking.length}>
