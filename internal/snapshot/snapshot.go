@@ -629,6 +629,8 @@ func readDispatchWarning(runtimeDir, sessionID string) string {
 }
 
 // readWorktreeName reads the worktree name from a session's spawn.json.
+// If the session runs on the primary checkout (not inside .worktrees/),
+// returns the current git branch name instead of the project directory name.
 func readWorktreeName(runtimeDir, sessionID string) string {
 	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
 	data, err := os.ReadFile(path)
@@ -645,7 +647,24 @@ func readWorktreeName(runtimeDir, sessionID string) string {
 	if wtPath == "" {
 		return ""
 	}
+	// Primary checkout: worktree_path doesn't contain .worktrees/
+	if !strings.Contains(wtPath, ".worktrees"+string(filepath.Separator)) {
+		return readGitBranch(wtPath)
+	}
 	return filepath.Base(wtPath)
+}
+
+// readGitBranch reads the current branch from a git checkout directory.
+func readGitBranch(dir string) string {
+	head, err := os.ReadFile(filepath.Join(dir, ".git", "HEAD"))
+	if err != nil {
+		return filepath.Base(dir)
+	}
+	ref := strings.TrimSpace(string(head))
+	if strings.HasPrefix(ref, "ref: refs/heads/") {
+		return strings.TrimPrefix(ref, "ref: refs/heads/")
+	}
+	return filepath.Base(dir)
 }
 
 // InferTaskType extracts a task type from a session ID convention.
