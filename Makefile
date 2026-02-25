@@ -6,7 +6,7 @@ NOODLE ?= $(GO) run .
 AIR ?= air
 AIR_FLAGS ?=
 AIR_CONFIG ?= .air.toml
-UI_MODULES ?= ui/node_modules/.package-lock.json
+UI_MODULES ?= ui/node_modules/.modules.yaml
 
 .DEFAULT_GOAL := help
 
@@ -35,15 +35,15 @@ help:
 	@printf "  %-40s %s\n" "make sandbox STAGE=bare|init|wip|full" "Create a temp sandbox project"
 
 # Install UI dependencies when package.json changes.
-$(UI_MODULES): ui/package.json ui/package-lock.json
-	cd ui && npm install
+$(UI_MODULES): ui/package.json ui/pnpm-lock.yaml
+	cd ui && pnpm install
 	@touch $@
 
 setup: $(UI_MODULES)
 	@echo "dependencies installed"
 
 build: $(UI_MODULES)
-	cd ui && npm run build
+	cd ui && pnpm run build
 	$(GO) build -o $(BIN) .
 
 generate:
@@ -128,7 +128,7 @@ bugs:
 
 watch: $(UI_MODULES)
 	@trap 'kill 0' EXIT; \
-	(cd ui && npm run dev) & \
+	(cd ui && pnpm run dev) & \
 	if $(GO) tool -n air >/dev/null 2>&1; then \
 		$(GO) tool air $(AIR_FLAGS) -c $(AIR_CONFIG); \
 	elif command -v $(AIR) >/dev/null 2>&1; then \
