@@ -18,9 +18,9 @@
     "@tanstack/router-plugin": "^1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^4",
+    "@vitejs/plugin-react": "^5.1.4",
     "typescript": "^5.7",
     "vite": "^7",
-    "vite-tsconfig-paths": "^4"
+    "vite-tsconfig-paths": "^6.1.1"
   }
 }
