@@ -216,7 +216,7 @@ cat > brain/plans/index.md <<'EOF'
 EOF
 
 # Copy core skills from the noodle repo
-for skill in prioritize execute quality; do
+for skill in schedule execute quality; do
 	cp -R "$NOODLE_ROOT/.agents/skills/$skill" ".agents/skills/$skill"
 done
 
