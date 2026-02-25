@@ -44,6 +44,23 @@ export function Board() {
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
 
+  if (error && !snapshot) {
+    return (
+      <div className="board-shell">
+        <div className="board-header">
+          <div className="board-header-left">
+            <h1 className="board-title">noodle</h1>
+          </div>
+        </div>
+        <div className="board-columns">
+          <p style={{ color: "var(--red)", fontFamily: "var(--font-mono)" }}>
+            {error.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !snapshot) {
     return (
       <div className="board-shell">
@@ -55,23 +72,6 @@ export function Board() {
         <div className="board-columns">
           <p style={{ color: "var(--text-2)", fontFamily: "var(--font-mono)" }}>
             loading...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="board-shell">
-        <div className="board-header">
-          <div className="board-header-left">
-            <h1 className="board-title">noodle</h1>
-          </div>
-        </div>
-        <div className="board-columns">
-          <p style={{ color: "var(--red)", fontFamily: "var(--font-mono)" }}>
-            {error.message}
           </p>
         </div>
       </div>

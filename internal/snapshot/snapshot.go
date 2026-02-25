@@ -185,6 +185,7 @@ func readQueue(path string) (queueResult, error) {
 			ID:        item.ID,
 			TaskKey:   item.TaskKey,
 			Title:     item.Title,
+			Prompt:    item.Prompt,
 			Provider:  item.Provider,
 			Model:     item.Model,
 			Skill:     item.Skill,

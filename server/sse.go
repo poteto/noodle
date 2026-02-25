@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -78,12 +80,14 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 	}
 	defer watcher.Close()
 
-	// Watch the runtime directory for file changes.
-	_ = watcher.Add(runtimeDir)
-
-	// Also watch sessions/ subdirectory if it exists.
-	sessionsDir := filepath.Join(runtimeDir, "sessions")
-	_ = watcher.Add(sessionsDir)
+	// Recursively watch the runtime directory and all subdirectories.
+	filepath.WalkDir(runtimeDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
+		}
+		_ = watcher.Add(path)
+		return nil
+	})
 
 	const debounce = 300 * time.Millisecond
 	timer := time.NewTimer(debounce)
@@ -101,9 +105,15 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 			return
 		case <-h.done:
 			return
-		case _, ok := <-watcher.Events:
+		case ev, ok := <-watcher.Events:
 			if !ok {
 				return
+			}
+			// Watch newly created directories.
+			if ev.Has(fsnotify.Create) {
+				if info, err := os.Stat(ev.Name); err == nil && info.IsDir() {
+					_ = watcher.Add(ev.Name)
+				}
 			}
 			if !pending {
 				timer.Reset(debounce)
@@ -140,8 +150,8 @@ func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time) {
 		return
 	}
 
-	// Format as SSE event.
-	msg := fmt.Appendf(nil, "event: snapshot\ndata: %s\n\n", data)
+	// Format as SSE event (unnamed so onmessage handlers receive it).
+	msg := fmt.Appendf(nil, "data: %s\n\n", data)
 	h.broadcast(msg)
 }
 
@@ -171,7 +181,7 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		data, err := json.Marshal(snap)
 		if err == nil {
-			fmt.Fprintf(w, "event: snapshot\ndata: %s\n\n", data)
+			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
 	}

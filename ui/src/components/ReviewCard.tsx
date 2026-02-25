@@ -1,13 +1,8 @@
-import { useState } from "react";
 import type { PendingReviewItem } from "~/client";
 import { Badge } from "./Badge";
 import { ReviewActions } from "./ReviewActions";
 
 export function ReviewCard({ item }: { item: PendingReviewItem }) {
-  const [dismissed, setDismissed] = useState(false);
-
-  if (dismissed) return null;
-
   return (
     <div className="board-card">
       <div className="card-top">
@@ -21,7 +16,7 @@ export function ReviewCard({ item }: { item: PendingReviewItem }) {
             : item.prompt}
         </div>
       )}
-      <ReviewActions itemId={item.id} onOptimistic={() => setDismissed(true)} onRevert={() => setDismissed(false)} />
+      <ReviewActions itemId={item.id} />
     </div>
   );
 }

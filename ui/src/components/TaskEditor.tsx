@@ -100,7 +100,7 @@ export function TaskEditor({
                 <option value="review">review</option>
                 <option value="plan">plan</option>
                 <option value="reflect">reflect</option>
-                <option value="prioritize">prioritize</option>
+                <option value="schedule">schedule</option>
               </select>
             </div>
 

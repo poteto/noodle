@@ -9,9 +9,25 @@
 
   --bg-0: #fbbf24;
   --bg-1: #fff;
-  --bg-2: #f5eeda;
+  --bg-2: #f5eed8;
   --bg-3: #e8dfc0;
   --bg-hover: #f0e8c8;
+  --bg-selected: #fff3c0;
+
+  --accent: #1a1400;
+  --accent-dim: #3a3020;
+  --accent-glow: rgba(26,20,0,0.08);
+  --accent-on: #fbbf24;
+
+  --shadow-sm: 3px 3px 0 #1a1400;
+  --shadow-md: 5px 5px 0 #1a1400;
+  --shadow-lg: 7px 7px 0 #1a1400;
+
+  --text-xl: 1.25rem;
+  --text-2xl: 1.625rem;
+
+  --display-weight: 400;
+  --display-size: 3.5rem;
 
   --border: #1a1400;
   --border-subtle: #d4c090;
@@ -262,7 +278,7 @@ html, body {
 .badge-execute { background: #d6e4c8; color: #3a5028; }
 .badge-review { background: #f0e0a8; color: #6a5010; }
 .badge-reflect { background: #e8d0d8; color: #6a3848; }
-.badge-prioritize { background: #f0d8b8; color: #6a4018; }
+.badge-schedule { background: #f0d8b8; color: #6a4018; }
 .badge-plan { background: #c8d8e8; color: #2a4060; }
 .badge-default { background: var(--bg-3); color: var(--text-2); }
 

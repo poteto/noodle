@@ -2,7 +2,7 @@ const BADGE_CLASS: Record<string, string> = {
   execute: "badge-execute",
   review: "badge-review",
   reflect: "badge-reflect",
-  prioritize: "badge-prioritize",
+  schedule: "badge-schedule",
   plan: "badge-plan",
 };
 
