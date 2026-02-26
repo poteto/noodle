@@ -92,6 +92,11 @@ export interface PendingReviewItem {
   session_id?: string;
 }
 
+export interface DiffResponse {
+  diff: string;
+  stat: string;
+}
+
 export type ControlAction =
   | "pause"
   | "resume"

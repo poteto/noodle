@@ -6,8 +6,8 @@ import {
   useMutation,
 } from "@tanstack/react-query";
 import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY, type SSEStatus } from "./sse";
-import { fetchSnapshot, fetchSessionEvents, sendControl } from "./api";
-import type { Snapshot, EventLine, ControlCommand, ControlAck } from "./types";
+import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
+import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse } from "./types";
 
 // Connects SSE on mount, seeds cache with initial fetch, and keeps
 // snapshot data live via server-sent events.
@@ -62,6 +62,14 @@ export function useSSEStatus(): SSEStatus {
     refetchOnReconnect: false,
   });
   return data ?? "connecting";
+}
+
+export function useReviewDiff(itemId: string) {
+  return useQuery<DiffResponse>({
+    queryKey: ["review-diff", itemId],
+    queryFn: () => fetchReviewDiff(itemId),
+    staleTime: Infinity,
+  });
 }
 
 export function useSendControl() {

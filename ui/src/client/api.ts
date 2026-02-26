@@ -4,6 +4,7 @@ import type {
   ControlCommand,
   ControlAck,
   ConfigDefaults,
+  DiffResponse,
 } from "./types";
 
 // Typed wrapper around res.json(). The Go API server is same-origin and
@@ -46,4 +47,14 @@ export async function fetchConfig(): Promise<ConfigDefaults> {
   const res = await fetch("/api/config");
   if (!res.ok) throw new Error(`fetchConfig: ${res.status}`);
   return jsonBody<ConfigDefaults>(res);
+}
+
+export async function fetchReviewDiff(
+  reviewId: string,
+): Promise<DiffResponse> {
+  const res = await fetch(
+    `/api/reviews/${encodeURIComponent(reviewId)}/diff`,
+  );
+  if (!res.ok) throw new Error(`fetchReviewDiff: ${res.status}`);
+  return jsonBody<DiffResponse>(res);
 }
