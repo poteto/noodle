@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 49 -->
+<!-- next-id: 50 -->
 
 ## Noodle Post-Plan 1
 
@@ -18,6 +18,7 @@
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command.
 47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[archived_plans/47-delete-go-tui/overview]]~~ — marked complete per user confirmation.
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
+49. [ ] Queue-aware rescheduling — when a queue item is removed (cancelled, failed, manually dropped), cascade to dependent items. E.g. removing an execute task should also remove its downstream quality review. Scheduler should detect orphaned dependents and either drop them or reschedule with updated context.
 
 ## Done
 
