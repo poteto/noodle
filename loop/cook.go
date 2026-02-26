@@ -132,6 +132,24 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
+		// Revert stage status to pending — otherwise restart sees "active"
+		// with no session, permanently stranding the stage.
+		if revert, readErr := readOrders(l.deps.OrdersFile); readErr == nil {
+			for i := range revert.Orders {
+				if revert.Orders[i].ID != cand.OrderID {
+					continue
+				}
+				stages := &revert.Orders[i].Stages
+				if cand.IsOnFailure {
+					stages = &revert.Orders[i].OnFailure
+				}
+				if cand.StageIndex < len(*stages) {
+					(*stages)[cand.StageIndex].Status = StageStatusPending
+				}
+				_ = writeOrdersAtomic(l.deps.OrdersFile, revert)
+				break
+			}
+		}
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
@@ -271,6 +289,9 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 }
 
 // readQualityVerdict reads the quality verdict file for a session.
+// Returns (verdict, true) when a valid verdict exists, (zero, false) when no
+// verdict file is present. Parse errors log a warning and return (zero, false)
+// so a corrupt file doesn't silently bypass the quality gate on retry.
 func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
 	path := filepath.Join(l.runtimeDir, "quality", sessionID+".json")
 	data, err := os.ReadFile(path)
@@ -279,6 +300,7 @@ func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
 	}
 	var verdict QualityVerdict
 	if err := json.Unmarshal(data, &verdict); err != nil {
+		l.logger.Warn("corrupt quality verdict file", "path", path, "err", err)
 		return QualityVerdict{}, false
 	}
 	return verdict, true

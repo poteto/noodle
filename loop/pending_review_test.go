@@ -81,8 +81,11 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 		t.Fatalf("write pending review: %v", err)
 	}
 
+	// Write an order matching the pending review so reconciliation doesn't prune it.
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}}},
+	}}); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 

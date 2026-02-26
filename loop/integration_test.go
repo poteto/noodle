@@ -594,12 +594,12 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 	}
 }
 
-// --- Snapshot → Board derivation ---
-// LoadSnapshot reads orders.json → API serves snapshot → deriveKanbanColumns
-// produces correct column assignments. (TypeScript derivation is tested in UI;
-// this test verifies the Go snapshot correctly exposes the data.)
+// --- Loop file readability for snapshot consumers ---
+// Verifies orders.json and pending-review.json are readable after loop
+// operations. Does NOT exercise snapshot.LoadSnapshot or API serialization
+// (those are tested in their respective packages).
 
-func TestIntegrationSnapshotIncludesOrdersAndPendingReviews(t *testing.T) {
+func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 	orders := OrdersFile{
 		Orders: []Order{
 			{

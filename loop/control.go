@@ -277,13 +277,14 @@ func (l *Loop) controlMerge(orderID string) error {
 	}
 	// Determine actual order status for advanceAndPersist.
 	orders, err := readOrders(l.deps.OrdersFile)
-	if err == nil {
-		for _, o := range orders.Orders {
-			if o.ID == orderID {
-				cook.orderStatus = o.Status
-				cook.isOnFailure = o.Status == OrderStatusFailing
-				break
-			}
+	if err != nil {
+		return fmt.Errorf("merge: read orders: %w", err)
+	}
+	for _, o := range orders.Orders {
+		if o.ID == orderID {
+			cook.orderStatus = o.Status
+			cook.isOnFailure = o.Status == OrderStatusFailing
+			break
 		}
 	}
 	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
@@ -502,13 +503,14 @@ func (l *Loop) controlRequeue(orderID string) error {
 	if _, ok := l.failedTargets[orderID]; !ok {
 		return fmt.Errorf("order %q not in failed state", orderID)
 	}
-	delete(l.failedTargets, orderID)
 
 	// If order still exists in orders.json, reset all failed/cancelled stages
 	// in both Stages and OnFailure to "pending", set Order.Status to "active".
+	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
+	// on I/O errors.
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
-		return l.writeFailedTargets()
+		return fmt.Errorf("requeue: read orders: %w", err)
 	}
 	updated := false
 	for i := range orders.Orders {
@@ -526,6 +528,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 			return err
 		}
 	}
+	delete(l.failedTargets, orderID)
 	return l.writeFailedTargets()
 }
 

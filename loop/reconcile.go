@@ -16,6 +16,12 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	if err := l.loadPendingReview(); err != nil {
 		return err
 	}
+	// Prune pending reviews for orders that no longer exist in orders.json.
+	// This handles the crash window between advancing orders.json and updating
+	// pending-review.json (finding #5).
+	if err := l.reconcilePendingReview(); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Join(l.runtimeDir, "sessions"), 0o755); err != nil {
 		return err
 	}

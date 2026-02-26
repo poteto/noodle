@@ -161,6 +161,35 @@ func (l *Loop) loadPendingReview() error {
 	return nil
 }
 
+// reconcilePendingReview removes pending review entries whose order no longer
+// exists in orders.json. This covers the crash window between advancing
+// orders.json and updating pending-review.json.
+func (l *Loop) reconcilePendingReview() error {
+	if len(l.pendingReview) == 0 {
+		return nil
+	}
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		return nil // no orders file yet — nothing to reconcile
+	}
+	orderIDs := make(map[string]struct{}, len(orders.Orders))
+	for _, o := range orders.Orders {
+		orderIDs[o.ID] = struct{}{}
+	}
+	pruned := false
+	for id := range l.pendingReview {
+		if _, ok := orderIDs[id]; !ok {
+			l.logger.Warn("pruning stale pending review", "order", id)
+			delete(l.pendingReview, id)
+			pruned = true
+		}
+	}
+	if pruned {
+		return l.writePendingReview()
+	}
+	return nil
+}
+
 // logWarnf logs a warning to stderr. Used for degraded parse situations.
 func logWarnf(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", args...)

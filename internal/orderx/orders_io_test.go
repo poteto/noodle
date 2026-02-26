@@ -159,7 +159,10 @@ func TestRoundTripPreservesOrderOnFailure(t *testing.T) {
 						{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusFailed},
 					},
 					OnFailure: []Stage{
-						{TaskKey: "execute", Prompt: "rollback", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
+						{
+							TaskKey: "execute", Prompt: "rollback", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending,
+							Extra: map[string]json.RawMessage{"retry_reason": json.RawMessage(`"quality rejected"`)},
+						},
 					},
 				},
 			},
@@ -177,6 +180,16 @@ func TestRoundTripPreservesOrderOnFailure(t *testing.T) {
 		}
 		if got.Orders[0].OnFailure[0].Prompt != "rollback" {
 			t.Errorf("OnFailure[0].Prompt = %q, want rollback", got.Orders[0].OnFailure[0].Prompt)
+		}
+		// Verify OnFailure Stage.Extra is preserved through round-trip.
+		ofExtra := got.Orders[0].OnFailure[0].Extra
+		if ofExtra == nil {
+			t.Fatal("OnFailure[0].Extra is nil after round-trip")
+		}
+		if v, ok := ofExtra["retry_reason"]; !ok {
+			t.Error("OnFailure[0].Extra[retry_reason] missing")
+		} else if string(v) != `"quality rejected"` {
+			t.Errorf("OnFailure[0].Extra[retry_reason] = %s, want %q", v, `"quality rejected"`)
 		}
 	})
 

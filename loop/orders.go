@@ -314,9 +314,10 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 
 	incoming, err := orderx.ParseOrdersStrict(nextData)
 	if err != nil {
-		// Remove invalid proposal so it doesn't block future cycles.
-		_ = os.Remove(nextPath)
-		return false, fmt.Errorf("invalid orders-next.json (removed): %w", err)
+		// Rename invalid proposal so it doesn't block future cycles.
+		// Preserve the file for debugging rather than deleting it.
+		_ = os.Rename(nextPath, nextPath+".bad")
+		return false, fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
 	}
 
 	// Read existing orders.

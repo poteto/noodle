@@ -1,6 +1,7 @@
 package orderx
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -29,12 +30,15 @@ func ReadOrders(path string) (OrdersFile, error) {
 }
 
 // ParseOrdersStrict validates orders bytes without disk I/O.
+// Rejects unknown fields to prevent silent data loss on round-trip.
 func ParseOrdersStrict(data []byte) (OrdersFile, error) {
 	if strings.TrimSpace(string(data)) == "" {
 		return OrdersFile{}, nil
 	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
 	var of OrdersFile
-	if err := json.Unmarshal(data, &of); err != nil {
+	if err := dec.Decode(&of); err != nil {
 		return OrdersFile{}, fmt.Errorf("parse orders: %w", err)
 	}
 	if of.Orders == nil {
@@ -145,14 +149,25 @@ func NormalizeAndValidateOrders(
 		}
 		seenIDs[id] = struct{}{}
 
-		// Reject orders with empty status.
+		// Write back trimmed ID (finding #8 — prevent dedupe bypass).
+		orders[i].ID = id
+
+		// Reject orders with invalid or terminal status.
 		if err := ValidateOrderStatus(orders[i].Status); err != nil {
 			return of, false, fmt.Errorf("order %q: %w", id, err)
+		}
+		// Terminal statuses should never persist — the loop removes orders
+		// on completion/failure. Reject if present.
+		if orders[i].Status == OrderStatusCompleted || orders[i].Status == OrderStatusFailed {
+			return of, false, fmt.Errorf("order %q has terminal status %q", id, orders[i].Status)
 		}
 
 		// Validate and filter main stages.
 		validStages := make([]Stage, 0, len(orders[i].Stages))
 		for j := range orders[i].Stages {
+			if err := ValidateStageStatus(orders[i].Stages[j].Status); err != nil {
+				return of, false, fmt.Errorf("order %q stage %d: %w", id, j, err)
+			}
 			if isValidStageTaskType(&orders[i].Stages[j], reg) {
 				validStages = append(validStages, orders[i].Stages[j])
 			} else {
@@ -171,6 +186,9 @@ func NormalizeAndValidateOrders(
 		if len(orders[i].OnFailure) > 0 {
 			validOnFailure := make([]Stage, 0, len(orders[i].OnFailure))
 			for j := range orders[i].OnFailure {
+				if err := ValidateStageStatus(orders[i].OnFailure[j].Status); err != nil {
+					return of, false, fmt.Errorf("order %q on_failure stage %d: %w", id, j, err)
+				}
 				if isValidStageTaskType(&orders[i].OnFailure[j], reg) {
 					validOnFailure = append(validOnFailure, orders[i].OnFailure[j])
 				} else {
