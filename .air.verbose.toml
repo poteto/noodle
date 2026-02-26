@@ -1,7 +1,7 @@
 #:schema https://json.schemastore.org/any.json
 
 root = "."
-tmp_dir = "tmp/air-noodle"
+tmp_dir = "/tmp/air-noodle"
 
 [build]
 # Rebuild the noodle CLI into ./bin on source changes.
@@ -17,7 +17,7 @@ entrypoint = ["node", "scripts/watch-success.js"]
 include_ext = ["go", "mod", "sum"]
 exclude_dir = [".git", ".worktrees", "node_modules", "dist", "target", "tmp"]
 exclude_regex = ["_test\\.go"]
-log = "tmp/air-noodle/build-errors.log"
+log = "/tmp/air-noodle/build-errors.log"
 
 stop_on_error = true
 send_interrupt = true
