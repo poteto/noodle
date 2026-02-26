@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useOptimistic, useTransition } from "react";
-import { useSuspenseSnapshot, deriveKanbanColumns, useSendControl, sendControl } from "~/client";
-import type { Snapshot, Session, QueueItem } from "~/client";
+import { useSuspenseSnapshot, deriveKanbanColumns, sendControl } from "~/client";
+import type { Snapshot, Session, QueueItem, ControlCommand } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
@@ -12,6 +12,7 @@ import { TaskEditor } from "./TaskEditor";
 import { QueueAddCard } from "./QueueAddCard";
 import { ConcurrencyBadge } from "./ConcurrencyBadge";
 import { SkeletonCard } from "./SkeletonCard";
+import { ControlContext } from "./ControlContext";
 
 function pendingSession(item: QueueItem): Session {
   return {
@@ -36,10 +37,13 @@ function pendingSession(item: QueueItem): Session {
   };
 }
 
-type OptimisticAction = { type: "move-to-cooking"; itemId: string };
+type OptimisticAction =
+  | { type: "move-to-cooking"; itemId: string }
+  | ControlCommand;
 
 function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): Snapshot {
-  if (action.type === "move-to-cooking") {
+  // Special case: drag-to-cook creates a pending session placeholder.
+  if ("type" in action) {
     const item = current.queue.find((q) => q.id === action.itemId);
     if (!item) return current;
     return {
@@ -48,7 +52,47 @@ function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): S
       active: [...current.active, pendingSession(item)],
     };
   }
-  return current;
+
+  switch (action.action) {
+    case "pause":
+      return { ...current, loop_state: "paused" };
+    case "resume":
+      return { ...current, loop_state: "running" };
+    case "stop":
+      return {
+        ...current,
+        active: current.active.filter((s) => s.id !== action.name),
+      };
+    case "merge":
+    case "reject":
+    case "request-changes":
+      return {
+        ...current,
+        pending_reviews: current.pending_reviews.filter((r) => r.id !== action.item),
+        pending_review_count: Math.max(0, current.pending_review_count - 1),
+      };
+    case "set-max-cooks": {
+      const n = parseInt(action.value ?? "", 10);
+      return isNaN(n) ? current : { ...current, max_cooks: n };
+    }
+    case "reorder": {
+      if (!action.item || action.value == null) return current;
+      const fromIndex = current.queue.findIndex((q) => q.id === action.item);
+      const toIndex = parseInt(action.value, 10);
+      if (fromIndex < 0 || isNaN(toIndex)) return current;
+      const newQueue = [...current.queue];
+      const [moved] = newQueue.splice(fromIndex, 1);
+      newQueue.splice(toIndex, 0, moved);
+      return { ...current, queue: newQueue };
+    }
+    case "requeue":
+      return {
+        ...current,
+        recent: current.recent.filter((s) => s.id !== action.item),
+      };
+    default:
+      return current;
+  }
 }
 
 function isInputFocused(): boolean {
@@ -60,7 +104,6 @@ function isInputFocused(): boolean {
 
 export function Board() {
   const { data: snapshot } = useSuspenseSnapshot();
-  const { mutate: send } = useSendControl();
   const [, startTransition] = useTransition();
   const [optimisticSnapshot, applyOptimistic] = useOptimistic(snapshot, applyOptimisticSnapshot);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -70,7 +113,17 @@ export function Board() {
   const [cookingDragOver, setCookingDragOver] = useState(false);
   const dragItemId = useRef<string | null>(null);
 
-  const isPaused = snapshot.loop_state === "paused";
+  const optimisticSend = useCallback(
+    (command: ControlCommand) => {
+      startTransition(async () => {
+        applyOptimistic(command);
+        await sendControl(command);
+      });
+    },
+    [startTransition, applyOptimistic],
+  );
+
+  const isPaused = optimisticSnapshot.loop_state === "paused";
 
   const handleKeyboard = useCallback(
     (e: KeyboardEvent) => {
@@ -81,10 +134,10 @@ export function Board() {
       }
       if (e.key === "p") {
         e.preventDefault();
-        send({ action: isPaused ? "resume" : "pause" });
+        optimisticSend({ action: isPaused ? "resume" : "pause" });
       }
     },
-    [isPaused, send],
+    [isPaused, optimisticSend],
   );
 
   useEffect(() => {
@@ -127,7 +180,7 @@ export function Board() {
       (item) => item.id === columns.queued[dropIndex]?.id,
     );
     if (fullQueueIndex >= 0) {
-      send({ action: "reorder", item: id, value: String(fullQueueIndex) });
+      optimisticSend({ action: "reorder", item: id, value: String(fullQueueIndex) });
     }
     resetDrag();
   }
@@ -162,90 +215,92 @@ export function Board() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-0">
-      <BoardHeader
-        snapshot={snapshot}
-        onNewTask={() => setShowTaskEditor(true)}
-      />
+    <ControlContext.Provider value={optimisticSend}>
+      <div className="flex flex-col h-screen bg-bg-0">
+        <BoardHeader
+          snapshot={optimisticSnapshot}
+          onNewTask={() => setShowTaskEditor(true)}
+        />
 
-      <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
-        <BoardColumn
-          title="Queued"
-          count={columns.queued.length}
-          footer={<QueueAddCard />}
-          emptyText={showQueueSkeleton ? undefined : "No tasks queued"}
-        >
-          {showQueueSkeleton && <SkeletonCard />}
-          {columns.queued.map((item, i) => (
-            <QueueCard
-              key={item.id}
-              item={item}
-              index={i}
-              onDragStart={handleQueueDragStart}
-              onDragOver={handleQueueDragOver}
-              onDrop={handleQueueDrop}
-              onDragEnd={resetDrag}
-              isDragOver={dragOverIndex === i}
-              isDragging={draggingId === item.id}
-            />
-          ))}
-        </BoardColumn>
-
-        <BoardColumn
-          title="Cooking"
-          count={columns.cooking.length}
-          headerExtra={
-            <ConcurrencyBadge
-              active={columns.cooking.length}
-              maxCooks={maxCooks}
-            />
-          }
-        >
-          <div
-            className={`flex flex-col gap-2.5 min-h-[60px] transition-[background] duration-150${cookingDragOver ? " bg-nyellow-bg outline-2 outline-dashed outline-nyellow -outline-offset-2" : ""}`}
-            onDragOver={handleCookingDragOver}
-            onDragLeave={handleCookingDragLeave}
-            onDrop={handleCookingDrop}
+        <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
+          <BoardColumn
+            title="Queued"
+            count={columns.queued.length}
+            footer={<QueueAddCard />}
+            emptyText={showQueueSkeleton ? undefined : "No tasks queued"}
           >
-            {columns.cooking.length === 0 && !cookingDragOver && (
-              <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">No active cooks</div>
-            )}
-            {cookingDragOver && columns.cooking.length === 0 && (
-              <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-semibold">Drop to start cooking</div>
-            )}
-            {columns.cooking.map((session) => (
-              <AgentCard
-                key={session.id}
-                session={session}
-                onClick={() => setSelectedSessionId(session.id)}
+            {showQueueSkeleton && <SkeletonCard />}
+            {columns.queued.map((item, i) => (
+              <QueueCard
+                key={item.id}
+                item={item}
+                index={i}
+                onDragStart={handleQueueDragStart}
+                onDragOver={handleQueueDragOver}
+                onDrop={handleQueueDrop}
+                onDragEnd={resetDrag}
+                isDragOver={dragOverIndex === i}
+                isDragging={draggingId === item.id}
               />
             ))}
-          </div>
-        </BoardColumn>
+          </BoardColumn>
 
-        <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">
-          {columns.review.map((item) => (
-            <ReviewCard key={item.id} item={item} />
-          ))}
-        </BoardColumn>
+          <BoardColumn
+            title="Cooking"
+            count={columns.cooking.length}
+            headerExtra={
+              <ConcurrencyBadge
+                active={columns.cooking.length}
+                maxCooks={maxCooks}
+              />
+            }
+          >
+            <div
+              className={`flex flex-col gap-2.5 min-h-[60px] transition-[background] duration-150${cookingDragOver ? " bg-nyellow-bg outline-2 outline-dashed outline-nyellow -outline-offset-2" : ""}`}
+              onDragOver={handleCookingDragOver}
+              onDragLeave={handleCookingDragLeave}
+              onDrop={handleCookingDrop}
+            >
+              {columns.cooking.length === 0 && !cookingDragOver && (
+                <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">No active cooks</div>
+              )}
+              {cookingDragOver && columns.cooking.length === 0 && (
+                <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-semibold">Drop to start cooking</div>
+              )}
+              {columns.cooking.map((session) => (
+                <AgentCard
+                  key={session.id}
+                  session={session}
+                  onClick={() => setSelectedSessionId(session.id)}
+                />
+              ))}
+            </div>
+          </BoardColumn>
 
-        <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
-          {columns.done.map((session) => (
-            <DoneCard key={session.id} session={session} />
-          ))}
-        </BoardColumn>
+          <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">
+            {columns.review.map((item) => (
+              <ReviewCard key={item.id} item={item} />
+            ))}
+          </BoardColumn>
+
+          <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
+            {columns.done.map((session) => (
+              <DoneCard key={session.id} session={session} />
+            ))}
+          </BoardColumn>
+        </div>
+
+        {selectedSession && (
+          <ChatPanel
+            session={selectedSession}
+            onClose={() => setSelectedSessionId(null)}
+          />
+        )}
+
+        {showTaskEditor && (
+          <TaskEditor onClose={() => setShowTaskEditor(false)} />
+        )}
       </div>
-
-      {selectedSession && (
-        <ChatPanel
-          session={selectedSession}
-          onClose={() => setSelectedSessionId(null)}
-        />
-      )}
-
-      {showTaskEditor && (
-        <TaskEditor onClose={() => setShowTaskEditor(false)} />
-      )}
-    </div>
+    </ControlContext.Provider>
   );
 }

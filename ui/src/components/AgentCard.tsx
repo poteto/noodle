@@ -1,5 +1,6 @@
 import type { Session } from "~/client";
-import { middleTruncate, formatDuration, formatCost, useSendControl } from "~/client";
+import { middleTruncate, formatDuration, formatCost } from "~/client";
+import { useControl } from "./ControlContext";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { Badge } from "./Badge";
 import { Square } from "lucide-react";
@@ -44,7 +45,7 @@ export function AgentCard({
   session: Session;
   onClick?: () => void;
 }) {
-  const { mutate: send, isPending } = useSendControl();
+  const send = useControl();
   const taskKey = session.task_key ?? "";
 
   function handleStop(e: React.MouseEvent) {
@@ -104,9 +105,8 @@ export function AgentCard({
         <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">{session.model}</span>
         <Tooltip content="Stop and return to queue">
         <button
-          className="flex items-center justify-center w-6 h-6 p-0 bg-transparent border-[1.5px] border-border-subtle text-text-2 cursor-pointer shrink-0 transition-all duration-[0.12s] hover:not-disabled:border-nred hover:not-disabled:text-nred hover:not-disabled:bg-nred-dim active:not-disabled:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-6 h-6 p-0 bg-transparent border-[1.5px] border-border-subtle text-text-2 cursor-pointer shrink-0 transition-all duration-[0.12s] hover:not-disabled:border-nred hover:not-disabled:text-nred hover:not-disabled:bg-nred-dim active:not-disabled:scale-90"
           onClick={handleStop}
-          disabled={isPending}
         >
           <Square size={10} fill="currentColor" />
         </button>

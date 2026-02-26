@@ -1,8 +1,8 @@
 import type { LoopState } from "~/client";
-import { useSendControl } from "~/client";
+import { useControl } from "./ControlContext";
 
 export function LoopControls({ loopState }: { loopState: LoopState }) {
-  const { mutate: send, isPending } = useSendControl();
+  const send = useControl();
   const isPaused = loopState === "paused";
 
   function toggle() {
@@ -17,7 +17,6 @@ export function LoopControls({ loopState }: { loopState: LoopState }) {
           : "bg-accent border-border text-bg-0"
       }`}
       onClick={toggle}
-      disabled={isPending}
     >
       {isPaused ? "resume" : "pause"}
     </button>

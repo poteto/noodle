@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useSendControl } from "~/client";
+import { useControl } from "./ControlContext";
 
 export function ReviewActions({ itemId }: { itemId: string }) {
-  const { mutate: send, isPending } = useSendControl();
+  const send = useControl();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -48,21 +48,18 @@ export function ReviewActions({ itemId }: { itemId: string }) {
         <button
           className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 cursor-pointer transition-all duration-[0.12s] bg-ngreen text-white border-ngreen hover:brightness-110"
           onClick={handleMerge}
-          disabled={isPending}
         >
           merge
         </button>
         <button
           className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 cursor-pointer transition-all duration-[0.12s] bg-nyellow-bg border-nyellow-dim text-nyellow hover:brightness-95"
           onClick={handleRequestChanges}
-          disabled={isPending}
         >
           {showFeedback ? "send" : "changes"}
         </button>
         <button
           className="flex-1 flex items-center justify-center gap-1 py-[5px] px-[10px] font-body text-xs font-bold border-2 border-border bg-bg-1 text-text-1 cursor-pointer transition-all duration-[0.12s] hover:bg-nred-dim hover:border-nred hover:text-nred"
           onClick={handleReject}
-          disabled={isPending}
         >
           reject
         </button>

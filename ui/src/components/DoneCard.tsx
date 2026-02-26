@@ -1,29 +1,34 @@
+import { useState } from "react";
 import type { Session } from "~/client";
-import { useSendControl, formatCost } from "~/client";
+import { sendControl, formatCost } from "~/client";
+import { useControl } from "./ControlContext";
 import { Badge } from "./Badge";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { RotateCcw } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
 export function DoneCard({ session }: { session: Session }) {
-  const { mutate: send, isPending } = useSendControl();
+  const send = useControl();
+  const [replaying, setReplaying] = useState(false);
   const failed = session.status === "failed";
   const taskKey = session.task_key ?? "";
 
   function handleReplay(e: React.MouseEvent) {
     e.stopPropagation();
     if (failed) {
+      // Requeue: card disappears optimistically via reducer.
       send({ action: "requeue", item: session.id });
     } else {
-      const id = `replay-${Date.now()}`;
-      send({
+      // Replay: no clear optimistic state — track locally.
+      setReplaying(true);
+      sendControl({
         action: "enqueue",
-        item: id,
+        item: `replay-${Date.now()}`,
         task_key: taskKey || "execute",
         prompt: `Replay: ${session.display_name}`,
         model: session.model,
         provider: session.provider,
-      });
+      }).finally(() => setReplaying(false));
     }
   }
 
@@ -51,7 +56,7 @@ export function DoneCard({ session }: { session: Session }) {
         <button
           className="flex items-center justify-center w-6 h-6 p-0 bg-transparent border-[1.5px] border-border-subtle text-text-2 cursor-pointer shrink-0 transition-all duration-[0.12s] hover:not-disabled:border-ngreen hover:not-disabled:text-ngreen hover:not-disabled:bg-ngreen-dim active:not-disabled:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
           onClick={handleReplay}
-          disabled={isPending}
+          disabled={replaying}
         >
           <RotateCcw size={12} />
         </button>

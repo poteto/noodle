@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSendControl } from "~/client";
+import { useControl } from "./ControlContext";
 import { Tooltip } from "./Tooltip";
 
 export function ConcurrencyBadge({
@@ -9,7 +9,7 @@ export function ConcurrencyBadge({
   active: number;
   maxCooks: number;
 }) {
-  const { mutate: send } = useSendControl();
+  const send = useControl();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(maxCooks));
 
