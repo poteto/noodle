@@ -16,8 +16,7 @@ Swap the loop from reading `queue.json` (flat items) to reading `orders.json` (o
 - Call `consumeOrdersNext()` instead of `consumeQueueNext()`
 - Call `readOrders()` instead of `readQueue()`
 - Normalize and validate orders instead of queue items
-- Filter stale schedule orders (same logic, new types)
-- Bootstrap schedule order if no active orders exist
+- **Simplify filtering (#60):** Don't port `filterStaleScheduleItems`/`hasNonScheduleItems` nested conditionals. Simplify to: if no non-schedule orders exist and work is available (plans or needs_scheduling), bootstrap a schedule order. If no work exists, go idle. Keep validation (reject malformed orders) but stop making scheduling judgments — the schedule skill owns queue composition.
 
 **`loop/loop.go`** — `planCycleSpawns()`:
 - Call `dispatchableStages()` (from phase 3) instead of iterating queue items
@@ -30,15 +29,18 @@ Swap the loop from reading `queue.json` (flat items) to reading `orders.json` (o
 - `activeCook` stores orderID, stageIndex, stage
 
 **`loop/cook.go`** — `handleCompletion()`:
-- On success: call `advanceOrder()` (from phase 3), persist with `writeOrdersAtomic()`
-- If order has more stages after advancement, they'll be dispatched next cycle
-- On failure: call `failOrder()` if retries exhausted, or retry the same stage
-- Merge path: check `canMerge` from the task type registry (same as current code). Mergeable stages merge their worktree, then advance. Non-mergeable stages (debate, schedule) skip merge and just advance. Only call `Adapter.Run("backlog", "done", orderID)` when the final stage of the order completes — not per-stage.
+- On success: check quality verdict before merging (see below), then call `advanceOrder()` (from phase 3), persist with `writeOrdersAtomic()`. `advanceOrder` returns `removed bool` — if true and order was `"active"`, fire adapter "done"; if true and order was `"failing"`, call `markFailed` instead.
+- If `removed` is false, more stages remain — they'll be dispatched next cycle
+- On failure: call `failStage()` if retries exhausted (which triggers OnFailure stages if present), or retry the same stage
+- Merge path: check `canMerge` from the task type registry (same as current code). Mergeable stages merge their worktree, then advance. Non-mergeable stages (debate, schedule) skip merge and just advance. Only call `Adapter.Run("backlog", "done", orderID)` when the final stage of a **non-failing** order completes — not per-stage. For `"failing"` orders, when the last OnFailure stage completes, `advanceOrder` removes the order and the caller calls `markFailed` (the OnFailure pipeline is remediation, not recovery — the original failure stands). Do NOT fire adapter "done" for failing orders.
 - Schedule special case: schedule stages have no worktree (run in project dir). handleCompletion must detect schedule and skip merge/worktree cleanup, same as current `isScheduleItem` check.
+- **Quality verdict check (#65):** After a stage completes successfully but before merging, read `.noodle/quality/<session-id>.json`. If a verdict file exists and `accept == false`, treat the stage as failed (call `failStage()` instead of advancing). This makes quality verdicts enforceable. Add a `QualityVerdict` struct to `loop/types.go`: `{Accept bool, Feedback string}` (only read the fields the loop needs). Verdict reading is at the boundary — validate at read time, trust internally.
+- **Pending approval interaction:** If `config.PendingApproval()` is true, park for review as before (human sees the verdict in the review UI). Verdict check only applies in `auto` autonomy mode where the loop would otherwise merge without human review.
 
 **`loop/cook.go`** — `retryCook()`:
-- Retry dispatches the same stage (same orderID, same stageIndex) with incremented attempt
-- Pending retry stores orderID + stageIndex + stage
+- Retry dispatches the same stage (same orderID, same stageIndex) with incremented attempt. If `IsOnFailure` is true, retry within the OnFailure pipeline.
+
+**`loop/cook.go`** — `retryCook()` (already updated above).
 
 **`loop/cook.go`** — `collectCompleted()`:
 - Maps session ID → activeCook unchanged (activeCook struct just has different fields)
@@ -78,8 +80,9 @@ Swap the loop from reading `queue.json` (flat items) to reading `orders.json` (o
 
 ## Data structures
 
-- `activeCook{orderID, stageIndex, stage, session, worktreeName, worktreePath, attempt, displayName}`
+- `activeCook{orderID, stageIndex, stage, isOnFailure, orderStatus, plan, session, worktreeName, worktreePath, attempt, displayName}`
 - `activeByTarget` keyed by `orderID` (one cook per order at a time)
+- `QualityVerdict{Accept bool, Feedback string}` — minimal struct for reading verdict files at the merge boundary
 
 ## Routing
 
@@ -98,7 +101,16 @@ Complex migration with judgment calls about edge cases and state transitions.
 ### Runtime
 - Unit test: spawnCook with a dispatchCandidate creates activeCook with correct orderID/stageIndex
 - Unit test: handleCompletion on success advances order stage, order persisted
-- Unit test: handleCompletion on success of final stage marks order completed
+- Unit test: handleCompletion on success of final stage removes order from OrdersFile and fires adapter "done"
 - Unit test: handleCompletion on failure retries same stage with incremented attempt
-- Unit test: handleCompletion on failure with exhausted retries calls failOrder
+- Unit test: handleCompletion on failure with exhausted retries calls failStage — when terminal=false, order stays (OnFailure will dispatch); when terminal=true, calls markFailed
+- Unit test: handleCompletion on final OnFailure stage completion calls markFailed (not adapter "done")
+- Unit test: handleCompletion with quality verdict `accept=false` treats stage as failed (calls failStage)
+- Unit test: handleCompletion with quality verdict `accept=true` proceeds normally
+- Unit test: handleCompletion with no verdict file proceeds normally (verdict is optional)
+- Unit test: handleCompletion in `approve` autonomy mode parks for review regardless of verdict
+- Unit test: handleCompletion for schedule stage skips merge/worktree cleanup
+- Unit test: loadPendingReview discards old-format files gracefully (logs warning, no crash)
+- Unit test: auditOrders drops orders with unresolvable stages, emits `order_drop` event
+- Unit test: reconcile re-associates adopted sessions using new prompt format
 - Run `go test ./loop/...` — existing tests will break and must be updated in this phase to use the new types

@@ -32,7 +32,7 @@
 ## Subtract Go Logic
 
 59. [ ] Bootstrap as embedded skill — move the ~60 line bootstrap prompt from `loop/builtin_bootstrap.go:9-72` into an embedded skill file. Loop dispatches the skill, prompt evolves without recompiling. Includes fixing silent bootstrap exhaustion (`builtin_bootstrap.go:109-115`) — skill can emit diagnostics with actionable next steps instead of the loop silently giving up.
-60. [ ] Simplify queue filtering in loop — `filterStaleScheduleItems` and `hasNonScheduleItems` in `loop/loop.go:384-403` have nested conditionals mixing queue inspection, session state, and plan existence checks. Simplify to: queue empty + work exists → run schedule. Keep validation (reject malformed items) but stop making scheduling judgments.
+60. [ ] Simplify queue filtering in loop — addressed in #49 phase 4. The orders migration simplifies `prepareOrdersForCycle` instead of porting the nested conditionals. [[plans/49-work-orders-redesign/overview]]
 61. [ ] Simplify mise.json building — `mise/builder.go:162-193` pre-filters which plans are "schedulable" and `schedule.go:148-165` builds a prompt listing available task types. Include all plans in mise.json, add task types as a structured field. Let the schedule skill decide what's actionable instead of Go pre-processing.
 
 ## Resilience
@@ -45,7 +45,7 @@
 <!-- Planning order: #49 first (foundational data model, fold #65 into its design), #52 in parallel (independent UX win), #66 after #49 lands (needs orders/stages to trigger into). Subtract/resilience items (59-64) as cleanup between major efforts. -->
 
 64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic.
-65. [ ] Quality verdict → merge integration — loop merge decision (`cook.go:207-213`) only checks `permissions.merge` (bool) and `config.Autonomy`. Quality skill writes verdicts to `.noodle/quality/` but nobody reads them. Loop should check verdict for auto-merge decisions: pass → merge, fail → park for review or reschedule. Fold into #49 — same merge path gets rewritten.
+65. [ ] Quality verdict → merge integration — folded into #49 (phase 4). Loop reads `.noodle/quality/<session-id>.json` verdicts in the merge decision path. `accept=false` triggers failStage/OnFailure routing. [[plans/49-work-orders-redesign/overview]]
 66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan; depends on #49.
 ## Done
 

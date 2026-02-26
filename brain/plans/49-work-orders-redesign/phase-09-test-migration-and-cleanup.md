@@ -25,7 +25,7 @@ Migrate all test fixtures from queue format to orders format, delete old types a
 **`internal/queuex/queue_test.go`** — Add orders-specific tests, delete queue-only tests that are now dead.
 
 **Delete dead code (subtraction first):**
-- `tui/` package — still exists despite #47 marking TUI deletion complete. Delete the entire directory. It references `snapshot.QueueItem` extensively.
+- `tui/` package — still exists despite #47 marking TUI deletion complete (confirmed: directory contains components, styles, model, tests). Delete the entire directory. It references `snapshot.QueueItem` extensively.
 
 **Delete old queue code:**
 - `loop/types.go` — delete `QueueItem`, `Queue` types

@@ -17,7 +17,7 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 
 **`internal/snapshot/snapshot.go`** — `LoadSnapshot()`:
 - Read `orders.json` instead of `queue.json`
-- Convert `orderx.OrdersFile` to `snapshot.Order` slice
+- Convert `queuex.OrdersFile` to `snapshot.Order` slice (package is still `queuex` at this point — optional rename to `orderx` happens in phase 9)
 - Populate `ActiveOrderIDs` from active sessions metadata
 - Update `queue-events.ndjson` parser: handle `order_drop` event type (phase 4 audit emits this instead of `queue_drop`). Keep `queue_drop` handling temporarily for events written before the migration.
 
@@ -27,8 +27,8 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 
 ## Data structures
 
-- `snapshot.Order{ID, Title, Plan, Rationale, Stages, Status}`
-- `snapshot.Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`
+- `snapshot.Order{ID, Title, Plan, Rationale, Stages, Status, OnFailure}` — mirrors loop Order including OnFailure stages
+- `snapshot.Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status, Extra}` — mirrors loop Stage including Extra metadata
 - Snapshot JSON shape changes: `queue: [...]` → `orders: [...]`
 
 ## Routing
@@ -47,6 +47,7 @@ Mechanical type migration. Clear spec from phase 1 types.
 
 ### Runtime
 - Unit test: LoadSnapshot reads orders.json and populates snapshot.Orders
-- Unit test: Snapshot serialization includes orders with stages
+- Unit test: Snapshot serialization includes orders with stages, OnFailure, and Extra
 - Manual: start noodle, hit `/api/snapshot`, verify orders appear in JSON response
+- Unit test: LoadSnapshot handles both `order_drop` and legacy `queue_drop` event types in queue-events.ndjson
 - Manual: verify SSE stream sends snapshots with orders field

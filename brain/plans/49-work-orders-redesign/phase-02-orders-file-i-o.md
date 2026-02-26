@@ -12,8 +12,8 @@ Build the file I/O layer for `orders.json` and `orders-next.json`. Same atomic w
 - `ReadOrders(path) (OrdersFile, error)` — read and parse orders.json
 - `ParseOrdersStrict(data) (OrdersFile, error)` — validate bytes without disk I/O
 - `WriteOrdersAtomic(path, OrdersFile) error` — atomic write via temp file + rename
-- `ApplyOrderRoutingDefaults(OrdersFile, registry, config) (OrdersFile, bool)` — fill missing provider/model on stages from config defaults
-- `NormalizeAndValidateOrders(OrdersFile, planIDs, registry, config) (OrdersFile, bool, error)` — validate stage task types against registry, drop orders with no valid stages, normalize IDs, enforce order ID uniqueness (reject duplicates)
+- `ApplyOrderRoutingDefaults(OrdersFile, registry, config) (OrdersFile, bool)` — fill missing provider/model on stages from config defaults. Apply to both `Stages` and `OnFailure` stages.
+- `NormalizeAndValidateOrders(OrdersFile, planIDs, registry, config) (OrdersFile, bool, error)` — validate stage task types against registry (both `Stages` and `OnFailure`), drop orders with no valid main stages, strip invalid OnFailure stages (clear OnFailure if none remain — order still valid without it), normalize IDs, enforce order ID uniqueness (reject duplicates). `Extra` fields are opaque — pass through without validation.
 
 **`loop/orders.go`** (new file, parallel to `loop/queue.go`) — Add wrapper functions:
 - `readOrders(path) (OrdersFile, error)` — wraps queuex.ReadOrders, converts types
@@ -46,3 +46,7 @@ Mechanical — clear spec, mirrors existing queue I/O patterns.
 - Unit test: NormalizeAndValidateOrders drops orders with unknown task types
 - Unit test: ApplyOrderRoutingDefaults fills missing provider/model from config
 - Unit test: NormalizeAndValidateOrders rejects duplicate order IDs
+- Unit test: ApplyOrderRoutingDefaults fills defaults on OnFailure stages too
+- Unit test: Round-trip preserves Stage.Extra (arbitrary JSON in, same JSON out)
+- Unit test: Round-trip preserves Order.OnFailure (including empty/nil case)
+- Unit test: NormalizeAndValidateOrders validates OnFailure stage task types (strips invalid OnFailure stages; if all OnFailure stages invalid, clears OnFailure but keeps order)

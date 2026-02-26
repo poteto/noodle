@@ -10,8 +10,8 @@ Update the React web UI to render orders with stage pipelines instead of flat qu
 
 **`ui/src/client/types.ts`** — Replace types:
 - Delete `QueueItem` interface
-- Add `Order` interface: `{id, title?, plan?, rationale?, stages: Stage[], status}`
-- Add `Stage` interface: `{task_key?, prompt?, skill?, provider, model, runtime?, status}`
+- Add `Order` interface: `{id, title?, plan?, rationale?, stages: Stage[], on_failure?: Stage[], status}`
+- Add `Stage` interface: `{task_key?, prompt?, skill?, provider, model, runtime?, status, extra?: Record<string, unknown>}`
 - Update `Snapshot` interface: replace `queue: QueueItem[]` with `orders: Order[]`, replace `active_queue_ids` with `active_order_ids`
 
 **`ui/src/components/Board.tsx`** — Update kanban derivation:
@@ -26,6 +26,7 @@ Update the React web UI to render orders with stage pipelines instead of flat qu
 - Show order title/ID at top
 - Render stages as a horizontal pipeline: `execute ✓ → quality ● → reflect ○`
 - Stage status indicators: completed (checkmark), active (filled dot), pending (empty dot), failed (x), cancelled (dash)
+- For `"failing"` orders (running OnFailure stages): show main pipeline with failure indicator, then OnFailure pipeline below/after. Visual separation between main stages and failure-routing stages.
 - Badge shows task_key of the current active/next-pending stage
 - Show model on the active stage
 
@@ -55,3 +56,4 @@ UI design judgment for pipeline rendering. Use `react-best-practices`, `ts-best-
 - Manual: verify active order shows correct stage highlighted
 - Manual: verify completed stages show checkmarks, pending show empty dots
 - Manual: verify single-stage orders (schedule, meditate) render cleanly without pipeline clutter
+- Manual: verify `"failing"` order shows OnFailure stages with visual distinction from main pipeline
