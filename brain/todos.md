@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 51 -->
+<!-- next-id: 59 -->
 
 ## Noodle Post-Plan 1
 
@@ -19,8 +19,18 @@
 47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[archived_plans/47-delete-go-tui/overview]]~~ — marked complete per user confirmation.
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
 50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
-49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. An order groups related stages (execute → quality → reflect) in an ordered array; stage position encodes dependency. The scheduler creates orders, the loop advances stages mechanically (no LLM between stages). On success: mark stage completed, next stage becomes dispatchable. On failure: mark stage failed, remaining stages cancelled — no cascade logic needed, just stop advancing. `queue.json` becomes a derived view (first pending stage per active order), not the source of truth. Types: `Order{ID, Title, Plan, Rationale, Stages, Status}`, `Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`. Touches: `loop/types.go`, `internal/queuex/`, `loop/cook.go` (dispatch + completion), `loop/schedule.go` (writes orders instead of queue items), schedule skill `SKILL.md` (emit orders), web UI (render order pipelines). Single-stage orders (meditate, debate) are just orders with one stage — no special case.
+49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. An order groups related stages (execute → quality → reflect) in an ordered array; stage position encodes dependency. The scheduler creates orders, the loop advances stages mechanically (no LLM between stages). On success: mark stage completed, next stage becomes dispatchable. On failure: mark stage failed, remaining stages cancelled — no cascade logic needed, just stop advancing. `queue.json` becomes a derived view (first pending stage per active order), not the source of truth. Types: `Order{ID, Title, Plan, Rationale, Stages, Status}`, `Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`. Touches: `loop/types.go`, `internal/queuex/`, `loop/cook.go` (dispatch + completion), `loop/schedule.go` (writes orders instead of queue items), schedule skill `SKILL.md` (emit orders), web UI (render order pipelines). Single-stage orders (meditate, debate) are just orders with one stage — no special case. [[plans/49-work-orders-redesign/overview]]
 
+## Web UI
+
+51. [ ] Feed timeline — render `snapshot.feed_events` as a chronological activity stream. Cross-agent visibility: session starts, completions, failures, merges, brain writes. Data already exists server-side, just needs a UI component.
+52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed).
+53. [ ] Work order pipeline view — once #49 lands, render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
+54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
+55. [ ] Session efficiency analytics — context window usage trends, compression events, per-skill context footprint, success/failure rates over time. Focus on efficiency, not cost. Data partially available in `Session.context_window_usage_pct`.
+56. [ ] Remote runtime indicators — surface `Session.runtime` and `Session.remote_host` on agent cards. Badge or label showing local vs remote, host name for remote agents. Becomes important when running mixed local/cloud.
+57. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
+58. [ ] Settings page — read/write view for provider defaults, model routing, autonomy mode, skill paths, recovery config. Currently these require editing `.noodle.toml` by hand. At minimum a read-only config viewer; ideally editable with control commands.
 ## Done
 
 46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
