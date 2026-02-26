@@ -211,8 +211,9 @@ func pushWorktreeBranch(ctx context.Context, worktreePath, branch string) error 
 // use the provided token. Covers both HTTPS and SSH-style remote URLs.
 func configureGitAuthOnSprite(ctx context.Context, sprite spriteHandle, token string) error {
 	// Rewrite https://github.com/ URLs to include the token.
+	// Use --replace-all so this is idempotent when the key already has multiple insteadOf values.
 	httpsRewrite := fmt.Sprintf(
-		"git config --global url.\"https://x-access-token:%s@github.com/\".insteadOf \"https://github.com/\"",
+		"git config --global --replace-all url.\"https://x-access-token:%s@github.com/\".insteadOf \"https://github.com/\"",
 		token,
 	)
 	// Also rewrite git@github.com: SSH URLs to authenticated HTTPS.
