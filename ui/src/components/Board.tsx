@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useSuspenseSnapshot, deriveKanbanColumns, useSendControl } from "~/client";
+import { useState, useEffect, useCallback, useRef, useOptimistic, useTransition } from "react";
+import { useSuspenseSnapshot, deriveKanbanColumns, useSendControl, sendControl } from "~/client";
+import type { Snapshot, Session, QueueItem } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
@@ -12,6 +13,44 @@ import { QueueAddCard } from "./QueueAddCard";
 import { ConcurrencyBadge } from "./ConcurrencyBadge";
 import { SkeletonCard } from "./SkeletonCard";
 
+function pendingSession(item: QueueItem): Session {
+  return {
+    id: `pending-${item.id}`,
+    display_name: item.title || item.id,
+    title: item.title,
+    task_key: item.task_key,
+    status: "starting",
+    runtime: "",
+    provider: item.provider,
+    model: item.model,
+    total_cost_usd: 0,
+    duration_seconds: 0,
+    last_activity: new Date().toISOString(),
+    current_action: "Starting...",
+    health: "green",
+    context_window_usage_pct: 0,
+    retry_count: 0,
+    idle_seconds: 0,
+    stuck_threshold_seconds: 300,
+    loop_state: "running",
+  };
+}
+
+type OptimisticAction = { type: "move-to-cooking"; itemId: string };
+
+function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): Snapshot {
+  if (action.type === "move-to-cooking") {
+    const item = current.queue.find((q) => q.id === action.itemId);
+    if (!item) return current;
+    return {
+      ...current,
+      active_queue_ids: [...current.active_queue_ids, action.itemId],
+      active: [...current.active, pendingSession(item)],
+    };
+  }
+  return current;
+}
+
 function isInputFocused(): boolean {
   const el = document.activeElement;
   if (!el) return false;
@@ -22,6 +61,8 @@ function isInputFocused(): boolean {
 export function Board() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send } = useSendControl();
+  const [, startTransition] = useTransition();
+  const [optimisticSnapshot, applyOptimistic] = useOptimistic(snapshot, applyOptimisticSnapshot);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -51,8 +92,8 @@ export function Board() {
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
 
-  const columns = deriveKanbanColumns(snapshot);
-  const maxCooks = snapshot.max_cooks || 4;
+  const columns = deriveKanbanColumns(optimisticSnapshot);
+  const maxCooks = optimisticSnapshot.max_cooks || 4;
   // Show skeleton when loop just started and scheduler hasn't produced items yet.
   const showQueueSkeleton =
     snapshot.loop_state === "running" &&
@@ -106,13 +147,15 @@ export function Board() {
     e.preventDefault();
     const id = dragItemId.current;
     if (!id) return;
-    send({ action: "reorder", item: id, value: "0" });
-    if (columns.cooking.length >= maxCooks) {
-      send({
-        action: "set-max-cooks",
-        value: String(columns.cooking.length + 1),
-      });
-    }
+    const needsMaxCooksIncrease = columns.cooking.length >= maxCooks;
+    const newMaxCooks = columns.cooking.length + 1;
+    startTransition(async () => {
+      applyOptimistic({ type: "move-to-cooking", itemId: id });
+      await sendControl({ action: "reorder", item: id, value: "0" });
+      if (needsMaxCooksIncrease) {
+        await sendControl({ action: "set-max-cooks", value: String(newMaxCooks) });
+      }
+    });
     resetDrag();
   }
 
