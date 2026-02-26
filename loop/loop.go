@@ -454,6 +454,9 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief, capacity int) []Qu
 
 func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
 	for _, item := range items {
+		if l.atMaxConcurrency() {
+			break
+		}
 		if err := l.spawnCook(ctx, item, spawnOptions{}); err != nil {
 			return err
 		}

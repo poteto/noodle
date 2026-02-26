@@ -274,6 +274,9 @@ func (l *Loop) controlRequestChanges(itemID, feedback string) error {
 	if !ok {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
+	if l.atMaxConcurrency() {
+		return fmt.Errorf("at max concurrency; cannot start changes now")
+	}
 
 	resumePrompt := "Previous work needs changes."
 	trimmedFeedback := strings.TrimSpace(feedback)

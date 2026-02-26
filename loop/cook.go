@@ -36,6 +36,14 @@ type spawnOptions struct {
 	displayName string // preserved across retries; empty = compute from session ID
 }
 
+func (l *Loop) atMaxConcurrency() bool {
+	maxCooks := l.config.Concurrency.MaxCooks
+	if maxCooks <= 0 {
+		maxCooks = 1
+	}
+	return len(l.activeByID)+len(l.adoptedTargets) >= maxCooks
+}
+
 func (l *Loop) spawnCook(ctx context.Context, item QueueItem, opts spawnOptions) error {
 	if isScheduleItem(item) {
 		return l.spawnSchedule(ctx, item, opts.attempt, opts.resume)
@@ -428,6 +436,11 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 	pending := l.pendingRetry
 	l.pendingRetry = map[string]*pendingRetryCook{}
 	for _, p := range pending {
+		if l.atMaxConcurrency() {
+			// Defer to next cycle.
+			l.pendingRetry[p.item.ID] = p
+			continue
+		}
 		if err := l.spawnCook(ctx, p.item, spawnOptions{
 			attempt:     p.attempt,
 			displayName: p.displayName,
