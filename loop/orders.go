@@ -3,9 +3,267 @@ package loop
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/poteto/noodle/internal/queuex"
 )
+
+// dispatchCandidate is a lightweight struct identifying a stage ready for dispatch.
+type dispatchCandidate struct {
+	OrderID     string
+	StageIndex  int
+	Stage       Stage
+	IsOnFailure bool
+}
+
+// activeStageForOrder returns the index and pointer to the currently active or
+// first pending stage. Returns (-1, nil) if no stage is active/pending.
+func activeStageForOrder(order Order) (int, *Stage) {
+	stages := order.Stages
+	if order.Status == OrderStatusFailing {
+		stages = order.OnFailure
+	}
+	for i := range stages {
+		switch stages[i].Status {
+		case StageStatusActive, StageStatusPending:
+			return i, &stages[i]
+		}
+	}
+	return -1, nil
+}
+
+// advanceOrder marks the current active/first-pending stage as completed.
+// For "active" orders: if all main stages complete, removes the order and returns removed=true.
+// For "failing" orders: advances through OnFailure stages; last one completing removes the order.
+func advanceOrder(orders OrdersFile, orderID string) (OrdersFile, bool, error) {
+	idx := -1
+	for i := range orders.Orders {
+		if orders.Orders[i].ID == orderID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return orders, false, fmt.Errorf("order %q not found", orderID)
+	}
+
+	orders = cloneOrdersFile(orders)
+	order := &orders.Orders[idx]
+
+	stages := &order.Stages
+	if order.Status == OrderStatusFailing {
+		stages = &order.OnFailure
+	}
+
+	// Find and complete the current active/first-pending stage.
+	advanced := false
+	for i := range *stages {
+		switch (*stages)[i].Status {
+		case StageStatusActive, StageStatusPending:
+			(*stages)[i].Status = StageStatusCompleted
+			advanced = true
+		}
+		if advanced {
+			break
+		}
+	}
+	if !advanced {
+		return orders, false, fmt.Errorf("order %q has no active or pending stage to advance", orderID)
+	}
+
+	// Check if all stages in the relevant pipeline are completed.
+	allDone := true
+	for _, s := range *stages {
+		if s.Status != StageStatusCompleted {
+			allDone = false
+			break
+		}
+	}
+
+	if allDone {
+		orders.Orders = slices.Delete(orders.Orders, idx, idx+1)
+		return orders, true, nil
+	}
+
+	return orders, false, nil
+}
+
+// failStage marks the current active stage as failed and handles the failure pipeline.
+// If the order has OnFailure stages and is not already "failing": cancels remaining main
+// stages, sets order to "failing", resets OnFailure stages to "pending".
+// If no OnFailure or already failing: cancels remaining stages and removes the order.
+// Returns terminal=true when the order is removed (caller calls markFailed).
+func failStage(orders OrdersFile, orderID string, reason string) (OrdersFile, bool, error) {
+	idx := -1
+	for i := range orders.Orders {
+		if orders.Orders[i].ID == orderID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return orders, false, fmt.Errorf("order %q not found", orderID)
+	}
+
+	orders = cloneOrdersFile(orders)
+	order := &orders.Orders[idx]
+
+	// Determine which pipeline we're operating on.
+	if order.Status == OrderStatusFailing {
+		// Already in failure pipeline — fail the current OnFailure stage, cancel rest, remove.
+		failCurrentAndCancelRest(&order.OnFailure)
+		orders.Orders = slices.Delete(orders.Orders, idx, idx+1)
+		return orders, true, nil
+	}
+
+	// Mark current main stage as failed, cancel remaining main stages.
+	failCurrentAndCancelRest(&order.Stages)
+
+	// If OnFailure stages exist, transition to "failing".
+	if len(order.OnFailure) > 0 {
+		order.Status = OrderStatusFailing
+		for i := range order.OnFailure {
+			order.OnFailure[i].Status = StageStatusPending
+		}
+		return orders, false, nil
+	}
+
+	// No OnFailure — terminal removal.
+	orders.Orders = slices.Delete(orders.Orders, idx, idx+1)
+	return orders, true, nil
+}
+
+// failCurrentAndCancelRest marks the first active/pending stage as failed
+// and all subsequent non-completed stages as cancelled.
+func failCurrentAndCancelRest(stages *[]Stage) {
+	foundCurrent := false
+	for i := range *stages {
+		s := &(*stages)[i]
+		if !foundCurrent {
+			if s.Status == StageStatusActive || s.Status == StageStatusPending {
+				s.Status = StageStatusFailed
+				foundCurrent = true
+			}
+		} else {
+			if s.Status != StageStatusCompleted {
+				s.Status = StageStatusCancelled
+			}
+		}
+	}
+}
+
+// cancelOrder marks all non-completed stages as cancelled and removes the order.
+func cancelOrder(orders OrdersFile, orderID string) (OrdersFile, error) {
+	idx := -1
+	for i := range orders.Orders {
+		if orders.Orders[i].ID == orderID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return orders, fmt.Errorf("order %q not found", orderID)
+	}
+
+	orders = cloneOrdersFile(orders)
+	order := &orders.Orders[idx]
+
+	for i := range order.Stages {
+		if order.Stages[i].Status != StageStatusCompleted {
+			order.Stages[i].Status = StageStatusCancelled
+		}
+	}
+	for i := range order.OnFailure {
+		if order.OnFailure[i].Status != StageStatusCompleted {
+			order.OnFailure[i].Status = StageStatusCancelled
+		}
+	}
+
+	orders.Orders = slices.Delete(orders.Orders, idx, idx+1)
+	return orders, nil
+}
+
+// dispatchableStages finds the first pending stage per order that is ready for dispatch.
+// Orders in busy/adopted/ticketed sets are skipped. Orders in the failed set are skipped
+// unless they are in "failing" status (OnFailure must dispatch).
+func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[string]struct{}) []dispatchCandidate {
+	var candidates []dispatchCandidate
+
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+			continue
+		}
+
+		// Skip orders in busy/adopted/ticketed sets.
+		if _, ok := busy[order.ID]; ok {
+			continue
+		}
+		if _, ok := adopted[order.ID]; ok {
+			continue
+		}
+		if _, ok := ticketed[order.ID]; ok {
+			continue
+		}
+
+		// Skip failed orders — but "failing" orders are exempt (OnFailure must dispatch).
+		if _, ok := failed[order.ID]; ok && order.Status != OrderStatusFailing {
+			continue
+		}
+
+		stages := order.Stages
+		isOnFailure := false
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+			isOnFailure = true
+		}
+
+		// Skip degenerate orders with empty stages.
+		if len(stages) == 0 {
+			continue
+		}
+
+		// Find first pending stage; skip if current stage is active (already dispatched).
+		for i, s := range stages {
+			if s.Status == StageStatusActive {
+				// Already dispatched — order is busy at stage level.
+				break
+			}
+			if s.Status == StageStatusPending {
+				candidates = append(candidates, dispatchCandidate{
+					OrderID:     order.ID,
+					StageIndex:  i,
+					Stage:       s,
+					IsOnFailure: isOnFailure,
+				})
+				break
+			}
+		}
+	}
+
+	return candidates
+}
+
+// cloneOrdersFile returns a shallow copy of the OrdersFile with a new Orders slice.
+func cloneOrdersFile(of OrdersFile) OrdersFile {
+	newOrders := make([]Order, len(of.Orders))
+	for i, o := range of.Orders {
+		newOrders[i] = cloneOrder(o)
+	}
+	of.Orders = newOrders
+	return of
+}
+
+// cloneOrder returns a copy of an Order with new stage slices.
+func cloneOrder(o Order) Order {
+	o.Stages = slices.Clone(o.Stages)
+	if o.OnFailure != nil {
+		o.OnFailure = slices.Clone(o.OnFailure)
+	}
+	if o.Plan != nil {
+		o.Plan = slices.Clone(o.Plan)
+	}
+	return o
+}
 
 func readOrders(path string) (OrdersFile, error) {
 	of, err := queuex.ReadOrders(path)
