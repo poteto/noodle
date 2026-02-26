@@ -96,6 +96,14 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 }
 
+func (l *Loop) setState(next State) {
+	if l.state == next {
+		return
+	}
+	l.logger.Info("state changed", "from", string(l.state), "to", string(next))
+	l.state = next
+}
+
 func discoverRegistry(projectDir string, cfg config.Config) (taskreg.Registry, error) {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
 	skills, err := resolver.DiscoverTaskTypes()
@@ -217,7 +225,7 @@ func (l *Loop) Run(ctx context.Context) error {
 			}
 			if strings.Contains(ev.Name, filepath.Join("brain", "plans")) {
 				if l.state == StateIdle {
-					l.state = StateRunning
+					l.setState(StateRunning)
 				}
 				if err := l.Cycle(ctx); err != nil {
 					return err
@@ -302,7 +310,7 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 		return brief, warnings, false, nil
 	}
 	if l.state == StateIdle {
-		l.state = StateRunning
+		l.setState(StateRunning)
 	}
 	return brief, warnings, true, nil
 }
@@ -313,8 +321,11 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 	// to queue-next.json to avoid racing with loop state stamps.
 	// Errors are non-fatal: a transient/partial write shouldn't crash
 	// the loop — log and continue.
-	if err := consumeQueueNext(l.deps.QueueNextFile, l.deps.QueueFile); err != nil {
-		fmt.Fprintf(os.Stderr, "loop.queue-next: %v\n", err)
+	promoted, err := consumeQueueNext(l.deps.QueueNextFile, l.deps.QueueFile)
+	if err != nil {
+		l.logger.Warn("queue-next promotion failed", "error", err)
+	} else if promoted {
+		l.logger.Info("queue-next promoted")
 	}
 	queue, err := readQueue(l.deps.QueueFile)
 	if err != nil {
@@ -345,18 +356,21 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 				if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 					return Queue{}, false, err
 				}
+				l.logger.Info("queue normalized")
 			}
 		} else if changed {
 			queue = normalizedQueue
 			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 				return Queue{}, false, err
 			}
+			l.logger.Info("queue normalized")
 		}
 	} else if changed {
 		queue = normalizedQueue
 		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 			return Queue{}, false, err
 		}
+		l.logger.Info("queue normalized")
 	}
 	if shouldRecoverMissingSyncScripts(warnings, queue) &&
 		len(l.activeByID) == 0 &&
@@ -375,9 +389,10 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 			}
 		} else {
 			if len(brief.Plans) == 0 && len(brief.NeedsScheduling) == 0 {
-				l.state = StateIdle
+				l.setState(StateIdle)
 				return Queue{}, false, nil
 			}
+			l.logger.Info("queue empty, bootstrapping schedule")
 			queue = bootstrapScheduleQueue(l.config, "", l.deps.Now().UTC())
 			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 				return Queue{}, false, err

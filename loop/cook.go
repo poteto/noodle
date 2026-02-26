@@ -521,7 +521,11 @@ func (l *Loop) skipQueueItem(id string) error {
 		filtered = append(filtered, item)
 	}
 	queue.Items = filtered
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+		return err
+	}
+	l.logger.Info("queue item skipped", "item", id)
+	return nil
 }
 
 func (l *Loop) killCook(name string) error {

@@ -143,11 +143,11 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	ack := ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()}
 	switch strings.ToLower(strings.TrimSpace(cmd.Action)) {
 	case "pause":
-		l.state = StatePaused
+		l.setState(StatePaused)
 	case "resume":
-		l.state = StateRunning
+		l.setState(StateRunning)
 	case "drain":
-		l.state = StateDraining
+		l.setState(StateDraining)
 	case "skip":
 		if err := l.skipQueueItem(cmd.Item); err != nil {
 			ack.Status = "error"
@@ -218,6 +218,11 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	default:
 		ack.Status = "error"
 		ack.Message = "unsupported action"
+	}
+	if ack.Status == "error" {
+		l.logger.Warn("control command failed", "action", cmd.Action, "message", ack.Message)
+	} else {
+		l.logger.Info("control command", "action", cmd.Action)
 	}
 	return ack
 }

@@ -19,24 +19,24 @@ import (
 //
 // Reads bytes once, validates in-memory, then writes to queue.json via
 // atomic rename — no TOCTOU window between validate and promote.
-func consumeQueueNext(nextPath, queuePath string) error {
+func consumeQueueNext(nextPath, queuePath string) (bool, error) {
 	data, err := os.ReadFile(nextPath)
 	if os.IsNotExist(err) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return fmt.Errorf("read queue-next: %w", err)
+		return false, fmt.Errorf("read queue-next: %w", err)
 	}
 	// Always remove the proposal so it doesn't block future cycles.
 	_ = os.Remove(nextPath)
 	// Validate the bytes we already read.
 	if _, parseErr := queuex.ParseStrict(data); parseErr != nil {
-		return fmt.Errorf("invalid queue-next.json (removed): %w", parseErr)
+		return false, fmt.Errorf("invalid queue-next.json (removed): %w", parseErr)
 	}
 	if err := filex.WriteFileAtomic(queuePath, data); err != nil {
-		return fmt.Errorf("promote queue-next.json: %w", err)
+		return false, fmt.Errorf("promote queue-next.json: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 func readQueue(path string) (Queue, error) {

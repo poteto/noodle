@@ -213,8 +213,12 @@ func TestConsumeQueueNextPromotesProposal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := consumeQueueNext(nextPath, queuePath); err != nil {
+	promoted, err := consumeQueueNext(nextPath, queuePath)
+	if err != nil {
 		t.Fatalf("consumeQueueNext: %v", err)
+	}
+	if !promoted {
+		t.Fatal("expected promoted=true")
 	}
 
 	// queue.json should now contain the proposal.
@@ -241,8 +245,12 @@ func TestConsumeQueueNextNoOpWhenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := consumeQueueNext(nextPath, queuePath); err != nil {
+	promoted, err := consumeQueueNext(nextPath, queuePath)
+	if err != nil {
 		t.Fatalf("consumeQueueNext: %v", err)
+	}
+	if promoted {
+		t.Fatal("expected promoted=false when queue-next missing")
 	}
 
 	// queue.json should be unchanged.
@@ -268,9 +276,12 @@ func TestConsumeQueueNextRejectsInvalidProposal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := consumeQueueNext(nextPath, queuePath)
+	promoted, err := consumeQueueNext(nextPath, queuePath)
 	if err == nil {
 		t.Fatal("expected error for invalid proposal")
+	}
+	if promoted {
+		t.Fatal("expected promoted=false on error")
 	}
 
 	// queue.json should be unchanged.
