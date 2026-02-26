@@ -286,7 +286,12 @@ func (s *Server) handleReviewDiff(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := worktree.DiffWorktree(found.WorktreePath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Worktree may have been cleaned up by a concurrent merge/reject.
+		if strings.Contains(err.Error(), "worktree path not found") {
+			http.Error(w, "worktree no longer available", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "diff failed", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)

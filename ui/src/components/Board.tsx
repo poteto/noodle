@@ -169,11 +169,11 @@ export function Board() {
       ? snapshot.sessions.find((s) => s.id === panelState.sessionId) ?? null
       : null;
 
-  // Derive review panel visibility — close when item leaves pending_reviews.
+  // Derive review panel visibility from fresh snapshot data — hides when item
+  // leaves pending_reviews, and uses up-to-date metadata if item returns.
   const activeReviewItem =
-    panelState?.type === "review" &&
-    optimisticSnapshot.pending_reviews.some((r) => r.id === panelState.item.id)
-      ? panelState.item
+    panelState?.type === "review"
+      ? optimisticSnapshot.pending_reviews.find((r) => r.id === panelState.item.id) ?? null
       : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {

@@ -28,12 +28,12 @@ func DiffWorktree(worktreePath string) (DiffResult, error) {
 
 	base := discoverBaseBranch(absPath)
 
-	diff, err := gitOutput(absPath, "diff", base+"...HEAD")
+	diff, err := gitOutput(absPath, "diff", "--no-ext-diff", "--no-textconv", base+"...HEAD")
 	if err != nil {
 		return DiffResult{}, fmt.Errorf("git diff: %w", err)
 	}
 
-	stat, err := gitOutput(absPath, "diff", "--stat", base+"...HEAD")
+	stat, err := gitOutput(absPath, "diff", "--no-ext-diff", "--no-textconv", "--stat", base+"...HEAD")
 	if err != nil {
 		return DiffResult{}, fmt.Errorf("git diff --stat: %w", err)
 	}
@@ -50,6 +50,11 @@ func discoverBaseBranch(repoPath string) string {
 	}
 	// ref looks like "refs/remotes/origin/main" — extract branch name.
 	if name := strings.TrimPrefix(ref, "refs/remotes/origin/"); name != ref {
+		// Guard against ref names starting with "-" which git would
+		// interpret as option flags.
+		if strings.HasPrefix(name, "-") {
+			return "main"
+		}
 		return name
 	}
 	return "main"

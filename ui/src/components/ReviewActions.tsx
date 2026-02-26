@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useControl } from "./ControlContext";
 
+export type ReviewAction = "merge" | "reject" | "request-changes";
+
 export function ReviewActions({
   itemId,
   onAction,
 }: {
   itemId: string;
-  onAction?: (action: string) => void;
+  onAction?: (action: ReviewAction) => void;
 }) {
   const send = useControl();
   const [showFeedback, setShowFeedback] = useState(false);

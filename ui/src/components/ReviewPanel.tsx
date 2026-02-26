@@ -1,4 +1,5 @@
 import type { PendingReviewItem } from "~/client";
+import type { ReviewAction } from "./ReviewActions";
 import { useReviewDiff } from "~/client";
 import { Badge } from "./Badge";
 import { WorktreeLabel } from "./WorktreeLabel";
@@ -15,7 +16,7 @@ export function ReviewPanel({
 }) {
   const { data, isLoading, error } = useReviewDiff(item.id);
 
-  function handleAction(action: string) {
+  function handleAction(action: ReviewAction) {
     if (action === "merge" || action === "reject") {
       onClose();
     }
