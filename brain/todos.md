@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 68 -->
+<!-- next-id: 69 -->
 
 ## Noodle Post-Plan 1
 
@@ -31,7 +31,8 @@
 
 ## Modes
 
-67. [ ] Manual mode — user-driven task dispatch instead of Noodle auto-kicking everything. Scheduled tasks still auto-run when the queue is empty, but the user drags items into the cooking column to start execution. The loop watches for items placed in "cooking" and dispatches them, but doesn't promote queued items on its own. Toggle between manual and auto mode via config or UI.
+67. [x] ~~Manual mode~~ — superseded by #68 (unified involvement levels).
+68. [ ] Unified involvement levels — replace `autonomy` and `schedule.run` with a single `mode` field that sets sensible defaults for scheduling, dispatch, and merge gating. Three levels: `auto` (Noodle runs the kitchen, respect per-skill `permissions.merge`), `supervised` (auto-schedule, auto-dispatch, human approves all merges), `manual` (user drives scheduling and dispatch, human approves all merges). Per-skill `permissions.merge` still works as a fine-grained override. Subsumes current `autonomy` (auto/approve) and `schedule.run` (after-each/after-n/manual) into one dial.
 
 ## Subtract Go Logic
 
