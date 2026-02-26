@@ -342,6 +342,28 @@ func TestValidationRepairablesOnlyCanSpawn(t *testing.T) {
 	}
 }
 
+func TestValidateExpandsHomeInAgentPath(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	if err := os.MkdirAll(filepath.Join(homeDir, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir ~/.claude: %v", err)
+	}
+
+	oldLookPath := lookPath
+	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
+	t.Cleanup(func() { lookPath = oldLookPath })
+
+	config := DefaultConfig()
+	config.Agents.Claude.Path = "~/.claude"
+
+	result := Validate(config)
+	for _, diagnostic := range result.Fatals() {
+		if diagnostic.FieldPath == "agents.claude.path" {
+			t.Fatalf("unexpected fatal diagnostic for expanded home path: %+v", diagnostic)
+		}
+	}
+}
+
 func TestParseAdapterDefaultsForPartialAdapter(t *testing.T) {
 	config, err := Parse([]byte(`
 [routing.defaults]

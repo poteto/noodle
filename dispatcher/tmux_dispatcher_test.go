@@ -2,6 +2,8 @@ package dispatcher
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -69,5 +71,27 @@ func TestComposePromptsClaudeKeepsSystemPromptSeparate(t *testing.T) {
 	}
 	if finalPrompt != "go prompt" {
 		t.Fatalf("final prompt = %q, want go prompt", finalPrompt)
+	}
+}
+
+func TestResolveAgentBinaryExpandsHomePath(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	claudeDir := filepath.Join(homeDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatalf("mkdir claude dir: %v", err)
+	}
+	claudeBin := filepath.Join(claudeDir, "claude")
+	if err := os.WriteFile(claudeBin, []byte(""), 0o755); err != nil {
+		t.Fatalf("write claude binary stub: %v", err)
+	}
+
+	dispatcher := &TmuxDispatcher{
+		providerConfigs: ProviderConfigs{
+			Claude: ProviderConfig{Path: "~/.claude"},
+		},
+	}
+	if got := dispatcher.resolveAgentBinary("claude"); got != claudeBin {
+		t.Fatalf("resolveAgentBinary() = %q, want %q", got, claudeBin)
 	}
 }

@@ -231,7 +231,7 @@ func (s *TmuxDispatcher) resolveAgentBinary(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "codex":
 		if path := strings.TrimSpace(s.providerConfigs.Codex.Path); path != "" {
-			candidate := filepath.Join(path, "codex")
+			candidate := filepath.Join(expandHomePath(path), "codex")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}
@@ -239,13 +239,31 @@ func (s *TmuxDispatcher) resolveAgentBinary(provider string) string {
 		return "codex"
 	default:
 		if path := strings.TrimSpace(s.providerConfigs.Claude.Path); path != "" {
-			candidate := filepath.Join(path, "claude")
+			candidate := filepath.Join(expandHomePath(path), "claude")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}
 		}
 		return "claude"
 	}
+}
+
+func expandHomePath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" || !strings.HasPrefix(path, "~") {
+		return path
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == "~" {
+		return homeDir
+	}
+	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, "~\\") {
+		return filepath.Join(homeDir, strings.TrimPrefix(strings.TrimPrefix(path, "~/"), "~\\"))
+	}
+	return path
 }
 
 func (s *TmuxDispatcher) resolveExtraArgs(provider string) []string {
