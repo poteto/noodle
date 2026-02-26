@@ -2,32 +2,20 @@
 
 <!-- next-id: 48 -->
 
-## Tooling
-
-
 ## Noodle Post-Plan 1
 
-7. [ ] `go install` support — add proper module versioning so `go install github.com/poteto/noodle@latest` works without cloning the repo. Update README quick start accordingly.
-
-## Skill Cleanup
+7. [ ] `go install` support — add proper module versioning so `go install github.com/poteto/noodle@latest` works without cloning the repo. Needs a version tag and release workflow. Update README quick start accordingly.
 
 ## Bootstrap Skill Fixes
 
-18. [ ] Fix adapter skill name assumptions — bootstrap/docs still assume `skill = "backlog"` and `skill = "plans"` without verifying those skill names resolve in the configured skill paths. Add detection or a validation warning when configured adapter skills are missing.
 20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.
-28. [ ] Rename `prioritize` skill/task type to `schedule` -- IN PROGRESS. Rename skill directory, frontmatter, all references in loop, mise, config, tests, docs, and brain. [[archived_plans/28-rename-prioritize-to-schedule/overview]]
-29. [ ] Queue item context passthrough — let the scheduling agent attach arbitrary context to a queue item. This context gets injected into the spawned agent's prompt, so the scheduler can pass along reasoning, constraints, or instructions to any task it schedules. [[plans/29-queue-item-context-passthrough/overview]]
-30. [ ] Sprites session marked "failed" despite successful completion — `cmd.Wait()` returns a non-`ExitError` (likely connection drop after ~60s), causing `waitAndSync` to classify the session as "failed". The agent finishes work, push-back succeeds, but terminal status is wrong. Investigate what `sprites.Cmd.Wait()` actually returns on connection drop vs clean exit, and fix the status classification in `sprites_session.go:waitAndSync`. May need to inspect the raw stream for a `result` event with `subtype: "success"` as a fallback signal.
+29. [ ] Backlog-only scheduling with context passthrough — add `extra_prompt` field for scheduler→cook context, then simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Loop Observability & DX
 
-31. [ ] Structured loop logging — the loop produces zero stderr/stdout. Dispatch failures, queue validation rejections, session completions, retry decisions — all silent. Add structured stderr logging for key lifecycle events so you can tail the log and see what's happening. [[plans/31-structured-loop-logging/overview]]
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command.
-35. [ ] Silent plan/skill discovery warnings — missing frontmatter, wrong directory structure, missing adapter scripts all fail silently. Plans just don't appear in mise.json with no indication why. `noodle debug` should surface discovery issues, and mise builder should emit warnings.
-37. [ ] Skip schedule when queue already has items — every fresh start requires a 60-120s schedule session before any work happens. If `queue.json` already has items, dispatch them immediately instead of bootstrapping a new schedule cycle. Or add a `--queue` flag to pre-seed the queue. [[archived_plans/37-skip-prioritize-with-queue/overview]]
-38. [ ] Resilient skill resolution — never-fatal missing skills, built-in oops fallback, schedule bootstrap agent, fsnotify hot-reload, queue audit. Only fatal error: cannot spawn agent at all. [[archived_plans/38-resilient-skill-resolution/overview]]
 47. [ ] Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[plans/47-delete-go-tui/overview]]
 
 ## Done
@@ -49,6 +37,7 @@
 12. [x] Update worktree skill — `.agents/skills/worktree/SKILL.md` references `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree` (old binary path). Update to `go run -C $CLAUDE_PROJECT_DIR . worktree hook` to match the repo-root module. #cleanup
 13. [x] Update noodle skill — `.agents/skills/noodle/SKILL.md` references `~/.noodle/config.toml` (old config path). The new config is `.noodle.toml` at project root. Update to match the Plan 1 architecture. #cleanup
 15. [x] Bootstrap & onboarding — `brew install` + `noodle start` flow: Homebrew tap for macOS distribution, INSTALL.md as agent entry point (vision + install instructions), PHILOSOPHY.md (brain, self-learning, agent-pilled rationale), auto-generated noodle skill with CI snapshot guard, first-run scaffolding in `noodle start`, agent-driven skill/adapter/hook setup. [[archived_plans/15-bootstrap-onboarding/overview]]
+18. [x] ~~Fix adapter skill name assumptions — bootstrap/docs still assume `skill = "backlog"` and `skill = "plans"` without verifying those skill names resolve in the configured skill paths.~~ — done. Config validation checks adapter skills without hardcoding names.
 23. [x] Task-type skill suite: create/rewrite a principle-grounded skill for each task type (schedule, review, verify, taster, reflect, meditate, oops, debugging, debate), extract patterns from old role-based skills, delete CEO/CTO/Director/Manager/Operator. [[archived_plans/23-task-type-skill-suite/overview]]
 16. [x] Fix default routing model in docs and defaults — the README and `config/config.go` both default `routing.defaults.model` to `claude-sonnet-4-6`. If the intended default is `claude-opus-4-6`, update README minimal config example, `config/config.go:DefaultConfig()`, and `config/config_test.go`.
 17. [x] ~~Remove `~/.noodle/skills` from default skills.paths~~ — completed/superseded. `defaultSkillPaths()` now defaults to `[".agents/skills"]` and no longer includes global `~/.noodle/skills`.
@@ -58,7 +47,13 @@
 24. [x] ~~Rewrite vision/noodle doc~~ — completed. Updated to reflect current architecture: file-based state (.noodle/ JSON/NDJSON), LLM judgment / Go mechanics split, frontmatter-based task type discovery, kitchen brigade as implemented (Schedule/Quality/Cook/Mise), autonomy dial, adapters.
 27. [x] ~~Hot-reload skill registry via fsnotify~~ — superseded by #38.
 26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
+28. [x] ~~Rename `prioritize` skill/task type to `schedule`~~ — done. Skill directory, frontmatter, loop, mise, config, tests all use "schedule".
+30. [x] ~~Sprites session marked "failed" despite successful completion~~ — done. `sprites_session.go:waitAndSync` now properly checks `ExitError`/exit code and distinguishes cancellation from real failures.
+31. [x] ~~Structured loop logging~~ — done. Loop now has extensive stderr logging for registry rebuilds, session failures, queue drops, bootstrap progress, and queue validation.
+35. [x] ~~Silent plan/skill discovery warnings~~ — done. `noodle debug` command exists, `mise/builder.go` collects and returns warnings for missing scripts and plan reading failures.
 36. [x] ~~Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.~~ — default is now 3.
+37. [x] ~~Skip schedule when queue already has items~~ — done. `loop/schedule.go` has `hasNonScheduleItems()` check; loop skips schedule spawning when queue has work.
+38. [x] ~~Resilient skill resolution~~ — done. Non-fatal missing skills, oops fallback, fsnotify hot-reload via `skill/watcher.go`, queue audit. [[archived_plans/38-resilient-skill-resolution/overview]]
 14. [x] ~~Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup~~ — marked complete per user confirmation.
 42. [x] ~~Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[archived_plans/42-requires-approval-gate/overview]]~~ — completed. `permissions.merge` frontmatter implemented, autonomy config simplified to `auto`/`approve`, plan archived.
 43. [x] ~~Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]~~ — done.

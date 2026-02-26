@@ -24,6 +24,10 @@ In `NormalizeAndValidate()`, after the existing validation checks for each item,
 
 Map `ExtraPrompt` between the queuex and loop types (same pattern as the other fields).
 
+### Add field to `PendingReviewItem` in `loop/pending_review.go`
+
+Add `ExtraPrompt string` with JSON tag `json:"extra_prompt,omitempty"` to the `PendingReviewItem` struct. This ensures the scheduling context survives the pending-review → request-changes → respawn path (`control.go:291` rebuilds a queue item from the persisted review item).
+
 ### Add FieldDoc entry in `internal/schemadoc/specs.go`
 
 Add a FieldDoc entry for `items[].extra_prompt` in the queue target's `FieldDocs` map:
@@ -38,6 +42,7 @@ Place it after `items[].rationale` to match struct field order. This must land i
 
 - `queuex.Item` — gains `ExtraPrompt string` field
 - `loop.QueueItem` — gains `ExtraPrompt string` field
+- `loop.PendingReviewItem` — gains `ExtraPrompt string` field
 
 ## Routing
 
