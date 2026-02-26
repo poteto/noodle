@@ -10,9 +10,9 @@ Migrate all test fixtures from queue format to orders format, delete old types a
 
 - [x] Test file `queue.json` string references updated to `orders.json` in the listed test/docstring files.
 - [x] Optional package rename completed: `internal/queuex/` → `internal/orderx/` with imports/callers migrated.
-- [ ] Cross-phase integration tests.
-- [ ] New fixture scenarios.
-- [ ] Codex review (three independent reviews).
+- [x] Cross-phase integration tests.
+- [x] New fixture scenarios.
+- [x] Codex review (three independent reviews) → [[plans/49-work-orders-redesign/codex-review-findings]]
 
 ## Changes
 

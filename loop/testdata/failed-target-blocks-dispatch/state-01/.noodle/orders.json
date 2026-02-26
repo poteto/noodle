@@ -1,0 +1,17 @@
+{
+  "orders": [
+    {
+      "id": "blocked-1",
+      "title": "Order blocked by failed target",
+      "stages": [
+        {
+          "task_key": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        }
+      ],
+      "status": "active"
+    }
+  ]
+}

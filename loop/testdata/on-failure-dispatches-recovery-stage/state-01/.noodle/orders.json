@@ -1,0 +1,31 @@
+{
+  "orders": [
+    {
+      "id": "fail-1",
+      "title": "Order in OnFailure recovery",
+      "stages": [
+        {
+          "task_key": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "failed"
+        },
+        {
+          "task_key": "review",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "cancelled"
+        }
+      ],
+      "status": "failing",
+      "on_failure": [
+        {
+          "task_key": "oops",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}

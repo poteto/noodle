@@ -10,7 +10,13 @@ import (
 
 func TestDiffWorktree(t *testing.T) {
 	// Set up a temporary git repo with a main branch and a feature branch.
-	dir := t.TempDir()
+	// Use os.MkdirTemp instead of t.TempDir() because git background
+	// processes on macOS can race with TempDir cleanup, failing the test.
+	dir, err := os.MkdirTemp("", "TestDiffWorktree-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
 
 	run := func(args ...string) {
 		t.Helper()
@@ -29,6 +35,8 @@ func TestDiffWorktree(t *testing.T) {
 
 	// Initialize repo with an initial commit on main.
 	run("init", "-b", "main")
+	run("config", "gc.auto", "0")
+	run("config", "core.fsmonitor", "false")
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# hello\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

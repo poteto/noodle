@@ -1,0 +1,29 @@
+{
+  "orders": [
+    {
+      "id": "pipeline-1",
+      "title": "Multi-stage pipeline",
+      "stages": [
+        {
+          "task_key": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        },
+        {
+          "task_key": "review",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        },
+        {
+          "task_key": "reflect",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        }
+      ],
+      "status": "active"
+    }
+  ]
+}

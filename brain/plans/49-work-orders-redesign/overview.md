@@ -1,7 +1,7 @@
 ---
 id: 49
 created: 2026-02-25
-status: ready
+status: done
 ---
 
 # Work Orders Redesign
@@ -105,7 +105,7 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 7. ~~[[plans/49-work-orders-redesign/phase-07-schedule-handling-and-skill-contract]]~~ ✓ `dc2303b`
 8. ~~[[plans/49-work-orders-redesign/phase-08-snapshot-and-api]]~~ ✓ `f261e11`
 9. ~~[[plans/49-work-orders-redesign/phase-09-web-ui]]~~ ✓ `5c055de`
-10. [[plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]] — **partial**
+10. ~~[[plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]]~~ ✓
 
 ### Phase 10 remaining work
 
@@ -121,11 +121,11 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 
 2. ~~**Optional package rename**~~ ✓ done — `internal/queuex/` → `internal/orderx/`.
 
-3. **Cross-phase integration tests** — The plan specifies integration tests for success pipeline, OnFailure pipeline, merge-conflict resolution, and snapshot→Board derivation. Unit tests cover individual functions but don't test multi-cycle state continuity.
+3. ~~**Cross-phase integration tests**~~ ✓ done — `loop/integration_test.go` with 6 tests: success pipeline, OnFailure pipeline, quality verdict rejection, merge-conflict resolution, failed-target stickiness+requeue, snapshot derivation.
 
-4. **New fixture scenarios** — Multi-stage order, OnFailure routing, merge conflict, failed-target stickiness, requeue recovery, domain skill dispatch (end-to-end from orders.json through dispatch).
+4. ~~**New fixture scenarios**~~ ✓ done — 4 fixtures in `loop/testdata/`: multi-stage-order-dispatches-first, on-failure-dispatches-recovery-stage, failed-target-blocks-dispatch, failing-order-with-completed-on-failure-not-dispatched.
 
-5. **Codex review** — Three independent reviews for major issues.
+5. ~~**Codex review**~~ ✓ done — Three independent reviews. 1 critical, 5 high, 5 medium, 3 low findings. See [[plans/49-work-orders-redesign/codex-review-findings]].
 
 ## Verification
 
