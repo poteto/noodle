@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -62,9 +63,22 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, opts spawnOptions)
 		return fmt.Errorf("create worktree %s: %w", name, err)
 	}
 
+	// Guard: only one cook may use a worktree at a time.
+	for _, active := range l.activeByID {
+		if active.worktreeName == name {
+			return fmt.Errorf("worktree %s already in use by session %s", name, active.session.ID())
+		}
+	}
+
 	resumePrompt := opts.resume
 	worktreePath := l.worktreePath(name)
 	if !created {
+		// On retry, reset uncommitted changes left by the previous failed
+		// attempt so the new agent starts from a clean working tree.
+		// Committed progress (on the worktree branch) is preserved.
+		if opts.attempt > 0 {
+			resetWorktreeState(worktreePath)
+		}
 		if hint := worktreeResumeContext(worktreePath, name); hint != "" {
 			resumePrompt = joinPromptParts(hint, resumePrompt)
 		}
@@ -304,6 +318,22 @@ func (l *Loop) handleMergeConflict(cook *activeCook, err error) error {
 
 func (l *Loop) worktreePath(name string) string {
 	return filepath.Join(l.projectDir, ".worktrees", name)
+}
+
+// resetWorktreeState discards uncommitted changes in a worktree so the next
+// agent starts from a clean working tree. Committed progress on the worktree
+// branch is preserved. Errors are logged but not fatal — a dirty worktree is
+// better than failing to dispatch.
+func resetWorktreeState(worktreePath string) {
+	// Reset tracked files to HEAD.
+	checkout := exec.Command("git", "-C", worktreePath, "checkout", ".")
+	checkout.Stdout, checkout.Stderr = nil, nil
+	_ = checkout.Run()
+
+	// Remove untracked files and directories.
+	clean := exec.Command("git", "-C", worktreePath, "clean", "-fd")
+	clean.Stdout, clean.Stderr = nil, nil
+	_ = clean.Run()
 }
 
 func (l *Loop) ensureWorktree(name string) (bool, error) {
