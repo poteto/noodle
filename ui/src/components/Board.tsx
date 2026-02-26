@@ -169,14 +169,12 @@ export function Board() {
       ? snapshot.sessions.find((s) => s.id === panelState.sessionId) ?? null
       : null;
 
-  // Auto-close review panel when the item leaves pending_reviews (merged/rejected).
-  useEffect(() => {
-    if (panelState?.type !== "review") return;
-    const stillPending = optimisticSnapshot.pending_reviews.some(
-      (r) => r.id === panelState.item.id,
-    );
-    if (!stillPending) setPanelState(null);
-  }, [panelState, optimisticSnapshot.pending_reviews]);
+  // Derive review panel visibility — close when item leaves pending_reviews.
+  const activeReviewItem =
+    panelState?.type === "review" &&
+    optimisticSnapshot.pending_reviews.some((r) => r.id === panelState.item.id)
+      ? panelState.item
+      : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
     const item = columns.queued[index];
@@ -321,9 +319,9 @@ export function Board() {
           />
         )}
 
-        {panelState?.type === "review" && (
+        {activeReviewItem && (
           <ReviewPanel
-            item={panelState.item}
+            item={activeReviewItem}
             onClose={() => setPanelState(null)}
           />
         )}
