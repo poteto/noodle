@@ -449,9 +449,6 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 }
 
 func TestBootstrapPromptContainsHistoryDirForProvider(t *testing.T) {
-	dir := t.TempDir()
-	skillPath := createBootstrapSkillFixture(t, dir)
-
 	cases := []struct {
 		provider string
 		expected string
@@ -461,24 +458,20 @@ func TestBootstrapPromptContainsHistoryDirForProvider(t *testing.T) {
 		{"other", ".claude/"},
 	}
 	for _, tc := range cases {
-		prompt, err := buildBootstrapPrompt(tc.provider, []string{skillPath})
-		if err != nil {
-			t.Fatalf("provider=%q: %v", tc.provider, err)
-		}
+		prompt := buildBootstrapPrompt(tc.provider)
 		if !strings.Contains(prompt, tc.expected) {
 			t.Fatalf("provider=%q: prompt missing %q", tc.provider, tc.expected)
 		}
 	}
 }
 
-func TestBootstrapPromptMissingSkillReturnsError(t *testing.T) {
-	emptyDir := t.TempDir()
-	_, err := buildBootstrapPrompt("claude", []string{emptyDir})
-	if err == nil {
-		t.Fatal("expected error for missing bootstrap skill")
+func TestBootstrapPromptIsNonEmpty(t *testing.T) {
+	prompt := buildBootstrapPrompt("claude")
+	if prompt == "" {
+		t.Fatal("expected non-empty prompt")
 	}
-	if !strings.Contains(err.Error(), "bootstrap skill not found") {
-		t.Fatalf("error = %q, want 'bootstrap skill not found'", err.Error())
+	if !strings.Contains(prompt, "bootstrap") {
+		t.Fatal("expected prompt to contain 'bootstrap'")
 	}
 }
 

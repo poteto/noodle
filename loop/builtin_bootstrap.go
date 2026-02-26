@@ -1,31 +1,77 @@
 package loop
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/poteto/noodle/skill"
-)
+import "strings"
 
 const bootstrapSessionPrefix = "bootstrap-"
 
-// buildBootstrapPrompt resolves the bootstrap skill from the skill search
-// paths, strips frontmatter, and substitutes {{history_dirs}} based on
-// provider. Returns an error if the skill is not found.
-func buildBootstrapPrompt(provider string, searchPaths []string) (string, error) {
-	resolver := skill.Resolver{SearchPaths: searchPaths}
-	sp, err := resolver.Resolve("bootstrap")
-	if err != nil {
-		return "", fmt.Errorf("bootstrap skill not found — create .agents/skills/bootstrap/SKILL.md or run noodle init")
-	}
-	data, err := os.ReadFile(filepath.Join(sp.Path, "SKILL.md"))
-	if err != nil {
-		return "", fmt.Errorf("read bootstrap skill: %w", err)
-	}
-	body := skill.StripFrontmatter(data)
+const bootstrapPrompt = `# Bootstrap: Create Schedule Skill
 
+You are a bootstrap agent. Your only job is to create a schedule skill for this Noodle project, then exit.
+
+Use Skill(skill-creator) to help write the skill file.
+
+## Steps
+
+1. Check if the file ` + "`.agents/skills/schedule/SKILL.md`" + ` already exists. If it does, exit immediately — nothing to do.
+
+2. Inspect the project to understand its shape:
+   - Read ` + "`brain/todos.md`" + ` if it exists (backlog items)
+   - Read files in ` + "`brain/plans/`" + ` if the directory exists (implementation plans)
+   - Read conversation history from {{history_dirs}} to understand what the project does
+   - Read ` + "`.noodle.toml`" + ` for project configuration
+   - Skim the top-level directory structure
+
+3. Create ` + "`.agents/skills/schedule/SKILL.md`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and scheduling criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
+
+4. Run ` + "`git add .agents/skills/schedule/SKILL.md`" + ` and commit with message ` + "`feat: bootstrap schedule skill`" + `.
+
+5. Exit immediately. Do NOT perform scheduling — that happens in the next cycle.
+
+## Example Schedule Skill
+
+` + "```" + `markdown
+---
+name: schedule
+description: Work order scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json.
+noodle:
+  schedule: "When no active orders exist, after backlog changes, or when session history suggests re-evaluation"
+---
+
+# Schedule
+
+Read ` + "`.noodle/mise.json`" + `, write ` + "`.noodle/orders-next.json`" + `.
+The loop atomically promotes orders-next.json into orders.json — never write orders.json directly.
+Use ` + "`noodle schema mise`" + ` and ` + "`noodle schema orders`" + ` as the schema source of truth.
+
+Operate fully autonomously. Never ask the user to choose or pause for confirmation.
+
+## Task Types
+
+Read task_types from mise to discover every schedulable task type and its schedule hint.
+Each order contains sequential stages — use task_key on each stage to bind it to a task type.
+
+### Orders
+
+An order groups related stages into a pipeline. Execute → quality → reflect should be stages within ONE order, not separate orders.
+Use the plan ID (as a string) as the order id.
+
+### Synthesizing Follow-Up Stages
+
+After scheduling an execute stage, add follow-up stages to the same order:
+- Quality after Execute — review the cook's work
+- Reflect after Quality — capture learnings
+` + "```" + `
+
+## Constraints
+
+- Do NOT modify any existing files except to create the new skill
+- Do NOT run ` + "`noodle`" + ` commands
+- Do NOT perform scheduling — just create the skill file
+- Keep the skill concise but complete enough to schedule work effectively`
+
+// buildBootstrapPrompt returns the bootstrap prompt with {{history_dirs}}
+// substituted based on provider.
+func buildBootstrapPrompt(provider string) string {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	var historyDirs string
 	switch provider {
@@ -37,7 +83,7 @@ func buildBootstrapPrompt(provider string, searchPaths []string) (string, error)
 		historyDirs = "`.claude/` and/or `.codex/` if they exist"
 	}
 
-	return strings.ReplaceAll(string(body), "{{history_dirs}}", historyDirs), nil
+	return strings.ReplaceAll(bootstrapPrompt, "{{history_dirs}}", historyDirs)
 }
 
 func isBootstrapSession(name string) bool {
