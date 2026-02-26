@@ -7,7 +7,7 @@ import { WorktreeLabel } from "./WorktreeLabel";
 import { RotateCcw } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
-export function DoneCard({ session }: { session: Session }) {
+export function DoneCard({ session, onClick }: { session: Session; onClick?: () => void }) {
   const send = useControl();
   const [replaying, setReplaying] = useState(false);
   const failed = session.status === "failed";
@@ -33,7 +33,7 @@ export function DoneCard({ session }: { session: Session }) {
   }
 
   return (
-    <div className="group cursor-pointer">
+    <div className="group cursor-pointer" onClick={onClick}>
     <div className={`bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:shadow-card-hover${failed ? " border-l-[3px] border-l-nred" : ""}`}>
       <div className="flex items-center gap-1.5 mb-2">
         {taskKey ? <Badge type={taskKey} /> : null}

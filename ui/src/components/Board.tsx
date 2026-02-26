@@ -285,7 +285,7 @@ export function Board() {
 
           <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
             {columns.done.map((session) => (
-              <DoneCard key={session.id} session={session} />
+              <DoneCard key={session.id} session={session} onClick={() => setSelectedSessionId(session.id)} />
             ))}
           </BoardColumn>
         </div>
