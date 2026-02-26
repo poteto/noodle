@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 69 -->
+<!-- next-id: 70 -->
 
 ## Noodle Post-Plan 1
 
@@ -20,6 +20,10 @@
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
 50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
 49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. Subsumes subtract/resilience items (#59-65): bootstrap as skill, domain_skill frontmatter, sync degradation, mise.json simplification, merge conflicts → pending review, quality verdict integration. Phase 1 subtracts hardcoded Go logic, phases 2-4 build order types/I/O/lifecycle, phase 5 migrates the loop core (integrating domain_skill wiring, merge conflicts, quality verdicts), phases 6-7 migrate control commands and schedule contract (integrating mise.json simplification), phases 8-9 update snapshot/API and web UI, phase 10 cleans up. [[plans/49-work-orders-redesign/overview]]
+
+## Remote Dispatchers
+
+69. [ ] Cursor dispatcher — implement CursorBackend (real HTTP client replacing stub), PollingDispatcher + pollingSession (deferred from plan 27 phase 4), webhook receiver endpoint on Noodle's HTTP server for status change notifications, factory wiring in loop/defaults.go. Flow: push worktree branch → launch Cursor Cloud Agent via API → agent pushes to target branch (no PR) → detect completion via webhook or polling → pull target branch back to worktree. [[plans/69-cursor-dispatcher/overview]]
 
 ## Web UI
 

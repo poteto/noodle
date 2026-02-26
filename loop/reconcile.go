@@ -96,6 +96,10 @@ func listTmuxSessions() []string {
 	return outList
 }
 
+// New format: [order:ID] Work on plan: ... or [order:ID] Work backlog item ID
+var promptOrderRegexp = regexp.MustCompile(`(?im)^\[order:([^\]]+)\]`)
+
+// Old format: Work backlog item <id>
 var promptItemRegexp = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
 var schedulePromptRegexp = regexp.MustCompile(`(?im)^\s*use skill\([^)]+\)\s+to refresh .+from \.noodle/mise\.json\.`)
 
@@ -104,14 +108,23 @@ func readSessionTarget(promptPath string) string {
 	if err != nil {
 		return ""
 	}
-	matches := promptItemRegexp.FindStringSubmatch(string(data))
-	if len(matches) != 2 {
-		if schedulePromptRegexp.Match(data) {
-			return scheduleQueueID
-		}
-		return ""
+
+	// Try new format first: [order:ID]
+	orderMatches := promptOrderRegexp.FindStringSubmatch(string(data))
+	if len(orderMatches) == 2 {
+		return strings.TrimSpace(orderMatches[1])
 	}
-	return strings.TrimSpace(matches[1])
+
+	// Old format: Work backlog item <id>
+	matches := promptItemRegexp.FindStringSubmatch(string(data))
+	if len(matches) == 2 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	if schedulePromptRegexp.Match(data) {
+		return scheduleQueueID
+	}
+	return ""
 }
 
 func (l *Loop) refreshAdoptedTargets() {

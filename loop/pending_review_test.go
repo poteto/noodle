@@ -34,12 +34,13 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	})
 
 	cook := &activeCook{
-		queueItem: QueueItem{ID: "42", TaskKey: "execute", Title: "Implement fix", Skill: "execute"},
-		session:   &adoptedSession{id: "sess-42", status: "completed"},
+		orderID: "42",
+		stage:   Stage{TaskKey: "execute", Skill: "execute"},
+		session: &adoptedSession{id: "sess-42", status: "completed"},
 		worktreeName: "42",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42"),
 	}
-	if err := l.parkPendingReview(cook); err != nil {
+	if err := l.parkPendingReview(cook, ""); err != nil {
 		t.Fatalf("park pending review: %v", err)
 	}
 
@@ -50,8 +51,8 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("pending review items = %d, want 1", len(items))
 	}
-	if items[0].ID != "42" {
-		t.Fatalf("item id = %q, want 42", items[0].ID)
+	if items[0].OrderID != "42" {
+		t.Fatalf("item order_id = %q, want 42", items[0].OrderID)
 	}
 	if items[0].SessionID != "sess-42" {
 		t.Fatalf("session id = %q, want sess-42", items[0].SessionID)
@@ -68,7 +69,7 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	payload := `{
   "items": [
     {
-      "id": "42",
+      "order_id": "42",
       "task_key": "execute",
       "title": "Implement fix",
       "worktree_name": "42",
@@ -119,9 +120,16 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42"}, {ID: "43"}}}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
+	if err := writeQueueAtomic(queuePath, Queue{}); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}}},
+		{ID: "43", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}}},
+	}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -135,11 +143,12 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{queueItem: QueueItem{ID: "42"}}
+	l.pendingReview["42"] = &pendingReviewCook{orderID: "42"}
 
-	plan := l.planCycleSpawns(queue, mise.Brief{}, l.config.Concurrency.MaxCooks)
-	if len(plan) != 1 || plan[0].ID != "43" {
+	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxCooks)
+	if len(plan) != 1 || plan[0].OrderID != "43" {
 		t.Fatalf("spawn plan = %#v, want only 43", plan)
 	}
 }

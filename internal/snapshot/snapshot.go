@@ -208,9 +208,37 @@ func readQueue(path string) (queueResult, error) {
 			Rationale: item.Rationale,
 		})
 	}
+
+	// Also read orders.json and convert to QueueItem shape (temporary bridge for phases 5-7).
+	ordersPath := strings.TrimSuffix(path, "queue.json") + "orders.json"
+	orders, ordersErr := queuex.ReadOrders(ordersPath)
+	if ordersErr == nil {
+		for _, order := range orders.Orders {
+			for _, stage := range order.Stages {
+				items = append(items, QueueItem{
+					ID:        order.ID,
+					TaskKey:   stage.TaskKey,
+					Title:     order.Title,
+					Prompt:    stage.Prompt,
+					Provider:  stage.Provider,
+					Model:     stage.Model,
+					Skill:     stage.Skill,
+					Plan:      order.Plan,
+					Rationale: order.Rationale,
+				})
+				break // Only include the first/current stage per order.
+			}
+		}
+	}
+
+	actionNeeded := queue.ActionNeeded
+	if ordersErr == nil && len(orders.ActionNeeded) > 0 {
+		actionNeeded = append(actionNeeded, orders.ActionNeeded...)
+	}
+
 	return queueResult{
 		Items:        items,
-		ActionNeeded: queue.ActionNeeded,
+		ActionNeeded: actionNeeded,
 	}, nil
 }
 
@@ -682,7 +710,23 @@ func readGitBranch(dir string) string {
 }
 
 // InferTaskType extracts a task type from a session ID convention.
+// New format: orderID:stageIndex:taskKey (e.g., "29:0:execute").
+// Old format: prefix matching (e.g., "execute-..." → "execute").
 func InferTaskType(sessionID string) string {
+	// Try new colon-separated format: orderID:stageIndex:taskKey
+	parts := strings.SplitN(sessionID, ":", 3)
+	if len(parts) == 3 {
+		taskKey := strings.ToLower(strings.TrimSpace(parts[2]))
+		// Strip any suffix after the task key (e.g., random session ID suffix).
+		if idx := strings.IndexByte(taskKey, '-'); idx > 0 {
+			taskKey = taskKey[:idx]
+		}
+		if taskKey != "" {
+			return taskKey
+		}
+	}
+
+	// Fallback: old prefix-based matching for pre-migration sessions.
 	known := []string{"execute", "plan", "review", "reflect", "schedule"}
 	lower := strings.ToLower(sessionID)
 	for _, prefix := range known {

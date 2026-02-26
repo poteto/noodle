@@ -107,6 +107,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		cfg.Recovery.MaxRetries = *o.maxRetries
 	}
 
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
 		Worktree:   wt,
@@ -117,6 +118,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		Logger:     logger,
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	return &testLoopContext{
 		loop:       l,
@@ -125,6 +127,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		adapter:    ar,
 		mise:       fm,
 		queuePath:  queuePath,
+		ordersPath: ordersPath,
 		runtimeDir: runtimeDir,
 		projectDir: projectDir,
 	}
@@ -142,6 +145,7 @@ type testLoopContext struct {
 	adapter    *fakeAdapterRunner
 	mise       *fakeMise
 	queuePath  string
+	ordersPath string
 	runtimeDir string
 	projectDir string
 }
@@ -154,6 +158,9 @@ func TestLogDispatchCook(t *testing.T) {
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -163,8 +170,8 @@ func TestLogDispatchCook(t *testing.T) {
 	if !ok {
 		t.Fatal("expected 'cook dispatched' log entry")
 	}
-	if entry.Attrs["item"] != "item-1" {
-		t.Fatalf("item attr = %v, want item-1", entry.Attrs["item"])
+	if entry.Attrs["order"] != "item-1" {
+		t.Fatalf("order attr = %v, want item-1", entry.Attrs["order"])
 	}
 	if entry.Attrs["session"] == nil || entry.Attrs["session"] == "" {
 		t.Fatal("expected non-empty session attr")
@@ -198,6 +205,9 @@ func TestLogCompletionMerge(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
@@ -235,6 +245,9 @@ func TestLogCompletionParkForReview(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
@@ -292,6 +305,9 @@ func TestLogRetryAndFailure(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	// Cycle 1: dispatch.
@@ -428,8 +444,8 @@ func TestLogBootstrapSchedule(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if !handler.hasMessage("queue empty, bootstrapping schedule") {
-		t.Fatal("expected 'queue empty, bootstrapping schedule' log entry")
+	if !handler.hasMessage("orders empty, bootstrapping schedule") {
+		t.Fatal("expected 'orders empty, bootstrapping schedule' log entry")
 	}
 }
 
@@ -480,25 +496,28 @@ func TestLogQueueNextPromoted(t *testing.T) {
 		o.brief = &brief
 	})
 
-	// Write a valid queue-next.json.
-	queueNextPath := filepath.Join(tc.runtimeDir, "queue-next.json")
-	nextQueue := Queue{Items: []QueueItem{{ID: "from-schedule", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(queueNextPath, nextQueue); err != nil {
-		t.Fatalf("write queue-next: %v", err)
+	// Write a valid orders-next.json.
+	ordersNextPath := filepath.Join(tc.runtimeDir, "orders-next.json")
+	nextOrders := OrdersFile{Orders: []Order{{
+		ID: "from-schedule", Title: "from schedule", Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}},
+	}}}
+	if err := writeOrdersAtomic(ordersNextPath, nextOrders); err != nil {
+		t.Fatalf("write orders-next: %v", err)
 	}
-	tc.loop.deps.QueueNextFile = queueNextPath
+	tc.loop.deps.OrdersNextFile = ordersNextPath
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if !handler.hasMessage("queue-next promoted") {
+	if !handler.hasMessage("orders-next promoted") {
 		// Check if it was a failure instead
-		if handler.hasMessage("queue-next promotion failed") {
-			entry, _ := handler.findEntry("queue-next promotion failed")
-			t.Fatalf("queue-next promotion failed: %v", entry.Attrs["error"])
+		if handler.hasMessage("orders-next promotion failed") {
+			entry, _ := handler.findEntry("orders-next promotion failed")
+			t.Fatalf("orders-next promotion failed: %v", entry.Attrs["error"])
 		}
-		t.Fatal("expected 'queue-next promoted' log entry")
+		t.Fatal("expected 'orders-next promoted' log entry")
 	}
 }
 

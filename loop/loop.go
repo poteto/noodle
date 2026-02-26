@@ -2,7 +2,6 @@ package loop
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
@@ -62,6 +60,12 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 	if deps.QueueNextFile == "" {
 		deps.QueueNextFile = filepath.Join(runtimeDir, "queue-next.json")
+	}
+	if deps.OrdersFile == "" {
+		deps.OrdersFile = filepath.Join(runtimeDir, "orders.json")
+	}
+	if deps.OrdersNextFile == "" {
+		deps.OrdersNextFile = filepath.Join(runtimeDir, "orders-next.json")
 	}
 	if deps.StatusFile == "" {
 		deps.StatusFile = filepath.Join(runtimeDir, "status.json")
@@ -143,6 +147,7 @@ func (l *Loop) rebuildRegistry() {
 	appendQueueEvent(eventsPath, rebuildEvent)
 
 	l.auditQueue()
+	l.auditOrders()
 }
 
 // Shutdown kills all active agent sessions. Called during process exit.
@@ -218,7 +223,7 @@ func (l *Loop) Run(ctx context.Context) error {
 				return nil
 			}
 		case ev := <-watcher.Events:
-			if strings.HasSuffix(ev.Name, "queue.json") || strings.HasSuffix(ev.Name, "queue-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
+			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "queue.json") || strings.HasSuffix(ev.Name, "queue-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
 				if err := l.Cycle(ctx); err != nil {
 					return err
 				}
@@ -264,7 +269,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	queue, shouldContinue, err := l.prepareQueueForCycle(brief, warnings)
+	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings)
 	if err != nil {
 		return err
 	}
@@ -272,8 +277,8 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	plan := l.planCycleSpawns(queue, brief, cycleCapacity)
-	if err := l.spawnPlannedItems(ctx, plan); err != nil {
+	candidates := l.planCycleSpawns(orders, brief, cycleCapacity)
+	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
 		return err
 	}
 	return l.stampStatus()
@@ -318,63 +323,46 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 	return brief, warnings, true, nil
 }
 
-func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue, bool, error) {
-	// Consume queue-next.json if the schedule session wrote one.
-	// The loop is the single writer of queue.json — schedule writes
-	// to queue-next.json to avoid racing with loop state stamps.
-	// Errors are non-fatal: a transient/partial write shouldn't crash
-	// the loop — log and continue.
-	promoted, err := consumeQueueNext(l.deps.QueueNextFile, l.deps.QueueFile)
+func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (OrdersFile, bool, error) {
+	// Consume orders-next.json if the schedule session wrote one.
+	promoted, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
-		l.logger.Warn("queue-next promotion failed", "error", err)
+		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
-		l.logger.Info("queue-next promoted")
+		l.logger.Info("orders-next promoted")
 	}
-	queue, err := readQueue(l.deps.QueueFile)
+
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
-		return Queue{}, false, err
+		return OrdersFile{}, false, err
 	}
-	if normalizedQueue, changed, err := normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
-		if !errors.Is(err, queuex.ErrUnknownTaskType) {
-			return Queue{}, false, err
-		}
-		// Unknown task type — rebuild registry and retry.
+
+	// Normalize and validate orders.
+	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+	if normErr != nil {
+		// Rebuild registry and retry on unknown task type.
 		l.rebuildRegistry()
-		if normalizedQueue, changed, err = normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
-			if !errors.Is(err, queuex.ErrUnknownTaskType) {
-				return Queue{}, false, err
-			}
-			// Still unknown after re-scan — drop offending items via audit and continue.
-			fmt.Fprintf(os.Stderr, "loop.queue-rescan: %v — dropping unknown items\n", err)
-			l.auditQueue()
-			queue, err = readQueue(l.deps.QueueFile)
+		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+		if normErr != nil {
+			l.auditOrders()
+			orders, err = readOrders(l.deps.OrdersFile)
 			if err != nil {
-				return Queue{}, false, err
+				return OrdersFile{}, false, err
 			}
-			if normalizedQueue, changed, err = normalizeAndValidateQueue(queue, brief.NeedsScheduling, l.registry, l.config); err != nil {
-				return Queue{}, false, err
+			normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+			if normErr != nil {
+				return OrdersFile{}, false, normErr
 			}
-			if changed {
-				queue = normalizedQueue
-				if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-					return Queue{}, false, err
-				}
-				l.logger.Info("queue normalized")
-			}
-		} else if changed {
-			queue = normalizedQueue
-			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-				return Queue{}, false, err
-			}
-			l.logger.Info("queue normalized")
 		}
-	} else if changed {
-		queue = normalizedQueue
-		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return Queue{}, false, err
-		}
-		l.logger.Info("queue normalized")
 	}
+	if changed {
+		orders = normalizedOrders
+		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			return OrdersFile{}, false, err
+		}
+		l.logger.Info("orders normalized")
+	}
+
 	if hasSyncWarnings(warnings) {
 		l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
 		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
@@ -384,38 +372,40 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 			Reason: strings.Join(warnings, "; "),
 		})
 	}
+
+	// Simplified filtering (#60): check for non-schedule orders.
 	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
-		if hasNonScheduleItems(queue) {
-			filtered := filterStaleScheduleItems(queue)
-			if len(filtered.Items) != len(queue.Items) {
-				filtered.GeneratedAt = l.deps.Now().UTC()
-				queue = filtered
-				if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-					return Queue{}, false, err
-				}
+		hasNonSchedule := false
+		for _, order := range orders.Orders {
+			if !isScheduleOrder(order) {
+				hasNonSchedule = true
+				break
 			}
-		} else {
-			if len(brief.Plans) == 0 && len(brief.NeedsScheduling) == 0 {
+		}
+		if !hasNonSchedule {
+			if len(brief.Plans) == 0 {
 				l.setState(StateIdle)
-				return Queue{}, false, nil
+				return OrdersFile{}, false, nil
 			}
-			queue = bootstrapScheduleQueue(l.config, "", l.deps.Now().UTC())
-			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-				return Queue{}, false, err
+			// Bootstrap a schedule order.
+			orders = bootstrapScheduleOrders(l.config, l.deps.Now().UTC())
+			if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+				return OrdersFile{}, false, err
 			}
-			l.logger.Info("queue empty, bootstrapping schedule")
+			l.logger.Info("orders empty, bootstrapping schedule")
 		}
 	}
-	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.registry, l.config); changed {
-		queue = updatedQueue
-		if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-			return Queue{}, false, err
+
+	if updatedOrders, changed := ApplyOrderRoutingDefaults(orders, l.registry, l.config); changed {
+		orders = updatedOrders
+		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			return OrdersFile{}, false, err
 		}
 	}
-	return queue, true, nil
+	return orders, true, nil
 }
 
-func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief, capacity int) []QueueItem {
+func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {
 	busyTargets := make(map[string]struct{}, len(l.activeByTarget))
 	for targetID := range l.activeByTarget {
 		busyTargets[targetID] = struct{}{}
@@ -431,12 +421,7 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief, capacity int) []Qu
 		adoptedTargets[targetID] = struct{}{}
 	}
 
-	pendingTargets := make(map[string]struct{}, len(l.pendingReview))
 	for targetID := range l.pendingReview {
-		pendingTargets[targetID] = struct{}{}
-	}
-
-	for targetID := range pendingTargets {
 		busyTargets[targetID] = struct{}{}
 	}
 
@@ -444,24 +429,39 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief, capacity int) []Qu
 		busyTargets[targetID] = struct{}{}
 	}
 
-	return planSpawnItems(spawnPlanInput{
-		QueueItems:      queue.Items,
-		Capacity:        capacity,
-		ActiveCount:     len(l.activeByID),
-		AdoptedCount:    len(l.adoptedTargets),
-		BusyTargets:     busyTargets,
-		FailedTargets:   failedTargets,
-		AdoptedTargets:  adoptedTargets,
-		TicketedTargets: activeTicketTargetSet(brief),
-	})
+	candidates := dispatchableStages(orders, busyTargets, failedTargets, adoptedTargets, activeTicketTargetSet(brief))
+
+	// Limit to capacity.
+	limit := capacity
+	if limit <= 0 {
+		limit = 1
+	}
+	current := len(l.activeByID) + len(l.adoptedTargets)
+	available := limit - current
+	if available <= 0 {
+		return nil
+	}
+	if len(candidates) > available {
+		candidates = candidates[:available]
+	}
+	return candidates
 }
 
-func (l *Loop) spawnPlannedItems(ctx context.Context, items []QueueItem) error {
-	for _, item := range items {
+func (l *Loop) spawnPlannedCandidates(ctx context.Context, candidates []dispatchCandidate, orders OrdersFile) error {
+	// Build order lookup for candidate dispatch.
+	orderMap := make(map[string]Order, len(orders.Orders))
+	for _, o := range orders.Orders {
+		orderMap[o.ID] = o
+	}
+	for _, cand := range candidates {
 		if l.atMaxConcurrency() {
 			break
 		}
-		if err := l.spawnCook(ctx, item, spawnOptions{}); err != nil {
+		order, ok := orderMap[cand.OrderID]
+		if !ok {
+			continue
+		}
+		if err := l.spawnCook(ctx, cand, order, spawnOptions{}); err != nil {
 			return err
 		}
 	}

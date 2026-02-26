@@ -16,10 +16,18 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	if err := writeQueueAtomic(queuePath, Queue{Items: []QueueItem{{
 		ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6",
 	}}}); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	// Write orders.json for the new control paths.
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
+		ID: "42", Title: "test", Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}},
+	}}}); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: sp,
@@ -30,11 +38,14 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		queueItem:    QueueItem{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"},
-		worktreeName: "42",
-		worktreePath: filepath.Join(projectDir, ".worktrees", "42"),
+		orderID:      "42",
+		stageIndex:   0,
+		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"},
+		worktreeName: "42:0:execute",
+		worktreePath: filepath.Join(projectDir, ".worktrees", "42:0:execute"),
 		sessionID:    "sess-42",
 	}
 	if err := l.writePendingReview(); err != nil {
@@ -97,8 +108,8 @@ func TestControlRequestChangesSpawnsInSameWorktree(t *testing.T) {
 	if len(sp.calls) != 1 {
 		t.Fatalf("dispatch calls = %d, want 1", len(sp.calls))
 	}
-	if got := sp.calls[0].WorktreePath; got != l.worktreePath("42") {
-		t.Fatalf("worktree path = %q, want %q", got, l.worktreePath("42"))
+	if got := sp.calls[0].WorktreePath; got != l.worktreePath("42:0:execute") {
+		t.Fatalf("worktree path = %q, want %q", got, l.worktreePath("42:0:execute"))
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "Previous work needs changes. Feedback: Add missing tests") {
 		t.Fatalf("prompt missing feedback context: %q", sp.calls[0].Prompt)

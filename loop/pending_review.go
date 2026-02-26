@@ -2,6 +2,7 @@ package loop
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,7 +12,8 @@ import (
 )
 
 type PendingReviewItem struct {
-	ID           string   `json:"id"`
+	OrderID      string   `json:"order_id"`
+	StageIndex   int      `json:"stage_index"`
 	TaskKey      string   `json:"task_key,omitempty"`
 	Title        string   `json:"title,omitempty"`
 	Prompt       string   `json:"prompt,omitempty"`
@@ -24,6 +26,7 @@ type PendingReviewItem struct {
 	WorktreeName string   `json:"worktree_name"`
 	WorktreePath string   `json:"worktree_path"`
 	SessionID    string   `json:"session_id,omitempty"`
+	Reason       string   `json:"reason,omitempty"`
 }
 
 type pendingReviewFile struct {
@@ -46,7 +49,24 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 
 	var payload pendingReviewFile
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return nil, err
+		// Old-format file — attempt to extract worktree path for manual resolution.
+		var raw map[string]json.RawMessage
+		if jsonErr := json.Unmarshal(data, &raw); jsonErr == nil {
+			if itemsRaw, ok := raw["items"]; ok {
+				var items []json.RawMessage
+				if arrErr := json.Unmarshal(itemsRaw, &items); arrErr == nil {
+					for _, itemRaw := range items {
+						var partial struct {
+							WorktreePath string `json:"worktree_path"`
+						}
+						if pErr := json.Unmarshal(itemRaw, &partial); pErr == nil && partial.WorktreePath != "" {
+							logWarnf("pending review file has old format — worktree at %s needs manual merge or cleanup", partial.WorktreePath)
+						}
+					}
+				}
+			}
+		}
+		return []PendingReviewItem{}, nil
 	}
 	if payload.Items == nil {
 		return []PendingReviewItem{}, nil
@@ -54,12 +74,16 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 	return payload.Items, nil
 }
 
-func (l *Loop) parkPendingReview(cook *activeCook) error {
-	l.pendingReview[cook.queueItem.ID] = &pendingReviewCook{
-		queueItem:    cook.queueItem,
+func (l *Loop) parkPendingReview(cook *activeCook, reason string) error {
+	l.pendingReview[cook.orderID] = &pendingReviewCook{
+		orderID:      cook.orderID,
+		stageIndex:   cook.stageIndex,
+		stage:        cook.stage,
+		plan:         cook.plan,
 		worktreeName: cook.worktreeName,
 		worktreePath: cook.worktreePath,
 		sessionID:    cook.session.ID(),
+		reason:       reason,
 	}
 	return l.writePendingReview()
 }
@@ -72,23 +96,24 @@ func (l *Loop) writePendingReview() error {
 			continue
 		}
 		items = append(items, PendingReviewItem{
-			ID:           pending.queueItem.ID,
-			TaskKey:      pending.queueItem.TaskKey,
-			Title:        pending.queueItem.Title,
-			Prompt:       pending.queueItem.Prompt,
-			Provider:     pending.queueItem.Provider,
-			Model:        pending.queueItem.Model,
-			Runtime:      pending.queueItem.Runtime,
-			Skill:        pending.queueItem.Skill,
-			Plan:         pending.queueItem.Plan,
-			Rationale:    pending.queueItem.Rationale,
+			OrderID:      pending.orderID,
+			StageIndex:   pending.stageIndex,
+			TaskKey:      pending.stage.TaskKey,
+			Title:        "",
+			Prompt:       pending.stage.Prompt,
+			Provider:     pending.stage.Provider,
+			Model:        pending.stage.Model,
+			Runtime:      pending.stage.Runtime,
+			Skill:        pending.stage.Skill,
+			Plan:         pending.plan,
 			WorktreeName: pending.worktreeName,
 			WorktreePath: pending.worktreePath,
 			SessionID:    pending.sessionID,
+			Reason:       pending.reason,
 		})
 	}
 	sort.Slice(items, func(i, j int) bool {
-		return items[i].ID < items[j].ID
+		return items[i].OrderID < items[j].OrderID
 	})
 	payload := pendingReviewFile{Items: items}
 	data, err := json.MarshalIndent(payload, "", "  ")
@@ -106,7 +131,7 @@ func (l *Loop) loadPendingReview() error {
 
 	next := make(map[string]*pendingReviewCook, len(items))
 	for _, item := range items {
-		id := strings.TrimSpace(item.ID)
+		id := strings.TrimSpace(item.OrderID)
 		if id == "" {
 			continue
 		}
@@ -115,23 +140,28 @@ func (l *Loop) loadPendingReview() error {
 			continue
 		}
 		next[id] = &pendingReviewCook{
-			queueItem: QueueItem{
-				ID:        id,
-				TaskKey:   strings.TrimSpace(item.TaskKey),
-				Title:     strings.TrimSpace(item.Title),
-				Prompt:    strings.TrimSpace(item.Prompt),
-				Provider:  strings.TrimSpace(item.Provider),
-				Model:     strings.TrimSpace(item.Model),
-				Runtime:   strings.TrimSpace(item.Runtime),
-				Skill:     strings.TrimSpace(item.Skill),
-				Plan:      item.Plan,
-				Rationale: strings.TrimSpace(item.Rationale),
+			orderID:    id,
+			stageIndex: item.StageIndex,
+			stage: Stage{
+				TaskKey:  strings.TrimSpace(item.TaskKey),
+				Prompt:   strings.TrimSpace(item.Prompt),
+				Skill:    strings.TrimSpace(item.Skill),
+				Provider: strings.TrimSpace(item.Provider),
+				Model:    strings.TrimSpace(item.Model),
+				Runtime:  strings.TrimSpace(item.Runtime),
 			},
+			plan:         item.Plan,
 			worktreeName: name,
 			worktreePath: strings.TrimSpace(item.WorktreePath),
 			sessionID:    strings.TrimSpace(item.SessionID),
+			reason:       strings.TrimSpace(item.Reason),
 		}
 	}
 	l.pendingReview = next
 	return nil
+}
+
+// logWarnf logs a warning to stderr. Used for degraded parse situations.
+func logWarnf(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", args...)
 }

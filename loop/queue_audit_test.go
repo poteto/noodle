@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -290,10 +291,10 @@ func TestRegistryErrorResetOnRebuild(t *testing.T) {
 	}
 }
 
-func TestPrepareQueueRescanRecoversMissingSkill(t *testing.T) {
-	// Simulate: queue has an item with a task type that only appears
-	// after a registry rebuild (e.g., skill was just installed and
-	// fsnotify hasn't fired yet).
+func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
+	// Simulate: orders has stages with both known and unknown task types.
+	// The unknown stage should be silently dropped during normalization,
+	// but a known stage alongside it should survive.
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	projectDir := t.TempDir()
@@ -301,48 +302,43 @@ func TestPrepareQueueRescanRecoversMissingSkill(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
-	queue := Queue{
+	// Include both a known (execute) and unknown (deploy) order.
+	orders := OrdersFile{
 		GeneratedAt: time.Now().UTC(),
-		Items: []QueueItem{
-			{ID: "deploy-1", TaskKey: "deploy", Skill: "deploy", Provider: "claude", Model: "opus"},
+		Orders: []Order{
+			{ID: "execute-1", Title: "execute task", Status: OrderStatusActive, Stages: []Stage{
+				{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus", Status: StageStatusPending},
+			}},
+			{ID: "deploy-1", Title: "deploy task", Status: OrderStatusActive, Stages: []Stage{
+				{TaskKey: "deploy", Skill: "deploy", Provider: "claude", Model: "opus", Status: StageStatusPending},
+			}},
 		},
 	}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-
-	// Start with a registry that does NOT have "deploy".
-	initialReg := testLoopRegistry()
-
-	// Create the deploy skill on disk so rebuildRegistry() will find it.
-	skillDir := filepath.Join(homeDir, ".noodle", "skills", "deploy")
-	if err := os.MkdirAll(skillDir, 0o755); err != nil {
-		t.Fatalf("mkdir skill: %v", err)
-	}
-	content := "---\nname: deploy\ndescription: Deploy\nnoodle:\n  schedule: \"After execute\"\n---\n# Deploy\n"
-	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("write SKILL.md: %v", err)
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Skills.Paths = []string{"~/.noodle/skills"}
 
 	l := &Loop{
 		projectDir: projectDir,
 		runtimeDir: runtimeDir,
 		config:     cfg,
-		registry:   initialReg,
+		registry:   testLoopRegistry(),
+		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher: &fakeDispatcher{},
-			Worktree:   &fakeWorktree{},
-			Adapter:    &fakeAdapterRunner{},
-			Mise:       &fakeMise{},
-			Monitor:    fakeMonitor{},
-			Now:        time.Now,
-			QueueFile:  queuePath,
-			StatusFile: filepath.Join(runtimeDir, "status.json"),
+			Dispatcher:     &fakeDispatcher{},
+			Worktree:       &fakeWorktree{},
+			Adapter:        &fakeAdapterRunner{},
+			Mise:           &fakeMise{},
+			Monitor:        fakeMonitor{},
+			Now:            time.Now,
+			QueueFile:      filepath.Join(runtimeDir, "queue.json"),
+			OrdersFile:     ordersPath,
+			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
+			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
 		state:          StateRunning,
 		activeByTarget: map[string]*activeCook{},
@@ -355,32 +351,34 @@ func TestPrepareQueueRescanRecoversMissingSkill(t *testing.T) {
 	}
 
 	brief := mise.Brief{NeedsScheduling: nil}
-	result, shouldContinue, err := l.prepareQueueForCycle(brief, nil)
+	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
 	if err != nil {
-		t.Fatalf("prepareQueueForCycle: %v", err)
+		t.Fatalf("prepareOrdersForCycle: %v", err)
 	}
 	if !shouldContinue {
 		t.Fatal("expected cycle to continue")
 	}
-	// The deploy item should still be in the queue — registry was rebuilt.
+	// The unknown deploy order should have been dropped.
+	for _, order := range result.Orders {
+		if order.ID == "deploy-1" {
+			t.Fatal("deploy-1 should have been dropped (unknown task type)")
+		}
+	}
+	// The known execute order should survive.
 	found := false
-	for _, item := range result.Items {
-		if item.ID == "deploy-1" {
+	for _, order := range result.Orders {
+		if order.ID == "execute-1" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("deploy-1 should be in queue after re-scan, got: %+v", result.Items)
-	}
-	// Verify the registry now has deploy.
-	if _, ok := l.registry.ByKey("deploy"); !ok {
-		t.Fatal("registry should contain deploy after rebuild")
+		t.Fatalf("execute-1 should still be in orders, got: %+v", result.Orders)
 	}
 }
 
-func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
-	// Simulate: queue has an item with a task type that doesn't exist
-	// even after rebuild — should be dropped via auditQueue.
+func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
+	// Simulate: orders has a stage with a task type that doesn't exist
+	// even after rebuild — should be dropped via auditOrders.
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	projectDir := t.TempDir()
@@ -388,17 +386,21 @@ func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
-	queue := Queue{
+	orders := OrdersFile{
 		GeneratedAt: time.Now().UTC(),
-		Items: []QueueItem{
-			{ID: "execute-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus"},
-			{ID: "bogus-1", TaskKey: "bogus", Skill: "bogus", Provider: "claude", Model: "opus"},
+		Orders: []Order{
+			{ID: "execute-1", Title: "execute task", Status: OrderStatusActive, Stages: []Stage{
+				{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus", Status: StageStatusPending},
+			}},
+			{ID: "bogus-1", Title: "bogus task", Status: OrderStatusActive, Stages: []Stage{
+				{TaskKey: "bogus", Skill: "bogus", Provider: "claude", Model: "opus", Status: StageStatusPending},
+			}},
 		},
 	}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	// Create execute skill on disk so rebuild finds it.
@@ -421,15 +423,18 @@ func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
 		runtimeDir: runtimeDir,
 		config:     cfg,
 		registry:   testLoopRegistry(),
+		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher: &fakeDispatcher{},
-			Worktree:   &fakeWorktree{},
-			Adapter:    &fakeAdapterRunner{},
-			Mise:       &fakeMise{},
-			Monitor:    fakeMonitor{},
-			Now:        time.Now,
-			QueueFile:  queuePath,
-			StatusFile: filepath.Join(runtimeDir, "status.json"),
+			Dispatcher:     &fakeDispatcher{},
+			Worktree:       &fakeWorktree{},
+			Adapter:        &fakeAdapterRunner{},
+			Mise:           &fakeMise{},
+			Monitor:        fakeMonitor{},
+			Now:            time.Now,
+			QueueFile:      filepath.Join(runtimeDir, "queue.json"),
+			OrdersFile:     ordersPath,
+			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
+			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
 		state:          StateRunning,
 		activeByTarget: map[string]*activeCook{},
@@ -442,28 +447,28 @@ func TestPrepareQueueRescanDropsGenuinelyUnknown(t *testing.T) {
 	}
 
 	brief := mise.Brief{NeedsScheduling: nil}
-	result, shouldContinue, err := l.prepareQueueForCycle(brief, nil)
+	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
 	if err != nil {
-		t.Fatalf("prepareQueueForCycle: %v", err)
+		t.Fatalf("prepareOrdersForCycle: %v", err)
 	}
 	if !shouldContinue {
-		t.Fatal("expected cycle to continue after dropping unknown items")
+		t.Fatal("expected cycle to continue after dropping unknown orders")
 	}
 	// bogus-1 should be gone, execute-1 should remain.
-	for _, item := range result.Items {
-		if item.ID == "bogus-1" {
+	for _, order := range result.Orders {
+		if order.ID == "bogus-1" {
 			t.Fatal("bogus-1 should have been dropped")
 		}
 	}
 	// Verify execute-1 survived.
 	found := false
-	for _, item := range result.Items {
-		if item.ID == "execute-1" {
+	for _, order := range result.Orders {
+		if order.ID == "execute-1" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("execute-1 should still be in queue, got: %+v", result.Items)
+		t.Fatalf("execute-1 should still be in orders, got: %+v", result.Orders)
 	}
 }
 

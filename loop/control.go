@@ -227,56 +227,87 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	return ack
 }
 
-func (l *Loop) controlMerge(itemID string) error {
-	itemID = strings.TrimSpace(itemID)
-	if itemID == "" {
-		return fmt.Errorf("merge: item ID empty")
+func (l *Loop) controlMerge(orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("merge: order ID empty")
 	}
-	pending, ok := l.pendingReview[itemID]
+	pending, ok := l.pendingReview[orderID]
 	if !ok {
-		return fmt.Errorf("no pending review for %q", itemID)
+		return fmt.Errorf("no pending review for %q", orderID)
 	}
-	if err := l.mergeCook(context.Background(), pending.queueItem, pending.worktreeName, pending.sessionID); err != nil {
+
+	// Quality verdict gate — even the manual merge path respects quality verdicts.
+	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
+	if hasVerdict && !verdict.Accept {
+		return fmt.Errorf("quality verdict rejected: %s", verdict.Feedback)
+	}
+
+	// Merge the worktree.
+	cook := &activeCook{
+		orderID:      pending.orderID,
+		stageIndex:   pending.stageIndex,
+		stage:        pending.stage,
+		plan:         pending.plan,
+		worktreeName: pending.worktreeName,
+		worktreePath: pending.worktreePath,
+		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
+	}
+	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 		return err
 	}
-	delete(l.pendingReview, itemID)
+	if err := l.advanceAndPersist(context.Background(), cook); err != nil {
+		return err
+	}
+	delete(l.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
-func (l *Loop) controlReject(itemID string) error {
-	itemID = strings.TrimSpace(itemID)
-	if itemID == "" {
-		return fmt.Errorf("reject: item ID empty")
+func (l *Loop) controlReject(orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("reject: order ID empty")
 	}
-	pending, ok := l.pendingReview[itemID]
+	pending, ok := l.pendingReview[orderID]
 	if !ok {
-		return fmt.Errorf("no pending review for %q", itemID)
+		return fmt.Errorf("no pending review for %q", orderID)
 	}
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
-	if err := l.markFailed(itemID, "rejected by user"); err != nil {
+	// Cancel the order in orders.json.
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
 		return err
 	}
-	if err := l.skipQueueItem(itemID); err != nil {
+	orders, err = cancelOrder(orders, orderID)
+	if err != nil {
+		// Order may already be gone — not fatal.
+		l.logger.Warn("controlReject: cancelOrder", "error", err)
+	} else {
+		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			return err
+		}
+	}
+	if err := l.markFailed(orderID, "rejected by user"); err != nil {
 		return err
 	}
-	delete(l.pendingReview, itemID)
+	delete(l.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
-func (l *Loop) controlRequestChanges(itemID, feedback string) error {
-	itemID = strings.TrimSpace(itemID)
-	if itemID == "" {
-		return fmt.Errorf("request-changes: item ID empty")
+func (l *Loop) controlRequestChanges(orderID, feedback string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("request-changes: order ID empty")
 	}
-	pending, ok := l.pendingReview[itemID]
+	pending, ok := l.pendingReview[orderID]
 	if !ok {
-		return fmt.Errorf("no pending review for %q", itemID)
+		return fmt.Errorf("no pending review for %q", orderID)
 	}
 	if l.atMaxConcurrency() {
-		l.logger.Info("request-changes deferred: at max concurrency", "item", itemID)
-		return nil // item stays in pendingReview; will be available next cycle
+		l.logger.Info("request-changes deferred: at max concurrency", "order", orderID)
+		return nil
 	}
 
 	resumePrompt := "Previous work needs changes."
@@ -287,44 +318,45 @@ func (l *Loop) controlRequestChanges(itemID, feedback string) error {
 
 	name := strings.TrimSpace(pending.worktreeName)
 	if name == "" {
-		name = cookBaseName(pending.queueItem)
+		name = cookBaseName(pending.orderID, pending.stageIndex, pending.stage.TaskKey)
 	}
 	path := strings.TrimSpace(pending.worktreePath)
 	if path == "" {
 		path = l.worktreePath(name)
 	}
 
-	taskType, _ := l.registry.ByKey(pending.queueItem.TaskKey)
+	taskType, _ := l.registry.ByKey(pending.stage.TaskKey)
 	req := dispatcher.DispatchRequest{
 		Name:         name,
-		Prompt:       buildCookPrompt(pending.queueItem, resumePrompt),
-		Provider:     nonEmpty(pending.queueItem.Provider, l.config.Routing.Defaults.Provider),
-		Model:        nonEmpty(pending.queueItem.Model, l.config.Routing.Defaults.Model),
-		Skill:        pending.queueItem.Skill,
+		Prompt:       buildCookPrompt(pending.orderID, pending.stage, pending.plan, "", resumePrompt),
+		Provider:     nonEmpty(pending.stage.Provider, l.config.Routing.Defaults.Provider),
+		Model:        nonEmpty(pending.stage.Model, l.config.Routing.Defaults.Model),
+		Skill:        pending.stage.Skill,
 		WorktreePath: path,
 		TaskKey:      taskType.Key,
-		Runtime:      nonEmpty(pending.queueItem.Runtime, "tmux"),
-		Title:        pending.queueItem.Title,
+		Runtime:      nonEmpty(pending.stage.Runtime, "tmux"),
+		Title:        "",
 	}
-	if taskType.Key == "execute" {
-		if adapter, exists := l.config.Adapters["backlog"]; exists {
-			req.DomainSkill = adapter.Skill
-		}
+	if taskType.DomainSkill != "" {
+		req.DomainSkill = taskType.DomainSkill
 	}
 	session, err := l.deps.Dispatcher.Dispatch(context.Background(), req)
 	if err != nil {
 		return err
 	}
-	l.activeByTarget[itemID] = &activeCook{
-		queueItem:    pending.queueItem,
+	l.activeByTarget[orderID] = &activeCook{
+		orderID:      pending.orderID,
+		stageIndex:   pending.stageIndex,
+		stage:        pending.stage,
+		plan:         pending.plan,
 		session:      session,
 		worktreeName: name,
 		worktreePath: path,
 		attempt:      recover.RecoveryChainLength(name),
 	}
-	l.activeByID[session.ID()] = l.activeByTarget[itemID]
+	l.activeByID[session.ID()] = l.activeByTarget[orderID]
 
-	delete(l.pendingReview, itemID)
+	delete(l.pendingReview, orderID)
 	return l.writePendingReview()
 }
 

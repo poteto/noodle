@@ -99,7 +99,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	var skillBundle loadedSkill
 	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
 		skillBundle = loadedSkill{SystemPrompt: sp}
-	} else if req.TaskKey == "execute" && req.DomainSkill != "" {
+	} else if req.DomainSkill != "" {
 		skillBundle, err = loadExecuteBundle(d.skillResolver, req.Provider, req.Skill, req.DomainSkill)
 	} else {
 		skillBundle, err = loadSkillBundle(d.skillResolver, req.Provider, req.Skill)

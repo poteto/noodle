@@ -127,7 +127,7 @@ func (s *TmuxDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Ses
 	var skillBundle loadedSkill
 	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
 		skillBundle = loadedSkill{SystemPrompt: sp}
-	} else if req.TaskKey == "execute" && req.DomainSkill != "" {
+	} else if req.DomainSkill != "" {
 		skillBundle, err = loadExecuteBundle(s.skillResolver, req.Provider, req.Skill, req.DomainSkill)
 	} else {
 		skillBundle, err = loadSkillBundle(s.skillResolver, req.Provider, req.Skill)

@@ -179,6 +179,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 			for _, state := range fixtureCase.States {
 				applyStateRuntimeSnapshot(t, state, runtimeDir)
+				ensureFixtureOrders(t, runtimeDir)
 				cfg := cloneConfig(baseCfg)
 				if path := strings.TrimSpace(state.ConfigScope.StateOverridePath); path != "" {
 					applyConfigOverride(t, &cfg, path)
@@ -247,9 +248,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 			continue
 		}
 		cook := &activeCook{
-			queueItem: QueueItem{
-				ID: targetID,
-			},
+			orderID: targetID,
 			session: &fakeSession{
 				id:     sessionID,
 				status: "running",
@@ -375,6 +374,28 @@ func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) 
 
 func cloneConfig(in config.Config) config.Config {
 	return in
+}
+
+// ensureFixtureOrders generates orders.json from queue.json if only queue.json
+// exists. This bridges legacy fixture data (queue-only) for the orders-based loop.
+func ensureFixtureOrders(t *testing.T, runtimeDir string) {
+	t.Helper()
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if _, err := os.Stat(ordersPath); err == nil {
+		return // already exists
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	queue, err := readQueue(queuePath)
+	if err != nil {
+		return // no queue either — that's fine
+	}
+	if len(queue.Items) == 0 {
+		return
+	}
+	orders := queueToOrders(queue)
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write fixture orders: %v", err)
+	}
 }
 
 func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runtimeDir string) {

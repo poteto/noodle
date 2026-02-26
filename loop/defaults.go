@@ -80,10 +80,12 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		Adapter:    adapter.NewRunner(projectDir, cfg),
 		Mise:       mise.NewBuilder(projectDir, cfg),
 		Monitor:    monitor.NewMonitor(runtimeDir),
-		Now:           time.Now,
-		QueueFile:     filepath.Join(runtimeDir, "queue.json"),
-		QueueNextFile: filepath.Join(runtimeDir, "queue-next.json"),
-		StatusFile:    filepath.Join(runtimeDir, "status.json"),
+		Now:            time.Now,
+		QueueFile:      filepath.Join(runtimeDir, "queue.json"),
+		QueueNextFile:  filepath.Join(runtimeDir, "queue-next.json"),
+		OrdersFile:     filepath.Join(runtimeDir, "orders.json"),
+		OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
+		StatusFile:     filepath.Join(runtimeDir, "status.json"),
 	}
 }
 

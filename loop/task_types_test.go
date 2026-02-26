@@ -62,7 +62,7 @@ func testLoopRegistry() taskreg.Registry {
 
 func TestResolveByExplicitTaskKey(t *testing.T) {
 	reg := testLoopRegistry()
-	tt, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	tt, ok := reg.ResolveStage(taskreg.StageInput{
 		ID:      "x-1",
 		TaskKey: "meditate",
 	})
@@ -76,7 +76,7 @@ func TestResolveByExplicitTaskKey(t *testing.T) {
 
 func TestResolveByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := testLoopRegistry()
-	if _, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	if _, ok := reg.ResolveStage(taskreg.StageInput{
 		ID: "schedule-20260222-123456",
 	}); ok {
 		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
@@ -85,7 +85,7 @@ func TestResolveByIDPrefixNoLongerMatches(t *testing.T) {
 
 func TestUnknownItemDoesNotResolve(t *testing.T) {
 	reg := testLoopRegistry()
-	if _, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	if _, ok := reg.ResolveStage(taskreg.StageInput{
 		ID:    "42",
 		Title: "some ticket",
 	}); ok {

@@ -18,6 +18,17 @@ func isScheduleItem(item QueueItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.ID), scheduleQueueID)
 }
 
+func isScheduleStage(stage Stage) bool {
+	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), scheduleQueueID)
+}
+
+func isScheduleOrder(order Order) bool {
+	if len(order.Stages) == 0 {
+		return false
+	}
+	return isScheduleStage(order.Stages[0])
+}
+
 func hasNonScheduleItems(queue Queue) bool {
 	for _, item := range queue.Items {
 		if !isScheduleItem(item) {
@@ -46,6 +57,28 @@ func bootstrapScheduleQueue(cfg config.Config, prompt string, generatedAt time.T
 	return Queue{
 		GeneratedAt: generatedAt,
 		Items:       []QueueItem{scheduleQueueItem(cfg, prompt)},
+	}
+}
+
+func bootstrapScheduleOrders(cfg config.Config, generatedAt time.Time) OrdersFile {
+	return OrdersFile{
+		GeneratedAt: generatedAt,
+		Orders: []Order{
+			{
+				ID:     scheduleQueueID,
+				Title:  "scheduling tasks based on your backlog",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  scheduleQueueID,
+						Skill:    "schedule",
+						Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
+						Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
+						Status:   StageStatusPending,
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -90,7 +123,11 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 		return err
 	}
 	cook := &activeCook{
-		queueItem:    item,
+		orderID: item.ID,
+		stage: Stage{
+			TaskKey: scheduleQueueID,
+			Skill:   skillName,
+		},
 		session:      session,
 		worktreeName: "",
 		worktreePath: l.projectDir,
@@ -151,7 +188,11 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 		return nil
 	}
 	l.bootstrapInFlight = &activeCook{
-		queueItem:    item,
+		orderID: item.ID,
+		stage: Stage{
+			TaskKey: scheduleQueueID,
+			Skill:   "bootstrap",
+		},
 		session:      session,
 		worktreeName: name,
 		worktreePath: l.projectDir,

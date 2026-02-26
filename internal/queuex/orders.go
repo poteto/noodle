@@ -88,7 +88,7 @@ func applyStageRoutingDefaults(stage *Stage, reg taskreg.Registry, cfg config.Co
 	tagProvider := ""
 	tagModel := ""
 
-	if taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	if taskType, ok := reg.ResolveStage(taskreg.StageInput{
 		TaskKey: stage.TaskKey,
 		Skill:   stage.Skill,
 	}); ok {
@@ -205,7 +205,7 @@ func NormalizeAndValidateOrders(
 }
 
 func isValidStageTaskType(stage *Stage, reg taskreg.Registry) bool {
-	_, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	_, ok := reg.ResolveStage(taskreg.StageInput{
 		TaskKey: stage.TaskKey,
 		Skill:   stage.Skill,
 	})

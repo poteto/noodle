@@ -229,7 +229,7 @@ func NormalizeAndValidate(
 		}
 		seenIDs[id] = struct{}{}
 
-		taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+		taskType, ok := reg.ResolveStage(taskreg.StageInput{
 			ID:      items[i].ID,
 			TaskKey: items[i].TaskKey,
 			Title:   items[i].Title,
@@ -288,7 +288,7 @@ func applyItemRoutingDefaults(item Item, reg taskreg.Registry, cfg config.Config
 	tagProvider := ""
 	tagModel := ""
 
-	if taskType, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
+	if taskType, ok := reg.ResolveStage(taskreg.StageInput{
 		ID:      item.ID,
 		TaskKey: item.TaskKey,
 		Title:   item.Title,

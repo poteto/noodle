@@ -27,21 +27,18 @@ func TestTitleFromPrompt(t *testing.T) {
 }
 
 func TestBuildCookPromptIncludesPrompt(t *testing.T) {
-	item := QueueItem{
-		ID:     "execute-123",
+	stage := Stage{
 		Prompt: "Refactor the auth module to use JWT tokens",
 	}
-	got := buildCookPrompt(item, "")
+	got := buildCookPrompt("execute-123", stage, nil, "", "")
 	if want := "Refactor the auth module to use JWT tokens"; !containsSubstring(got, want) {
 		t.Fatalf("buildCookPrompt did not include prompt text\ngot: %q", got)
 	}
 }
 
 func TestBuildCookPromptWithoutPrompt(t *testing.T) {
-	item := QueueItem{
-		ID: "execute-123",
-	}
-	got := buildCookPrompt(item, "")
+	stage := Stage{}
+	got := buildCookPrompt("execute-123", stage, nil, "", "")
 	if containsSubstring(got, "\n\n\n") {
 		t.Fatalf("buildCookPrompt has double blank lines when prompt is empty\ngot: %q", got)
 	}

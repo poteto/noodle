@@ -139,9 +139,20 @@ type ControlAck struct {
 	At      time.Time `json:"at"`
 }
 
+// QualityVerdict is the minimal struct for reading verdict files at the merge boundary.
+type QualityVerdict struct {
+	Accept   bool   `json:"accept"`
+	Feedback string `json:"feedback,omitempty"`
+}
+
 type activeCook struct {
-	queueItem    QueueItem
-	session      dispatcher.Session
+	orderID     string
+	stageIndex  int
+	stage       Stage
+	isOnFailure bool
+	orderStatus string
+	plan        []string
+	session     dispatcher.Session
 	worktreeName string
 	worktreePath string
 	attempt      int
@@ -150,16 +161,25 @@ type activeCook struct {
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.
 type pendingReviewCook struct {
-	queueItem    QueueItem
+	orderID      string
+	stageIndex   int
+	stage        Stage
+	plan         []string
 	worktreeName string
 	worktreePath string
 	sessionID    string
+	reason       string
 }
 
-// pendingRetryCook is an item whose retry dispatch failed, waiting for
+// pendingRetryCook is a stage whose retry dispatch failed, waiting for
 // runtime repair before retrying.
 type pendingRetryCook struct {
-	item        QueueItem
+	orderID     string
+	stageIndex  int
+	stage       Stage
+	isOnFailure bool
+	orderStatus string
+	plan        []string
 	attempt     int    // the next attempt to use (already incremented)
 	displayName string // stable kitchen name from original spawn
 }
@@ -194,11 +214,13 @@ type Dependencies struct {
 	Mise       MiseBuilder
 	Monitor    Monitor
 	Registry   taskreg.Registry
-	Logger        *slog.Logger
-	Now           func() time.Time
-	QueueFile     string
-	QueueNextFile string
-	StatusFile    string
+	Logger         *slog.Logger
+	Now            func() time.Time
+	QueueFile      string
+	QueueNextFile  string
+	OrdersFile     string
+	OrdersNextFile string
+	StatusFile     string
 }
 
 type Loop struct {

@@ -73,39 +73,39 @@ func TestByKey(t *testing.T) {
 	}
 }
 
-func TestResolveQueueItemByTaskKey(t *testing.T) {
+func TestResolveStageByTaskKey(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ResolveQueueItem(QueueItemInput{TaskKey: "execute", ID: "x"})
+	tt, ok := reg.ResolveStage(StageInput{TaskKey: "execute", ID: "x"})
 	if !ok || tt.Key != "execute" {
 		t.Fatalf("resolve by task_key = %+v, %v", tt, ok)
 	}
 }
 
-func TestResolveQueueItemBySkill(t *testing.T) {
+func TestResolveStageBySkill(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ResolveQueueItem(QueueItemInput{Skill: "schedule", ID: "x"})
+	tt, ok := reg.ResolveStage(StageInput{Skill: "schedule", ID: "x"})
 	if !ok || tt.Key != "schedule" {
 		t.Fatalf("resolve by skill = %+v, %v", tt, ok)
 	}
 }
 
-func TestResolveQueueItemByIDPrefixNoLongerMatches(t *testing.T) {
+func TestResolveStageByIDPrefixNoLongerMatches(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "schedule-20260222-123456-1"}); ok {
+	if _, ok := reg.ResolveStage(StageInput{ID: "schedule-20260222-123456-1"}); ok {
 		t.Fatal("ID prefix fallback should not resolve — require explicit task_key")
 	}
 }
 
-func TestResolveQueueItemUnknown(t *testing.T) {
+func TestResolveStageUnknown(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	if _, ok := reg.ResolveQueueItem(QueueItemInput{ID: "42", Title: "some ticket"}); ok {
+	if _, ok := reg.ResolveStage(StageInput{ID: "42", Title: "some ticket"}); ok {
 		t.Fatal("unknown item should not resolve")
 	}
 }
 
-func TestResolveQueueItemByExactID(t *testing.T) {
+func TestResolveStageByExactID(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	tt, ok := reg.ResolveQueueItem(QueueItemInput{ID: "reflect"})
+	tt, ok := reg.ResolveStage(StageInput{ID: "reflect"})
 	if !ok || tt.Key != "reflect" {
 		t.Fatalf("resolve by exact id = %+v, %v", tt, ok)
 	}

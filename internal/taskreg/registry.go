@@ -15,8 +15,8 @@ type TaskType struct {
 	DomainSkill string // domain context skill (e.g., "backlog")
 }
 
-// QueueItemInput contains queue item fields needed for task resolution.
-type QueueItemInput struct {
+// StageInput contains stage fields needed for task resolution.
+type StageInput struct {
 	ID      string
 	TaskKey string
 	Title   string
@@ -69,9 +69,9 @@ func (r Registry) ByKey(taskKey string) (TaskType, bool) {
 	return tt, ok
 }
 
-// ResolveQueueItem resolves a queue item to its task type.
+// ResolveStage resolves a stage to its task type.
 // Resolution order: task_key → skill name → exact id match.
-func (r Registry) ResolveQueueItem(item QueueItemInput) (TaskType, bool) {
+func (r Registry) ResolveStage(item StageInput) (TaskType, bool) {
 	if taskKey := normalize(item.TaskKey); taskKey != "" {
 		if tt, ok := r.byKey[taskKey]; ok {
 			return tt, true

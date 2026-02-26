@@ -5,7 +5,9 @@ import (
 	"os"
 	"slices"
 
+	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/taskreg"
 )
 
 // dispatchCandidate is a lightweight struct identifying a stage ready for dispatch.
@@ -421,4 +423,25 @@ func fromStagesX(stages []queuex.Stage) []Stage {
 		})
 	}
 	return out
+}
+
+// NormalizeAndValidateOrders wraps the queuex function for loop-layer types.
+func NormalizeAndValidateOrders(of OrdersFile, planIDs []int, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
+	updated, changed, err := queuex.NormalizeAndValidateOrders(toOrdersFileX(of), planIDs, reg, cfg)
+	if err != nil {
+		return OrdersFile{}, false, err
+	}
+	if !changed {
+		return of, false, nil
+	}
+	return fromOrdersFileX(updated), true, nil
+}
+
+// ApplyOrderRoutingDefaults wraps the queuex function for loop-layer types.
+func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool) {
+	updated, changed := queuex.ApplyOrderRoutingDefaults(toOrdersFileX(of), reg, cfg)
+	if !changed {
+		return of, false
+	}
+	return fromOrdersFileX(updated), true
 }

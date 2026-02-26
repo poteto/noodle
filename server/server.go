@@ -288,7 +288,7 @@ func (s *Server) handleReviewDiff(w http.ResponseWriter, r *http.Request) {
 	}
 	var found *loop.PendingReviewItem
 	for i := range items {
-		if items[i].ID == id {
+		if items[i].OrderID == id {
 			found = &items[i]
 			break
 		}

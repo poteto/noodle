@@ -10,22 +10,22 @@ import (
 	"github.com/poteto/noodle/mise"
 )
 
-func buildCookPrompt(item QueueItem, resumePrompt string) string {
+func buildCookPrompt(orderID string, stage Stage, plan []string, rationale string, resumePrompt string) string {
 	var header string
-	if len(item.Plan) > 0 {
-		header = fmt.Sprintf("Work on plan: %s", strings.Join(item.Plan, ", "))
+	if len(plan) > 0 {
+		header = fmt.Sprintf("[order:%s] Work on plan: %s", orderID, strings.Join(plan, ", "))
 	} else {
-		header = fmt.Sprintf("Work backlog item %s", item.ID)
+		header = fmt.Sprintf("[order:%s] Work backlog item %s", orderID, orderID)
 	}
 	parts := []string{header}
-	if skill := strings.TrimSpace(item.Skill); skill != "" {
+	if skill := strings.TrimSpace(stage.Skill); skill != "" {
 		parts = append(parts, fmt.Sprintf("Use Skill(%s) for methodology.", skill))
 	}
-	if strings.TrimSpace(item.Prompt) != "" {
-		parts = append(parts, strings.TrimSpace(item.Prompt))
+	if strings.TrimSpace(stage.Prompt) != "" {
+		parts = append(parts, strings.TrimSpace(stage.Prompt))
 	}
-	if strings.TrimSpace(item.Rationale) != "" {
-		parts = append(parts, "Context: "+strings.TrimSpace(item.Rationale))
+	if strings.TrimSpace(rationale) != "" {
+		parts = append(parts, "Context: "+strings.TrimSpace(rationale))
 	}
 	if strings.TrimSpace(resumePrompt) != "" {
 		parts = append(parts, resumePrompt)
@@ -87,7 +87,15 @@ func sanitizeToken(value string) string {
 	return name
 }
 
-func cookBaseName(item QueueItem) string {
+// cookBaseName returns the worktree name for a stage dispatch.
+// Format: orderID:stageIndex:taskKey (e.g., "29:0:execute").
+func cookBaseName(orderID string, stageIndex int, taskKey string) string {
+	return fmt.Sprintf("%s:%d:%s", orderID, stageIndex, taskKey)
+}
+
+// cookBaseNameLegacy derives a worktree-safe name from a QueueItem.
+// Kept for adopted-session lookups until queue.json is fully removed.
+func cookBaseNameLegacy(item QueueItem) string {
 	idToken := sanitizeToken(item.ID)
 	if idToken == "" {
 		idToken = "cook"
@@ -178,19 +186,6 @@ func isWorktreeAlreadyExistsError(err error) bool {
 	}
 	text := strings.ToLower(err.Error())
 	return strings.Contains(text, "worktree") && strings.Contains(text, "already exists at")
-}
-
-func findQueueItemByTarget(items []QueueItem, targetID string) (QueueItem, bool) {
-	targetID = strings.TrimSpace(targetID)
-	if targetID == "" {
-		return QueueItem{}, false
-	}
-	for _, item := range items {
-		if strings.TrimSpace(item.ID) == targetID {
-			return item, true
-		}
-	}
-	return QueueItem{}, false
 }
 
 // hasSyncWarnings returns true if any warning indicates a sync script problem.

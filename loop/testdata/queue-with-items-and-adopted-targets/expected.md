@@ -17,8 +17,7 @@ source_hash: 0f7f8a1ee7fcc42ce8d0a83e857d121b5e511b34865c84434cd40beecfaedba6
       "normal_spawn_calls": 2,
       "created_worktrees": 2,
       "first_spawn": {
-        "name": "42-task-42",
-        "skill": "execute",
+        "name": "42:0:execute",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }

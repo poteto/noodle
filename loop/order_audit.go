@@ -67,13 +67,13 @@ func (l *Loop) auditQueue() []QueueItem {
 	var kept []QueueItem
 	var dropped []QueueItem
 	for _, item := range queue.Items {
-		input := taskreg.QueueItemInput{
+		input := taskreg.StageInput{
 			ID:      item.ID,
 			TaskKey: item.TaskKey,
 			Title:   item.Title,
 			Skill:   item.Skill,
 		}
-		if _, ok := l.registry.ResolveQueueItem(input); ok {
+		if _, ok := l.registry.ResolveStage(input); ok {
 			kept = append(kept, item)
 		} else {
 			dropped = append(dropped, item)
@@ -115,6 +115,58 @@ func (l *Loop) auditQueue() []QueueItem {
 	}
 
 	return dropped
+}
+
+// auditOrders checks each order's stages against the current registry.
+// Orders with no resolvable stages are dropped. Emits order_drop events.
+func (l *Loop) auditOrders() {
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		return
+	}
+
+	var kept []Order
+	var droppedIDs []string
+	for _, order := range orders.Orders {
+		hasValid := false
+		for _, stage := range order.Stages {
+			input := taskreg.StageInput{
+				TaskKey: stage.TaskKey,
+				Skill:   stage.Skill,
+			}
+			if _, ok := l.registry.ResolveStage(input); ok {
+				hasValid = true
+				break
+			}
+		}
+		if hasValid {
+			kept = append(kept, order)
+		} else {
+			droppedIDs = append(droppedIDs, order.ID)
+			fmt.Fprintf(os.Stderr, "dropped order %q: no stages resolve\n", order.ID)
+		}
+	}
+
+	if len(droppedIDs) == 0 {
+		return
+	}
+
+	orders.Orders = kept
+	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		fmt.Fprintf(os.Stderr, "order-audit: write orders: %v\n", err)
+		return
+	}
+
+	eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
+	now := l.deps.Now().UTC()
+	for _, id := range droppedIDs {
+		appendQueueEvent(eventsPath, QueueAuditEvent{
+			At:     now,
+			Type:   "order_drop",
+			Target: id,
+			Reason: "no stages resolve",
+		})
+	}
 }
 
 const maxQueueEventLines = 200

@@ -127,6 +127,46 @@ func (fakeMonitor) RunOnce(_ context.Context) ([]monitor.SessionMeta, error) {
 	return nil, nil
 }
 
+// writeTestQueueAndOrders writes both queue.json (for legacy code paths) and
+// orders.json (for the orders-based cycle) from a Queue. Each QueueItem becomes
+// a single-stage active order.
+func writeTestQueueAndOrders(t *testing.T, runtimeDir string, queue Queue) (queuePath, ordersPath string) {
+	t.Helper()
+	queuePath = filepath.Join(runtimeDir, "queue.json")
+	ordersPath = filepath.Join(runtimeDir, "orders.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	return queuePath, ordersPath
+}
+
+// queueToOrders converts a Queue to an OrdersFile for test convenience.
+// Each QueueItem becomes a single-stage active Order.
+func queueToOrders(q Queue) OrdersFile {
+	orders := make([]Order, 0, len(q.Items))
+	for _, item := range q.Items {
+		orders = append(orders, Order{
+			ID:        item.ID,
+			Title:     item.Title,
+			Plan:      item.Plan,
+			Rationale: item.Rationale,
+			Status:    OrderStatusActive,
+			Stages: []Stage{{
+				TaskKey:  item.TaskKey,
+				Skill:    item.Skill,
+				Provider: item.Provider,
+				Model:    item.Model,
+				Runtime:  item.Runtime,
+				Status:   StageStatusPending,
+			}},
+		})
+	}
+	return OrdersFile{GeneratedAt: q.GeneratedAt, Orders: orders}
+}
+
 func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -134,9 +174,7 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(filepath.Join(runtimeDir, "queue.json"), queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
+	queuePath, ordersPath := writeTestQueueAndOrders(t, runtimeDir, queue)
 
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
@@ -149,7 +187,8 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
+		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -174,8 +213,11 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
-	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
+	existingWorktree := filepath.Join(projectDir, ".worktrees", "42:0:execute")
 	if err := os.MkdirAll(existingWorktree, 0o755); err != nil {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
@@ -218,6 +260,9 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
 	sp := &fakeDispatcher{}
@@ -255,8 +300,11 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
-	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "42"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "42:0:execute"), 0o755); err != nil {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
@@ -278,7 +326,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		t.Fatalf("expected spawn error, got %v", err)
 	}
 	for _, name := range wt.cleaned {
-		if name == "42" {
+		if name == "42:0:execute" {
 			t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
 		}
 	}
@@ -294,6 +342,9 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	sp := &fakeDispatcher{dispatchErr: errors.New("spawn failed")}
@@ -315,7 +366,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 	created42 := false
 	for _, name := range wt.created {
-		if name == "42" {
+		if name == "42:0:execute" {
 			created42 = true
 			break
 		}
@@ -325,7 +376,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 	cleaned42 := false
 	for _, name := range wt.cleaned {
-		if name == "42" {
+		if name == "42:0:execute" {
 			cleaned42 = true
 			break
 		}
@@ -345,6 +396,9 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	sp := &fakeDispatcher{}
@@ -379,12 +433,15 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
 		t.Fatalf("backlog done calls = %#v", ar.doneCalls)
 	}
-	updated, err := readQueue(queuePath)
+	// Verify the order was removed from orders.json after completion.
+	updatedOrders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
-		t.Fatalf("read queue after completion: %v", err)
+		t.Fatalf("read orders after completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("expected schedule bootstrap item after completion, got %#v", updated.Items)
+	for _, order := range updatedOrders.Orders {
+		if order.ID == "42" {
+			t.Fatal("order 42 should have been removed after completion")
+		}
 	}
 }
 
@@ -482,6 +539,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
@@ -495,6 +553,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -549,15 +608,16 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 		t.Fatalf("unexpected worktree creates: %#v", wt.created)
 	}
 
-	updated, err := readQueue(queuePath)
+	// Verify the schedule order was bootstrapped into orders.json.
+	updatedOrders, err := readOrders(ordersPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read orders: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("expected schedule queue bootstrap item, got %#v", updated.Items)
+	if len(updatedOrders.Orders) != 1 || updatedOrders.Orders[0].ID != ScheduleTaskKey() {
+		t.Fatalf("expected schedule bootstrap order, got %#v", updatedOrders.Orders)
 	}
-	if updated.Items[0].Skill != "schedule" {
-		t.Fatalf("queue skill = %q", updated.Items[0].Skill)
+	if len(updatedOrders.Orders[0].Stages) < 1 || updatedOrders.Orders[0].Stages[0].Skill != "schedule" {
+		t.Fatalf("schedule order skill mismatch: %#v", updatedOrders.Orders[0].Stages)
 	}
 }
 
@@ -610,9 +670,13 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -630,6 +694,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
@@ -655,12 +720,15 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 		t.Fatalf("expected failed.json: %v", err)
 	}
 
-	parsed, err := readQueue(queuePath)
+	// Verify the order was removed from orders.json after failure.
+	updatedOrders, err := readOrders(ordersPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read orders: %v", err)
 	}
-	if len(parsed.Items) != 1 || parsed.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("expected schedule bootstrap item after max retries, got %#v", parsed.Items)
+	for _, order := range updatedOrders.Orders {
+		if order.ID == "42" {
+			t.Fatal("order 42 should have been removed after failure")
+		}
 	}
 }
 
@@ -674,6 +742,9 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, Queue{}); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(runtimeDir, "orders.json"), OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -754,21 +825,15 @@ func TestSteerScheduleRegeneratesQueueWithPromptRationale(t *testing.T) {
 	}
 }
 
-func TestCookBaseNameIncludesIDAndShortTitle(t *testing.T) {
-	name := cookBaseName(QueueItem{
-		ID:    "42",
-		Title: "Refactor queue generation for reliability and clarity",
-	})
-	if !strings.HasPrefix(name, "42-refactor-queue-generation") {
+func TestCookBaseNameIncludesOrderStageTask(t *testing.T) {
+	name := cookBaseName("42", 0, "execute")
+	if name != "42:0:execute" {
 		t.Fatalf("unexpected cook name: %q", name)
-	}
-	if len(name) > 64 {
-		t.Fatalf("cook name too long: %d", len(name))
 	}
 }
 
-func TestCookBaseNameFallsBackToIDWithoutTitle(t *testing.T) {
-	name := cookBaseName(QueueItem{ID: "42", Title: ""})
+func TestCookBaseNameLegacyFallsBackToIDWithoutTitle(t *testing.T) {
+	name := cookBaseNameLegacy(QueueItem{ID: "42", Title: ""})
 	if name != "42" {
 		t.Fatalf("cook name = %q", name)
 	}
@@ -873,6 +938,9 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 1
@@ -910,6 +978,9 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -950,6 +1021,9 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -1014,6 +1088,9 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
 	wt := &fakeWorktree{}
@@ -1034,7 +1111,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
-	if len(wt.merged) != 1 || wt.merged[0] != "42" {
+	if len(wt.merged) != 1 || wt.merged[0] != "42:0:execute" {
 		t.Fatalf("unexpected merged worktrees: %#v", wt.merged)
 	}
 	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
@@ -1043,12 +1120,15 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if len(l.adoptedTargets) != 0 {
 		t.Fatalf("expected adopted targets to be cleared, got %#v", l.adoptedTargets)
 	}
-	updated, err := readQueue(queuePath)
+	// Verify the order was removed from orders.json after completion.
+	updatedOrders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
-		t.Fatalf("read queue after adopted completion: %v", err)
+		t.Fatalf("read orders after adopted completion: %v", err)
 	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("expected schedule bootstrap item after adopted completion, got %#v", updated.Items)
+	for _, order := range updatedOrders.Orders {
+		if order.ID == "42" {
+			t.Fatal("order 42 should have been removed after completion")
+		}
 	}
 }
 
@@ -1073,6 +1153,9 @@ func TestMergeCookUsesRemoteBranchSyncResult(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
@@ -1087,13 +1170,13 @@ func TestMergeCookUsesRemoteBranchSyncResult(t *testing.T) {
 		QueueFile:  queuePath,
 	})
 
-	if err := l.mergeCook(
+	if err := l.mergeCookLegacy(
 		context.Background(),
 		QueueItem{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		"42",
 		sessionID,
 	); err != nil {
-		t.Fatalf("mergeCook: %v", err)
+		t.Fatalf("mergeCookLegacy: %v", err)
 	}
 	if len(wt.remoteMerged) != 1 || wt.remoteMerged[0] != "noodle/session-a" {
 		t.Fatalf("unexpected remote merges: %#v", wt.remoteMerged)
@@ -1114,6 +1197,9 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
@@ -1127,13 +1213,13 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 		QueueFile:  queuePath,
 	})
 
-	if err := l.mergeCook(
+	if err := l.mergeCookLegacy(
 		context.Background(),
 		QueueItem{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		"42",
 		"",
 	); err != nil {
-		t.Fatalf("mergeCook: %v", err)
+		t.Fatalf("mergeCookLegacy: %v", err)
 	}
 	if len(wt.merged) != 1 || wt.merged[0] != "42" {
 		t.Fatalf("unexpected local merges: %#v", wt.merged)
@@ -1153,6 +1239,9 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
@@ -1196,18 +1285,13 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
 	}
-	if reason, ok := l.failedTargets["42"]; !ok {
-		t.Fatal("expected target to be marked failed")
-	} else if !strings.Contains(reason, "merge conflict") {
-		t.Fatalf("failed reason = %q", reason)
+	// Merge conflicts now park for pending review instead of marking failed.
+	if _, ok := l.pendingReview["42"]; !ok {
+		t.Fatal("expected target to be parked for pending review after merge conflict")
 	}
-
-	updated, err := readQueue(queuePath)
-	if err != nil {
-		t.Fatalf("read queue after conflict: %v", err)
-	}
-	if len(updated.Items) != 1 || updated.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("expected schedule bootstrap item after conflict, got %#v", updated.Items)
+	pending := l.pendingReview["42"]
+	if !strings.Contains(pending.reason, "merge conflict") {
+		t.Fatalf("pending review reason = %q, want 'merge conflict'", pending.reason)
 	}
 }
 
@@ -1222,6 +1306,9 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -1261,17 +1348,21 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	}
 }
 
-func TestApprovalAutoCanMergeFalseParks(t *testing.T) {
+func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	// review task type has CanMerge=false (Merge: boolPtr(false) in registry)
-	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "review", Provider: "claude", Model: "claude-opus-4-6"}}}
+	// review task type has CanMerge=false — in auto mode, non-mergeable stages advance without merge.
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "review", Skill: "review", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(ordersPath, queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -1289,6 +1380,7 @@ func TestApprovalAutoCanMergeFalseParks(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		QueueFile:  queuePath,
+		OrdersFile: ordersPath,
 	})
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
@@ -1305,15 +1397,19 @@ func TestApprovalAutoCanMergeFalseParks(t *testing.T) {
 	if len(wt.merged) != 0 {
 		t.Fatalf("worktree merges = %d, want 0 (task disallows merge)", len(wt.merged))
 	}
-	if len(l.pendingReview) != 1 {
-		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	// In auto mode, non-mergeable stages advance without parking.
+	if len(l.pendingReview) != 0 {
+		t.Fatalf("pendingReview = %d, want 0 (auto mode advances non-mergeable stages)", len(l.pendingReview))
 	}
-	items, err := ReadPendingReview(runtimeDir)
+	// Verify the order was removed from orders.json after completion.
+	updatedOrders, err := readOrders(ordersPath)
 	if err != nil {
-		t.Fatalf("ReadPendingReview: %v", err)
+		t.Fatalf("read orders: %v", err)
 	}
-	if len(items) != 1 || items[0].ID != "42" {
-		t.Fatalf("pending review file items = %#v", items)
+	for _, order := range updatedOrders.Orders {
+		if order.ID == "42" {
+			t.Fatal("order 42 should have been removed after non-mergeable stage completion")
+		}
 	}
 }
 
@@ -1328,6 +1424,9 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -1368,7 +1467,7 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadPendingReview: %v", err)
 	}
-	if len(items) != 1 || items[0].ID != "42" {
+	if len(items) != 1 || items[0].OrderID != "42" {
 		t.Fatalf("pending review file items = %#v", items)
 	}
 }
@@ -1384,6 +1483,9 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	cfg := config.DefaultConfig()
@@ -1424,7 +1526,7 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadPendingReview: %v", err)
 	}
-	if len(items) != 1 || items[0].ID != "42" {
+	if len(items) != 1 || items[0].OrderID != "42" {
 		t.Fatalf("pending review file items = %#v", items)
 	}
 }
@@ -1481,6 +1583,9 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
 
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
@@ -1503,7 +1608,14 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	// Simulate: item 29 was spawned in a previous cycle and is still running.
 	item29Session := &fakeSession{id: "29-sess", status: "running", done: make(chan struct{})}
 	item29Cook := &activeCook{
-		queueItem:    queue.Items[0],
+		orderID: "29",
+		stage: Stage{
+			TaskKey:  "execute",
+			Skill:    "execute",
+			Provider: "claude",
+			Model:    "claude-opus-4-6",
+		},
+		plan:         []string{"plans/29-test/overview"},
 		session:      item29Session,
 		worktreeName: "29",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
@@ -1573,6 +1685,9 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
+	}
+	if err := writeOrdersAtomic(filepath.Join(filepath.Dir(queuePath), "orders.json"), queueToOrders(queue)); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
 	// Call 0: cycle 1 spawns "37" → succeeds
