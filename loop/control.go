@@ -222,7 +222,7 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	if ack.Status == "error" {
 		l.logger.Warn("control command failed", "action", cmd.Action, "message", ack.Message)
 	} else {
-		l.logger.Info("control command", "action", cmd.Action)
+		l.logger.Info("control command", "action", cmd.Action, "status", ack.Status)
 	}
 	return ack
 }

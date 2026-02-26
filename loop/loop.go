@@ -392,11 +392,11 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 				l.setState(StateIdle)
 				return Queue{}, false, nil
 			}
-			l.logger.Info("queue empty, bootstrapping schedule")
 			queue = bootstrapScheduleQueue(l.config, "", l.deps.Now().UTC())
 			if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
 				return Queue{}, false, err
 			}
+			l.logger.Info("queue empty, bootstrapping schedule")
 		}
 	}
 	if updatedQueue, changed := applyQueueRoutingDefaults(queue, l.registry, l.config); changed {
