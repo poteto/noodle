@@ -4,9 +4,9 @@
 /* Poster theme — yellow screams, black anchors, white card cutouts. */
 
 @theme {
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   --color-bg-0: #fbbf24;
   --color-bg-1: #fff;
@@ -17,7 +17,7 @@
 
   --color-accent: #1a1400;
   --color-accent-dim: #3a3020;
-  --color-accent-glow: rgba(26,20,0,0.08);
+  --color-accent-glow: rgba(26, 20, 0, 0.08);
   --color-accent-on: #fbbf24;
 
   --color-border-DEFAULT: #1a1400;
@@ -30,30 +30,30 @@
 
   --color-ngreen: #1a7a3a;
   --color-ngreen-dim: #c8ecd0;
-  --color-ngreen-bg: rgba(26,122,58,0.1);
+  --color-ngreen-bg: rgba(26, 122, 58, 0.1);
   --color-nyellow: #8a6800;
   --color-nyellow-dim: #f0e0a0;
-  --color-nyellow-bg: rgba(138,104,0,0.08);
+  --color-nyellow-bg: rgba(138, 104, 0, 0.08);
   --color-norange: #b85a20;
-  --color-norange-bg: rgba(184,90,32,0.08);
+  --color-norange-bg: rgba(184, 90, 32, 0.08);
   --color-nred: #a82020;
   --color-nred-dim: #f0c8c8;
   --color-nblue: #1858a0;
   --color-nblue-dim: #c8d8f0;
-  --color-nblue-bg: rgba(24,88,160,0.08);
+  --color-nblue-bg: rgba(24, 88, 160, 0.08);
   --color-npink: #a04070;
-  --color-npink-bg: rgba(160,64,112,0.08);
+  --color-npink-bg: rgba(160, 64, 112, 0.08);
   --color-npurple: #5830a0;
-  --color-npurple-bg: rgba(88,48,160,0.06);
+  --color-npurple-bg: rgba(88, 48, 160, 0.06);
 
   --shadow-poster-sm: 3px 3px 0 #1a1400;
   --shadow-poster-md: 5px 5px 0 #1a1400;
   --shadow-poster-lg: 7px 7px 0 #1a1400;
   --shadow-card: 4px 4px 0 #1a1400;
   --shadow-card-hover: 6px 8px 0 #1a1400;
-  --shadow-btn: 3px 3px 0 rgba(0,0,0,0.2);
-  --shadow-btn-hover: 5px 5px 0 rgba(0,0,0,0.3);
-  --shadow-btn-active: 1px 1px 0 rgba(0,0,0,0.2);
+  --shadow-btn: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  --shadow-btn-hover: 5px 5px 0 rgba(0, 0, 0, 0.3);
+  --shadow-btn-active: 1px 1px 0 rgba(0, 0, 0, 0.2);
   --shadow-chat: -8px 0 0 #1a1400;
   --shadow-modal: 8px 8px 0 #1a1400;
 
@@ -66,32 +66,61 @@
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes tooltip-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @layer base {
-  html, body {
+  html,
+  body {
     height: 100%;
     font-family: var(--font-body);
     font-size: 0.9375rem;
@@ -100,10 +129,19 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--color-bg-3); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--color-text-3); }
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-bg-3);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-3);
+  }
 
   :focus-visible {
     outline: 2px solid var(--color-nyellow);
@@ -118,7 +156,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;

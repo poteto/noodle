@@ -1,11 +1,7 @@
 import { useEffect } from "react";
-import {
-  useQuery,
-  useSuspenseQuery,
-  useQueryClient,
-  useMutation,
-} from "@tanstack/react-query";
-import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY, type SSEStatus } from "./sse";
+import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY } from "./sse";
+import type { SSEStatus } from "./sse";
 import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
 import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse } from "./types";
 
@@ -14,9 +10,7 @@ import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse } fr
 export function useSnapshot() {
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    return connectSSE(queryClient);
-  }, [queryClient]);
+  useEffect(() => connectSSE(queryClient), [queryClient]);
 
   return useQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
@@ -32,9 +26,7 @@ export function useSnapshot() {
 export function useSuspenseSnapshot() {
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    return connectSSE(queryClient);
-  }, [queryClient]);
+  useEffect(() => connectSSE(queryClient), [queryClient]);
 
   return useSuspenseQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
@@ -47,8 +39,8 @@ export function useSuspenseSnapshot() {
 export function useSessionEvents(sessionId: string | undefined) {
   return useQuery<EventLine[]>({
     queryKey: ["sessionEvents", sessionId],
-    queryFn: () => fetchSessionEvents(sessionId!),
-    enabled: !!sessionId,
+    queryFn: () => fetchSessionEvents(sessionId ?? ""),
+    enabled: Boolean(sessionId),
     refetchInterval: 3000,
   });
 }

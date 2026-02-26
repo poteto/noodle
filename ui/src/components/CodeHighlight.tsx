@@ -15,10 +15,7 @@ function getStarryNight(): Promise<StarryNight> {
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 export function getScopeFromLang(lang: string): string | undefined {
@@ -26,35 +23,47 @@ export function getScopeFromLang(lang: string): string | undefined {
 
   switch (normalized) {
     case "js":
-    case "javascript":
+    case "javascript": {
       return "source.js";
+    }
     case "ts":
-    case "typescript":
+    case "typescript": {
       return "source.ts";
-    case "go":
+    }
+    case "go": {
       return "source.go";
+    }
     case "python":
-    case "py":
+    case "py": {
       return "source.python";
+    }
     case "bash":
     case "sh":
-    case "shell":
+    case "shell": {
       return "source.shell";
-    case "json":
+    }
+    case "json": {
       return "source.json";
-    case "css":
+    }
+    case "css": {
       return "source.css";
-    case "html":
+    }
+    case "html": {
       return "text.html.basic";
-    case "rust":
+    }
+    case "rust": {
       return "source.rust";
+    }
     case "ruby":
-    case "rb":
+    case "rb": {
       return "source.ruby";
-    case "diff":
+    }
+    case "diff": {
       return "source.diff";
-    default:
+    }
+    default: {
       return undefined;
+    }
   }
 }
 
@@ -79,11 +88,13 @@ export function HighlightedCode({ code, lang }: { code: string; lang?: string })
     let cancelled = false;
     setHtml(null);
 
-    void highlightCode(code, lang).then((next) => {
+    async function run() {
+      const next = await highlightCode(code, lang);
       if (!cancelled) {
         setHtml(next);
       }
-    });
+    }
+    void run();
 
     return () => {
       cancelled = true;

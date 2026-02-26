@@ -21,9 +21,13 @@ export function SidePanel({
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape") {
+        return;
+      }
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        return;
+      }
       onClose();
     }
     document.addEventListener("keydown", handleKey);
@@ -31,7 +35,9 @@ export function SidePanel({
   }, [onClose]);
 
   function handleBackdropClick(e: React.MouseEvent) {
-    if (e.target === backdropRef.current) onClose();
+    if (e.target === backdropRef.current) {
+      onClose();
+    }
   }
 
   const handleMouseMove = useCallback(
@@ -60,19 +66,26 @@ export function SidePanel({
     [handleMouseMove, handleMouseUp],
   );
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       document.body.classList.remove("select-none");
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
+    },
+    [handleMouseMove, handleMouseUp],
+  );
 
   return (
     <div
       className="fixed inset-0 bg-[rgba(26,20,0,0.3)] z-100 flex justify-end animate-fade-in"
       ref={backdropRef}
+      role="presentation"
       onClick={handleBackdropClick}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          onClose();
+        }
+      }}
     >
       <div
         className="h-screen bg-bg-1 border-l-[3px] border-border flex flex-col shadow-chat animate-slide-right relative"
@@ -80,6 +93,7 @@ export function SidePanel({
       >
         <div
           className="absolute top-0 left-0 bottom-0 w-1 cursor-col-resize bg-border hover:bg-accent z-10"
+          role="separator"
           onMouseDown={handleMouseDown}
         />
         {children}

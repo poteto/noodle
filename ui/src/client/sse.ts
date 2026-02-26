@@ -16,16 +16,18 @@ export function connectSSE(queryClient: QueryClient): () => void {
   }
 
   function connect() {
-    if (closed) return;
+    if (closed) {
+      return;
+    }
     setStatus("connecting");
 
     eventSource = new EventSource("/api/events");
 
-    eventSource.onopen = () => {
+    eventSource.addEventListener("open", () => {
       setStatus("connected");
-    };
+    });
 
-    eventSource.onmessage = (event) => {
+    eventSource.addEventListener("message", (event) => {
       try {
         // Same-origin Go API server — earned boundary cast.
         const snapshot = JSON.parse(event.data) as Snapshot;
@@ -34,16 +36,16 @@ export function connectSSE(queryClient: QueryClient): () => void {
       } catch {
         // Ignore malformed messages.
       }
-    };
+    });
 
-    eventSource.onerror = () => {
+    eventSource.addEventListener("error", () => {
       eventSource?.close();
       eventSource = null;
       setStatus("disconnected");
       if (!closed) {
         setTimeout(connect, RECONNECT_DELAY_MS);
       }
-    };
+    });
   }
 
   connect();

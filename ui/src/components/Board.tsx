@@ -43,15 +43,15 @@ function pendingSession(item: QueueItem): Session {
   };
 }
 
-type OptimisticAction =
-  | { type: "move-to-cooking"; itemId: string }
-  | ControlCommand;
+type OptimisticAction = { type: "move-to-cooking"; itemId: string } | ControlCommand;
 
 function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): Snapshot {
   // Special case: drag-to-cook creates a pending session placeholder.
   if ("type" in action) {
     const item = current.queue.find((q) => q.id === action.itemId);
-    if (!item) return current;
+    if (!item) {
+      return current;
+    }
     return {
       ...current,
       active_queue_ids: [...current.active_queue_ids, action.itemId],
@@ -60,54 +60,67 @@ function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): S
   }
 
   switch (action.action) {
-    case "pause":
+    case "pause": {
       return { ...current, loop_state: "paused" };
-    case "resume":
+    }
+    case "resume": {
       return { ...current, loop_state: "running" };
-    case "stop":
+    }
+    case "stop": {
       return {
         ...current,
         active: current.active.filter((s) => s.id !== action.name),
       };
+    }
     case "merge":
-    case "reject":
+    case "reject": {
       return {
         ...current,
         pending_reviews: current.pending_reviews.filter((r) => r.id !== action.item),
         pending_review_count: Math.max(0, current.pending_review_count - 1),
       };
-    case "request-changes":
+    }
+    case "request-changes": {
       // Don't optimistically remove — request-changes can no-op at max
       // concurrency, keeping the item in review. The next SSE snapshot
       // will reflect the real state.
       return current;
+    }
     case "set-max-cooks": {
-      const n = parseInt(action.value ?? "", 10);
-      return isNaN(n) ? current : { ...current, max_cooks: n };
+      const n = Number.parseInt(action.value ?? "", 10);
+      return Number.isNaN(n) ? current : { ...current, max_cooks: n };
     }
     case "reorder": {
-      if (!action.item || action.value == null) return current;
+      if (!action.item || action.value === undefined) {
+        return current;
+      }
       const fromIndex = current.queue.findIndex((q) => q.id === action.item);
-      const toIndex = parseInt(action.value, 10);
-      if (fromIndex < 0 || isNaN(toIndex)) return current;
+      const toIndex = Number.parseInt(action.value, 10);
+      if (fromIndex === -1 || Number.isNaN(toIndex)) {
+        return current;
+      }
       const newQueue = [...current.queue];
       const [moved] = newQueue.splice(fromIndex, 1);
       newQueue.splice(toIndex, 0, moved);
       return { ...current, queue: newQueue };
     }
-    case "requeue":
+    case "requeue": {
       return {
         ...current,
         recent: current.recent.filter((s) => s.id !== action.item),
       };
-    default:
+    }
+    default: {
       return current;
+    }
   }
 }
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
-  if (!el) return false;
+  if (!el) {
+    return false;
+  }
   const tag = el.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
@@ -137,7 +150,9 @@ export function Board() {
 
   const handleKeyboard = useCallback(
     (e: KeyboardEvent) => {
-      if (isInputFocused()) return;
+      if (isInputFocused()) {
+        return;
+      }
       if (e.key === "n") {
         e.preventDefault();
         setShowTaskEditor(true);
@@ -166,19 +181,21 @@ export function Board() {
 
   const selectedSession =
     panelState?.type === "chat"
-      ? snapshot.sessions.find((s) => s.id === panelState.sessionId) ?? null
+      ? (snapshot.sessions.find((s) => s.id === panelState.sessionId) ?? null)
       : null;
 
   // Derive review panel visibility from fresh snapshot data — hides when item
   // leaves pending_reviews, and uses up-to-date metadata if item returns.
   const activeReviewItem =
     panelState?.type === "review"
-      ? optimisticSnapshot.pending_reviews.find((r) => r.id === panelState.item.id) ?? null
+      ? (optimisticSnapshot.pending_reviews.find((r) => r.id === panelState.item.id) ?? null)
       : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
     const item = columns.queued[index];
-    if (!item) return;
+    if (!item) {
+      return;
+    }
     dragItemId.current = item.id;
     setDraggingId(item.id);
     e.dataTransfer.effectAllowed = "move";
@@ -191,13 +208,17 @@ export function Board() {
 
   function handleQueueDrop(_e: React.DragEvent, dropIndex: number) {
     const id = dragItemId.current;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     const srcIndex = columns.queued.findIndex((item) => item.id === id);
-    if (srcIndex < 0 || srcIndex === dropIndex) return;
+    if (srcIndex === -1 || srcIndex === dropIndex) {
+      return;
+    }
     const fullQueueIndex = snapshot.queue.findIndex(
       (item) => item.id === columns.queued[dropIndex]?.id,
     );
-    if (fullQueueIndex >= 0) {
+    if (fullQueueIndex !== -1) {
       optimisticSend({ action: "reorder", item: id, value: String(fullQueueIndex) });
     }
     resetDrag();
@@ -217,7 +238,9 @@ export function Board() {
   function handleCookingDrop(e: React.DragEvent) {
     e.preventDefault();
     const id = dragItemId.current;
-    if (!id || columns.cooking.length >= maxCooks) return;
+    if (!id || columns.cooking.length >= maxCooks) {
+      return;
+    }
     startTransition(async () => {
       applyOptimistic({ type: "move-to-cooking", itemId: id });
       await sendControl({ action: "reorder", item: id, value: "0" });
@@ -235,10 +258,7 @@ export function Board() {
   return (
     <ControlContext.Provider value={optimisticSend}>
       <div className="flex flex-col h-screen bg-bg-0">
-        <BoardHeader
-          snapshot={optimisticSnapshot}
-          onNewTask={() => setShowTaskEditor(true)}
-        />
+        <BoardHeader snapshot={optimisticSnapshot} onNewTask={() => setShowTaskEditor(true)} />
 
         <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
           <BoardColumn
@@ -266,12 +286,7 @@ export function Board() {
           <BoardColumn
             title="Cooking"
             count={columns.cooking.length}
-            headerExtra={
-              <ConcurrencyBadge
-                active={columns.cooking.length}
-                maxCooks={maxCooks}
-              />
-            }
+            headerExtra={<ConcurrencyBadge active={columns.cooking.length} maxCooks={maxCooks} />}
           >
             <div
               className={`flex flex-col gap-2.5 min-h-[60px] transition-[background] duration-150${cookingDragOver ? " bg-nyellow-bg outline-2 outline-dashed outline-nyellow -outline-offset-2" : ""}`}
@@ -280,10 +295,14 @@ export function Board() {
               onDrop={handleCookingDrop}
             >
               {columns.cooking.length === 0 && !cookingDragOver && (
-                <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">No active cooks</div>
+                <div className="text-text-3 font-mono text-[0.8125rem] text-center px-5 py-10">
+                  No active cooks
+                </div>
               )}
               {cookingDragOver && columns.cooking.length === 0 && (
-                <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-semibold">Drop to start cooking</div>
+                <div className="text-nyellow font-mono text-[0.8125rem] text-center px-5 py-10 font-semibold">
+                  Drop to start cooking
+                </div>
               )}
               {columns.cooking.map((session) => (
                 <AgentCard
@@ -307,28 +326,24 @@ export function Board() {
 
           <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
             {columns.done.map((session) => (
-              <DoneCard key={session.id} session={session} onClick={() => setPanelState({ type: "chat", sessionId: session.id })} />
+              <DoneCard
+                key={session.id}
+                session={session}
+                onClick={() => setPanelState({ type: "chat", sessionId: session.id })}
+              />
             ))}
           </BoardColumn>
         </div>
 
         {selectedSession && (
-          <ChatPanel
-            session={selectedSession}
-            onClose={() => setPanelState(null)}
-          />
+          <ChatPanel session={selectedSession} onClose={() => setPanelState(null)} />
         )}
 
         {activeReviewItem && (
-          <ReviewPanel
-            item={activeReviewItem}
-            onClose={() => setPanelState(null)}
-          />
+          <ReviewPanel item={activeReviewItem} onClose={() => setPanelState(null)} />
         )}
 
-        {showTaskEditor && (
-          <TaskEditor onClose={() => setShowTaskEditor(false)} />
-        )}
+        {showTaskEditor && <TaskEditor onClose={() => setShowTaskEditor(false)} />}
       </div>
     </ControlContext.Provider>
   );

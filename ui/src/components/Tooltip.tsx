@@ -1,29 +1,33 @@
-import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-export function Tooltip({
-  content,
-  children,
-}: {
-  content: string;
-  children: ReactNode;
-}) {
+export function Tooltip({ content, children }: { content: string; children: ReactNode }) {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number }>({
     top: 0,
     left: 0,
   });
   const triggerRef = useRef<HTMLSpanElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  useEffect(() => {
-    return () => clearTimeout(timeoutRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const show = useCallback(() => {
-    clearTimeout(timeoutRef.current);
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+    }
     timeoutRef.current = setTimeout(() => {
-      if (!triggerRef.current) return;
+      if (!triggerRef.current) {
+        return;
+      }
       const rect = triggerRef.current.getBoundingClientRect();
       setPosition({
         top: rect.top - 4,
@@ -34,7 +38,9 @@ export function Tooltip({
   }, []);
 
   const hide = useCallback(() => {
-    clearTimeout(timeoutRef.current);
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+    }
     setVisible(false);
   }, []);
 

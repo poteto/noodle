@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src",
+    "fmt": "oxfmt --write src",
+    "fmt:check": "oxfmt --check src",
+    "verify": "concurrently --group --names tsc,lint,fmt \"pnpm typecheck\" \"pnpm lint\" \"pnpm fmt:check\""
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
@@ -23,6 +27,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
+    "concurrently": "^9.2.1",
+    "eslint-plugin-oxfmt": "^0.0.15",
+    "oxfmt": "^0.32.0",
+    "oxlint": "^1.47.0",
     "typescript": "^5.7",
     "vite": "^7",
     "vite-tsconfig-paths": "^6.1.1"

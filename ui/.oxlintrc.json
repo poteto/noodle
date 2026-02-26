@@ -1,0 +1,119 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "react-perf",
+    "jsx-a11y",
+    "import",
+    "promise"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+    "restriction": "warn"
+  },
+  "env": {
+    "browser": true
+  },
+  "settings": {
+    "react": {
+      "formComponents": [],
+      "linkComponents": []
+    },
+    "jsx-a11y": {}
+  },
+  "jsPlugins": ["eslint-plugin-oxfmt"],
+  "rules": {
+    "eslint-plugin-oxfmt/oxfmt": "error",
+    // React 17+ JSX transform — no need to import React
+    "react/react-in-jsx-scope": "off",
+    // .tsx is the standard extension for JSX in TypeScript
+    "react/jsx-filename-extension": "off",
+
+    // Function declarations are idiomatic for React components
+    "eslint/func-style": "off",
+    // Arbitrary numeric limits
+    "eslint/max-statements": "off",
+    "eslint/max-lines-per-function": "off",
+    "eslint/max-lines": "off",
+    "eslint/complexity": "off",
+    "react/jsx-max-depth": "off",
+    "import/max-dependencies": "off",
+
+    // Impractical restriction rules
+    "eslint/id-length": "off",
+    "eslint/no-magic-numbers": "off",
+    "eslint/no-ternary": "off",
+    "eslint/no-plusplus": "off",
+    "eslint/no-inline-comments": "off",
+    "eslint/no-continue": "off",
+    "eslint/capitalized-comments": "off",
+    "import/no-named-export": "off",
+    "import/group-exports": "off",
+    "import/exports-last": "off",
+    "import/no-relative-parent-imports": "off",
+    // Conflicts with consistent-type-specifier-style — separate `import type` is the correct TS idiom
+    "eslint/no-duplicate-imports": "off",
+    // We use named exports
+    "import/prefer-default-export": "off",
+    // CSS and side-effect imports are valid
+    "import/no-unassigned-import": "off",
+    "import/unambiguous": "off",
+    "unicorn/no-null": "off",
+    // PascalCase components are standard React convention
+    "unicorn/filename-case": "off",
+
+    // Rest/spread and optional chaining are standard modern JS
+    "oxc/no-rest-spread-properties": "off",
+    "oxc/no-optional-chaining": "off",
+
+    "typescript/no-non-null-assertion": "error",
+    "eslint/no-undefined": "off",
+
+    // async/await and void for fire-and-forget are standard patterns
+    "oxc/no-async-await": "off",
+    "eslint/no-void": "off",
+
+    // try/catch requires uninitialized let
+    "eslint/init-declarations": "off",
+    // Import order is handled by the formatter
+    "eslint/sort-imports": "off",
+    "eslint/sort-keys": "off",
+    "eslint/no-console": "off",
+    // new Promise() is valid for wrapping callback-based APIs
+    "promise/avoid-new": "off",
+    // Event-based patterns (SSE) aren't callbacks
+    "promise/prefer-await-to-callbacks": "off",
+    // Fire-and-forget .catch() is the correct pattern
+    "promise/prefer-await-to-then": "off",
+
+    // TypeScript infers JSX return types — explicit annotations add noise
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    // Inline handlers and object literals are fine for a small UI
+    "react-perf/jsx-no-new-function-as-prop": "off",
+    "react-perf/jsx-no-new-object-as-prop": "off",
+    "react-perf/jsx-no-jsx-as-prop": "off",
+    "react-perf/jsx-no-new-array-as-prop": "off",
+    // Multiple small related components per file is idiomatic React
+    "react/no-multi-comp": "off",
+    // Function hoisting is fine — TypeScript catches actual use-before-define
+    "eslint/no-use-before-define": "off",
+    // String literals in JSX are fine
+    "react/jsx-no-literals": "off",
+    // autofocus is a valid UX choice for input-focused components
+    "jsx-a11y/no-autofocus": "off",
+    // Context providers co-export their hooks — this is idiomatic React
+    "react/only-export-components": "off",
+    // CodeHighlight needs dangerouslySetInnerHTML for rendered syntax HTML
+    "react/no-danger": "off"
+  },
+  "ignorePatterns": ["routeTree.gen.ts"]
+}

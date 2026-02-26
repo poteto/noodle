@@ -8,11 +8,10 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
 
   function handleSubmit() {
     const text = value.trim();
-    if (!text) return;
-    send(
-      { action: "steer", target: sessionId, prompt: text },
-      { onSuccess: () => setValue("") },
-    );
+    if (!text) {
+      return;
+    }
+    send({ action: "steer", target: sessionId, prompt: text }, { onSuccess: () => setValue("") });
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -24,9 +23,11 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
 
   function handleInput() {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }
 
   return (
@@ -45,6 +46,7 @@ export function ChatInput({ sessionId }: { sessionId: string }) {
         disabled={isPending}
       />
       <button
+        type="button"
         className="px-4 py-1.5 font-display text-[0.8125rem] font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer self-end [&:hover:not(:disabled)]:brightness-[1.2] disabled:opacity-40 disabled:cursor-not-allowed [&:active:not(:disabled)]:translate-x-px [&:active:not(:disabled)]:translate-y-px [&:active:not(:disabled)]:shadow-btn-active"
         onClick={handleSubmit}
         disabled={isPending || !value.trim()}

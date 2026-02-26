@@ -9,7 +9,9 @@ export function QueueAddCard() {
 
   function handleSubmit() {
     const text = prompt.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     send(
       {
         action: "enqueue",
@@ -42,6 +44,7 @@ export function QueueAddCard() {
   if (!open) {
     return (
       <button
+        type="button"
         className="w-full py-[10px] px-[14px] font-body text-[0.8125rem] font-semibold text-text-2 bg-transparent border-2 border-dashed border-border-subtle cursor-pointer transition-all duration-[0.12s] hover:text-text-0 hover:border-border hover:bg-bg-1"
         onClick={() => setOpen(true)}
       >
@@ -63,6 +66,7 @@ export function QueueAddCard() {
       />
       <div className="flex items-center gap-2 mt-2">
         <button
+          type="button"
           className="py-[5px] px-4 font-display text-[0.8125rem] font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer hover:enabled:brightness-120 disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={handleSubmit}
           disabled={isPending || !prompt.trim()}
@@ -70,6 +74,7 @@ export function QueueAddCard() {
           add
         </button>
         <button
+          type="button"
           className="py-[3px] px-[10px] font-mono text-[0.8125rem] font-bold bg-transparent border-none text-text-2 cursor-pointer hover:text-text-0"
           onClick={() => {
             setPrompt("");

@@ -45,25 +45,27 @@ export function QueueCard({
       }}
       onDragEnd={onDragEnd}
     >
-    <div className={classes}>
-      <div className="flex items-center gap-1.5 mb-2">
-        {item.task_key && <Badge type={item.task_key} />}
-      </div>
-      <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{item.title || item.id}</div>
-      {item.prompt && (
-        <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
-          {item.prompt.length > 120
-            ? item.prompt.slice(0, 120) + "..."
-            : item.prompt}
+      <div className={classes}>
+        <div className="flex items-center gap-1.5 mb-2">
+          {item.task_key && <Badge type={item.task_key} />}
         </div>
-      )}
-      {item.rationale && isSchedule && (
-        <div className="font-mono text-xs text-text-2 leading-[1.4] mb-2 italic">{item.rationale}</div>
-      )}
-      <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
-        <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">{item.model}</span>
+        <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{item.title || item.id}</div>
+        {item.prompt && (
+          <div className="text-[0.8125rem] text-text-2 leading-[1.4] mb-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
+            {item.prompt.length > 120 ? `${item.prompt.slice(0, 120)}...` : item.prompt}
+          </div>
+        )}
+        {item.rationale && isSchedule && (
+          <div className="font-mono text-xs text-text-2 leading-[1.4] mb-2 italic">
+            {item.rationale}
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
+          <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">
+            {item.model}
+          </span>
+        </div>
       </div>
-    </div>
     </div>
   );
 }

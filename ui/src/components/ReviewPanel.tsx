@@ -7,13 +7,7 @@ import { DiffViewer } from "./DiffViewer";
 import { ReviewActions } from "./ReviewActions";
 import { SidePanel } from "./SidePanel";
 
-export function ReviewPanel({
-  item,
-  onClose,
-}: {
-  item: PendingReviewItem;
-  onClose: () => void;
-}) {
+export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClose: () => void }) {
   const { data, isLoading, error } = useReviewDiff(item.id);
 
   function handleAction(action: ReviewAction) {
@@ -33,6 +27,7 @@ export function ReviewPanel({
             </span>
           </div>
           <button
+            type="button"
             className="bg-transparent border-2 border-border py-0.5 px-[10px] font-mono text-[0.8125rem] font-bold cursor-pointer text-text-1 hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active"
             onClick={onClose}
           >

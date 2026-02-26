@@ -16,20 +16,23 @@ async function jsonBody<T>(res: Response): Promise<T> {
 
 export async function fetchSnapshot(): Promise<Snapshot> {
   const res = await fetch("/api/snapshot");
-  if (!res.ok) throw new Error(`fetchSnapshot: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`fetchSnapshot: ${res.status}`);
+  }
   return jsonBody<Snapshot>(res);
 }
 
-export async function fetchSessionEvents(
-  sessionId: string,
-  after?: string,
-): Promise<EventLine[]> {
+export async function fetchSessionEvents(sessionId: string, after?: string): Promise<EventLine[]> {
   const params = new URLSearchParams();
-  if (after) params.set("after", after);
+  if (after) {
+    params.set("after", after);
+  }
   const qs = params.toString();
   const url = `/api/sessions/${encodeURIComponent(sessionId)}/events${qs ? `?${qs}` : ""}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`fetchSessionEvents: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`fetchSessionEvents: ${res.status}`);
+  }
   return jsonBody<EventLine[]>(res);
 }
 
@@ -39,22 +42,24 @@ export async function sendControl(cmd: ControlCommand): Promise<ControlAck> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cmd),
   });
-  if (!res.ok) throw new Error(`sendControl: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`sendControl: ${res.status}`);
+  }
   return jsonBody<ControlAck>(res);
 }
 
 export async function fetchConfig(): Promise<ConfigDefaults> {
   const res = await fetch("/api/config");
-  if (!res.ok) throw new Error(`fetchConfig: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`fetchConfig: ${res.status}`);
+  }
   return jsonBody<ConfigDefaults>(res);
 }
 
-export async function fetchReviewDiff(
-  reviewId: string,
-): Promise<DiffResponse> {
-  const res = await fetch(
-    `/api/reviews/${encodeURIComponent(reviewId)}/diff`,
-  );
-  if (!res.ok) throw new Error(`fetchReviewDiff: ${res.status}`);
+export async function fetchReviewDiff(reviewId: string): Promise<DiffResponse> {
+  const res = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}/diff`);
+  if (!res.ok) {
+    throw new Error(`fetchReviewDiff: ${res.status}`);
+  }
   return jsonBody<DiffResponse>(res);
 }

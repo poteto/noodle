@@ -6,13 +6,7 @@ import { ChatInput } from "./ChatInput";
 import { SidePanel } from "./SidePanel";
 import { Tooltip } from "./Tooltip";
 
-export function ChatPanel({
-  session,
-  onClose,
-}: {
-  session: Session;
-  onClose: () => void;
-}) {
+export function ChatPanel({ session, onClose }: { session: Session; onClose: () => void }) {
   const { data: events } = useSessionEvents(session.id);
 
   const taskKey = session.task_key ?? "";
@@ -33,6 +27,7 @@ export function ChatPanel({
             </span>
           </div>
           <button
+            type="button"
             className="bg-transparent border-2 border-border py-0.5 px-[10px] font-mono text-[0.8125rem] font-bold cursor-pointer text-text-1 hover:bg-bg-hover active:translate-x-px active:translate-y-px active:shadow-btn-active"
             onClick={onClose}
           >
@@ -44,9 +39,7 @@ export function ChatPanel({
           <span className="py-px px-[6px] bg-bg-3">
             ctx {Math.round(session.context_window_usage_pct)}%
           </span>
-          <span className="py-px px-[6px] bg-bg-3">
-            ${session.total_cost_usd.toFixed(2)}
-          </span>
+          <span className="py-px px-[6px] bg-bg-3">${session.total_cost_usd.toFixed(2)}</span>
         </div>
         <div className="h-1 bg-bg-3 overflow-hidden">
           <div
