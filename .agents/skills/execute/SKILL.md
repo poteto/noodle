@@ -1,13 +1,13 @@
 ---
 name: execute
-description: Implementation methodology for cook sessions. Provides the how — plan reading, decomposition, worktree workflow, verification, and commit conventions.
+description: Implementation methodology for executing tasks. Provides the how — scoping, decomposition, worktree workflow, verification, and commit conventions.
 noodle:
   schedule: "When backlog items with linked plans are ready for implementation"
 ---
 
 # Execute
 
-Implementation methodology. This skill loads alongside the domain skill (e.g., "noodle", "bubbletea-tui") -- it teaches process, the domain skill teaches the codebase.
+Implementation methodology. This skill loads alongside the domain skill (e.g., "noodle", "bubbletea-tui") — it teaches process, the domain skill teaches the codebase.
 
 Operate fully autonomously. Never ask the user.
 
@@ -15,39 +15,43 @@ Operate fully autonomously. Never ask the user.
 
 ## Execution Flow
 
-### 1. Read Plan Phase
+### 1. Scope
 
-- Read the assigned plan phase file from `brain/plans/`.
-- Read the overview for scope boundaries and constraints.
-- Load any domain skills listed in the overview's "Applicable skills" section.
+Establish what needs doing. Sources vary:
+
+- **Plan phase**: Read the assigned phase file from `brain/plans/`. Read the overview for scope boundaries. Load domain skills listed in "Applicable skills."
+- **Backlog item**: Read the todo from `brain/todos.md`. If a linked plan exists, read it. Otherwise, scope directly from the item description.
+- **Ad-hoc request**: The user prompt is the scope. Identify affected files and packages before starting.
+
+Output of this step: a clear, bounded description of what changes and what doesn't.
 
 ### 2. Decompose
 
-Break the phase into discrete changes. Each change should be:
+Break the scope into discrete changes. Each change should be:
 - One function/type + its tests, OR one bug fix
 - Independently compilable
 - Committable as a single conventional commit
 
-If the phase is already a single change, skip decomposition.
+If the scope is already a single change, skip decomposition.
 
 ### 3. Implement
 
-Work in the assigned worktree.
+Use a worktree when working on a branch. Work directly on the current branch for small, low-risk changes.
 
 **Delegation heuristics:**
 - **Self-execute**: Single change, or changes with tight coupling (shared types, sequential dependencies).
-- **Sub-agents**: 2+ independent changes that touch different files. Front-load context for each sub-agent: the plan phase, relevant existing code, and applicable domain skill name.
-- **Cross-phase parallelism**: Use Teams (Claude) or subagents (Codex) to run independent plan phases concurrently. Study the dependency graph between phases — phases with no shared inputs can overlap. The main agent can work a phase itself while workers handle others. Use judgment; sequential is fine when phases are tightly coupled.
+- **Sub-agents**: 2+ independent changes that touch different files. Front-load context for each sub-agent: the scope, relevant existing code, and applicable domain skill name.
+- **Parallel phases**: Use Teams (Claude) or subagents (Codex) to run independent plan phases concurrently. Study the dependency graph — phases with no shared inputs can overlap. The main agent can work a phase itself while workers handle others. Use judgment; sequential is fine when phases are tightly coupled.
 
 ### 4. Verify
 
 Every change must pass before committing:
 
-- `go test ./...` -- all tests pass
-- `go vet ./...` -- no issues
-- `sh scripts/lint-arch.sh` -- if present
-- `git diff --stat` -- matches expected scope from plan phase
-- Plan phase checklist items -- all addressed
+- `go test ./...` — all tests pass
+- `go vet ./...` — no issues
+- `sh scripts/lint-arch.sh` — if present
+- `git diff --stat` — matches expected scope
+- Scope checklist items — all addressed (plan phase checklist, todo acceptance criteria, or ad-hoc requirements)
 
 If verification fails, fix and re-verify. Do not commit failing code.
 
@@ -58,19 +62,20 @@ Use conventional commit messages:
 ```
 <type>(<scope>): <description>
 
-Refs: #<backlog-item-ID>
+Refs: #<issue-ID>
 ```
 
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
 Scope: the package or area changed.
+Refs line: include when there's a linked issue or backlog item. Omit for ad-hoc work with no tracked item.
 
 One commit per logical change. Squash only if multiple commits address the same change.
 
 ## Scope Discipline
 
-- Only change files specified in the plan phase.
-- If you discover something that needs changing outside scope, note it for the quality review -- do not change it.
-- If the plan phase is wrong or incomplete, flag it in your output. Do not silently deviate.
+- Only change what's in scope. For plan-based work, that means files specified in the phase. For other work, that means what's necessary to satisfy the request.
+- If you discover something that needs changing outside scope, note it for the quality review — do not change it.
+- If the plan or requirements are wrong or incomplete, flag it in your output. Do not silently deviate.
 
 ## Principles
 
