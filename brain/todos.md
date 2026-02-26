@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 67 -->
+<!-- next-id: 68 -->
 
 ## Noodle Post-Plan 1
 
@@ -24,27 +24,31 @@
 ## Web UI
 
 51. [ ] Feed timeline — render `snapshot.feed_events` as a chronological activity stream. Cross-agent visibility: session starts, completions, failures, merges, brain writes. Data already exists server-side, just needs a UI component.
-52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed).
+52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed). [[plans/52-diff-viewer-for-reviews/overview]]
 53. [ ] Work order pipeline view — once #49 lands, render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
 54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
 55. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
 
+## Modes
+
+67. [ ] Manual mode — user-driven task dispatch instead of Noodle auto-kicking everything. Scheduled tasks still auto-run when the queue is empty, but the user drags items into the cooking column to start execution. The loop watches for items placed in "cooking" and dispatches them, but doesn't promote queued items on its own. Toggle between manual and auto mode via config or UI.
+
 ## Subtract Go Logic
 
-59. [ ] Bootstrap as embedded skill — move the ~60 line bootstrap prompt from `loop/builtin_bootstrap.go:9-72` into an embedded skill file. Loop dispatches the skill, prompt evolves without recompiling. Includes fixing silent bootstrap exhaustion (`builtin_bootstrap.go:109-115`) — skill can emit diagnostics with actionable next steps instead of the loop silently giving up.
+59. [ ] Bootstrap as embedded skill — move the ~60 line bootstrap prompt from `loop/builtin_bootstrap.go:9-72` into an embedded skill file. Loop dispatches the skill, prompt evolves without recompiling. Includes fixing silent bootstrap exhaustion (`builtin_bootstrap.go:109-115`) — skill can emit diagnostics with actionable next steps instead of the loop silently giving up. [[plans/59-subtract-go-logic-and-resilience/overview]]
 60. [ ] Simplify queue filtering in loop — addressed in #49 phase 4. The orders migration simplifies `prepareOrdersForCycle` instead of porting the nested conditionals. [[plans/49-work-orders-redesign/overview]]
-61. [ ] Simplify mise.json building — `mise/builder.go:162-193` pre-filters which plans are "schedulable" and `schedule.go:148-165` builds a prompt listing available task types. Include all plans in mise.json, add task types as a structured field. Let the schedule skill decide what's actionable instead of Go pre-processing.
+61. [ ] Simplify mise.json building — `mise/builder.go:162-193` pre-filters which plans are "schedulable" and `schedule.go:148-165` builds a prompt listing available task types. Include all plans in mise.json, add task types as a structured field. Let the schedule skill decide what's actionable instead of Go pre-processing. [[plans/59-subtract-go-logic-and-resilience/overview]]
 
 ## Resilience
 
-62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt.
-63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve.
+62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt. [[plans/59-subtract-go-logic-and-resilience/overview]]
+63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve. [[plans/59-subtract-go-logic-and-resilience/overview]]
 
 ## Skill System Gaps
 
 <!-- Planning order: #49 first (foundational data model, fold #65 into its design), #52 in parallel (independent UX win), #66 after #49 lands (needs orders/stages to trigger into). Subtract/resilience items (59-64) as cleanup between major efforts. -->
 
-64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic.
+64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic. [[plans/59-subtract-go-logic-and-resilience/overview]]
 65. [ ] Quality verdict → merge integration — folded into #49 (phase 4). Loop reads `.noodle/quality/<session-id>.json` verdicts in the merge decision path. `accept=false` triggers failStage/OnFailure routing. [[plans/49-work-orders-redesign/overview]]
 66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan; depends on #49.
 ## Done
