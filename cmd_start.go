@@ -2,20 +2,16 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"runtime"
 	"syscall"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/server"
-	"github.com/poteto/noodle/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -29,12 +25,10 @@ var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) 
 	return loop.New(projectDir, noodleBin, cfg, loop.Dependencies{})
 }
 
-var runStartTUI = runTUI
 var openBrowserFunc = openBrowser
 
 type startOptions struct {
-	once     bool
-	headless bool
+	once bool
 }
 
 func newStartCmd(app *App) *cobra.Command {
@@ -48,7 +42,6 @@ func newStartCmd(app *App) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&opts.once, "once", false, "Run one scheduling cycle and exit")
-	cmd.Flags().BoolVar(&opts.headless, "headless", false, "Run without the TUI")
 	return cmd
 }
 
@@ -75,13 +68,8 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	defer cancel()
 	defer runtimeLoop.Shutdown()
 
-	interactive := !opts.headless && isInteractiveTerminal()
-	serverEnabled := shouldStartServer(app.Config.Server, interactive)
-
-	if interactive {
-		return runStartWithTUI(ctx, cancel, runtimeLoop, runtimeDir, app.Config, serverEnabled)
-	}
-	if serverEnabled {
+	interactive := isInteractiveTerminal()
+	if shouldStartServer(app.Config.Server, interactive) {
 		go func() { _ = runWebServer(ctx, runtimeDir, app.Config) }()
 	}
 	return runtimeLoop.Run(ctx)
@@ -98,79 +86,6 @@ func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 		return true
 	}
 	return interactive
-}
-
-func runTUI(ctx context.Context, runtimeDir string) error {
-	model := tui.NewModel(tui.Options{
-		RuntimeDir: runtimeDir,
-	})
-	program := tea.NewProgram(model, tea.WithContext(ctx))
-	if _, err := program.Run(); err != nil {
-		return fmt.Errorf("run tui: %w", err)
-	}
-	return nil
-}
-
-func runStartWithTUI(
-	ctx context.Context,
-	cancel context.CancelFunc,
-	runtimeLoop startRuntimeLoop,
-	runtimeDir string,
-	cfg config.Config,
-	serverEnabled bool,
-) error {
-	loopErrCh := make(chan error, 1)
-	tuiErrCh := make(chan error, 1)
-	serverErrCh := make(chan error, 1)
-	go func() {
-		loopErrCh <- runtimeLoop.Run(ctx)
-	}()
-	go func() {
-		tuiErrCh <- runStartTUI(ctx, runtimeDir)
-	}()
-
-	serverDone := true // assume done unless we actually start it
-	if serverEnabled {
-		serverDone = false
-		go func() {
-			serverErrCh <- runWebServer(ctx, runtimeDir, cfg)
-		}()
-	}
-
-	var loopErr error
-	var tuiErr error
-	loopDone := false
-	tuiDone := false
-	for !loopDone || !tuiDone || !serverDone {
-		select {
-		case err := <-loopErrCh:
-			loopDone = true
-			if err != nil && !errors.Is(err, context.Canceled) {
-				loopErr = err
-			}
-			cancel()
-		case err := <-tuiErrCh:
-			tuiDone = true
-			if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, tea.ErrProgramKilled) {
-				tuiErr = err
-			}
-			cancel()
-		case err := <-serverErrCh:
-			serverDone = true
-			if err != nil && !errors.Is(err, context.Canceled) {
-				// Server errors are non-fatal; log but don't propagate.
-				fmt.Fprintf(os.Stderr, "web server: %v\n", err)
-			}
-		}
-	}
-
-	if loopErr != nil {
-		return loopErr
-	}
-	if tuiErr != nil {
-		return tuiErr
-	}
-	return nil
 }
 
 func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config) error {

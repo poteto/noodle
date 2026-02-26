@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/poteto/noodle/config"
 )
-
-var testServerCfg = config.Config{Server: config.ServerConfig{Port: 0}}
 
 type fakeStartLoop struct {
 	cycleErr error
@@ -65,92 +61,6 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	}
 }
 
-func TestRunStartWithTUIStopsLoopOnExit(t *testing.T) {
-	originalRunStartTUI := runStartTUI
-	runStartTUI = func(context.Context, string) error { return nil }
-	defer func() { runStartTUI = originalRunStartTUI }()
-
-	loop := &fakeStartLoop{
-		runFn: func(ctx context.Context) error {
-			<-ctx.Done()
-			return ctx.Err()
-		},
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
-	if err != nil {
-		t.Fatalf("runStartWithTUI returned error: %v", err)
-	}
-}
-
-func TestRunStartWithTUIPropagatesLoopError(t *testing.T) {
-	originalRunStartTUI := runStartTUI
-	runStartTUI = func(context.Context, string) error { return nil }
-	defer func() { runStartTUI = originalRunStartTUI }()
-
-	loop := &fakeStartLoop{runErr: errors.New("loop failed")}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
-	if err == nil || err.Error() != "loop failed" {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestRunStartWithTUIExitsWhenLoopFailsBeforeTUIExits(t *testing.T) {
-	originalRunStartTUI := runStartTUI
-	runStartTUI = func(ctx context.Context, _ string) error {
-		<-ctx.Done()
-		return ctx.Err()
-	}
-	t.Cleanup(func() { runStartTUI = originalRunStartTUI })
-
-	loop := &fakeStartLoop{runErr: errors.New("loop failed")}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
-	}()
-
-	select {
-	case err := <-errCh:
-		if err == nil || err.Error() != "loop failed" {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	case <-time.After(250 * time.Millisecond):
-		t.Fatal("runStartWithTUI did not exit after loop failure")
-	}
-}
-
-func TestRunStartWithTUIPropagatesTUIError(t *testing.T) {
-	originalRunStartTUI := runStartTUI
-	runStartTUI = func(context.Context, string) error { return errors.New("tui failed") }
-	defer func() { runStartTUI = originalRunStartTUI }()
-
-	loop := &fakeStartLoop{
-		runFn: func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(50 * time.Millisecond):
-				return nil
-			}
-		},
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := runStartWithTUI(ctx, cancel, loop, ".noodle", testServerCfg, false)
-	if err == nil || err.Error() != "tui failed" {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestShouldStartServer(t *testing.T) {
 	boolPtr := func(v bool) *bool { return &v }
 
@@ -161,12 +71,12 @@ func TestShouldStartServer(t *testing.T) {
 		want        bool
 	}{
 		{"nil+interactive", nil, true, true},
-		{"nil+headless", nil, false, false},
-		{"true+headless", boolPtr(true), false, true},
+		{"nil+non-interactive", nil, false, false},
+		{"true+non-interactive", boolPtr(true), false, true},
 		{"false+interactive", boolPtr(false), true, false},
 	}
-	// env var override: NOODLE_SERVER=1 forces server on even when headless.
-	t.Run("nil+headless+NOODLE_SERVER", func(t *testing.T) {
+	// env var override: NOODLE_SERVER=1 forces server on even in non-interactive mode.
+	t.Run("nil+non-interactive+NOODLE_SERVER", func(t *testing.T) {
 		t.Setenv("NOODLE_SERVER", "1")
 		cfg := config.ServerConfig{Enabled: nil}
 		if got := shouldStartServer(cfg, false); !got {
@@ -181,36 +91,5 @@ func TestShouldStartServer(t *testing.T) {
 				t.Fatalf("shouldStartServer(%v, %v) = %v, want %v", tt.enabled, tt.interactive, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestRunStartWithTUIStartsServer(t *testing.T) {
-	originalRunStartTUI := runStartTUI
-	runStartTUI = func(context.Context, string) error { return nil }
-	defer func() { runStartTUI = originalRunStartTUI }()
-
-	originalOpenBrowser := openBrowserFunc
-	var browserURL string
-	openBrowserFunc = func(url string) { browserURL = url }
-	defer func() { openBrowserFunc = originalOpenBrowser }()
-
-	loop := &fakeStartLoop{
-		runFn: func(ctx context.Context) error {
-			<-ctx.Done()
-			return ctx.Err()
-		},
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Server enabled with port 0 (auto-assign).
-	cfg := config.Config{Server: config.ServerConfig{Port: 0}}
-	err := runStartWithTUI(ctx, cancel, loop, t.TempDir(), cfg, true)
-	if err != nil {
-		t.Fatalf("runStartWithTUI returned error: %v", err)
-	}
-	if browserURL == "" {
-		t.Fatal("openBrowser was not called")
 	}
 }

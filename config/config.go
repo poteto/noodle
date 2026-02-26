@@ -117,7 +117,7 @@ type PlansConfig struct {
 // ServerConfig controls the web UI server.
 type ServerConfig struct {
 	Port    int   `toml:"port"`
-	Enabled *bool `toml:"enabled"` // nil = auto (enabled in interactive, disabled in headless)
+	Enabled *bool `toml:"enabled"` // nil = auto (enabled in interactive terminals)
 }
 
 type DiagnosticSeverity string
