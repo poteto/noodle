@@ -176,6 +176,29 @@ func TestNormalizeAndValidateReturnsErrUnknownTaskType(t *testing.T) {
 	}
 }
 
+func TestNormalizeAndValidateDropsOrphanedPlanItem(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := testRegistry()
+	queue := Queue{Items: []Item{
+		{ID: "47", TaskKey: "execute", Title: "deleted plan"},
+		{ID: "execute-abc", TaskKey: "execute", Title: "ad-hoc task"},
+	}}
+
+	got, changed, err := NormalizeAndValidate(queue, []int{42}, reg, cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected changed=true when orphaned item is dropped")
+	}
+	if len(got.Items) != 1 {
+		t.Fatalf("expected 1 item after dropping orphan, got %d", len(got.Items))
+	}
+	if got.Items[0].ID != "execute-abc" {
+		t.Fatalf("expected ad-hoc item to survive, got %q", got.Items[0].ID)
+	}
+}
+
 func TestReadParsesRuntimeField(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "queue.json")

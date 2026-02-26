@@ -161,7 +161,7 @@ func TestNormalizeAndValidateQueueAllowsExecuteWhenBacklogUnavailable(t *testing
 	}
 }
 
-func TestNormalizeAndValidateQueueRejectsExecuteOutsideBacklog(t *testing.T) {
+func TestNormalizeAndValidateQueueDropsExecuteOutsideBacklog(t *testing.T) {
 	cfg := config.DefaultConfig()
 	reg := testQueueRegistry()
 	queue := Queue{
@@ -170,9 +170,15 @@ func TestNormalizeAndValidateQueueRejectsExecuteOutsideBacklog(t *testing.T) {
 		},
 	}
 
-	_, _, err := normalizeAndValidateQueue(queue, []int{42}, reg, cfg)
-	if err == nil {
-		t.Fatal("expected validation error for execute item not in backlog")
+	got, changed, err := normalizeAndValidateQueue(queue, []int{42}, reg, cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected changed=true when orphaned item is dropped")
+	}
+	if len(got.Items) != 0 {
+		t.Fatalf("expected empty queue after dropping orphaned item, got %d items", len(got.Items))
 	}
 }
 

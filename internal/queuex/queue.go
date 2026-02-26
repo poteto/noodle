@@ -147,6 +147,7 @@ func NormalizeAndValidate(
 	copy(items, queue.Items)
 	changed := false
 	seenIDs := make(map[string]struct{}, len(items))
+	kept := make([]Item, 0, len(items))
 	for i := range items {
 		id := strings.TrimSpace(items[i].ID)
 		if id == "" {
@@ -188,17 +189,18 @@ func NormalizeAndValidate(
 		// Execute items with numeric IDs must map to a schedulable plan.
 		// Non-numeric IDs (e.g. "execute-1771969840249" from the task creator)
 		// are ad-hoc tasks that don't require a plan.
+		// If the plan was deleted, drop the orphaned item.
 		if taskType.Key == "execute" && len(schedulableSet) > 0 {
 			if planID, parseErr := strconv.Atoi(id); parseErr == nil {
 				if _, exists := schedulableSet[planID]; !exists {
-					return queue, false, fmt.Errorf(
-						"queue item %q is an execute task but does not match a schedulable plan",
-						id,
-					)
+					changed = true
+					continue
 				}
 			}
 		}
+		kept = append(kept, items[i])
 	}
+	items = kept
 
 	if !changed {
 		return queue, false, nil
