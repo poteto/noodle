@@ -3,7 +3,6 @@ package loop
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"os"
@@ -17,127 +16,6 @@ import (
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
 )
-
-func TestAuditQueueAllValid(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
-
-	queue := Queue{
-		GeneratedAt: time.Now().UTC(),
-		Items: []QueueItem{
-			{ID: "execute-1", TaskKey: "execute"},
-			{ID: "schedule-1", TaskKey: "schedule"},
-		},
-	}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-
-	l := &Loop{
-		projectDir: projectDir,
-		runtimeDir: runtimeDir,
-		registry:   testLoopRegistry(),
-		deps: Dependencies{
-			QueueFile: queuePath,
-			Now:       time.Now,
-		},
-	}
-
-	dropped := l.auditQueue()
-	if len(dropped) != 0 {
-		t.Fatalf("expected 0 dropped items, got %d", len(dropped))
-	}
-
-	// Verify queue is unchanged.
-	after, err := readQueue(queuePath)
-	if err != nil {
-		t.Fatalf("read queue after audit: %v", err)
-	}
-	if len(after.Items) != 2 {
-		t.Fatalf("expected 2 items after audit, got %d", len(after.Items))
-	}
-}
-
-func TestAuditQueueDropsNonexistentSkill(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
-
-	queue := Queue{
-		GeneratedAt: time.Now().UTC(),
-		Items: []QueueItem{
-			{ID: "execute-1", TaskKey: "execute"},
-			{ID: "deploy-1", TaskKey: "deploy"},
-			{ID: "schedule-1", TaskKey: "schedule"},
-		},
-	}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-
-	l := &Loop{
-		projectDir: projectDir,
-		runtimeDir: runtimeDir,
-		registry:   testLoopRegistry(), // has execute, schedule, reflect, meditate, oops, review — no deploy
-		deps: Dependencies{
-			QueueFile: queuePath,
-			Now:       time.Now,
-		},
-	}
-
-	dropped := l.auditQueue()
-	if len(dropped) != 1 {
-		t.Fatalf("expected 1 dropped item, got %d", len(dropped))
-	}
-	if dropped[0].ID != "deploy-1" {
-		t.Fatalf("expected dropped item deploy-1, got %q", dropped[0].ID)
-	}
-
-	// Verify queue was rewritten without the dropped item.
-	after, err := readQueue(queuePath)
-	if err != nil {
-		t.Fatalf("read queue after audit: %v", err)
-	}
-	if len(after.Items) != 2 {
-		t.Fatalf("expected 2 items after audit, got %d", len(after.Items))
-	}
-	for _, item := range after.Items {
-		if item.TaskKey == "deploy" {
-			t.Fatal("deploy item should have been removed")
-		}
-	}
-
-	// Verify event was written.
-	eventsPath := filepath.Join(runtimeDir, "queue-events.ndjson")
-	data, err := os.ReadFile(eventsPath)
-	if err != nil {
-		t.Fatalf("read events: %v", err)
-	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) < 1 {
-		t.Fatal("expected at least one event line")
-	}
-	var event QueueAuditEvent
-	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &event); err != nil {
-		t.Fatalf("unmarshal event: %v", err)
-	}
-	if event.Type != "queue_drop" {
-		t.Fatalf("event type = %q, want queue_drop", event.Type)
-	}
-	if event.Target != "deploy-1" {
-		t.Fatalf("event target = %q, want deploy-1", event.Target)
-	}
-	if event.Skill != "deploy" {
-		t.Fatalf("event skill = %q, want deploy", event.Skill)
-	}
-}
 
 func TestQueueEventsFileTruncation(t *testing.T) {
 	dir := t.TempDir()
@@ -198,7 +76,6 @@ func TestRegistryErrorResilience(t *testing.T) {
 			Monitor:    fakeMonitor{},
 			Registry:   taskreg.NewFromSkills(nil),
 			Now:        time.Now,
-			QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 			StatusFile: filepath.Join(runtimeDir, "status.json"),
 		},
 		state:          StateRunning,
@@ -275,9 +152,8 @@ func TestRegistryErrorResetOnRebuild(t *testing.T) {
 		registryErr:       errors.New("transient error"),
 		registryFailCount: 2,
 		deps: Dependencies{
-			Mise:      &fakeMise{},
-			Now:       time.Now,
-			QueueFile: filepath.Join(runtimeDir, "queue.json"),
+			Mise: &fakeMise{},
+			Now:  time.Now,
 		},
 	}
 
@@ -335,7 +211,6 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 			Mise:           &fakeMise{},
 			Monitor:        fakeMonitor{},
 			Now:            time.Now,
-			QueueFile:      filepath.Join(runtimeDir, "queue.json"),
 			OrdersFile:     ordersPath,
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
@@ -431,7 +306,6 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 			Mise:           &fakeMise{},
 			Monitor:        fakeMonitor{},
 			Now:            time.Now,
-			QueueFile:      filepath.Join(runtimeDir, "queue.json"),
 			OrdersFile:     ordersPath,
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
@@ -485,9 +359,8 @@ func TestEnsureSkillFreshExistingSkill(t *testing.T) {
 		config:     config.DefaultConfig(),
 		registry:   testLoopRegistry(),
 		deps: Dependencies{
-			Mise:      &fakeMise{},
-			Now:       time.Now,
-			QueueFile: filepath.Join(runtimeDir, "queue.json"),
+			Mise: &fakeMise{},
+			Now:  time.Now,
 		},
 	}
 
@@ -514,9 +387,8 @@ func TestEnsureSkillFreshMissingSkill(t *testing.T) {
 		config:     cfg,
 		registry:   testLoopRegistry(),
 		deps: Dependencies{
-			Mise:      &fakeMise{},
-			Now:       time.Now,
-			QueueFile: filepath.Join(runtimeDir, "queue.json"),
+			Mise: &fakeMise{},
+			Now:  time.Now,
 		},
 	}
 

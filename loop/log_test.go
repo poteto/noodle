@@ -92,7 +92,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
 	sp := &fakeDispatcher{}
 	wt := &fakeWorktree{}
@@ -107,7 +107,6 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		cfg.Recovery.MaxRetries = *o.maxRetries
 	}
 
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
 		Worktree:   wt,
@@ -117,7 +116,6 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		Registry:   testLoopRegistry(),
 		Logger:     logger,
 		Now:        time.Now,
-		QueueFile:  queuePath,
 		OrdersFile: ordersPath,
 	})
 	return &testLoopContext{
@@ -126,7 +124,6 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 		worktree:   wt,
 		adapter:    ar,
 		mise:       fm,
-		queuePath:  queuePath,
 		ordersPath: ordersPath,
 		runtimeDir: runtimeDir,
 		projectDir: projectDir,
@@ -144,7 +141,6 @@ type testLoopContext struct {
 	worktree   *fakeWorktree
 	adapter    *fakeAdapterRunner
 	mise       *fakeMise
-	queuePath  string
 	ordersPath string
 	runtimeDir string
 	projectDir string
@@ -154,11 +150,8 @@ func TestLogDispatchCook(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger)
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -202,11 +195,8 @@ func TestLogCompletionMerge(t *testing.T) {
 		o.brief = &brief
 	})
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -242,11 +232,8 @@ func TestLogCompletionParkForReview(t *testing.T) {
 	// Enable pending approval so cooks get parked.
 	tc.loop.config.Autonomy = config.AutonomyApprove
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -302,11 +289,8 @@ func TestLogRetryAndFailure(t *testing.T) {
 		o.brief = &brief
 	})
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	if err := writeOrdersAtomic(tc.ordersPath, queueToOrders(queue)); err != nil {
+	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -449,25 +433,25 @@ func TestLogBootstrapSchedule(t *testing.T) {
 	}
 }
 
-func TestLogQueueItemSkipped(t *testing.T) {
+func TestLogOrderRemoved(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger)
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
-	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
+	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
 	}
 
-	if err := tc.loop.skipQueueItem("item-1"); err != nil {
-		t.Fatalf("skip: %v", err)
+	if err := tc.loop.removeOrder("item-1"); err != nil {
+		t.Fatalf("remove: %v", err)
 	}
 
-	entry, ok := handler.findEntry("queue item skipped")
+	entry, ok := handler.findEntry("order removed")
 	if !ok {
-		t.Fatal("expected 'queue item skipped' log entry")
+		t.Fatal("expected 'order removed' log entry")
 	}
-	if entry.Attrs["item"] != "item-1" {
-		t.Fatalf("item = %v, want item-1", entry.Attrs["item"])
+	if entry.Attrs["order"] != "item-1" {
+		t.Fatalf("order = %v, want item-1", entry.Attrs["order"])
 	}
 }
 

@@ -93,40 +93,6 @@ func cookBaseName(orderID string, stageIndex int, taskKey string) string {
 	return fmt.Sprintf("%s:%d:%s", orderID, stageIndex, taskKey)
 }
 
-// cookBaseNameLegacy derives a worktree-safe name from a QueueItem.
-// Kept for adopted-session lookups until queue.json is fully removed.
-func cookBaseNameLegacy(item QueueItem) string {
-	idToken := sanitizeToken(item.ID)
-	if idToken == "" {
-		idToken = "cook"
-	}
-
-	titleToken := sanitizeToken(item.Title)
-	if titleToken == "" {
-		return idToken
-	}
-
-	titleToken = truncateToken(titleToken, 32)
-	if titleToken == "" {
-		return idToken
-	}
-
-	const maxNameLen = 64
-	base := idToken + "-" + titleToken
-	if len(base) <= maxNameLen {
-		return base
-	}
-
-	maxTitleLen := maxNameLen - len(idToken) - 1
-	if maxTitleLen <= 0 {
-		return idToken
-	}
-	titleToken = truncateToken(titleToken, maxTitleLen)
-	if titleToken == "" {
-		return idToken
-	}
-	return idToken + "-" + titleToken
-}
 
 func truncateToken(token string, maxLen int) string {
 	if maxLen <= 0 {

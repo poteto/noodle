@@ -75,7 +75,6 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -87,7 +86,6 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	if err := l.Cycle(context.Background()); err != nil {
@@ -127,7 +125,6 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -139,7 +136,6 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	if err := l.Cycle(context.Background()); err != nil {
@@ -168,7 +164,6 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -180,7 +175,6 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	// First cycle: bootstrap dispatched.
@@ -219,7 +213,6 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -231,7 +224,6 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	for i := 0; i < 3; i++ {
@@ -271,7 +263,6 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -283,7 +274,6 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	// Exhaust bootstrap attempts.
@@ -333,7 +323,6 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
@@ -345,7 +334,6 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 	})
 
 	// Dispatch bootstrap.
@@ -392,7 +380,6 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 	// Also install execute skill on disk so registry rebuild finds it.
@@ -404,15 +391,12 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(executeSkillDir, "SKILL.md"), []byte(executeContent), 0o644); err != nil {
 		t.Fatalf("write execute SKILL.md: %v", err)
 	}
-	// Queue has both schedule and a normal item.
-	queue := Queue{Items: []QueueItem{
-		{ID: "schedule", TaskKey: "schedule", Provider: "claude", Model: "claude-opus-4-6", Skill: "schedule"},
-		{ID: "42", Title: "fix bug", Provider: "claude", Model: "claude-opus-4-6", Skill: "execute", TaskKey: "execute"},
+	// Orders has both schedule and a normal execute order.
+	orders := OrdersFile{Orders: []Order{
+		{ID: "schedule", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}}},
+		{ID: "42", Title: "fix bug", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}}},
 	}}
-	if err := writeQueueAtomic(queuePath, queue); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	if err := writeOrdersAtomic(ordersPath, queueToOrders(queue)); err != nil {
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -425,7 +409,6 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		Monitor:    fakeMonitor{},
 		Registry:   testRegistryWithoutSchedule(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 		OrdersFile: ordersPath,
 	})
 	l.bootstrapExhausted = true

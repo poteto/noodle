@@ -95,33 +95,6 @@ var schemaTargets = []targetSpec{
 	},
 	{
 		Info: TargetInfo{
-			Name:        "queue",
-			FileName:    "queue.json",
-			Description: "Output of schedule (written to queue-next.json); promoted to queue.json by the loop.",
-		},
-		RootType: reflect.TypeOf(queuex.Queue{}),
-		FieldDocs: map[string]FieldDoc{
-			"generated_at":      {Type: "RFC3339 timestamp", Description: "time the queue was generated"},
-			"items[].id":        {Description: "queue item ID"},
-			"items[].task_key":  {Description: "must match a task_types[].key from mise"},
-			"items[].title":     {Description: "brief task description"},
-			"items[].provider":  {Description: "provider used for this task"},
-			"items[].model":     {Description: "model used for this task"},
-			"items[].runtime":   {Description: "runtime used for this task (tmux, sprites, etc.)"},
-			"items[].skill":     {Description: "skill name to load"},
-			"items[].plan[]":    {Description: "linked plan path(s), e.g. plans/15-bootstrap-onboarding/overview"},
-			"items[].prompt":    {Description: "full prompt text for the dispatched session"},
-			"items[].rationale": {Description: "placement reason citing a rule or principle"},
-			"action_needed[]":   {Description: "backlog item ID skipped pending user action"},
-		},
-		Constraints: []string{
-			"Items must respect workflow order from configured task-type schedules.",
-			"Task keys must match a `task_types[].key` from mise.",
-			"Each `rationale` should cite a specific scheduling rule or principle.",
-		},
-	},
-	{
-		Info: TargetInfo{
 			Name:        "orders",
 			FileName:    "orders.json",
 			Description: "Output of schedule (written to orders-next.json); promoted to orders.json by the loop.",

@@ -14,22 +14,19 @@ func TestRunSchemaListOutputsTargets(t *testing.T) {
 	if !strings.Contains(out, "mise\t") {
 		t.Fatalf("missing mise target: %q", out)
 	}
-	if !strings.Contains(out, "queue\t") {
-		t.Fatalf("missing queue target: %q", out)
+	if !strings.Contains(out, "orders\t") {
+		t.Fatalf("missing orders target: %q", out)
 	}
 }
 
-func TestRunSchemaQueueOutputsMarkdown(t *testing.T) {
+func TestRunSchemaOrdersOutputsMarkdown(t *testing.T) {
 	out := captureStdout(t, func() {
-		if err := runSchema("queue"); err != nil {
-			t.Fatalf("runSchema(queue): %v", err)
+		if err := runSchema("orders"); err != nil {
+			t.Fatalf("runSchema(orders): %v", err)
 		}
 	})
-	if !strings.Contains(out, "# queue.json Schema") {
-		t.Fatalf("missing queue schema heading: %q", out)
-	}
-	if !strings.Contains(out, "\"items\": [") {
-		t.Fatalf("missing queue items in schema output: %q", out)
+	if !strings.Contains(out, "# orders.json Schema") {
+		t.Fatalf("missing orders schema heading: %q", out)
 	}
 }
 

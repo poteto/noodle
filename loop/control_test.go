@@ -16,14 +16,7 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 	t.Helper()
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
-	queuePath := filepath.Join(runtimeDir, "queue.json")
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeQueueAtomic(queuePath, Queue{Items: []QueueItem{{
-		ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6",
-	}}}); err != nil {
-		t.Fatalf("write queue: %v", err)
-	}
-	// Write orders.json for the new control paths.
 	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
 		ID: "42", Title: "test", Status: OrderStatusActive,
 		Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}},
@@ -38,7 +31,6 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
-		QueueFile:  queuePath,
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
@@ -147,7 +139,6 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
@@ -244,7 +235,6 @@ func TestControlEnqueueCreatesSingleStageOrder(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 
 	cmd := ControlCommand{
@@ -308,7 +298,6 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 
 	cmd := ControlCommand{
@@ -369,7 +358,6 @@ func TestControlReorderChangesOrderPosition(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 
 	// Move "c" to position 0.
@@ -419,7 +407,6 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 
 	if err := l.controlSkip("42"); err != nil {
@@ -458,7 +445,6 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
@@ -509,7 +495,6 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.failedTargets = map[string]string{"42": "test failure"}
 	if err := l.writeFailedTargets(); err != nil {
@@ -569,7 +554,6 @@ func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.failedTargets = map[string]string{"42": "failed"}
 	if err := l.writeFailedTargets(); err != nil {
@@ -606,7 +590,6 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.failedTargets = map[string]string{"42": "failed"}
 	if err := l.writeFailedTargets(); err != nil {
@@ -652,7 +635,6 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
@@ -710,7 +692,6 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
@@ -752,7 +733,6 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
@@ -802,7 +782,6 @@ func TestFailedTargetStickiness(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 		OrdersFile: ordersPath,
-		QueueFile:  filepath.Join(runtimeDir, "queue.json"),
 	})
 	l.failedTargets = map[string]string{"42": "previous failure"}
 

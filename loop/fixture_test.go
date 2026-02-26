@@ -121,8 +121,6 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 				t.Fatalf("mkdir runtime: %v", err)
 			}
-			queuePath := filepath.Join(runtimeDir, "queue.json")
-
 			miseResults := buildMiseResults(stateInputs)
 			sp := &fakeDispatcher{}
 			if strings.TrimSpace(setup.DispatcherError) != "" {
@@ -159,8 +157,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				Monitor:    fakeMonitor{},
 				Registry:   testLoopRegistry(),
 				Now:        time.Now,
-				QueueFile:  queuePath,
-			})
+				})
 			if len(setup.FailedTargets) > 0 {
 				l.failedTargets = make(map[string]string, len(setup.FailedTargets))
 				for id, reason := range setup.FailedTargets {
@@ -179,8 +176,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 			for _, state := range fixtureCase.States {
 				applyStateRuntimeSnapshot(t, state, runtimeDir)
-				ensureFixtureOrders(t, runtimeDir)
-				cfg := cloneConfig(baseCfg)
+					cfg := cloneConfig(baseCfg)
 				if path := strings.TrimSpace(state.ConfigScope.StateOverridePath); path != "" {
 					applyConfigOverride(t, &cfg, path)
 				}
@@ -376,27 +372,6 @@ func cloneConfig(in config.Config) config.Config {
 	return in
 }
 
-// ensureFixtureOrders generates orders.json from queue.json if only queue.json
-// exists. This bridges legacy fixture data (queue-only) for the orders-based loop.
-func ensureFixtureOrders(t *testing.T, runtimeDir string) {
-	t.Helper()
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if _, err := os.Stat(ordersPath); err == nil {
-		return // already exists
-	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue, err := readQueue(queuePath)
-	if err != nil {
-		return // no queue either — that's fine
-	}
-	if len(queue.Items) == 0 {
-		return
-	}
-	orders := queueToOrders(queue)
-	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
-		t.Fatalf("write fixture orders: %v", err)
-	}
-}
 
 func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runtimeDir string) {
 	t.Helper()

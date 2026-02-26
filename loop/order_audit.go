@@ -55,68 +55,6 @@ func diffRegistryKeys(old, new taskreg.Registry) RegistryDiff {
 	return RegistryDiff{Added: added, Removed: removed}
 }
 
-// auditQueue checks each queue item against the current registry.
-// Items referencing unknown task types are removed. Returns dropped items.
-func (l *Loop) auditQueue() []QueueItem {
-	queue, err := readQueue(l.deps.QueueFile)
-	if err != nil {
-		// If we can't read the queue, skip the audit silently.
-		return nil
-	}
-
-	var kept []QueueItem
-	var dropped []QueueItem
-	for _, item := range queue.Items {
-		input := taskreg.StageInput{
-			ID:      item.ID,
-			TaskKey: item.TaskKey,
-			Title:   item.Title,
-			Skill:   item.Skill,
-		}
-		if _, ok := l.registry.ResolveStage(input); ok {
-			kept = append(kept, item)
-		} else {
-			dropped = append(dropped, item)
-			skillName := item.Skill
-			if skillName == "" {
-				skillName = item.TaskKey
-			}
-			fmt.Fprintf(os.Stderr, "dropped queue item %q: skill %q no longer exists\n", item.ID, skillName)
-		}
-	}
-
-	if len(dropped) == 0 {
-		return nil
-	}
-
-	// Write back the filtered queue.
-	queue.Items = kept
-	if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
-		fmt.Fprintf(os.Stderr, "queue-audit: write queue: %v\n", err)
-		return dropped
-	}
-
-	// Write drop events.
-	eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-	now := l.deps.Now().UTC()
-	for _, item := range dropped {
-		skillName := item.Skill
-		if skillName == "" {
-			skillName = item.TaskKey
-		}
-		event := QueueAuditEvent{
-			At:     now,
-			Type:   "queue_drop",
-			Target: item.ID,
-			Skill:  skillName,
-			Reason: "skill no longer exists",
-		}
-		appendQueueEvent(eventsPath, event)
-	}
-
-	return dropped
-}
-
 // auditOrders checks each order's stages against the current registry.
 // Orders with no resolvable stages are dropped. Emits order_drop events.
 func (l *Loop) auditOrders() {

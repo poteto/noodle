@@ -47,10 +47,7 @@ func (l *Loop) atMaxConcurrency() bool {
 
 func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Order, opts spawnOptions) error {
 	if isScheduleStage(cand.Stage) {
-		// Convert to a schedule item for the existing spawnSchedule path.
-		item := scheduleQueueItem(l.config, "")
-		item.Rationale = order.Rationale
-		return l.spawnSchedule(ctx, item, opts.attempt, opts.resume)
+		return l.spawnSchedule(ctx, order, opts.attempt, opts.resume)
 	}
 
 	stage := cand.Stage
@@ -239,7 +236,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	if success {
 		if isScheduleStage(cook.stage) {
 			l.logger.Info("schedule completed", "session", cook.session.ID())
-			return l.skipQueueItem(cook.orderID)
+			return l.removeOrder(cook.orderID)
 		}
 
 		canMerge := l.canMergeStage(cook.stage)
@@ -370,30 +367,6 @@ func (l *Loop) canMergeStage(stage Stage) bool {
 	return taskType.CanMerge
 }
 
-// mergeCookLegacy is the old merge path preserved for adopted sessions.
-func (l *Loop) mergeCookLegacy(ctx context.Context, item QueueItem, worktreeName string, sessionID string) error {
-	syncResult, hasSyncResult, err := l.readSessionSyncResult(sessionID)
-	if err != nil {
-		return err
-	}
-
-	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
-		if err := l.deps.Worktree.MergeRemoteBranch(syncResult.Branch); err != nil {
-			return fmt.Errorf("merge remote branch %s: %w", syncResult.Branch, err)
-		}
-	} else {
-		if err := l.deps.Worktree.Merge(worktreeName); err != nil {
-			return fmt.Errorf("merge %s: %w", worktreeName, err)
-		}
-	}
-	l.logger.Info("cook merged", "item", item.ID, "worktree", worktreeName)
-	if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{item.ID}}); err != nil {
-		if !isMissingAdapter(err) {
-			return err
-		}
-	}
-	return l.skipQueueItem(item.ID)
-}
 
 func (l *Loop) readSessionSyncResult(sessionID string) (dispatcher.SyncResult, bool, error) {
 	sessionID = strings.TrimSpace(sessionID)
@@ -565,85 +538,9 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 		}, true, nil
 	}
 
-	// Fallback: try legacy queue-based lookup for pre-migration sessions.
-	item, found, err := l.lookupQueueItem(targetID)
-	if err != nil {
-		return nil, false, err
-	}
-	if !found {
-		return nil, false, nil
-	}
-	worktreeName, worktreePath := l.readAdoptedWorktree(sessionID, item)
-	return &activeCook{
-		orderID: item.ID,
-		stage: Stage{
-			TaskKey:  item.TaskKey,
-			Prompt:   item.Prompt,
-			Skill:    item.Skill,
-			Provider: item.Provider,
-			Model:    item.Model,
-			Runtime:  item.Runtime,
-		},
-		plan: item.Plan,
-		session: &adoptedSession{
-			id:     sessionID,
-			status: status,
-		},
-		worktreeName: worktreeName,
-		worktreePath: worktreePath,
-		attempt:      recover.RecoveryChainLength(worktreeName),
-	}, true, nil
+	return nil, false, nil
 }
 
-func (l *Loop) canMergeQueueItem(item QueueItem) bool {
-	taskType, ok := l.registry.ResolveStage(taskreg.StageInput{
-		ID:      item.ID,
-		TaskKey: item.TaskKey,
-		Title:   item.Title,
-		Skill:   item.Skill,
-	})
-	if !ok {
-		return true
-	}
-	return taskType.CanMerge
-}
-
-func (l *Loop) lookupQueueItem(targetID string) (QueueItem, bool, error) {
-	queue, err := readQueue(l.deps.QueueFile)
-	if err != nil {
-		return QueueItem{}, false, err
-	}
-	for _, item := range queue.Items {
-		if item.ID == targetID {
-			return item, true, nil
-		}
-	}
-	return QueueItem{}, false, nil
-}
-
-func (l *Loop) readAdoptedWorktree(sessionID string, item QueueItem) (string, string) {
-	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
-	worktreePath := ""
-	data, err := os.ReadFile(path)
-	if err == nil {
-		var payload struct {
-			WorktreePath string `json:"worktree_path"`
-		}
-		if jsonErr := json.Unmarshal(data, &payload); jsonErr == nil {
-			worktreePath = strings.TrimSpace(payload.WorktreePath)
-		}
-	}
-	if worktreePath == "" {
-		name := cookBaseNameLegacy(item)
-		return name, filepath.Join(l.projectDir, ".worktrees", name)
-	}
-	name := filepath.Base(worktreePath)
-	if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
-		name = cookBaseNameLegacy(item)
-		worktreePath = filepath.Join(l.projectDir, ".worktrees", name)
-	}
-	return name, worktreePath
-}
 
 func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 	delete(l.adoptedTargets, targetID)
@@ -783,27 +680,28 @@ func retryFailureReason(base string, info recover.RecoveryInfo) string {
 	return base
 }
 
-func (l *Loop) skipQueueItem(id string) error {
+// removeOrder removes an order from orders.json by ID.
+func (l *Loop) removeOrder(id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return fmt.Errorf("skip requires item")
+		return fmt.Errorf("remove requires order ID")
 	}
-	queue, err := readQueue(l.deps.QueueFile)
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
-	filtered := make([]QueueItem, 0, len(queue.Items))
-	for _, item := range queue.Items {
-		if item.ID == id {
+	filtered := make([]Order, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		if order.ID == id {
 			continue
 		}
-		filtered = append(filtered, item)
+		filtered = append(filtered, order)
 	}
-	queue.Items = filtered
-	if err := writeQueueAtomic(l.deps.QueueFile, queue); err != nil {
+	orders.Orders = filtered
+	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
 		return err
 	}
-	l.logger.Info("queue item skipped", "item", id)
+	l.logger.Info("order removed", "order", id)
 	return nil
 }
 

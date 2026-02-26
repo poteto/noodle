@@ -13,25 +13,12 @@ import (
 
 const scheduleOrderID = "schedule"
 
-func isScheduleItem(item QueueItem) bool {
-	return strings.EqualFold(strings.TrimSpace(item.ID), scheduleOrderID)
-}
-
 func isScheduleStage(stage Stage) bool {
 	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), scheduleOrderID)
 }
 
 func isScheduleOrder(order Order) bool {
 	return strings.EqualFold(strings.TrimSpace(order.ID), scheduleOrderID)
-}
-
-func hasNonScheduleItems(queue Queue) bool {
-	for _, item := range queue.Items {
-		if !isScheduleItem(item) {
-			return true
-		}
-	}
-	return false
 }
 
 func hasNonScheduleOrders(orders OrdersFile) bool {
@@ -41,21 +28,6 @@ func hasNonScheduleOrders(orders OrdersFile) bool {
 		}
 	}
 	return false
-}
-
-func filterStaleScheduleItems(queue Queue) Queue {
-	if len(queue.Items) == 0 {
-		return queue
-	}
-	filtered := queue
-	filtered.Items = make([]QueueItem, 0, len(queue.Items))
-	for _, item := range queue.Items {
-		if isScheduleItem(item) {
-			continue
-		}
-		filtered.Items = append(filtered.Items, item)
-	}
-	return filtered
 }
 
 func bootstrapScheduleOrder(cfg config.Config) OrdersFile {
@@ -88,40 +60,26 @@ func scheduleOrder(cfg config.Config, prompt string) Order {
 	return order
 }
 
-func scheduleQueueItem(cfg config.Config, prompt string) QueueItem {
-	item := QueueItem{
-		ID:       scheduleOrderID,
-		Title:    "scheduling tasks based on your backlog",
-		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
-		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
-		Skill:    "schedule",
-	}
-	prompt = strings.TrimSpace(prompt)
-	if prompt != "" {
-		item.Rationale = "Chef steer: " + prompt
-	}
-	return item
-}
-
-func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
+func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resumePrompt string) error {
 	name := scheduleOrderID
+	stage := order.Stages[0]
 
-	skillName := nonEmpty(item.Skill, "schedule")
+	skillName := nonEmpty(stage.Skill, "schedule")
 	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
 	if !l.ensureSkillFresh(skillName) {
-		return l.spawnBootstrapIfNeeded(ctx, item)
+		return l.spawnBootstrapIfNeeded(ctx, order)
 	}
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, item, resumePrompt),
-		Provider:             nonEmpty(item.Provider, l.config.Routing.Defaults.Provider),
-		Model:                nonEmpty(item.Model, l.config.Routing.Defaults.Model),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt),
+		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
+		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
 		WorktreePath:         l.projectDir,
 		AllowPrimaryCheckout: true,
-		Title:                item.Title,
+		Title:                order.Title,
 		RetryCount:           attempt,
 	}
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
@@ -129,7 +87,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 		return err
 	}
 	cook := &activeCook{
-		orderID: item.ID,
+		orderID: order.ID,
 		stage: Stage{
 			TaskKey: scheduleOrderID,
 			Skill:   skillName,
@@ -139,7 +97,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 		worktreePath: l.projectDir,
 		attempt:      attempt,
 	}
-	l.activeByTarget[item.ID] = cook
+	l.activeByTarget[order.ID] = cook
 	l.activeByID[session.ID()] = cook
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
@@ -148,7 +106,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 // spawnBootstrapIfNeeded dispatches a bootstrap agent to create the
 // schedule skill. Returns nil in all cases — the loop continues
 // regardless of bootstrap status.
-func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error {
+func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	if l.bootstrapExhausted {
 		l.logger.Warn("bootstrap exhausted — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors",
 			"attempts", l.bootstrapAttempts)
@@ -164,8 +122,9 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 		return nil
 	}
 
-	provider := nonEmpty(item.Provider, l.config.Routing.Defaults.Provider)
-	model := nonEmpty(item.Model, l.config.Routing.Defaults.Model)
+	stage := order.Stages[0]
+	provider := nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider)
+	model := nonEmpty(stage.Model, l.config.Routing.Defaults.Model)
 
 	prompt := buildBootstrapPrompt(provider)
 
@@ -190,7 +149,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 		return nil
 	}
 	l.bootstrapInFlight = &activeCook{
-		orderID: item.ID,
+		orderID: order.ID,
 		stage: Stage{
 			TaskKey: scheduleOrderID,
 			Skill:   "bootstrap",
@@ -202,7 +161,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string) string {
 	parts := []string{
 		"Use Skill(" + skillName + ") to refresh the schedule from .noodle/mise.json.",
 		"Write to `.noodle/orders-next.json` (not orders.json). The loop promotes it atomically.",
@@ -214,7 +173,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, item QueueItem, resu
 		ordersSchemaPrompt(),
 		taskTypesPrompt,
 	}
-	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
+	if rationale := strings.TrimSpace(order.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)
 	}
 	if resume := strings.TrimSpace(resumePrompt); resume != "" {

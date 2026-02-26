@@ -62,11 +62,11 @@ func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 		t.Fatalf("write cook-b meta: %v", err)
 	}
 	if err := os.WriteFile(
-		filepath.Join(runtimeDir, "queue.json"),
-		[]byte(`{"items":[{"id":"1"},{"id":"2"},{"id":"3"}]}`),
+		filepath.Join(runtimeDir, "orders.json"),
+		[]byte(`{"orders":[{"id":"1","stages":[{"status":"pending","provider":"c","model":"m"}],"status":"active"},{"id":"2","stages":[{"status":"pending","provider":"c","model":"m"}],"status":"active"},{"id":"3","stages":[{"status":"pending","provider":"c","model":"m"}],"status":"active"}]}`),
 		0o644,
 	); err != nil {
-		t.Fatalf("write queue: %v", err)
+		t.Fatalf("write orders: %v", err)
 	}
 
 	originalDir, err := os.Getwd()

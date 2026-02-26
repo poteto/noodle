@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestListTargetsIncludesMiseAndQueue(t *testing.T) {
+func TestListTargetsIncludesMiseAndOrders(t *testing.T) {
 	targets := ListTargets()
 	seen := map[string]bool{}
 	for _, target := range targets {
@@ -14,37 +14,31 @@ func TestListTargetsIncludesMiseAndQueue(t *testing.T) {
 	if !seen["mise"] {
 		t.Fatal("missing mise schema target")
 	}
-	if !seen["queue"] {
-		t.Fatal("missing queue schema target")
+	if !seen["orders"] {
+		t.Fatal("missing orders schema target")
 	}
 }
 
-func TestRenderMarkdownQueue(t *testing.T) {
-	out, err := RenderMarkdown("queue")
+func TestRenderMarkdownOrders(t *testing.T) {
+	out, err := RenderMarkdown("orders")
 	if err != nil {
-		t.Fatalf("render queue markdown: %v", err)
+		t.Fatalf("render orders markdown: %v", err)
 	}
-	if !strings.Contains(out, "# queue.json Schema") {
-		t.Fatalf("missing queue title: %q", out)
+	if !strings.Contains(out, "# orders.json Schema") {
+		t.Fatalf("missing orders title: %q", out)
 	}
-	if !strings.Contains(out, `"items": [`) {
-		t.Fatalf("missing items field in output: %q", out)
-	}
-	if !strings.Contains(out, "must match a task_types[].key from mise") {
-		t.Fatalf("missing task_key description: %q", out)
-	}
-	if !strings.Contains(out, "## Constraints") {
-		t.Fatalf("missing constraints section: %q", out)
+	if !strings.Contains(out, `"orders": [`) {
+		t.Fatalf("missing orders field in output: %q", out)
 	}
 }
 
-func TestRenderPromptJSONQueue(t *testing.T) {
-	out, err := RenderPromptJSON("queue")
+func TestRenderPromptJSONOrders(t *testing.T) {
+	out, err := RenderPromptJSON("orders")
 	if err != nil {
-		t.Fatalf("render queue prompt schema: %v", err)
+		t.Fatalf("render orders prompt schema: %v", err)
 	}
-	if !strings.Contains(out, "queue.json schema (JSON):") {
-		t.Fatalf("missing queue prompt heading: %q", out)
+	if !strings.Contains(out, "orders.json schema (JSON):") {
+		t.Fatalf("missing orders prompt heading: %q", out)
 	}
 	if !strings.Contains(out, "```json\n") {
 		t.Fatalf("missing opening json code fence: %q", out)
@@ -53,7 +47,7 @@ func TestRenderPromptJSONQueue(t *testing.T) {
 		t.Fatalf("missing closing code fence: %q", out)
 	}
 	if !strings.Contains(out, `"generated_at":`) {
-		t.Fatalf("missing generated_at in queue prompt schema: %q", out)
+		t.Fatalf("missing generated_at in orders prompt schema: %q", out)
 	}
 }
 

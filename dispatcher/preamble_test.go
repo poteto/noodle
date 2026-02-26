@@ -12,7 +12,7 @@ func TestBuildSessionPreamble(t *testing.T) {
 	}
 	for _, expected := range []string{
 		".noodle/mise.json",
-		".noodle/queue.json",
+		".noodle/orders.json",
 		"brain/plans/",
 		"brain/todos.md",
 		"conventional commit",

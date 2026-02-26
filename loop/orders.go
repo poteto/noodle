@@ -4,11 +4,28 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/mise"
 )
+
+func activeTicketTargetSet(brief mise.Brief) map[string]struct{} {
+	targets := make(map[string]struct{}, len(brief.Tickets))
+	for _, ticket := range brief.Tickets {
+		target := strings.TrimSpace(ticket.Target)
+		if target == "" {
+			continue
+		}
+		switch ticket.Status {
+		case "active", "blocked":
+			targets[target] = struct{}{}
+		}
+	}
+	return targets
+}
 
 // dispatchCandidate is a lightweight struct identifying a stage ready for dispatch.
 type dispatchCandidate struct {
@@ -281,8 +298,7 @@ func writeOrdersAtomic(path string, of OrdersFile) error {
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
 //
-// Unlike consumeQueueNext (which deletes next, then writes), this function
-// reads and validates orders-next.json, merges into existing orders.json via
+// Reads and validates orders-next.json, merges into existing orders.json via
 // WriteOrdersAtomic, THEN deletes orders-next.json. If the loop crashes after
 // writing orders.json but before deleting orders-next.json, the next cycle
 // re-promotes idempotently — duplicate order IDs across the two files are

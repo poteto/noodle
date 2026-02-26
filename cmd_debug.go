@@ -10,6 +10,7 @@ import (
 
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/queuex"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/spf13/cobra"
 )
@@ -31,22 +32,20 @@ type debugRoutingDefaults struct {
 
 type debugRuntime struct {
 	LoopState       string            `json:"loop_state"`
-	Queue           debugQueue        `json:"queue"`
+	Orders          debugOrders       `json:"orders"`
 	Sessions        []debugSession    `json:"sessions"`
 	FailedTargets   map[string]string `json:"failed_targets,omitempty"`
 	ControlAckCount int               `json:"control_ack_count"`
 }
 
-type debugQueue struct {
-	Items []debugQueueItem `json:"items"`
+type debugOrders struct {
+	Orders []debugOrder `json:"orders"`
 }
 
-type debugQueueItem struct {
-	ID       string `json:"id"`
-	Title    string `json:"title,omitempty"`
-	Provider string `json:"provider,omitempty"`
-	Model    string `json:"model,omitempty"`
-	Skill    string `json:"skill,omitempty"`
+type debugOrder struct {
+	ID     string `json:"id"`
+	Title  string `json:"title,omitempty"`
+	Status string `json:"status,omitempty"`
 }
 
 type debugSession struct {
@@ -93,7 +92,7 @@ func runDebug(app *App) error {
 }
 
 func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
-	queue, err := readDebugQueue(filepath.Join(runtimeDir, "queue.json"))
+	orders, err := readDebugOrders(filepath.Join(runtimeDir, "orders.json"))
 	if err != nil {
 		return debugDump{}, err
 	}
@@ -120,7 +119,7 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 		},
 		Runtime: debugRuntime{
 			LoopState:       stringx.FirstNonEmpty(loopState, "running"),
-			Queue:           queue,
+			Orders:          orders,
 			Sessions:        sessions,
 			FailedTargets:   failedTargets,
 			ControlAckCount: controlAcks,
@@ -128,29 +127,20 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 	}, nil
 }
 
-func readDebugQueue(path string) (debugQueue, error) {
-	data, err := os.ReadFile(path)
+func readDebugOrders(path string) (debugOrders, error) {
+	of, err := queuex.ReadOrders(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return debugQueue{}, nil
-		}
-		return debugQueue{}, fmt.Errorf("read queue: %w", err)
+		return debugOrders{}, nil
 	}
-	if strings.TrimSpace(string(data)) == "" {
-		return debugQueue{}, nil
+	orders := make([]debugOrder, 0, len(of.Orders))
+	for _, o := range of.Orders {
+		orders = append(orders, debugOrder{
+			ID:     o.ID,
+			Title:  o.Title,
+			Status: o.Status,
+		})
 	}
-
-	var wrapped struct {
-		Items []debugQueueItem `json:"items"`
-	}
-	if err := json.Unmarshal(data, &wrapped); err == nil {
-		return debugQueue{Items: wrapped.Items}, nil
-	}
-	var bare []debugQueueItem
-	if err := json.Unmarshal(data, &bare); err == nil {
-		return debugQueue{Items: bare}, nil
-	}
-	return debugQueue{}, fmt.Errorf("parse queue.json")
+	return debugOrders{Orders: orders}, nil
 }
 
 func readDebugSessions(sessionsDir string) ([]debugSession, string, error) {

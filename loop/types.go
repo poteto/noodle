@@ -26,25 +26,6 @@ const (
 	StateIdle     State = "idle"
 )
 
-type Queue struct {
-	GeneratedAt  time.Time   `json:"generated_at"`
-	Items        []QueueItem `json:"items"`
-	ActionNeeded []string    `json:"action_needed,omitempty"`
-}
-
-type QueueItem struct {
-	ID        string   `json:"id"`
-	TaskKey   string   `json:"task_key,omitempty"`
-	Title     string   `json:"title,omitempty"`
-	Prompt    string   `json:"prompt,omitempty"`
-	Provider  string   `json:"provider"`
-	Model     string   `json:"model"`
-	Runtime   string   `json:"runtime,omitempty"`
-	Skill     string   `json:"skill,omitempty"`
-	Plan      []string `json:"plan,omitempty"`
-	Rationale string   `json:"rationale,omitempty"`
-}
-
 // Stage status constants.
 const (
 	StageStatusPending   = "pending"
@@ -216,8 +197,6 @@ type Dependencies struct {
 	Registry   taskreg.Registry
 	Logger         *slog.Logger
 	Now            func() time.Time
-	QueueFile      string
-	QueueNextFile  string
 	OrdersFile     string
 	OrdersNextFile string
 	StatusFile     string

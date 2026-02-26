@@ -6,7 +6,7 @@ description: >-
 
 # Noodle
 
-Noodle is an open-source AI coding framework. Skills are the only extension point. An LLM schedules work, Go code executes it mechanically. Everything is a file — queue-next.json, mise.json, control.ndjson. No hidden state.
+Noodle is an open-source AI coding framework. Skills are the only extension point. An LLM schedules work, Go code executes it mechanically. Everything is a file — orders-next.json, mise.json, control.ndjson. No hidden state.
 
 ## Task-Type Skill Frontmatter
 

@@ -67,7 +67,7 @@ func readStatusSummary(runtimeDir string) (statusSummary, error) {
 	if err != nil {
 		return statusSummary{}, err
 	}
-	queueDepth, err := readQueueDepth(filepath.Join(runtimeDir, "queue.json"))
+	queueDepth, err := readOrdersDepth(filepath.Join(runtimeDir, "orders.json"))
 	if err != nil {
 		return statusSummary{}, err
 	}
@@ -137,10 +137,10 @@ func loopStateRank(state string) int {
 	}
 }
 
-func readQueueDepth(path string) (int, error) {
-	queue, err := queuex.Read(path)
+func readOrdersDepth(path string) (int, error) {
+	orders, err := queuex.ReadOrders(path)
 	if err != nil {
 		return 0, err
 	}
-	return len(queue.Items), nil
+	return len(orders.Orders), nil
 }

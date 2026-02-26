@@ -42,24 +42,12 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		if deps.Now == nil {
 			deps.Now = defaults.Now
 		}
-		if deps.QueueFile == "" {
-			deps.QueueFile = defaults.QueueFile
-		}
-		if deps.QueueNextFile == "" {
-			deps.QueueNextFile = defaults.QueueNextFile
-		}
 		if deps.StatusFile == "" {
 			deps.StatusFile = defaults.StatusFile
 		}
 	}
 	if deps.Now == nil {
 		deps.Now = time.Now
-	}
-	if deps.QueueFile == "" {
-		deps.QueueFile = filepath.Join(runtimeDir, "queue.json")
-	}
-	if deps.QueueNextFile == "" {
-		deps.QueueNextFile = filepath.Join(runtimeDir, "queue-next.json")
 	}
 	if deps.OrdersFile == "" {
 		deps.OrdersFile = filepath.Join(runtimeDir, "orders.json")
@@ -146,7 +134,6 @@ func (l *Loop) rebuildRegistry() {
 	}
 	appendQueueEvent(eventsPath, rebuildEvent)
 
-	l.auditQueue()
 	l.auditOrders()
 }
 
@@ -223,7 +210,7 @@ func (l *Loop) Run(ctx context.Context) error {
 				return nil
 			}
 		case ev := <-watcher.Events:
-			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "queue.json") || strings.HasSuffix(ev.Name, "queue-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
+			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
 				if err := l.Cycle(ctx); err != nil {
 					return err
 				}

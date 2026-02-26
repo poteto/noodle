@@ -280,7 +280,7 @@ func TestReadOrdersPopulatesSnapshot(t *testing.T) {
           "model": "claude-sonnet-4-6",
           "runtime": "claude-code",
           "status": "pending",
-          "extra": {"context": "\"some-value\""}
+          "extra": {"context": "some-value"}
         },
         {
           "task_key": "verify",
