@@ -54,9 +54,9 @@ export function AgentCard({
   }
 
   return (
+    <div className="group cursor-pointer" onClick={onClick}>
     <div
-      className="bg-bg-1 border-2 border-border p-[18px] cursor-pointer shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-x-0.5 hover:-translate-y-1 hover:shadow-card-hover"
-      onClick={onClick}
+      className="bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:shadow-card-hover"
     >
       <div className="flex items-center gap-1.5 mb-2">
         {taskKey ? <Badge type={taskKey} /> : null}
@@ -112,6 +112,7 @@ export function AgentCard({
         </button>
         </Tooltip>
       </div>
+    </div>
     </div>
   );
 }

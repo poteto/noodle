@@ -33,14 +33,16 @@ export function BoardError({ error, reset }: ErrorComponentProps) {
             {error.message}
           </div>
 
+          <div className="group">
           <button
-            className="flex items-center gap-2 px-6 py-2.5 bg-accent text-bg-0 font-display text-[0.9375rem] font-bold tracking-[0.04em] border-2 border-border shadow-btn cursor-pointer transition-[transform,box-shadow] duration-[0.12s] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+            className="flex items-center gap-2 px-6 py-2.5 bg-accent text-bg-0 font-display text-[0.9375rem] font-bold tracking-[0.04em] border-2 border-border shadow-btn cursor-pointer transition-[transform,box-shadow] duration-[0.12s] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 group-hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
             onClick={handleRetry}
             disabled={retrying}
           >
             <RotateCcw size={14} className={retrying ? "animate-spin" : ""} />
             {retrying ? "retrying..." : "retry"}
           </button>
+          </div>
         </div>
       </div>
     </div>

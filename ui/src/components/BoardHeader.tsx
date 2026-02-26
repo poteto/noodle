@@ -21,9 +21,11 @@ export function BoardHeader({
       </div>
       <div className="flex items-center gap-2.5">
         <LoopControls loopState={snapshot.loop_state} />
-        <button className="flex items-center gap-1.5 px-6 py-2 bg-accent text-bg-0 font-display text-[0.9375rem] font-bold tracking-[0.04em] border-2 border-border shadow-btn cursor-pointer transition-[transform,box-shadow] duration-[0.12s] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onNewTask}>
+        <div className="group">
+        <button className="flex items-center gap-1.5 px-6 py-2 bg-accent text-bg-0 font-display text-[0.9375rem] font-bold tracking-[0.04em] border-2 border-border shadow-btn cursor-pointer transition-[transform,box-shadow] duration-[0.12s] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 group-hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={onNewTask}>
           + new task
         </button>
+        </div>
       </div>
     </div>
   );

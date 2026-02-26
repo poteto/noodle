@@ -22,7 +22,7 @@ export function QueueCard({
 }) {
   const isSchedule = item.task_key === "schedule";
   const classes = [
-    "bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-x-0.5 hover:-translate-y-1 hover:shadow-card-hover",
+    "bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:shadow-card-hover",
     isDragOver && "border-t-[3px] border-t-nyellow pt-[15px]",
     isDragging && "rotate-[-2deg] opacity-60 scale-[1.02] shadow-poster-md",
     isSchedule && "border-l-4 border-l-norange bg-norange-bg",
@@ -32,7 +32,7 @@ export function QueueCard({
 
   return (
     <div
-      className={classes}
+      className="group"
       draggable
       onDragStart={(e) => onDragStart?.(e, index ?? 0)}
       onDragOver={(e) => {
@@ -45,6 +45,7 @@ export function QueueCard({
       }}
       onDragEnd={onDragEnd}
     >
+    <div className={classes}>
       <div className="flex items-center gap-1.5 mb-2">
         {item.task_key && <Badge type={item.task_key} />}
       </div>
@@ -62,6 +63,7 @@ export function QueueCard({
       <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
         <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">{item.model}</span>
       </div>
+    </div>
     </div>
   );
 }
