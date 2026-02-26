@@ -129,13 +129,16 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	if err := pushWorktreeBranch(ctx, req.WorktreePath, branch); err != nil {
 		return nil, fmt.Errorf("push worktree branch: %w", err)
 	}
+	cloneURL := remoteURL
 	if d.gitToken != "" {
-		if err := configureGitAuthOnSprite(ctx, sprite, d.gitToken); err != nil {
-			return nil, fmt.Errorf("configure git auth on sprite: %w", err)
-		}
+		cloneURL = authenticatedRemoteURL(remoteURL, d.gitToken)
 	}
-	if err := cloneOnSprite(ctx, sprite, remoteURL, branch); err != nil {
-		return nil, fmt.Errorf("clone on sprite: %w", err)
+	if err := cloneOnSprite(ctx, sprite, cloneURL, branch); err != nil {
+		msg := err.Error()
+		if d.gitToken != "" {
+			msg = strings.ReplaceAll(msg, d.gitToken, "REDACTED")
+		}
+		return nil, fmt.Errorf("clone on sprite: %s", msg)
 	}
 
 	// Upload prompt file to sprite.
@@ -207,38 +210,26 @@ func pushWorktreeBranch(ctx context.Context, worktreePath, branch string) error 
 	return nil
 }
 
-// gitTokenUsername returns the appropriate HTTP username for a GitHub token.
-// Fine-grained PATs (github_pat_*) require "oauth2"; classic PATs and
-// GitHub App installation tokens use "x-access-token".
-func gitTokenUsername(token string) string {
+// authenticatedRemoteURL rewrites a GitHub remote URL to include token auth.
+// Handles both SSH (git@github.com:org/repo.git) and HTTPS formats.
+// Fine-grained PATs (github_pat_*) use "oauth2" as the username;
+// classic PATs and GitHub App installation tokens use "x-access-token".
+func authenticatedRemoteURL(remoteURL, token string) string {
+	user := "x-access-token"
 	if strings.HasPrefix(token, "github_pat_") {
-		return "oauth2"
+		user = "oauth2"
 	}
-	return "x-access-token"
-}
-
-// configureGitAuthOnSprite sets up git credential URL rewriting so clone and push
-// use the provided token. Covers both HTTPS and SSH-style remote URLs.
-func configureGitAuthOnSprite(ctx context.Context, sprite spriteHandle, token string) error {
-	user := gitTokenUsername(token)
-	// Rewrite https://github.com/ URLs to include the token.
-	// Use --replace-all so this is idempotent when the key already has multiple insteadOf values.
-	httpsRewrite := fmt.Sprintf(
-		"git config --global --replace-all url.\"https://%s:%s@github.com/\".insteadOf \"https://github.com/\"",
-		user, token,
-	)
-	// Also rewrite git@github.com: SSH URLs to authenticated HTTPS.
-	// Use --add so this appends a second insteadOf value rather than overwriting the first.
-	sshRewrite := fmt.Sprintf(
-		"git config --global --add url.\"https://%s:%s@github.com/\".insteadOf \"git@github.com:\"",
-		user, token,
-	)
-	cmd := sprite.CommandContext(ctx, "sh", "-c", httpsRewrite+" && "+sshRewrite)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		redacted := strings.ReplaceAll(string(out), token, "REDACTED")
-		return fmt.Errorf("%s: %w", strings.TrimSpace(redacted), err)
+	// git@github.com:org/repo.git → https://user:token@github.com/org/repo.git
+	if strings.HasPrefix(remoteURL, "git@github.com:") {
+		path := strings.TrimPrefix(remoteURL, "git@github.com:")
+		return fmt.Sprintf("https://%s:%s@github.com/%s", user, token, path)
 	}
-	return nil
+	// https://github.com/org/repo.git → https://user:token@github.com/org/repo.git
+	if strings.HasPrefix(remoteURL, "https://github.com/") {
+		path := strings.TrimPrefix(remoteURL, "https://github.com/")
+		return fmt.Sprintf("https://%s:%s@github.com/%s", user, token, path)
+	}
+	return remoteURL
 }
 
 // cloneOnSprite clones a repo from a remote URL onto the sprite.
