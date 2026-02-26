@@ -216,8 +216,9 @@ func configureGitAuthOnSprite(ctx context.Context, sprite spriteHandle, token st
 		token,
 	)
 	// Also rewrite git@github.com: SSH URLs to authenticated HTTPS.
+	// Use --add so this appends a second insteadOf value rather than overwriting the first.
 	sshRewrite := fmt.Sprintf(
-		"git config --global url.\"https://x-access-token:%s@github.com/\".insteadOf \"git@github.com:\"",
+		"git config --global --add url.\"https://x-access-token:%s@github.com/\".insteadOf \"git@github.com:\"",
 		token,
 	)
 	cmd := sprite.CommandContext(ctx, "sh", "-c", httpsRewrite+" && "+sshRewrite)
