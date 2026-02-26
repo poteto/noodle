@@ -1,4 +1,4 @@
-Back to [[plans/49-work-orders-redesign/overview]]
+Back to [[archived_plans/49-work-orders-redesign/overview]]
 
 # Phase 5: Loop core migration
 

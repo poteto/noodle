@@ -96,16 +96,16 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 
 ## Phases
 
-1. ~~[[plans/49-work-orders-redesign/phase-01-subtract-go-logic]]~~ ✓ `36629cb`
-2. ~~[[plans/49-work-orders-redesign/phase-02-define-order-and-stage-types]]~~ ✓ `a872fd2`
-3. ~~[[plans/49-work-orders-redesign/phase-03-orders-file-i-o]]~~ ✓ `f612914`
-4. ~~[[plans/49-work-orders-redesign/phase-04-stage-lifecycle-functions]]~~ ✓ `f05194c`
-5. ~~[[plans/49-work-orders-redesign/phase-05-loop-core-migration]]~~ ✓ `f3bc053`
-6. ~~[[plans/49-work-orders-redesign/phase-06-control-commands-and-failed-targets]]~~ ✓ `d81b531`
-7. ~~[[plans/49-work-orders-redesign/phase-07-schedule-handling-and-skill-contract]]~~ ✓ `dc2303b`
-8. ~~[[plans/49-work-orders-redesign/phase-08-snapshot-and-api]]~~ ✓ `f261e11`
-9. ~~[[plans/49-work-orders-redesign/phase-09-web-ui]]~~ ✓ `5c055de`
-10. ~~[[plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]]~~ ✓
+1. ~~[[archived_plans/49-work-orders-redesign/phase-01-subtract-go-logic]]~~ ✓ `36629cb`
+2. ~~[[archived_plans/49-work-orders-redesign/phase-02-define-order-and-stage-types]]~~ ✓ `a872fd2`
+3. ~~[[archived_plans/49-work-orders-redesign/phase-03-orders-file-i-o]]~~ ✓ `f612914`
+4. ~~[[archived_plans/49-work-orders-redesign/phase-04-stage-lifecycle-functions]]~~ ✓ `f05194c`
+5. ~~[[archived_plans/49-work-orders-redesign/phase-05-loop-core-migration]]~~ ✓ `f3bc053`
+6. ~~[[archived_plans/49-work-orders-redesign/phase-06-control-commands-and-failed-targets]]~~ ✓ `d81b531`
+7. ~~[[archived_plans/49-work-orders-redesign/phase-07-schedule-handling-and-skill-contract]]~~ ✓ `dc2303b`
+8. ~~[[archived_plans/49-work-orders-redesign/phase-08-snapshot-and-api]]~~ ✓ `f261e11`
+9. ~~[[archived_plans/49-work-orders-redesign/phase-09-web-ui]]~~ ✓ `5c055de`
+10. ~~[[archived_plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]]~~ ✓
 
 ### Phase 10 remaining work
 
@@ -125,7 +125,7 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 
 4. ~~**New fixture scenarios**~~ ✓ done — 4 fixtures in `loop/testdata/`: multi-stage-order-dispatches-first, on-failure-dispatches-recovery-stage, failed-target-blocks-dispatch, failing-order-with-completed-on-failure-not-dispatched.
 
-5. ~~**Codex review**~~ ✓ done — Three independent reviews. 1 critical, 5 high, 5 medium, 3 low findings. See [[plans/49-work-orders-redesign/codex-review-findings]].
+5. ~~**Codex review**~~ ✓ done — Three independent reviews. 1 critical, 5 high, 5 medium, 3 low findings. See [[archived_plans/49-work-orders-redesign/codex-review-findings]].
 
 ## Verification
 

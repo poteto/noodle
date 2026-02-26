@@ -1,4 +1,4 @@
-Back to [[plans/49-work-orders-redesign/overview]]
+Back to [[archived_plans/49-work-orders-redesign/overview]]
 
 # Phase 10: Test migration and cleanup
 
@@ -12,7 +12,7 @@ Migrate all test fixtures from queue format to orders format, delete old types a
 - [x] Optional package rename completed: `internal/queuex/` → `internal/orderx/` with imports/callers migrated.
 - [x] Cross-phase integration tests.
 - [x] New fixture scenarios.
-- [x] Codex review (three independent reviews) → [[plans/49-work-orders-redesign/codex-review-findings]]
+- [x] Codex review (three independent reviews) → [[archived_plans/49-work-orders-redesign/codex-review-findings]]
 
 ## Changes
 
