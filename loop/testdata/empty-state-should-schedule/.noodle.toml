@@ -1,3 +1,0 @@
-[routing.defaults]
-provider = "codex"
-model = "gpt-5.3-codex"

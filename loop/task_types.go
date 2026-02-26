@@ -10,13 +10,6 @@ import (
 // TaskType is the canonical registry entry for a Noodle task/session type.
 type TaskType = taskreg.TaskType
 
-func taskSkill(reg taskreg.Registry, taskKey, fallback string) string {
-	if _, ok := reg.ByKey(taskKey); ok {
-		return taskKey
-	}
-	return fallback
-}
-
 // ScheduleTaskKey returns the canonical steer target for the scheduler.
 func ScheduleTaskKey() string {
 	return "schedule"

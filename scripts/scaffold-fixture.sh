@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   echo "Usage: $0 <package-dir> <fixture-name> [state-count]" >&2
-  echo "Example: $0 loop runtime-repair-sample 2" >&2
+  echo "Example: $0 loop my-new-scenario 2" >&2
   exit 1
 }
 

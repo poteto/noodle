@@ -239,7 +239,7 @@ noodle:
 | ` + "`" + `noodle.schedule` + "`" + ` | yes | — | Hint for the schedule skill on when to schedule this type |
 | ` + "`" + `noodle.permissions.merge` + "`" + ` | no | ` + "`" + `true` + "`" + ` | Auto-merge worktree on success. Set ` + "`" + `false` + "`" + ` to park for human approval |
 
-When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves via the TUI Reviews tab.
+When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves parked worktrees before they are merged.
 
 The global ` + "`" + `autonomy` + "`" + ` config (` + "`" + `auto` + "`" + ` or ` + "`" + `approve` + "`" + `) overrides per-skill merge permissions: ` + "`" + `approve` + "`" + ` mode parks all worktrees regardless of the skill's ` + "`" + `permissions.merge` + "`" + ` value.
 

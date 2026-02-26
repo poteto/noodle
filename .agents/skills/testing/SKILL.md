@@ -53,25 +53,6 @@ When the bug is later fixed:
 2. Set `expected_failure: false` and `bug: false`
 3. Sync hashes: `pnpm fixtures:hash:sync`
 
-## TUI Testing with tmux
-
-For visual/interactive TUI changes, use tmux capture-pane for before/after comparison:
-
-```sh
-# Before making changes — capture baseline
-tmux capture-pane -t <session>:<window> -p > /tmp/tui-before.txt
-
-# After making changes — capture result
-tmux capture-pane -t <session>:<window> -p > /tmp/tui-after.txt
-
-# Compare
-diff /tmp/tui-before.txt /tmp/tui-after.txt
-```
-
-Review the delta and use judgment: does the change look intentional and correct? Not all TUI diffs need automated assertions — visual inspection of the capture-pane diff is often sufficient.
-
-For programmatic TUI tests, use Go unit tests against the model/view layer (see `tui/model_snapshot_test.go` for patterns).
-
 ## Key Commands
 
 | Command | Purpose |

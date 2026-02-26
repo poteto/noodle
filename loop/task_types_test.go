@@ -60,17 +60,6 @@ func testLoopRegistry() taskreg.Registry {
 	})
 }
 
-func TestTaskSkillFallback(t *testing.T) {
-	reg := testLoopRegistry()
-
-	if got := taskSkill(reg, "schedule", "fallback"); got != "schedule" {
-		t.Fatalf("got %q, want schedule", got)
-	}
-	if got := taskSkill(reg, "nonexistent", "fallback"); got != "fallback" {
-		t.Fatalf("got %q, want fallback", got)
-	}
-}
-
 func TestResolveByExplicitTaskKey(t *testing.T) {
 	reg := testLoopRegistry()
 	tt, ok := reg.ResolveQueueItem(taskreg.QueueItemInput{
