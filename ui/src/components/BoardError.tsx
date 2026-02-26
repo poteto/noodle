@@ -1,6 +1,17 @@
+import { useState } from "react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { RotateCcw } from "lucide-react";
 
 export function BoardError({ error, reset }: ErrorComponentProps) {
+  const [retrying, setRetrying] = useState(false);
+
+  function handleRetry() {
+    setRetrying(true);
+    reset();
+    // If reset doesn't unmount us, stop the spinner after a beat.
+    setTimeout(() => setRetrying(false), 2000);
+  }
+
   return (
     <div className="flex flex-col h-screen bg-bg-0">
       <div className="flex items-center justify-between px-10 pt-7 pb-[22px] border-b-3 border-border bg-bg-0 shrink-0">
@@ -8,13 +19,27 @@ export function BoardError({ error, reset }: ErrorComponentProps) {
           <h1 className="font-display font-extrabold text-[3.5rem] text-text-0 tracking-[-0.02em] leading-[0.85]">noodle</h1>
         </div>
       </div>
-      <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
-        <div className="p-10 font-mono">
-          <p className="text-nred mb-3">
-            {error.message}
+
+      <div className="flex flex-1 items-center justify-center bg-bg-2 min-h-0 p-10">
+        <div className="bg-bg-1 border-2 border-border border-l-[6px] border-l-nred p-10 shadow-poster-md max-w-[480px] w-full animate-fade-in">
+          <h2 className="font-display font-extrabold text-[1.75rem] text-text-0 tracking-[-0.01em] mb-1">
+            Something broke
+          </h2>
+          <p className="text-text-2 text-[0.875rem] mb-6">
+            The dashboard couldn't load. This usually means the noodle server is down or restarting.
           </p>
-          <button className="px-5 py-2 font-mono text-sm font-bold bg-accent text-bg-0 border-2 border-border cursor-pointer shadow-btn transition-[transform,box-shadow] duration-[0.12s] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active" onClick={reset}>
-            retry
+
+          <div className="bg-bg-2 border border-border-subtle px-4 py-3 mb-8 font-mono text-[0.8125rem] text-nred break-all">
+            {error.message}
+          </div>
+
+          <button
+            className="flex items-center gap-2 px-6 py-2.5 bg-accent text-bg-0 font-display text-[0.9375rem] font-bold tracking-[0.04em] border-2 border-border shadow-btn cursor-pointer transition-[transform,box-shadow] duration-[0.12s] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-btn-hover active:translate-x-px active:translate-y-px active:shadow-btn-active disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+            onClick={handleRetry}
+            disabled={retrying}
+          >
+            <RotateCcw size={14} className={retrying ? "animate-spin" : ""} />
+            {retrying ? "retrying..." : "retry"}
           </button>
         </div>
       </div>
