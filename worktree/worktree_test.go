@@ -49,6 +49,10 @@ func ensureTestRepoFixture() (string, error) {
 			testRepoFixtureErr = err
 			return
 		}
+		if err := runGitFixture(dir, "config", "gc.auto", "0"); err != nil {
+			testRepoFixtureErr = err
+			return
+		}
 		if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# test"), 0o644); err != nil {
 			testRepoFixtureErr = fmt.Errorf("write README.md: %w", err)
 			return
@@ -106,6 +110,9 @@ func setupTestRepo(t *testing.T) string {
 	runGitIn(t, dir, "config", "user.email", "test@test.com")
 	runGitIn(t, dir, "config", "user.name", "Test")
 	runGitIn(t, dir, "remote", "remove", "origin")
+	// Disable background git operations that race with t.TempDir() cleanup.
+	runGitIn(t, dir, "config", "gc.auto", "0")
+	runGitIn(t, dir, "config", "core.fsmonitor", "false")
 
 	// Clean up git worktree refs before t.TempDir() removal.
 	// Without this, .git/worktrees/ can make TempDir cleanup fail.
