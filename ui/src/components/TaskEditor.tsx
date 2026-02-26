@@ -118,7 +118,9 @@ export function TaskEditor({ onClose, editItemId }: { onClose: () => void; editI
                 onChange={(e) => setTaskKeyOverride(e.target.value)}
               >
                 {taskTypes.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </select>
             </div>
