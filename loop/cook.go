@@ -105,6 +105,7 @@ func (l *Loop) spawnCook(ctx context.Context, item QueueItem, opts spawnOptions)
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
+	l.logger.Info("cook dispatched", "item", item.ID, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
 }
 
@@ -162,7 +163,7 @@ func (l *Loop) collectBootstrapCompletion() {
 			At:   l.deps.Now().UTC(),
 			Type: "bootstrap_complete",
 		})
-		fmt.Fprintf(os.Stderr, "bootstrap agent completed — registry rebuilt\n")
+		l.logger.Info("bootstrap completed")
 		return
 	}
 
@@ -170,7 +171,7 @@ func (l *Loop) collectBootstrapCompletion() {
 	if l.bootstrapAttempts >= 3 {
 		l.bootstrapExhausted = true
 	}
-	fmt.Fprintf(os.Stderr, "bootstrap agent failed (attempt %d/3): status %s\n", l.bootstrapAttempts, status)
+	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", status)
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
@@ -178,12 +179,15 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
 	success := status == "completed"
 	if success {
 		if isScheduleItem(cook.queueItem) {
+			l.logger.Info("schedule completed", "session", cook.session.ID())
 			return l.skipQueueItem(cook.queueItem.ID)
 		}
 		canMerge := l.canMergeQueueItem(cook.queueItem)
 		if !canMerge || l.config.PendingApproval() {
+			l.logger.Info("cook parked for review", "item", cook.queueItem.ID, "session", cook.session.ID())
 			return l.parkPendingReview(cook)
 		}
+		l.logger.Info("cook completing", "item", cook.queueItem.ID, "session", cook.session.ID())
 		return l.mergeCook(ctx, cook.queueItem, cook.worktreeName, cook.session.ID())
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
@@ -204,6 +208,7 @@ func (l *Loop) mergeCook(ctx context.Context, item QueueItem, worktreeName strin
 			return fmt.Errorf("merge %s: %w", worktreeName, err)
 		}
 	}
+	l.logger.Info("cook merged", "item", item.ID, "worktree", worktreeName)
 	if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{item.ID}}); err != nil {
 		if !isMissingAdapter(err) {
 			return err
@@ -257,9 +262,11 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 			return err
 		}
 		if !processable {
+			l.logger.Info("adopted session dropped", "item", targetID, "session", sessionID)
 			l.dropAdoptedTarget(targetID, sessionID)
 			continue
 		}
+		l.logger.Info("adopted session completed", "item", targetID, "session", sessionID, "status", status)
 		if err := l.handleCompletion(ctx, cook); err != nil {
 			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 				return conflictErr
@@ -455,6 +462,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		if isScheduleItem(cook.queueItem) {
 			return fmt.Errorf("schedule failed after retries: %s", resolvedReason)
 		}
+		l.logger.Warn("cook failed permanently", "item", cook.queueItem.ID, "session", cook.session.ID(), "reason", resolvedReason)
 		if err := l.markFailed(cook.queueItem.ID, resolvedReason); err != nil {
 			return err
 		}
@@ -464,6 +472,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		}
 		return nil
 	}
+	l.logger.Info("cook retrying", "item", cook.queueItem.ID, "session", cook.session.ID(), "attempt", nextAttempt, "reason", resolvedReason)
 	if strings.TrimSpace(info.ExitReason) == "" {
 		info.ExitReason = resolvedReason
 	}

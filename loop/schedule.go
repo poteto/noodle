@@ -98,6 +98,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 	}
 	l.activeByTarget[item.ID] = cook
 	l.activeByID[session.ID()] = cook
+	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }
 
