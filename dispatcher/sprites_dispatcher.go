@@ -207,20 +207,31 @@ func pushWorktreeBranch(ctx context.Context, worktreePath, branch string) error 
 	return nil
 }
 
+// gitTokenUsername returns the appropriate HTTP username for a GitHub token.
+// Fine-grained PATs (github_pat_*) require "oauth2"; classic PATs and
+// GitHub App installation tokens use "x-access-token".
+func gitTokenUsername(token string) string {
+	if strings.HasPrefix(token, "github_pat_") {
+		return "oauth2"
+	}
+	return "x-access-token"
+}
+
 // configureGitAuthOnSprite sets up git credential URL rewriting so clone and push
 // use the provided token. Covers both HTTPS and SSH-style remote URLs.
 func configureGitAuthOnSprite(ctx context.Context, sprite spriteHandle, token string) error {
+	user := gitTokenUsername(token)
 	// Rewrite https://github.com/ URLs to include the token.
 	// Use --replace-all so this is idempotent when the key already has multiple insteadOf values.
 	httpsRewrite := fmt.Sprintf(
-		"git config --global --replace-all url.\"https://x-access-token:%s@github.com/\".insteadOf \"https://github.com/\"",
-		token,
+		"git config --global --replace-all url.\"https://%s:%s@github.com/\".insteadOf \"https://github.com/\"",
+		user, token,
 	)
 	// Also rewrite git@github.com: SSH URLs to authenticated HTTPS.
 	// Use --add so this appends a second insteadOf value rather than overwriting the first.
 	sshRewrite := fmt.Sprintf(
-		"git config --global --add url.\"https://x-access-token:%s@github.com/\".insteadOf \"git@github.com:\"",
-		token,
+		"git config --global --add url.\"https://%s:%s@github.com/\".insteadOf \"git@github.com:\"",
+		user, token,
 	)
 	cmd := sprite.CommandContext(ctx, "sh", "-c", httpsRewrite+" && "+sshRewrite)
 	if out, err := cmd.CombinedOutput(); err != nil {
