@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -120,6 +121,7 @@ type Dependencies struct {
 	Mise       MiseBuilder
 	Monitor    Monitor
 	Registry   taskreg.Registry
+	Logger        *slog.Logger
 	Now           func() time.Time
 	QueueFile     string
 	QueueNextFile string
@@ -133,6 +135,7 @@ type Loop struct {
 	registry    taskreg.Registry
 	registryErr error
 	deps        Dependencies
+	logger      *slog.Logger
 
 	state            State
 	registryStale    atomic.Bool

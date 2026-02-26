@@ -1,8 +1,7 @@
 package loop
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -23,7 +22,7 @@ func (noOpWorktree) Merge(string) error             { return nil }
 func (noOpWorktree) MergeRemoteBranch(string) error { return nil }
 func (noOpWorktree) Cleanup(string, bool) error     { return nil }
 
-func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config) Dependencies {
+func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config, logger *slog.Logger) Dependencies {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
 	local := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
 		ProjectDir:    projectDir,
@@ -49,7 +48,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)
 		if spriteName == "" {
-			fmt.Fprintf(os.Stderr, "warning: sprites runtime unavailable: sprite_name not set\n")
+			logger.Warn("sprites runtime unavailable: sprite_name not set")
 		} else {
 			sd := dispatcher.NewSpritesDispatcher(dispatcher.SpritesDispatcherConfig{
 				ProjectDir:    projectDir,

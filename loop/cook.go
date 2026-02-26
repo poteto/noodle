@@ -451,7 +451,6 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		info = recover.RecoveryInfo{SessionID: cook.session.ID(), ExitReason: reason}
 	}
 	resolvedReason := retryFailureReason(reason, info)
-	fmt.Fprintf(os.Stderr, "session %s failed: %s\n", cook.session.ID(), resolvedReason)
 	if nextAttempt > l.config.Recovery.MaxRetries {
 		if isScheduleItem(cook.queueItem) {
 			return fmt.Errorf("schedule failed after retries: %s", resolvedReason)

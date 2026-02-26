@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,8 +21,11 @@ import (
 func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Loop {
 	projectDir = strings.TrimSpace(projectDir)
 	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if deps.Logger == nil {
+		deps.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+	}
 	if deps.Dispatcher == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
-		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg)
+		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger)
 		if deps.Dispatcher == nil {
 			deps.Dispatcher = defaults.Dispatcher
 		}
@@ -79,7 +83,8 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		registry:              registry,
 		registryErr:           registryErr,
 		deps:                  deps,
-		state:                 StateRunning,
+		logger:                deps.Logger,
+		state:                 StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
 		activeByTarget:        map[string]*activeCook{},
 		activeByID:            map[string]*activeCook{},
 		adoptedTargets:        map[string]string{},

@@ -2,7 +2,6 @@ package loop
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -69,7 +68,7 @@ func (l *Loop) writePendingReview() error {
 	items := make([]PendingReviewItem, 0, len(l.pendingReview))
 	for _, pending := range l.pendingReview {
 		if pending == nil {
-			fmt.Fprintf(os.Stderr, "warning: nil entry in pendingReview map\n")
+			l.logger.Warn("nil entry in pendingReview map")
 			continue
 		}
 		items = append(items, PendingReviewItem{
