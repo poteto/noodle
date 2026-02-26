@@ -224,7 +224,8 @@ func configureGitAuthOnSprite(ctx context.Context, sprite spriteHandle, token st
 	)
 	cmd := sprite.CommandContext(ctx, "sh", "-c", httpsRewrite+" && "+sshRewrite)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+		redacted := strings.ReplaceAll(string(out), token, "REDACTED")
+		return fmt.Errorf("%s: %w", strings.TrimSpace(redacted), err)
 	}
 	return nil
 }
