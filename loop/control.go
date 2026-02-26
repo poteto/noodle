@@ -275,7 +275,8 @@ func (l *Loop) controlRequestChanges(itemID, feedback string) error {
 		return fmt.Errorf("no pending review for %q", itemID)
 	}
 	if l.atMaxConcurrency() {
-		return fmt.Errorf("at max concurrency; cannot start changes now")
+		l.logger.Info("request-changes deferred: at max concurrency", "item", itemID)
+		return nil // item stays in pendingReview; will be available next cycle
 	}
 
 	resumePrompt := "Previous work needs changes."
