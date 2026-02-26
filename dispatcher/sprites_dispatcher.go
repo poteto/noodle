@@ -276,47 +276,12 @@ func uploadFileToSprite(ctx context.Context, sprite spriteHandle, localPath, rem
 	return nil
 }
 
-// buildSpriteCodexArgs builds the argument list for running codex on the sprite.
 func buildSpriteCodexArgs(req DispatchRequest) []string {
-	args := []string{
-		"codex",
-		"--ask-for-approval", "never",
-		"exec",
-		"--skip-git-repo-check",
-		"--sandbox", "workspace-write",
-		"--json",
-	}
-	if strings.TrimSpace(req.Model) != "" {
-		args = append(args, "--model", req.Model)
-	}
-	return args
+	return append([]string{"codex"}, codexBaseArgs(req)...)
 }
 
-// buildSpriteClaudeArgs builds the argument list for running claude on the sprite.
 func buildSpriteClaudeArgs(req DispatchRequest, systemPrompt string) []string {
-	args := []string{
-		"claude",
-		"-p",
-		"--output-format", "stream-json",
-		"--verbose",
-		"--permission-mode", "bypassPermissions",
-	}
-	if req.MaxTurns > 0 {
-		args = append(args, "--max-turns", fmt.Sprintf("%d", req.MaxTurns))
-	}
-	if req.BudgetCap > 0 {
-		args = append(args, "--max-budget-usd", fmt.Sprintf("%.2f", req.BudgetCap))
-	}
-	if strings.TrimSpace(req.Model) != "" {
-		args = append(args, "--model", req.Model)
-	}
-	if strings.TrimSpace(req.ReasoningLevel) != "" {
-		args = append(args, "--effort", req.ReasoningLevel)
-	}
-	if strings.TrimSpace(systemPrompt) != "" {
-		args = append(args, "--append-system-prompt", systemPrompt)
-	}
-	return args
+	return append([]string{"claude"}, claudeBaseArgs(req, systemPrompt)...)
 }
 
 // gitRemoteURL reads the origin remote URL from a git repo.

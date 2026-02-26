@@ -28,9 +28,10 @@ func buildProviderCommand(
 	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile, extraArgs)
 }
 
-func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string, extraArgs []string) string {
+// claudeBaseArgs returns the canonical Claude CLI flags for a dispatch request.
+// Callers prepend the binary path and append site-specific extras.
+func claudeBaseArgs(req DispatchRequest, systemPrompt string) []string {
 	args := []string{
-		agentBinary,
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
@@ -51,17 +52,13 @@ func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemProm
 	if strings.TrimSpace(systemPrompt) != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
-	args = append(args, extraArgs...)
-	command := shellCommandWithInput(args, promptFile, true)
-	if strings.TrimSpace(stderrFile) != "" {
-		command += " 2> " + shellx.Quote(stderrFile)
-	}
-	return command
+	return args
 }
 
-func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string, extraArgs []string) string {
+// codexBaseArgs returns the canonical Codex CLI flags for a dispatch request.
+// Callers prepend the binary path and append site-specific extras.
+func codexBaseArgs(req DispatchRequest) []string {
 	args := []string{
-		agentBinary,
 		"--ask-for-approval", "never",
 		"exec",
 		"--skip-git-repo-check",
@@ -71,6 +68,21 @@ func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile 
 	if strings.TrimSpace(req.Model) != "" {
 		args = append(args, "--model", req.Model)
 	}
+	return args
+}
+
+func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string, extraArgs []string) string {
+	args := append([]string{agentBinary}, claudeBaseArgs(req, systemPrompt)...)
+	args = append(args, extraArgs...)
+	command := shellCommandWithInput(args, promptFile, true)
+	if strings.TrimSpace(stderrFile) != "" {
+		command += " 2> " + shellx.Quote(stderrFile)
+	}
+	return command
+}
+
+func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string, extraArgs []string) string {
+	args := append([]string{agentBinary}, codexBaseArgs(req)...)
 	args = append(args, extraArgs...)
 	// Codex writes non-JSON progress banners to stderr even with --json.
 	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
