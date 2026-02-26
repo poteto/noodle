@@ -1,0 +1,559 @@
+package loop
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/mise"
+)
+
+// logEntry is a captured slog record for test assertions.
+type logEntry struct {
+	Level   slog.Level
+	Message string
+	Attrs   map[string]any
+}
+
+// capturingHandler is a slog.Handler that records log entries in memory.
+// Safe for concurrent use (required by slog.Handler contract).
+type capturingHandler struct {
+	mu      sync.Mutex
+	entries []logEntry
+}
+
+func (h *capturingHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+
+func (h *capturingHandler) Handle(_ context.Context, r slog.Record) error {
+	entry := logEntry{
+		Level:   r.Level,
+		Message: r.Message,
+		Attrs:   make(map[string]any),
+	}
+	r.Attrs(func(a slog.Attr) bool {
+		entry.Attrs[a.Key] = a.Value.Any()
+		return true
+	})
+	h.mu.Lock()
+	h.entries = append(h.entries, entry)
+	h.mu.Unlock()
+	return nil
+}
+
+func (h *capturingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+func (h *capturingHandler) WithGroup(_ string) slog.Handler      { return h }
+
+func (h *capturingHandler) snapshot() []logEntry {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := make([]logEntry, len(h.entries))
+	copy(out, h.entries)
+	return out
+}
+
+// findEntry returns the first log entry matching the message.
+func (h *capturingHandler) findEntry(msg string) (logEntry, bool) {
+	for _, e := range h.snapshot() {
+		if e.Message == msg {
+			return e, true
+		}
+	}
+	return logEntry{}, false
+}
+
+// hasMessage returns true if any entry matches the message.
+func (h *capturingHandler) hasMessage(msg string) bool {
+	_, ok := h.findEntry(msg)
+	return ok
+}
+
+// newTestLogger creates a *slog.Logger backed by a capturingHandler.
+func newTestLogger() (*slog.Logger, *capturingHandler) {
+	h := &capturingHandler{}
+	return slog.New(h), h
+}
+
+// newTestLoop creates a Loop wired with a capturing logger and common fakes.
+func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts)) *testLoopContext {
+	t.Helper()
+	o := &testLoopOpts{}
+	for _, fn := range opts {
+		fn(o)
+	}
+
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+	ar := &fakeAdapterRunner{}
+	fm := &fakeMise{}
+	if o.brief != nil {
+		fm.brief = *o.brief
+	}
+
+	cfg := config.DefaultConfig()
+	if o.maxRetries != nil {
+		cfg.Recovery.MaxRetries = *o.maxRetries
+	}
+
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    ar,
+		Mise:       fm,
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Logger:     logger,
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+	return &testLoopContext{
+		loop:       l,
+		dispatcher: sp,
+		worktree:   wt,
+		adapter:    ar,
+		mise:       fm,
+		queuePath:  queuePath,
+		runtimeDir: runtimeDir,
+		projectDir: projectDir,
+	}
+}
+
+type testLoopOpts struct {
+	brief      *mise.Brief
+	maxRetries *int
+}
+
+type testLoopContext struct {
+	loop       *Loop
+	dispatcher *fakeDispatcher
+	worktree   *fakeWorktree
+	adapter    *fakeAdapterRunner
+	mise       *fakeMise
+	queuePath  string
+	runtimeDir string
+	projectDir string
+}
+
+func TestLogDispatchCook(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("cook dispatched")
+	if !ok {
+		t.Fatal("expected 'cook dispatched' log entry")
+	}
+	if entry.Attrs["item"] != "item-1" {
+		t.Fatalf("item attr = %v, want item-1", entry.Attrs["item"])
+	}
+	if entry.Attrs["session"] == nil || entry.Attrs["session"] == "" {
+		t.Fatal("expected non-empty session attr")
+	}
+}
+
+func TestLogDispatchSchedule(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		o.brief = &brief
+	})
+
+	// Empty queue with plans triggers bootstrap schedule.
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if !handler.hasMessage("schedule dispatched") {
+		t.Fatal("expected 'schedule dispatched' log entry")
+	}
+}
+
+func TestLogCompletionMerge(t *testing.T) {
+	logger, handler := newTestLogger()
+	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		o.brief = &brief
+	})
+
+	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(tc.dispatcher.sessions) != 1 {
+		t.Fatalf("sessions = %d, want 1", len(tc.dispatcher.sessions))
+	}
+
+	tc.dispatcher.sessions[0].status = "completed"
+	close(tc.dispatcher.sessions[0].done)
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+
+	if !handler.hasMessage("cook completing") {
+		t.Fatal("expected 'cook completing' log entry")
+	}
+	if !handler.hasMessage("cook merged") {
+		t.Fatal("expected 'cook merged' log entry")
+	}
+}
+
+func TestLogCompletionParkForReview(t *testing.T) {
+	logger, handler := newTestLogger()
+	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		o.brief = &brief
+	})
+
+	// Enable pending approval so cooks get parked.
+	tc.loop.config.Autonomy = config.AutonomyApprove
+
+	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+
+	tc.dispatcher.sessions[0].status = "completed"
+	close(tc.dispatcher.sessions[0].done)
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+
+	if !handler.hasMessage("cook parked for review") {
+		t.Fatal("expected 'cook parked for review' log entry")
+	}
+}
+
+func TestLogScheduleCompleted(t *testing.T) {
+	logger, handler := newTestLogger()
+	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		o.brief = &brief
+	})
+
+	// Empty queue + plans → bootstrap schedule dispatch.
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(tc.dispatcher.sessions) < 1 {
+		t.Fatal("expected schedule dispatch")
+	}
+
+	tc.dispatcher.sessions[0].status = "completed"
+	close(tc.dispatcher.sessions[0].done)
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+
+	if !handler.hasMessage("schedule completed") {
+		t.Fatal("expected 'schedule completed' log entry")
+	}
+}
+
+func TestLogRetryAndFailure(t *testing.T) {
+	logger, handler := newTestLogger()
+	maxRetries := 1
+	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		o.maxRetries = &maxRetries
+		o.brief = &brief
+	})
+
+	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	// Cycle 1: dispatch.
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+
+	// Fail the first session → triggers retry.
+	tc.dispatcher.sessions[0].status = "error"
+	close(tc.dispatcher.sessions[0].done)
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("retry cycle: %v", err)
+	}
+
+	if !handler.hasMessage("cook retrying") {
+		t.Fatal("expected 'cook retrying' log entry")
+	}
+
+	// Fail the retry → exhausts retries → permanent failure.
+	tc.dispatcher.sessions[1].status = "error"
+	close(tc.dispatcher.sessions[1].done)
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("failure cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("cook failed permanently")
+	if !ok {
+		t.Fatal("expected 'cook failed permanently' log entry")
+	}
+	if entry.Level != slog.LevelWarn {
+		t.Fatalf("expected Warn level, got %v", entry.Level)
+	}
+}
+
+func TestLogStateTransition(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	// Write a pause command.
+	controlPath := filepath.Join(tc.runtimeDir, "control.ndjson")
+	if err := os.WriteFile(controlPath, []byte(`{"id":"cmd-1","action":"pause"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("state changed")
+	if !ok {
+		t.Fatal("expected 'state changed' log entry")
+	}
+	if entry.Attrs["from"] != "running" {
+		t.Fatalf("from = %v, want running", entry.Attrs["from"])
+	}
+	if entry.Attrs["to"] != "paused" {
+		t.Fatalf("to = %v, want paused", entry.Attrs["to"])
+	}
+}
+
+func TestLogSetStateNoOp(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	// Loop starts in StateRunning. Calling setState(StateRunning) should be a no-op.
+	tc.loop.setState(StateRunning)
+
+	if handler.hasMessage("state changed") {
+		t.Fatal("setState should not log when state is unchanged")
+	}
+}
+
+func TestLogControlCommand(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	controlPath := filepath.Join(tc.runtimeDir, "control.ndjson")
+	if err := os.WriteFile(controlPath, []byte(`{"id":"cmd-1","action":"pause"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("control command")
+	if !ok {
+		t.Fatal("expected 'control command' log entry")
+	}
+	if entry.Attrs["action"] != "pause" {
+		t.Fatalf("action = %v, want pause", entry.Attrs["action"])
+	}
+}
+
+func TestLogControlCommandFailed(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	controlPath := filepath.Join(tc.runtimeDir, "control.ndjson")
+	if err := os.WriteFile(controlPath, []byte(`{"id":"cmd-1","action":"kill","name":"nonexistent"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("control command failed")
+	if !ok {
+		t.Fatal("expected 'control command failed' log entry")
+	}
+	if entry.Level != slog.LevelWarn {
+		t.Fatalf("expected Warn level, got %v", entry.Level)
+	}
+	if entry.Attrs["action"] != "kill" {
+		t.Fatalf("action = %v, want kill", entry.Attrs["action"])
+	}
+	if entry.Attrs["message"] == nil || entry.Attrs["message"] == "" {
+		t.Fatal("expected non-empty message attr")
+	}
+}
+
+func TestLogBootstrapSchedule(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		o.brief = &brief
+	})
+
+	// No queue file → empty queue → triggers bootstrap schedule.
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if !handler.hasMessage("queue empty, bootstrapping schedule") {
+		t.Fatal("expected 'queue empty, bootstrapping schedule' log entry")
+	}
+}
+
+func TestLogQueueItemSkipped(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := tc.loop.skipQueueItem("item-1"); err != nil {
+		t.Fatalf("skip: %v", err)
+	}
+
+	entry, ok := handler.findEntry("queue item skipped")
+	if !ok {
+		t.Fatal("expected 'queue item skipped' log entry")
+	}
+	if entry.Attrs["item"] != "item-1" {
+		t.Fatalf("item = %v, want item-1", entry.Attrs["item"])
+	}
+}
+
+func TestLogIdleTransition(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	// No plans, no queue → should go idle.
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	entry, ok := handler.findEntry("state changed")
+	if !ok {
+		t.Fatal("expected 'state changed' log entry for idle transition")
+	}
+	if entry.Attrs["to"] != "idle" {
+		t.Fatalf("to = %v, want idle", entry.Attrs["to"])
+	}
+}
+
+func TestLogQueueNextPromoted(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		o.brief = &brief
+	})
+
+	// Write a valid queue-next.json.
+	queueNextPath := filepath.Join(tc.runtimeDir, "queue-next.json")
+	nextQueue := Queue{Items: []QueueItem{{ID: "from-schedule", Provider: "claude", Model: "claude-opus-4-6"}}}
+	if err := writeQueueAtomic(queueNextPath, nextQueue); err != nil {
+		t.Fatalf("write queue-next: %v", err)
+	}
+	tc.loop.deps.QueueNextFile = queueNextPath
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	if !handler.hasMessage("queue-next promoted") {
+		// Check if it was a failure instead
+		if handler.hasMessage("queue-next promotion failed") {
+			entry, _ := handler.findEntry("queue-next promotion failed")
+			t.Fatalf("queue-next promotion failed: %v", entry.Attrs["error"])
+		}
+		t.Fatal("expected 'queue-next promoted' log entry")
+	}
+}
+
+func TestLogResumeStateTransition(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	// Pause first.
+	controlPath := filepath.Join(tc.runtimeDir, "control.ndjson")
+	if err := os.WriteFile(controlPath, []byte(`{"id":"cmd-1","action":"pause"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("pause cycle: %v", err)
+	}
+
+	// Resume.
+	if err := os.WriteFile(controlPath, []byte(`{"id":"cmd-2","action":"resume"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("resume cycle: %v", err)
+	}
+
+	// Should have two state changes: running→paused, paused→running.
+	entries := handler.snapshot()
+	stateChanges := 0
+	var transitions []string
+	for _, e := range entries {
+		if e.Message == "state changed" {
+			stateChanges++
+			from, _ := e.Attrs["from"].(string)
+			to, _ := e.Attrs["to"].(string)
+			transitions = append(transitions, from+"→"+to)
+		}
+	}
+	if stateChanges < 2 {
+		t.Fatalf("expected at least 2 state changes, got %d: %v", stateChanges, transitions)
+	}
+
+	// Verify the pause→resume pair.
+	foundPause := false
+	foundResume := false
+	for _, tr := range transitions {
+		if strings.Contains(tr, "running→paused") {
+			foundPause = true
+		}
+		if strings.Contains(tr, "paused→running") {
+			foundResume = true
+		}
+	}
+	if !foundPause {
+		t.Fatalf("missing running→paused transition, got %v", transitions)
+	}
+	if !foundResume {
+		t.Fatalf("missing paused→running transition, got %v", transitions)
+	}
+}
