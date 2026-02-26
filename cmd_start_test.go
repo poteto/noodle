@@ -165,6 +165,14 @@ func TestShouldStartServer(t *testing.T) {
 		{"true+headless", boolPtr(true), false, true},
 		{"false+interactive", boolPtr(false), true, false},
 	}
+	// env var override: NOODLE_SERVER=1 forces server on even when headless.
+	t.Run("nil+headless+NOODLE_SERVER", func(t *testing.T) {
+		t.Setenv("NOODLE_SERVER", "1")
+		cfg := config.ServerConfig{Enabled: nil}
+		if got := shouldStartServer(cfg, false); !got {
+			t.Fatal("shouldStartServer should return true when NOODLE_SERVER=1")
+		}
+	})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.ServerConfig{Enabled: tt.enabled}

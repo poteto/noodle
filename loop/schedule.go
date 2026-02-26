@@ -82,6 +82,8 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 		Skill:                skillName,
 		WorktreePath:         l.projectDir,
 		AllowPrimaryCheckout: true,
+		Title:                item.Title,
+		RetryCount:           attempt,
 	}
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
@@ -122,6 +124,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 		SystemPrompt:         buildBootstrapPrompt(provider),
 		WorktreePath:         l.projectDir,
 		AllowPrimaryCheckout: true,
+		Title:                "bootstrapping schedule skill",
 	}
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {

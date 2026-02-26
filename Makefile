@@ -128,6 +128,10 @@ bugs:
 
 watch: $(UI_MODULES)
 	@mkdir -p ui/dist/client; \
+	echo "Vite dev server: http://localhost:5173 (use this for UI development)"; \
+	echo "Go API server:   http://localhost:3000 (Vite proxies /api here)"; \
+	echo ""; \
+	export NOODLE_SERVER=1 NOODLE_NO_BROWSER=1 NOODLE_DEV=1; \
 	trap 'kill 0' EXIT; \
 	(cd ui && pnpm run dev) & \
 	if $(GO) tool -n air >/dev/null 2>&1; then \
