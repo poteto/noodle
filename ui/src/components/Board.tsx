@@ -219,7 +219,7 @@ export function Board() {
       (item) => item.id === columns.queued[dropIndex]?.id,
     );
     if (fullQueueIndex !== -1) {
-      optimisticSend({ action: "reorder", item: id, value: String(fullQueueIndex) });
+      optimisticSend({ action: "reorder", order_id: id, value: String(fullQueueIndex) });
     }
     resetDrag();
   }
@@ -243,7 +243,7 @@ export function Board() {
     }
     startTransition(async () => {
       applyOptimistic({ type: "move-to-cooking", itemId: id });
-      await sendControl({ action: "reorder", item: id, value: "0" });
+      await sendControl({ action: "reorder", order_id: id, value: "0" });
     });
     resetDrag();
   }

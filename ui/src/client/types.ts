@@ -119,7 +119,7 @@ export type ControlAction =
 export interface ControlCommand {
   id?: string;
   action: ControlAction;
-  item?: string;
+  order_id?: string;
   name?: string;
   target?: string;
   prompt?: string;

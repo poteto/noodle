@@ -119,7 +119,7 @@ func ValidateStageStatus(status string) error {
 type ControlCommand struct {
 	ID       string    `json:"id"`
 	Action   string    `json:"action"`
-	Item     string    `json:"item,omitempty"`
+	OrderID  string    `json:"order_id,omitempty"`
 	Name     string    `json:"name,omitempty"`
 	Target   string    `json:"target,omitempty"`
 	Prompt   string    `json:"prompt,omitempty"`

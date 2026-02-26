@@ -42,7 +42,7 @@ export function TaskEditor({ onClose, editItemId }: { onClose: () => void; editI
     const cmd: ControlCommand = editItemId
       ? {
           action: "edit-item",
-          item: editItemId,
+          order_id: editItemId,
           prompt: text,
           task_key: taskKey,
           provider,
@@ -50,7 +50,7 @@ export function TaskEditor({ onClose, editItemId }: { onClose: () => void; editI
         }
       : {
           action: "enqueue",
-          item: `task-${Date.now()}`,
+          order_id: `task-${Date.now()}`,
           prompt: text,
           task_key: taskKey,
           provider,

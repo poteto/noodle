@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
-	"github.com/poteto/noodle/recover"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -149,7 +147,7 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	case "drain":
 		l.setState(StateDraining)
 	case "skip":
-		if err := l.skipQueueItem(cmd.Item); err != nil {
+		if err := l.controlSkip(cmd.OrderID); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
@@ -164,17 +162,17 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Message = err.Error()
 		}
 	case "merge":
-		if err := l.controlMerge(cmd.Item); err != nil {
+		if err := l.controlMerge(cmd.OrderID); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
 	case "reject":
-		if err := l.controlReject(cmd.Item); err != nil {
+		if err := l.controlReject(cmd.OrderID); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
 	case "request-changes":
-		if err := l.controlRequestChanges(cmd.Item, cmd.Prompt); err != nil {
+		if err := l.controlRequestChanges(cmd.OrderID, cmd.Prompt); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
@@ -191,7 +189,7 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	case "stop-all":
 		l.controlStopAll()
 	case "requeue":
-		if err := l.controlRequeue(cmd.Item); err != nil {
+		if err := l.controlRequeue(cmd.OrderID); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
@@ -240,7 +238,29 @@ func (l *Loop) controlMerge(orderID string) error {
 	// Quality verdict gate — even the manual merge path respects quality verdicts.
 	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
 	if hasVerdict && !verdict.Accept {
-		return fmt.Errorf("quality verdict rejected: %s", verdict.Feedback)
+		// Quality gate failed — call failStage instead of merging.
+		orders, err := readOrders(l.deps.OrdersFile)
+		if err != nil {
+			return err
+		}
+		reason := "quality rejected: " + verdict.Feedback
+		orders, terminal, err := failStage(orders, orderID, reason)
+		if err != nil {
+			return err
+		}
+		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			return err
+		}
+		if strings.TrimSpace(pending.worktreeName) != "" {
+			_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
+		}
+		if terminal {
+			if err := l.markFailed(orderID, reason); err != nil {
+				return err
+			}
+		}
+		delete(l.pendingReview, orderID)
+		return l.writePendingReview()
 	}
 
 	// Merge the worktree.
@@ -248,10 +268,23 @@ func (l *Loop) controlMerge(orderID string) error {
 		orderID:      pending.orderID,
 		stageIndex:   pending.stageIndex,
 		stage:        pending.stage,
+		isOnFailure:  false,
+		orderStatus:  OrderStatusActive,
 		plan:         pending.plan,
 		worktreeName: pending.worktreeName,
 		worktreePath: pending.worktreePath,
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
+	}
+	// Determine actual order status for advanceAndPersist.
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err == nil {
+		for _, o := range orders.Orders {
+			if o.ID == orderID {
+				cook.orderStatus = o.Status
+				cook.isOnFailure = o.Status == OrderStatusFailing
+				break
+			}
+		}
 	}
 	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 		return err
@@ -275,7 +308,7 @@ func (l *Loop) controlReject(orderID string) error {
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
-	// Cancel the order in orders.json.
+	// User rejection skips OnFailure — cancel and remove the order directly.
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
@@ -310,51 +343,33 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		return nil
 	}
 
-	resumePrompt := "Previous work needs changes."
-	trimmedFeedback := strings.TrimSpace(feedback)
-	if trimmedFeedback != "" {
-		resumePrompt += " Feedback: " + trimmedFeedback
-	}
-
-	name := strings.TrimSpace(pending.worktreeName)
-	if name == "" {
-		name = cookBaseName(pending.orderID, pending.stageIndex, pending.stage.TaskKey)
-	}
-	path := strings.TrimSpace(pending.worktreePath)
-	if path == "" {
-		path = l.worktreePath(name)
-	}
-
-	taskType, _ := l.registry.ByKey(pending.stage.TaskKey)
-	req := dispatcher.DispatchRequest{
-		Name:         name,
-		Prompt:       buildCookPrompt(pending.orderID, pending.stage, pending.plan, "", resumePrompt),
-		Provider:     nonEmpty(pending.stage.Provider, l.config.Routing.Defaults.Provider),
-		Model:        nonEmpty(pending.stage.Model, l.config.Routing.Defaults.Model),
-		Skill:        pending.stage.Skill,
-		WorktreePath: path,
-		TaskKey:      taskType.Key,
-		Runtime:      nonEmpty(pending.stage.Runtime, "tmux"),
-		Title:        "",
-	}
-	if taskType.DomainSkill != "" {
-		req.DomainSkill = taskType.DomainSkill
-	}
-	session, err := l.deps.Dispatcher.Dispatch(context.Background(), req)
+	// Call failStage — if OnFailure stages exist, they run; if not, terminal failure.
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
-	l.activeByTarget[orderID] = &activeCook{
-		orderID:      pending.orderID,
-		stageIndex:   pending.stageIndex,
-		stage:        pending.stage,
-		plan:         pending.plan,
-		session:      session,
-		worktreeName: name,
-		worktreePath: path,
-		attempt:      recover.RecoveryChainLength(name),
+	reason := "changes requested"
+	trimmedFeedback := strings.TrimSpace(feedback)
+	if trimmedFeedback != "" {
+		reason += ": " + trimmedFeedback
 	}
-	l.activeByID[session.ID()] = l.activeByTarget[orderID]
+	orders, terminal, err := failStage(orders, orderID, reason)
+	if err != nil {
+		return err
+	}
+	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		return err
+	}
+	if terminal {
+		if err := l.markFailed(orderID, reason); err != nil {
+			return err
+		}
+	}
+
+	// Clean up the worktree for the failed stage.
+	if strings.TrimSpace(pending.worktreeName) != "" {
+		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
+	}
 
 	delete(l.pendingReview, orderID)
 	return l.writePendingReview()
@@ -372,58 +387,89 @@ func (l *Loop) controlAutonomy(value string) error {
 }
 
 func (l *Loop) controlEnqueue(cmd ControlCommand) error {
-	item := strings.TrimSpace(cmd.Item)
-	if item == "" {
-		return fmt.Errorf("enqueue requires item")
+	orderID := strings.TrimSpace(cmd.OrderID)
+	if orderID == "" {
+		return fmt.Errorf("enqueue requires order_id")
 	}
-	queue, err := readQueue(l.deps.QueueFile)
+	prompt := strings.TrimSpace(cmd.Prompt)
+	taskKey := strings.TrimSpace(cmd.TaskKey)
+	if taskKey == "" {
+		taskKey = "execute"
+	}
+
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
-	prompt := strings.TrimSpace(cmd.Prompt)
-	queue.Items = append(queue.Items, QueueItem{
-		ID:       item,
-		Title:    titleFromPrompt(prompt, 8),
-		Prompt:   prompt,
-		TaskKey:  strings.TrimSpace(cmd.TaskKey),
-		Provider: strings.TrimSpace(cmd.Provider),
-		Model:    strings.TrimSpace(cmd.Model),
-		Skill:    strings.TrimSpace(cmd.Skill),
-	})
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	newOrder := Order{
+		ID:    orderID,
+		Title: titleFromPrompt(prompt, 8),
+		Status: OrderStatusActive,
+		Stages: []Stage{{
+			TaskKey:  taskKey,
+			Prompt:   prompt,
+			Skill:    strings.TrimSpace(cmd.Skill),
+			Provider: strings.TrimSpace(cmd.Provider),
+			Model:    strings.TrimSpace(cmd.Model),
+			Status:   StageStatusPending,
+		}},
+	}
+	orders.Orders = append(orders.Orders, newOrder)
+	return writeOrdersAtomic(l.deps.OrdersFile, orders)
 }
 
 func (l *Loop) controlEditItem(cmd ControlCommand) error {
-	itemID := strings.TrimSpace(cmd.Item)
-	if itemID == "" {
-		return fmt.Errorf("edit-item requires item")
+	orderID := strings.TrimSpace(cmd.OrderID)
+	if orderID == "" {
+		return fmt.Errorf("edit-item requires order_id")
 	}
-	if _, active := l.activeByTarget[itemID]; active {
-		return fmt.Errorf("item %q is currently cooking", itemID)
+	if _, active := l.activeByTarget[orderID]; active {
+		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
-	queue, err := readQueue(l.deps.QueueFile)
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
 	found := false
-	for i := range queue.Items {
-		if queue.Items[i].ID != itemID {
+	for i := range orders.Orders {
+		if orders.Orders[i].ID != orderID {
 			continue
 		}
 		found = true
-		prompt := strings.TrimSpace(cmd.Prompt)
-		queue.Items[i].Title = titleFromPrompt(prompt, 8)
-		queue.Items[i].Prompt = prompt
-		queue.Items[i].TaskKey = strings.TrimSpace(cmd.TaskKey)
-		queue.Items[i].Provider = strings.TrimSpace(cmd.Provider)
-		queue.Items[i].Model = strings.TrimSpace(cmd.Model)
-		queue.Items[i].Skill = strings.TrimSpace(cmd.Skill)
+		// Edit order-level fields.
+		if title := strings.TrimSpace(cmd.Prompt); title != "" {
+			orders.Orders[i].Title = titleFromPrompt(title, 8)
+		}
+		// Edit stage-level fields on the current pending stage.
+		stageIdx, stage := activeStageForOrder(orders.Orders[i])
+		if stageIdx < 0 || stage == nil {
+			return fmt.Errorf("order %q has no editable stage", orderID)
+		}
+		stages := &orders.Orders[i].Stages
+		if orders.Orders[i].Status == OrderStatusFailing {
+			stages = &orders.Orders[i].OnFailure
+		}
+		if prompt := strings.TrimSpace(cmd.Prompt); prompt != "" {
+			(*stages)[stageIdx].Prompt = prompt
+		}
+		if taskKey := strings.TrimSpace(cmd.TaskKey); taskKey != "" {
+			(*stages)[stageIdx].TaskKey = taskKey
+		}
+		if provider := strings.TrimSpace(cmd.Provider); provider != "" {
+			(*stages)[stageIdx].Provider = provider
+		}
+		if model := strings.TrimSpace(cmd.Model); model != "" {
+			(*stages)[stageIdx].Model = model
+		}
+		if skill := strings.TrimSpace(cmd.Skill); skill != "" {
+			(*stages)[stageIdx].Skill = skill
+		}
 		break
 	}
 	if !found {
-		return fmt.Errorf("item %q not found in queue", itemID)
+		return fmt.Errorf("order %q not found", orderID)
 	}
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	return writeOrdersAtomic(l.deps.OrdersFile, orders)
 }
 
 func (l *Loop) controlStopAll() {
@@ -432,22 +478,71 @@ func (l *Loop) controlStopAll() {
 	}
 }
 
-func (l *Loop) controlRequeue(itemID string) error {
-	itemID = strings.TrimSpace(itemID)
-	if itemID == "" {
-		return fmt.Errorf("requeue requires item")
+func (l *Loop) controlSkip(orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("skip requires order_id")
 	}
-	if _, ok := l.failedTargets[itemID]; !ok {
-		return fmt.Errorf("item %q not in failed state", itemID)
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		return err
 	}
-	delete(l.failedTargets, itemID)
+	orders, err = cancelOrder(orders, orderID)
+	if err != nil {
+		return err
+	}
+	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+}
+
+func (l *Loop) controlRequeue(orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("requeue requires order_id")
+	}
+	if _, ok := l.failedTargets[orderID]; !ok {
+		return fmt.Errorf("order %q not in failed state", orderID)
+	}
+	delete(l.failedTargets, orderID)
+
+	// If order still exists in orders.json, reset all failed/cancelled stages
+	// in both Stages and OnFailure to "pending", set Order.Status to "active".
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		return l.writeFailedTargets()
+	}
+	updated := false
+	for i := range orders.Orders {
+		if orders.Orders[i].ID != orderID {
+			continue
+		}
+		orders.Orders[i].Status = OrderStatusActive
+		resetStages(&orders.Orders[i].Stages)
+		resetStages(&orders.Orders[i].OnFailure)
+		updated = true
+		break
+	}
+	if updated {
+		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			return err
+		}
+	}
 	return l.writeFailedTargets()
 }
 
+// resetStages resets all failed/cancelled stages to pending.
+func resetStages(stages *[]Stage) {
+	for i := range *stages {
+		switch (*stages)[i].Status {
+		case StageStatusFailed, StageStatusCancelled:
+			(*stages)[i].Status = StageStatusPending
+		}
+	}
+}
+
 func (l *Loop) controlReorder(cmd ControlCommand) error {
-	itemID := strings.TrimSpace(cmd.Item)
-	if itemID == "" {
-		return fmt.Errorf("reorder requires item")
+	orderID := strings.TrimSpace(cmd.OrderID)
+	if orderID == "" {
+		return fmt.Errorf("reorder requires order_id")
 	}
 	newIndex := 0
 	if v := strings.TrimSpace(cmd.Value); v != "" {
@@ -457,30 +552,30 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		}
 		newIndex = n
 	}
-	queue, err := readQueue(l.deps.QueueFile)
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
 	srcIdx := -1
-	for i, item := range queue.Items {
-		if item.ID == itemID {
+	for i := range orders.Orders {
+		if orders.Orders[i].ID == orderID {
 			srcIdx = i
 			break
 		}
 	}
 	if srcIdx < 0 {
-		return fmt.Errorf("item %q not found in queue", itemID)
+		return fmt.Errorf("order %q not found", orderID)
 	}
-	item := queue.Items[srcIdx]
-	queue.Items = append(queue.Items[:srcIdx], queue.Items[srcIdx+1:]...)
+	order := orders.Orders[srcIdx]
+	orders.Orders = append(orders.Orders[:srcIdx], orders.Orders[srcIdx+1:]...)
 	if newIndex < 0 {
 		newIndex = 0
 	}
-	if newIndex > len(queue.Items) {
-		newIndex = len(queue.Items)
+	if newIndex > len(orders.Orders) {
+		newIndex = len(orders.Orders)
 	}
-	queue.Items = append(queue.Items[:newIndex], append([]QueueItem{item}, queue.Items[newIndex:]...)...)
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	orders.Orders = append(orders.Orders[:newIndex], append([]Order{order}, orders.Orders[newIndex:]...)...)
+	return writeOrdersAtomic(l.deps.OrdersFile, orders)
 }
 
 func (l *Loop) controlStop(name string) error {

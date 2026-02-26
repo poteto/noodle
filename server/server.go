@@ -193,7 +193,7 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 // controlRequest is the JSON body for POST /api/control.
 type controlRequest struct {
 	Action   string `json:"action"`
-	Item     string `json:"item,omitempty"`
+	OrderID  string `json:"order_id,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Target   string `json:"target,omitempty"`
 	Prompt   string `json:"prompt,omitempty"`
@@ -232,7 +232,7 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 
 	cmd := loop.ControlCommand{
 		Action:   action,
-		Item:     strings.TrimSpace(req.Item),
+		OrderID:  strings.TrimSpace(req.OrderID),
 		Name:     strings.TrimSpace(req.Name),
 		Target:   strings.TrimSpace(req.Target),
 		Prompt:   strings.TrimSpace(req.Prompt),

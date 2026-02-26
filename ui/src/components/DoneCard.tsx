@@ -17,14 +17,14 @@ export function DoneCard({ session, onClick }: { session: Session; onClick?: () 
     e.stopPropagation();
     if (failed) {
       // Requeue: card disappears optimistically via reducer.
-      send({ action: "requeue", item: session.id });
+      send({ action: "requeue", order_id: session.id });
     } else {
       // Replay: no clear optimistic state — track locally.
       setReplaying(true);
       try {
         await sendControl({
           action: "enqueue",
-          item: `replay-${Date.now()}`,
+          order_id: `replay-${Date.now()}`,
           task_key: taskKey || "execute",
           prompt: `Replay: ${session.display_name}`,
           model: session.model,

@@ -133,7 +133,7 @@ func TestPostControl(t *testing.T) {
 func TestPostControlMissingAction(t *testing.T) {
 	s, _ := testServer(t)
 
-	body := strings.NewReader(`{"item":"123"}`)
+	body := strings.NewReader(`{"order_id":"123"}`)
 	req := httptest.NewRequest("POST", "/api/control", body)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -275,7 +275,7 @@ func TestIsLocalhostOrigin(t *testing.T) {
 func TestPostControlEnqueue(t *testing.T) {
 	s, dir := testServer(t)
 
-	body := strings.NewReader(`{"action":"enqueue","item":"task-99","prompt":"Fix the bug","task_key":"execute","provider":"claude","model":"claude-opus-4-6"}`)
+	body := strings.NewReader(`{"action":"enqueue","order_id":"task-99","prompt":"Fix the bug","task_key":"execute","provider":"claude","model":"claude-opus-4-6"}`)
 	req := httptest.NewRequest("POST", "/api/control", body)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

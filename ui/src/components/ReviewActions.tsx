@@ -15,12 +15,12 @@ export function ReviewActions({
   const [feedback, setFeedback] = useState("");
 
   function handleMerge() {
-    send({ action: "merge", item: itemId });
+    send({ action: "merge", order_id: itemId });
     onAction?.("merge");
   }
 
   function handleReject() {
-    send({ action: "reject", item: itemId });
+    send({ action: "reject", order_id: itemId });
     onAction?.("reject");
   }
 
@@ -31,7 +31,7 @@ export function ReviewActions({
     }
     send({
       action: "request-changes",
-      item: itemId,
+      order_id: itemId,
       prompt: feedback,
     });
     onAction?.("request-changes");

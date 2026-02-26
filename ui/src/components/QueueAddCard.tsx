@@ -15,7 +15,7 @@ export function QueueAddCard() {
     send(
       {
         action: "enqueue",
-        item: `task-${Date.now()}`,
+        order_id: `task-${Date.now()}`,
         prompt: text,
         task_key: "execute",
         provider: config?.provider,

@@ -122,7 +122,7 @@ func readSessionTarget(promptPath string) string {
 	}
 
 	if schedulePromptRegexp.Match(data) {
-		return scheduleQueueID
+		return scheduleOrderID
 	}
 	return ""
 }
