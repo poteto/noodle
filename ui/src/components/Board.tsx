@@ -133,7 +133,7 @@ export function Board() {
   }
 
   function handleCookingDragOver(e: React.DragEvent) {
-    if (dragItemId.current) {
+    if (dragItemId.current && columns.cooking.length < maxCooks) {
       e.preventDefault();
       setCookingDragOver(true);
     }
@@ -146,15 +146,10 @@ export function Board() {
   function handleCookingDrop(e: React.DragEvent) {
     e.preventDefault();
     const id = dragItemId.current;
-    if (!id) return;
-    const needsMaxCooksIncrease = columns.cooking.length >= maxCooks;
-    const newMaxCooks = columns.cooking.length + 1;
+    if (!id || columns.cooking.length >= maxCooks) return;
     startTransition(async () => {
       applyOptimistic({ type: "move-to-cooking", itemId: id });
       await sendControl({ action: "reorder", item: id, value: "0" });
-      if (needsMaxCooksIncrease) {
-        await sendControl({ action: "set-max-cooks", value: String(newMaxCooks) });
-      }
     });
     resetDrag();
   }

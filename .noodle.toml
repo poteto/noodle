@@ -1,14 +1,9 @@
 # Autonomy controls human oversight in the loop.
 # "auto" = auto-merge on success, per-skill permissions.merge respected
 # "approve" = human must confirm every merge
-autonomy = "auto"
-
-[phases]
-oops = "oops"
-debugging = "debugging"
+autonomy = "approve"
 
 [schedule]
-skill = "schedule"
 # "after-each" | "after-n" | "manual"
 run = "after-each"
 model = "claude-sonnet"
