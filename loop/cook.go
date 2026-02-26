@@ -516,6 +516,20 @@ func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) e
 		return nil
 	}
 	l.logger.Info("cook retrying", "item", cook.queueItem.ID, "session", cook.session.ID(), "attempt", nextAttempt, "reason", resolvedReason)
+
+	// Defer retry when another cook is already filling the slot.
+	// The failed cook was removed from activeByID before retryCook runs,
+	// so the check only blocks when OTHER cooks are occupying capacity.
+	if l.atMaxConcurrency() {
+		l.pendingRetry[cook.queueItem.ID] = &pendingRetryCook{
+			item:        cook.queueItem,
+			attempt:     nextAttempt,
+			displayName: cook.displayName,
+		}
+		l.logger.Info("retry deferred: at max concurrency", "item", cook.queueItem.ID, "attempt", nextAttempt)
+		return nil
+	}
+
 	if strings.TrimSpace(info.ExitReason) == "" {
 		info.ExitReason = resolvedReason
 	}

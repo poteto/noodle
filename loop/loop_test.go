@@ -1458,6 +1458,103 @@ func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.Disp
 //     item lands in pendingRetry. Cycle returns the spawn error.
 //  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
 //     Item is in activeByTarget with attempt > 0.
+// TestRetryCookRespectsMaxCooks verifies that retryCook defers to pendingRetry
+// when the loop is already at max concurrency. Without this check, two adopted
+// sessions completing with errors in the same collectAdoptedCompletions call
+// would both get retried, exceeding max_cooks.
+func TestRetryCookRespectsMaxCooks(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	// Queue has both item 29 and a schedule. The schedule item is needed
+	// so that the adopted schedule session's retry doesn't fail on
+	// "queue item not found" during skipQueueItem.
+	queue := Queue{Items: []QueueItem{
+		{ID: "29", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6",
+			Plan: []string{"plans/29-test/overview"}},
+		{ID: "schedule", TaskKey: "schedule", Skill: "schedule", Provider: "claude", Model: "claude-sonnet"},
+	}}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	if err := writeQueueAtomic(queuePath, queue); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	sp := &fakeDispatcher{}
+	wt := &fakeWorktree{}
+
+	cfg := config.DefaultConfig()
+	cfg.Concurrency.MaxCooks = 1
+	cfg.Recovery.MaxRetries = 3
+
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 29, Status: "open", Title: "Test", Directory: "test"}}}},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	// Simulate: item 29 was spawned in a previous cycle and is still running.
+	item29Session := &fakeSession{id: "29-sess", status: "running", done: make(chan struct{})}
+	item29Cook := &activeCook{
+		queueItem:    queue.Items[0],
+		session:      item29Session,
+		worktreeName: "29",
+		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
+	}
+	l.activeByID["29-sess"] = item29Cook
+	l.activeByTarget["29"] = item29Cook
+
+	// Simulate: an adopted schedule session from a previous loop instance
+	// has just completed with error.
+	schedSessID := "schedule-adopted-sess"
+	schedSessionDir := filepath.Join(runtimeDir, "sessions", schedSessID)
+	if err := os.MkdirAll(schedSessionDir, 0o755); err != nil {
+		t.Fatalf("mkdir adopted session: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(schedSessionDir, "meta.json"),
+		[]byte(`{"status":"failed"}`), 0o644); err != nil {
+		t.Fatalf("write adopted meta: %v", err)
+	}
+	// Write a prompt that matches schedulePromptRegexp so readSessionTarget
+	// returns "schedule".
+	if err := os.WriteFile(filepath.Join(schedSessionDir, "prompt.txt"),
+		[]byte("Use Skill(schedule) to refresh the queue from .noodle/mise.json.\n"), 0o644); err != nil {
+		t.Fatalf("write adopted prompt: %v", err)
+	}
+
+	l.adoptedTargets["schedule"] = schedSessID
+	l.adoptedSessions = append(l.adoptedSessions, schedSessID)
+
+	// Install tmux stub so refreshAdoptedTargets doesn't drop the session
+	// before collectAdoptedCompletions processes it.
+	installFixtureTmuxStub(t, []string{tmuxSessionName(schedSessID)})
+
+	// Run collectCompleted (which includes collectAdoptedCompletions).
+	// The adopted schedule session is "failed", so handleCompletion → retryCook.
+	// Item 29 is still running, so activeByID already has 1 entry.
+	if err := l.collectCompleted(context.Background()); err != nil {
+		t.Fatalf("collectCompleted: %v", err)
+	}
+
+	// The invariant: activeByID must never exceed max_cooks.
+	if len(l.activeByID) > cfg.Concurrency.MaxCooks {
+		t.Fatalf("BUG: activeByID has %d entries (max_cooks=%d) — retryCook exceeded concurrency limit",
+			len(l.activeByID), cfg.Concurrency.MaxCooks)
+	}
+
+	// The schedule retry should have been deferred to pendingRetry.
+	if _, ok := l.pendingRetry["schedule"]; !ok {
+		t.Fatal("expected schedule retry to be deferred to pendingRetry")
+	}
+}
+
 func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
