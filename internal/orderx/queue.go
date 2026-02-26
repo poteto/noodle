@@ -1,4 +1,4 @@
-package queuex
+package orderx
 
 import (
 	"encoding/json"

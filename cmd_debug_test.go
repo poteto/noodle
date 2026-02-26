@@ -36,8 +36,8 @@ func TestRunDebugOutputsDeterministicDump(t *testing.T) {
 		}
 	}
 	write(
-		filepath.Join(runtimeDir, "queue.json"),
-		`{"items":[{"id":"2","provider":"claude"},{"id":"1","provider":"codex","model":"gpt-5.3-codex"}]}`,
+		filepath.Join(runtimeDir, "orders.json"),
+		`{"orders":[{"id":"2","status":"active","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"pending"}]},{"id":"1","status":"active","stages":[{"task_key":"execute","provider":"codex","model":"gpt-5.3-codex","status":"pending"}]}]}`,
 	)
 	write(
 		filepath.Join(runtimeDir, "sessions", "cook-a", "meta.json"),

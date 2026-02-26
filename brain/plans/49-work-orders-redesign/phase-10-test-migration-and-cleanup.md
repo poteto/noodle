@@ -6,6 +6,14 @@ Back to [[plans/49-work-orders-redesign/overview]]
 
 Migrate all test fixtures from queue format to orders format, delete old types and dead code, verify the full suite passes.
 
+## Progress
+
+- [x] Test file `queue.json` string references updated to `orders.json` in the listed test/docstring files.
+- [x] Optional package rename completed: `internal/queuex/` → `internal/orderx/` with imports/callers migrated.
+- [ ] Cross-phase integration tests.
+- [ ] New fixture scenarios.
+- [ ] Codex review (three independent reviews).
+
 ## Changes
 
 **`loop/testdata/*/state-*/.noodle/queue.json`** → rename to `orders.json`:

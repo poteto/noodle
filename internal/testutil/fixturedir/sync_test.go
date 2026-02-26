@@ -107,7 +107,7 @@ func TestSyncExpectedMarkdownIgnoresGitIgnoredInputs(t *testing.T) {
 		t.Fatalf("seed sync fixtures: %v", err)
 	}
 
-	writeFile(t, filepath.Join(fixtureDir, "state-01", ".noodle", "queue.json"), "{}\n")
+	writeFile(t, filepath.Join(fixtureDir, "state-01", ".noodle", "orders.json"), "{}\n")
 	stale, err := SyncExpectedMarkdown(root, true)
 	if err != nil {
 		t.Fatalf("check mode should ignore gitignored files, stale=%v err=%v", stale, err)

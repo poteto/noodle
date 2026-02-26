@@ -12,7 +12,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/stringx"
@@ -190,7 +190,7 @@ type ordersResult struct {
 }
 
 func readOrders(path string) (ordersResult, error) {
-	of, err := queuex.ReadOrders(path)
+	of, err := orderx.ReadOrders(path)
 	if err != nil {
 		return ordersResult{}, err
 	}

@@ -26,7 +26,7 @@ func TestWriteFileAtomicCreatesParentAndFile(t *testing.T) {
 func TestWriteFileAtomicReplacesExistingContents(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(t.TempDir(), "queue.json")
+	path := filepath.Join(t.TempDir(), "orders.json")
 	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
 		t.Fatalf("seed file: %v", err)
 	}

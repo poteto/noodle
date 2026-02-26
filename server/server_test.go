@@ -26,7 +26,7 @@ func testServer(t *testing.T) (*Server, string) {
 	if err := os.MkdirAll(filepath.Join(dir, "sessions"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "queue.json"), []byte(`{"items":[]}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "orders.json"), []byte(`{"orders":[]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "status.json"), []byte(`{}`), 0o644); err != nil {
@@ -312,7 +312,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 
 	// Create minimal runtime files.
 	os.MkdirAll(filepath.Join(dir, "sessions"), 0o755)
-	os.WriteFile(filepath.Join(dir, "queue.json"), []byte(`{"items":[]}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "orders.json"), []byte(`{"orders":[]}`), 0o644)
 	os.WriteFile(filepath.Join(dir, "status.json"), []byte(`{}`), 0o644)
 
 	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)

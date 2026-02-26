@@ -1,4 +1,4 @@
-package queuex
+package orderx
 
 import (
 	"encoding/json"
@@ -111,11 +111,11 @@ func TestRoundTripPreservesStageExtra(t *testing.T) {
 						Model:    "claude-opus-4-6",
 						Status:   StageStatusPending,
 						Extra: map[string]json.RawMessage{
-							"priority":     json.RawMessage(`42`),
-							"tags":         json.RawMessage(`["urgent","backend"]`),
-							"nested":       json.RawMessage(`{"key":"value"}`),
-							"null_val":     json.RawMessage(`null`),
-							"string_val":   json.RawMessage(`"hello"`),
+							"priority":   json.RawMessage(`42`),
+							"tags":       json.RawMessage(`["urgent","backend"]`),
+							"nested":     json.RawMessage(`{"key":"value"}`),
+							"null_val":   json.RawMessage(`null`),
+							"string_val": json.RawMessage(`"hello"`),
 						},
 					},
 				},

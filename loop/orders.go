@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 )
@@ -285,7 +285,7 @@ func cloneOrder(o Order) Order {
 }
 
 func readOrders(path string) (OrdersFile, error) {
-	of, err := queuex.ReadOrders(path)
+	of, err := orderx.ReadOrders(path)
 	if err != nil {
 		return OrdersFile{}, err
 	}
@@ -293,7 +293,7 @@ func readOrders(path string) (OrdersFile, error) {
 }
 
 func writeOrdersAtomic(path string, of OrdersFile) error {
-	return queuex.WriteOrdersAtomic(path, toOrdersFileX(of))
+	return orderx.WriteOrdersAtomic(path, toOrdersFileX(of))
 }
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
@@ -312,7 +312,7 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 		return false, fmt.Errorf("read orders-next: %w", err)
 	}
 
-	incoming, err := queuex.ParseOrdersStrict(nextData)
+	incoming, err := orderx.ParseOrdersStrict(nextData)
 	if err != nil {
 		// Remove invalid proposal so it doesn't block future cycles.
 		_ = os.Remove(nextPath)
@@ -320,7 +320,7 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 	}
 
 	// Read existing orders.
-	existing, err := queuex.ReadOrders(ordersPath)
+	existing, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
 		return false, fmt.Errorf("read existing orders: %w", err)
 	}
@@ -341,7 +341,7 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 	}
 
 	// Write merged orders atomically.
-	if err := queuex.WriteOrdersAtomic(ordersPath, existing); err != nil {
+	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
 		return false, fmt.Errorf("promote orders-next.json: %w", err)
 	}
 
@@ -353,19 +353,19 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 	return true, nil
 }
 
-func toOrdersFileX(of OrdersFile) queuex.OrdersFile {
-	orders := make([]queuex.Order, 0, len(of.Orders))
+func toOrdersFileX(of OrdersFile) orderx.OrdersFile {
+	orders := make([]orderx.Order, 0, len(of.Orders))
 	for _, o := range of.Orders {
 		orders = append(orders, toOrderX(o))
 	}
-	return queuex.OrdersFile{
+	return orderx.OrdersFile{
 		GeneratedAt:  of.GeneratedAt,
 		Orders:       orders,
 		ActionNeeded: of.ActionNeeded,
 	}
 }
 
-func fromOrdersFileX(of queuex.OrdersFile) OrdersFile {
+func fromOrdersFileX(of orderx.OrdersFile) OrdersFile {
 	orders := make([]Order, 0, len(of.Orders))
 	for _, o := range of.Orders {
 		orders = append(orders, fromOrderX(o))
@@ -377,8 +377,8 @@ func fromOrdersFileX(of queuex.OrdersFile) OrdersFile {
 	}
 }
 
-func toOrderX(o Order) queuex.Order {
-	return queuex.Order{
+func toOrderX(o Order) orderx.Order {
+	return orderx.Order{
 		ID:        o.ID,
 		Title:     o.Title,
 		Plan:      o.Plan,
@@ -389,7 +389,7 @@ func toOrderX(o Order) queuex.Order {
 	}
 }
 
-func fromOrderX(o queuex.Order) Order {
+func fromOrderX(o orderx.Order) Order {
 	return Order{
 		ID:        o.ID,
 		Title:     o.Title,
@@ -401,13 +401,13 @@ func fromOrderX(o queuex.Order) Order {
 	}
 }
 
-func toStagesX(stages []Stage) []queuex.Stage {
+func toStagesX(stages []Stage) []orderx.Stage {
 	if stages == nil {
 		return nil
 	}
-	out := make([]queuex.Stage, 0, len(stages))
+	out := make([]orderx.Stage, 0, len(stages))
 	for _, s := range stages {
-		out = append(out, queuex.Stage{
+		out = append(out, orderx.Stage{
 			TaskKey:  s.TaskKey,
 			Prompt:   s.Prompt,
 			Skill:    s.Skill,
@@ -421,7 +421,7 @@ func toStagesX(stages []Stage) []queuex.Stage {
 	return out
 }
 
-func fromStagesX(stages []queuex.Stage) []Stage {
+func fromStagesX(stages []orderx.Stage) []Stage {
 	if stages == nil {
 		return nil
 	}
@@ -441,9 +441,9 @@ func fromStagesX(stages []queuex.Stage) []Stage {
 	return out
 }
 
-// NormalizeAndValidateOrders wraps the queuex function for loop-layer types.
+// NormalizeAndValidateOrders wraps the orderx function for loop-layer types.
 func NormalizeAndValidateOrders(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
-	updated, changed, err := queuex.NormalizeAndValidateOrders(toOrdersFileX(of), reg, cfg)
+	updated, changed, err := orderx.NormalizeAndValidateOrders(toOrdersFileX(of), reg, cfg)
 	if err != nil {
 		return OrdersFile{}, false, err
 	}
@@ -453,9 +453,9 @@ func NormalizeAndValidateOrders(of OrdersFile, reg taskreg.Registry, cfg config.
 	return fromOrdersFileX(updated), true, nil
 }
 
-// ApplyOrderRoutingDefaults wraps the queuex function for loop-layer types.
+// ApplyOrderRoutingDefaults wraps the orderx function for loop-layer types.
 func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool) {
-	updated, changed := queuex.ApplyOrderRoutingDefaults(toOrdersFileX(of), reg, cfg)
+	updated, changed := orderx.ApplyOrderRoutingDefaults(toOrdersFileX(of), reg, cfg)
 	if !changed {
 		return of, false
 	}

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/orderx"
 )
 
 func TestReadWriteOrdersRoundTrip(t *testing.T) {
@@ -80,22 +80,22 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 	nextPath := filepath.Join(dir, "orders-next.json")
 
 	// Write existing orders.
-	existing := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "existing-1", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	existing := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "existing-1", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(ordersPath, existing); err != nil {
+	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
 		t.Fatal(err)
 	}
 
 	// Write next.
-	next := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "new-1", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	next := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "new-1", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(nextPath, next); err != nil {
+	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,7 +108,7 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 	}
 
 	// orders.json should contain both.
-	got, err := queuex.ReadOrders(ordersPath)
+	got, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,24 +149,24 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 	nextPath := filepath.Join(dir, "orders-next.json")
 
 	// Write existing with ID "dup".
-	existing := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "dup", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
-			{ID: "keep", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	existing := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "dup", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+			{ID: "keep", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(ordersPath, existing); err != nil {
+	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
 		t.Fatal(err)
 	}
 
 	// Write next with duplicate ID "dup" and new ID "new".
-	next := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "dup", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
-			{ID: "new", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	next := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "dup", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+			{ID: "new", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(nextPath, next); err != nil {
+	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,7 +178,7 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 		t.Fatal("expected promoted=true")
 	}
 
-	got, err := queuex.ReadOrders(ordersPath)
+	got, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,23 +204,23 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 
 	// Simulate: orders.json already has merged content, but orders-next.json
 	// still exists (crash between write and delete).
-	merged := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "original", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
-			{ID: "incoming", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	merged := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "original", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+			{ID: "incoming", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(ordersPath, merged); err != nil {
+	if err := orderx.WriteOrdersAtomic(ordersPath, merged); err != nil {
 		t.Fatal(err)
 	}
 
 	// orders-next.json still has the incoming order (crash replay).
-	leftover := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "incoming", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	leftover := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "incoming", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(nextPath, leftover); err != nil {
+	if err := orderx.WriteOrdersAtomic(nextPath, leftover); err != nil {
 		t.Fatal(err)
 	}
 
@@ -233,7 +233,7 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 		t.Fatal("expected promoted=true (file existed)")
 	}
 
-	got, err := queuex.ReadOrders(ordersPath)
+	got, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,12 +287,12 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 	nextPath := filepath.Join(dir, "orders-next.json")
 
 	// No existing orders.json.
-	next := queuex.OrdersFile{
-		Orders: []queuex.Order{
-			{ID: "first", Status: queuex.OrderStatusActive, Stages: []queuex.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: queuex.StageStatusPending}}},
+	next := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{ID: "first", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
 		},
 	}
-	if err := queuex.WriteOrdersAtomic(nextPath, next); err != nil {
+	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
 		t.Fatal(err)
 	}
 
@@ -304,7 +304,7 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 		t.Fatal("expected promoted=true")
 	}
 
-	got, err := queuex.ReadOrders(ordersPath)
+	got, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
 		t.Fatal(err)
 	}

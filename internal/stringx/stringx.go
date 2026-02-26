@@ -27,7 +27,7 @@ func NonEmpty(value, fallback string) string {
 
 // MiddleTruncate shortens a string by replacing the middle with "…".
 // For paths containing slashes, it preserves the first and last segments
-// and truncates inner segments (e.g., "/Users/…/queue.json").
+// and truncates inner segments (e.g., "/Users/…/orders.json").
 // For plain strings, it keeps the start and end.
 func MiddleTruncate(s string, maxWidth int) string {
 	if maxWidth <= 0 {

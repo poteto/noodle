@@ -111,7 +111,7 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 
 `go build ./...` passes. `go test ./...` all green. Core migration complete. Remaining items are cosmetic cleanup:
 
-1. **Test file queue.json string references** — These files use `"queue.json"` as a filename in test fixtures (not referencing deleted types). Update to `"orders.json"` for consistency:
+1. ~~**Test file queue.json string references**~~ ✓ done — updated to `"orders.json"` for consistency:
    - `dispatcher/tmux_session_test.go` — schedule prompt text mentions queue.json
    - `internal/filex/filex_test.go` — uses "queue.json" as arbitrary test filename
    - `internal/stringx/stringx.go` and `stringx_test.go` — docstring/test uses queue.json as example path
@@ -119,7 +119,7 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
    - `server/server_test.go` — creates queue.json for snapshot test
    - `cmd_debug_test.go` — references queue.json in debug paths
 
-2. **Optional package rename** — `internal/queuex/` → `internal/orderx/`. All functions are orders-related now.
+2. ~~**Optional package rename**~~ ✓ done — `internal/queuex/` → `internal/orderx/`.
 
 3. **Cross-phase integration tests** — The plan specifies integration tests for success pipeline, OnFailure pipeline, merge-conflict resolution, and snapshot→Board derivation. Unit tests cover individual functions but don't test multi-cycle state continuity.
 

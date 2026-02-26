@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/cmdmeta"
-	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/spf13/cobra"
 )
@@ -138,7 +138,7 @@ func loopStateRank(state string) int {
 }
 
 func readOrdersDepth(path string) (int, error) {
-	orders, err := queuex.ReadOrders(path)
+	orders, err := orderx.ReadOrders(path)
 	if err != nil {
 		return 0, err
 	}

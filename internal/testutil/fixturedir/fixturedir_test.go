@@ -33,7 +33,7 @@ func TestDiscoverLoadsOrderedStatesAndMetadata(t *testing.T) {
 	writeFile(t, filepath.Join(root, "alpha", ".noodle.toml"), "[routing.defaults]\nprovider = \"claude\"\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-01", "input.ndjson"), "line-1\n")
 	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle.toml"), "[routing.defaults]\nprovider = \"codex\"\n")
-	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle", "queue.json"), "{}\n")
+	writeFile(t, filepath.Join(root, "alpha", "state-02", ".noodle", "orders.json"), "{}\n")
 
 	betaExpected := md(
 		"---",
@@ -300,7 +300,7 @@ func TestDiscoverIgnoresGitIgnoredStateRuntimeArtifacts(t *testing.T) {
 	runGit(t, root, "add", ".")
 	syncFixtures(t, root)
 
-	writeFile(t, filepath.Join(root, "sample", "state-01", ".noodle", "queue.json"), "{\"items\":[]}\n")
+	writeFile(t, filepath.Join(root, "sample", "state-01", ".noodle", "orders.json"), "{\"orders\":[]}\n")
 
 	inventory, err := Discover(root)
 	if err != nil {

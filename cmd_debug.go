@@ -10,7 +10,7 @@ import (
 
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/internal/queuex"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/spf13/cobra"
 )
@@ -128,7 +128,7 @@ func buildDebugDump(cfg config.Config, runtimeDir string) (debugDump, error) {
 }
 
 func readDebugOrders(path string) (debugOrders, error) {
-	of, err := queuex.ReadOrders(path)
+	of, err := orderx.ReadOrders(path)
 	if err != nil {
 		return debugOrders{}, nil
 	}

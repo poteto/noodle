@@ -18,17 +18,17 @@ func TestMiddleTruncatePlain(t *testing.T) {
 }
 
 func TestMiddleTruncatePathPreservesEnds(t *testing.T) {
-	// /Users/lauren/code/noodle/.noodle/queue.json -> fits more end segments
-	got := MiddleTruncate("/Users/lauren/code/noodle/.noodle/queue.json", 30)
-	if got != "/…/noodle/.noodle/queue.json" {
-		t.Fatalf("got %q, want %q", got, "/…/noodle/.noodle/queue.json")
+	// /Users/lauren/code/noodle/.noodle/orders.json -> fits more end segments
+	got := MiddleTruncate("/Users/lauren/code/noodle/.noodle/orders.json", 30)
+	if got != "/…/noodle/.noodle/orders.json" {
+		t.Fatalf("got %q, want %q", got, "/…/noodle/.noodle/orders.json")
 	}
 }
 
 func TestMiddleTruncatePathTight(t *testing.T) {
-	got := MiddleTruncate("/Users/lauren/code/noodle/.noodle/queue.json", 22)
-	if got != "/…/.noodle/queue.json" {
-		t.Fatalf("got %q, want %q", got, "/…/.noodle/queue.json")
+	got := MiddleTruncate("/Users/lauren/code/noodle/.noodle/orders.json", 22)
+	if got != "/…/.noodle/orders.json" {
+		t.Fatalf("got %q, want %q", got, "/…/.noodle/orders.json")
 	}
 }
 

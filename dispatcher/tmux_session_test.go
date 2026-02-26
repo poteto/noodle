@@ -155,7 +155,7 @@ func TestTmuxSessionLogsInjectedPromptOnInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new event writer: %v", err)
 	}
-	prompt := "Use Skill(schedule) to refresh .noodle/queue.json from .noodle/mise.json."
+	prompt := "Use Skill(schedule) to refresh .noodle/orders.json from .noodle/mise.json."
 
 	session := newTmuxSession(
 		"session-a",
