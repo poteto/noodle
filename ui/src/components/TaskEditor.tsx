@@ -17,8 +17,6 @@ export function TaskEditor({
   const [taskKey, setTaskKey] = useState("execute");
   const [providerOverride, setProviderOverride] = useState<string | null>(null);
   const [modelOverride, setModelOverride] = useState<string | null>(null);
-  const [skill, setSkill] = useState("");
-
   // Derive from config, allow user override
   const provider = providerOverride ?? config?.provider ?? "";
   const model = modelOverride ?? config?.model ?? "";
@@ -47,7 +45,6 @@ export function TaskEditor({
           task_key: taskKey,
           provider,
           model,
-          skill,
         }
       : {
           action: "enqueue",
@@ -56,7 +53,6 @@ export function TaskEditor({
           task_key: taskKey,
           provider,
           model,
-          skill,
         };
 
     send(cmd, { onSuccess: () => onClose() });
@@ -123,15 +119,6 @@ export function TaskEditor({
             </div>
           </div>
 
-          <div className="flex-1">
-            <label className="font-mono text-xs font-semibold text-text-2 block mb-1">Skill (optional)</label>
-            <input
-              className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
-              value={skill}
-              onChange={(e) => setSkill(e.target.value)}
-              placeholder="e.g., execute"
-            />
-          </div>
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t-2 border-border">
