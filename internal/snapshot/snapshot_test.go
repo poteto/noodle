@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/loop"
 )
 
 func TestDeriveHealth(t *testing.T) {
@@ -152,14 +153,14 @@ func TestReadQueueEvents(t *testing.T) {
 		t.Fatalf("event count = %d, want 3", len(events))
 	}
 
-	// queue_drop
-	if events[0].Category != "queue_drop" {
-		t.Errorf("event[0] category = %q, want queue_drop", events[0].Category)
+	// legacy queue_drop mapped to order_drop category
+	if events[0].Category != "order_drop" {
+		t.Errorf("event[0] category = %q, want order_drop", events[0].Category)
 	}
 	if events[0].Label != "Dropped" {
 		t.Errorf("event[0] label = %q, want Dropped", events[0].Label)
 	}
-	if events[0].Body != "Dropped item item-1: skill old-skill no longer registered" {
+	if events[0].Body != "Dropped order item-1: skill old-skill no longer registered" {
 		t.Errorf("event[0] body = %q", events[0].Body)
 	}
 
@@ -209,8 +210,8 @@ func TestReadQueueEventsSkipsMalformed(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("event count = %d, want 2 (malformed lines skipped)", len(events))
 	}
-	if events[0].Category != "queue_drop" {
-		t.Errorf("event[0] category = %q, want queue_drop", events[0].Category)
+	if events[0].Category != "order_drop" {
+		t.Errorf("event[0] category = %q, want order_drop", events[0].Category)
 	}
 	if events[1].Category != "bootstrap" {
 		t.Errorf("event[1] category = %q, want bootstrap", events[1].Category)
@@ -236,7 +237,7 @@ func TestReadQueueEventsDropWithoutReason(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("event count = %d, want 1", len(events))
 	}
-	want := "Dropped item item-2: skill old-skill no longer exists"
+	want := "Dropped order item-2: skill old-skill no longer exists"
 	if events[0].Body != want {
 		t.Errorf("body = %q, want %q", events[0].Body, want)
 	}
@@ -260,36 +261,280 @@ func TestReadQueueEventsUnknownTypeSkipped(t *testing.T) {
 	}
 }
 
-func TestReadQueuePreservesTaskMetadata(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "queue.json")
+func TestReadOrdersPopulatesSnapshot(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "orders.json")
 	payload := `{
-  "items": [
+  "generated_at": "2026-02-26T10:00:00Z",
+  "orders": [
     {
-      "id": "verify-1",
-      "task_key": "verify",
-      "title": "Run CI checks",
-      "provider": "claude",
-      "model": "claude-sonnet-4-6",
-      "skill": "verify",
-      "rationale": "post-execute gate"
+      "id": "order-1",
+      "title": "Implement feature X",
+      "plan": ["step 1", "step 2"],
+      "rationale": "needed for release",
+      "stages": [
+        {
+          "task_key": "execute",
+          "prompt": "implement it",
+          "skill": "execute",
+          "provider": "claude",
+          "model": "claude-sonnet-4-6",
+          "runtime": "claude-code",
+          "status": "pending",
+          "extra": {"context": "\"some-value\""}
+        },
+        {
+          "task_key": "verify",
+          "prompt": "verify it",
+          "skill": "verify",
+          "provider": "claude",
+          "model": "claude-sonnet-4-6",
+          "status": "pending"
+        }
+      ],
+      "status": "active",
+      "on_failure": [
+        {
+          "task_key": "review",
+          "prompt": "review failure",
+          "skill": "review",
+          "provider": "claude",
+          "model": "claude-sonnet-4-6",
+          "status": "pending"
+        }
+      ]
     }
-  ]
+  ],
+  "action_needed": ["check order-1"]
 }`
 	if err := os.WriteFile(path, []byte(payload), 0o644); err != nil {
-		t.Fatalf("write queue: %v", err)
+		t.Fatalf("write orders: %v", err)
 	}
 
-	qr, err := readQueue(path)
+	or, err := readOrders(path)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("readOrders: %v", err)
 	}
-	if len(qr.Items) != 1 {
-		t.Fatalf("item count = %d", len(qr.Items))
+	if len(or.Orders) != 1 {
+		t.Fatalf("order count = %d, want 1", len(or.Orders))
 	}
-	if qr.Items[0].TaskKey != "verify" {
-		t.Fatalf("task key = %q", qr.Items[0].TaskKey)
+
+	order := or.Orders[0]
+	if order.ID != "order-1" {
+		t.Errorf("id = %q", order.ID)
 	}
-	if qr.Items[0].Rationale != "post-execute gate" {
-		t.Fatalf("rationale = %q", qr.Items[0].Rationale)
+	if order.Title != "Implement feature X" {
+		t.Errorf("title = %q", order.Title)
+	}
+	if order.Status != "active" {
+		t.Errorf("status = %q", order.Status)
+	}
+	if order.Rationale != "needed for release" {
+		t.Errorf("rationale = %q", order.Rationale)
+	}
+	if len(order.Plan) != 2 {
+		t.Fatalf("plan count = %d", len(order.Plan))
+	}
+
+	// Stages
+	if len(order.Stages) != 2 {
+		t.Fatalf("stage count = %d, want 2", len(order.Stages))
+	}
+	if order.Stages[0].TaskKey != "execute" {
+		t.Errorf("stage[0] task_key = %q", order.Stages[0].TaskKey)
+	}
+	if order.Stages[0].Runtime != "claude-code" {
+		t.Errorf("stage[0] runtime = %q", order.Stages[0].Runtime)
+	}
+	if order.Stages[0].Status != "pending" {
+		t.Errorf("stage[0] status = %q", order.Stages[0].Status)
+	}
+	if order.Stages[0].Extra == nil {
+		t.Fatal("stage[0] extra is nil")
+	}
+	if string(order.Stages[0].Extra["context"]) != `"some-value"` {
+		t.Errorf("stage[0] extra[context] = %s", order.Stages[0].Extra["context"])
+	}
+
+	// OnFailure
+	if len(order.OnFailure) != 1 {
+		t.Fatalf("on_failure count = %d, want 1", len(order.OnFailure))
+	}
+	if order.OnFailure[0].TaskKey != "review" {
+		t.Errorf("on_failure[0] task_key = %q", order.OnFailure[0].TaskKey)
+	}
+
+	// ActionNeeded
+	if len(or.ActionNeeded) != 1 || or.ActionNeeded[0] != "check order-1" {
+		t.Errorf("action_needed = %v", or.ActionNeeded)
+	}
+}
+
+func TestReadOrdersMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "orders.json")
+	or, err := readOrders(path)
+	if err != nil {
+		t.Fatalf("readOrders: %v", err)
+	}
+	if len(or.Orders) != 0 {
+		t.Fatalf("order count = %d, want 0", len(or.Orders))
+	}
+}
+
+func TestSnapshotSerializationIncludesOrders(t *testing.T) {
+	snap := Snapshot{
+		UpdatedAt: time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC),
+		LoopState: LoopStateRunning,
+		Orders: []Order{
+			{
+				ID:        "o-1",
+				Title:     "Test order",
+				Plan:      []string{"plan step"},
+				Rationale: "test",
+				Stages: []Stage{
+					{
+						TaskKey:  "execute",
+						Prompt:   "do it",
+						Skill:    "execute",
+						Provider: "claude",
+						Model:    "claude-sonnet-4-6",
+						Runtime:  "claude-code",
+						Status:   "active",
+						Extra:    map[string]json.RawMessage{"key": json.RawMessage(`"val"`)},
+					},
+				},
+				Status: "active",
+				OnFailure: []Stage{
+					{
+						TaskKey:  "review",
+						Prompt:   "review it",
+						Skill:    "review",
+						Provider: "claude",
+						Model:    "claude-sonnet-4-6",
+						Status:   "pending",
+					},
+				},
+			},
+		},
+		ActiveOrderIDs: []string{"o-1"},
+	}
+
+	data, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	// Verify "orders" field exists (not "queue")
+	if _, ok := parsed["orders"]; !ok {
+		t.Fatal("serialized snapshot missing 'orders' field")
+	}
+	if _, ok := parsed["queue"]; ok {
+		t.Fatal("serialized snapshot still has 'queue' field")
+	}
+
+	// Verify "active_order_ids" field exists (not "active_queue_ids")
+	if _, ok := parsed["active_order_ids"]; !ok {
+		t.Fatal("serialized snapshot missing 'active_order_ids' field")
+	}
+	if _, ok := parsed["active_queue_ids"]; ok {
+		t.Fatal("serialized snapshot still has 'active_queue_ids' field")
+	}
+
+	// Roundtrip: unmarshal back to Snapshot
+	var roundtrip Snapshot
+	if err := json.Unmarshal(data, &roundtrip); err != nil {
+		t.Fatalf("roundtrip unmarshal: %v", err)
+	}
+	if len(roundtrip.Orders) != 1 {
+		t.Fatalf("roundtrip order count = %d", len(roundtrip.Orders))
+	}
+	order := roundtrip.Orders[0]
+	if order.ID != "o-1" {
+		t.Errorf("roundtrip order id = %q", order.ID)
+	}
+	if len(order.Stages) != 1 {
+		t.Fatalf("roundtrip stage count = %d", len(order.Stages))
+	}
+	if order.Stages[0].Extra == nil {
+		t.Fatal("roundtrip stage extra is nil")
+	}
+	if string(order.Stages[0].Extra["key"]) != `"val"` {
+		t.Errorf("roundtrip stage extra[key] = %s", order.Stages[0].Extra["key"])
+	}
+	if len(order.OnFailure) != 1 {
+		t.Fatalf("roundtrip on_failure count = %d", len(order.OnFailure))
+	}
+	if order.OnFailure[0].TaskKey != "review" {
+		t.Errorf("roundtrip on_failure task_key = %q", order.OnFailure[0].TaskKey)
+	}
+	if len(roundtrip.ActiveOrderIDs) != 1 || roundtrip.ActiveOrderIDs[0] != "o-1" {
+		t.Errorf("roundtrip active_order_ids = %v", roundtrip.ActiveOrderIDs)
+	}
+}
+
+func TestQueueEventsHandlesBothOrderDropAndLegacyQueueDrop(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"legacy-1","skill":"old","reason":"legacy drop"}
+{"at":"2026-02-24T10:01:00Z","type":"order_drop","target":"order-2","skill":"gone","reason":"order drop"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write queue-events: %v", err)
+	}
+
+	events := readQueueEvents(dir)
+	if len(events) != 2 {
+		t.Fatalf("event count = %d, want 2", len(events))
+	}
+
+	// Both should use order_drop category
+	if events[0].Category != "order_drop" {
+		t.Errorf("event[0] category = %q, want order_drop", events[0].Category)
+	}
+	if events[0].Body != "Dropped order legacy-1: legacy drop" {
+		t.Errorf("event[0] body = %q", events[0].Body)
+	}
+	if events[1].Category != "order_drop" {
+		t.Errorf("event[1] category = %q, want order_drop", events[1].Category)
+	}
+	if events[1].Body != "Dropped order order-2: order drop" {
+		t.Errorf("event[1] body = %q", events[1].Body)
+	}
+}
+
+func TestSnapshotPendingReviewIncludesReason(t *testing.T) {
+	snap := Snapshot{
+		PendingReviews: []loop.PendingReviewItem{
+			{
+				OrderID: "o-1",
+				TaskKey: "execute",
+				Reason:  "max retries exceeded",
+			},
+		},
+		PendingReviewCount: 1,
+	}
+
+	data, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var parsed struct {
+		PendingReviews []struct {
+			OrderID string `json:"order_id"`
+			Reason  string `json:"reason"`
+		} `json:"pending_reviews"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(parsed.PendingReviews) != 1 {
+		t.Fatalf("pending_reviews count = %d", len(parsed.PendingReviews))
+	}
+	if parsed.PendingReviews[0].Reason != "max retries exceeded" {
+		t.Errorf("reason = %q, want %q", parsed.PendingReviews[0].Reason, "max retries exceeded")
 	}
 }

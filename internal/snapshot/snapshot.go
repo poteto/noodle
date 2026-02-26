@@ -27,7 +27,7 @@ func LoadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	qr, err := readQueue(filepath.Join(runtimeDir, "queue.json"))
+	or, err := readOrders(filepath.Join(runtimeDir, "orders.json"))
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -110,9 +110,9 @@ func LoadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		Sessions:           sessions,
 		Active:             active,
 		Recent:             recent,
-		Queue:              qr.Items,
-		ActiveQueueIDs:     sr.Active,
-		ActionNeeded:       qr.ActionNeeded,
+		Orders:             or.Orders,
+		ActiveOrderIDs:     sr.Active,
+		ActionNeeded:       or.ActionNeeded,
 		EventsBySession:    eventsBySession,
 		FeedEvents:         feedEvents,
 		TotalCostUSD:       totalCost,
@@ -184,61 +184,62 @@ func readSessions(runtimeDir string) ([]Session, error) {
 	return sessions, nil
 }
 
-type queueResult struct {
-	Items        []QueueItem
+type ordersResult struct {
+	Orders       []Order
 	ActionNeeded []string
 }
 
-func readQueue(path string) (queueResult, error) {
-	queue, err := queuex.Read(path)
+func readOrders(path string) (ordersResult, error) {
+	of, err := queuex.ReadOrders(path)
 	if err != nil {
-		return queueResult{}, err
-	}
-	items := make([]QueueItem, 0, len(queue.Items))
-	for _, item := range queue.Items {
-		items = append(items, QueueItem{
-			ID:        item.ID,
-			TaskKey:   item.TaskKey,
-			Title:     item.Title,
-			Prompt:    item.Prompt,
-			Provider:  item.Provider,
-			Model:     item.Model,
-			Skill:     item.Skill,
-			Plan:      item.Plan,
-			Rationale: item.Rationale,
-		})
+		return ordersResult{}, err
 	}
 
-	// Also read orders.json and convert to QueueItem shape (temporary bridge for phases 5-7).
-	ordersPath := strings.TrimSuffix(path, "queue.json") + "orders.json"
-	orders, ordersErr := queuex.ReadOrders(ordersPath)
-	if ordersErr == nil {
-		for _, order := range orders.Orders {
-			for _, stage := range order.Stages {
-				items = append(items, QueueItem{
-					ID:        order.ID,
-					TaskKey:   stage.TaskKey,
-					Title:     order.Title,
-					Prompt:    stage.Prompt,
-					Provider:  stage.Provider,
-					Model:     stage.Model,
-					Skill:     stage.Skill,
-					Plan:      order.Plan,
-					Rationale: order.Rationale,
-				})
-				break // Only include the first/current stage per order.
-			}
+	orders := make([]Order, 0, len(of.Orders))
+	for _, o := range of.Orders {
+		stages := make([]Stage, 0, len(o.Stages))
+		for _, s := range o.Stages {
+			stages = append(stages, Stage{
+				TaskKey:  s.TaskKey,
+				Prompt:   s.Prompt,
+				Skill:    s.Skill,
+				Provider: s.Provider,
+				Model:    s.Model,
+				Runtime:  s.Runtime,
+				Status:   s.Status,
+				Extra:    s.Extra,
+			})
 		}
+		onFailure := make([]Stage, 0, len(o.OnFailure))
+		for _, s := range o.OnFailure {
+			onFailure = append(onFailure, Stage{
+				TaskKey:  s.TaskKey,
+				Prompt:   s.Prompt,
+				Skill:    s.Skill,
+				Provider: s.Provider,
+				Model:    s.Model,
+				Runtime:  s.Runtime,
+				Status:   s.Status,
+				Extra:    s.Extra,
+			})
+		}
+		order := Order{
+			ID:        o.ID,
+			Title:     o.Title,
+			Plan:      o.Plan,
+			Rationale: o.Rationale,
+			Stages:    stages,
+			Status:    o.Status,
+		}
+		if len(onFailure) > 0 {
+			order.OnFailure = onFailure
+		}
+		orders = append(orders, order)
 	}
 
-	actionNeeded := queue.ActionNeeded
-	if ordersErr == nil && len(orders.ActionNeeded) > 0 {
-		actionNeeded = append(actionNeeded, orders.ActionNeeded...)
-	}
-
-	return queueResult{
-		Items:        items,
-		ActionNeeded: actionNeeded,
+	return ordersResult{
+		Orders:       orders,
+		ActionNeeded: of.ActionNeeded,
 	}, nil
 }
 
@@ -615,13 +616,13 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 
 		var label, body, category string
 		switch raw.Type {
-		case "queue_drop":
+		case "order_drop", "queue_drop":
 			label = "Dropped"
-			category = "queue_drop"
+			category = "order_drop"
 			if raw.Reason != "" {
-				body = fmt.Sprintf("Dropped item %s: %s", raw.Target, raw.Reason)
+				body = fmt.Sprintf("Dropped order %s: %s", raw.Target, raw.Reason)
 			} else {
-				body = fmt.Sprintf("Dropped item %s: skill %s no longer exists", raw.Target, raw.Skill)
+				body = fmt.Sprintf("Dropped order %s: skill %s no longer exists", raw.Target, raw.Skill)
 			}
 		case "registry_rebuild":
 			label = "Rebuild"

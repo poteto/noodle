@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/poteto/noodle/loop"
@@ -36,12 +37,12 @@ type Snapshot struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	LoopState string    `json:"loop_state"`
 
-	Sessions []Session   `json:"sessions"`
-	Active   []Session   `json:"active"`
-	Recent   []Session   `json:"recent"`
-	Queue    []QueueItem `json:"queue"`
+	Sessions []Session `json:"sessions"`
+	Active   []Session `json:"active"`
+	Recent   []Session `json:"recent"`
+	Orders   []Order   `json:"orders"`
 
-	ActiveQueueIDs  []string                `json:"active_queue_ids"`
+	ActiveOrderIDs  []string                `json:"active_order_ids"`
 	ActionNeeded    []string                `json:"action_needed"`
 	EventsBySession map[string][]EventLine  `json:"events_by_session"`
 	FeedEvents      []FeedEvent             `json:"feed_events"`
@@ -78,17 +79,27 @@ type Session struct {
 	Title                 string    `json:"title,omitempty"`
 }
 
-// QueueItem is one entry in the task queue.
-type QueueItem struct {
+// Order is a pipeline of stages in the snapshot.
+type Order struct {
 	ID        string   `json:"id"`
-	TaskKey   string   `json:"task_key,omitempty"`
 	Title     string   `json:"title,omitempty"`
-	Prompt    string   `json:"prompt,omitempty"`
-	Provider  string   `json:"provider"`
-	Model     string   `json:"model"`
-	Skill     string   `json:"skill,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
 	Rationale string   `json:"rationale,omitempty"`
+	Stages    []Stage  `json:"stages"`
+	Status    string   `json:"status"`
+	OnFailure []Stage  `json:"on_failure,omitempty"`
+}
+
+// Stage is a unit of work within an order in the snapshot.
+type Stage struct {
+	TaskKey  string                     `json:"task_key,omitempty"`
+	Prompt   string                     `json:"prompt,omitempty"`
+	Skill    string                     `json:"skill,omitempty"`
+	Provider string                     `json:"provider"`
+	Model    string                     `json:"model"`
+	Runtime  string                     `json:"runtime,omitempty"`
+	Status   string                     `json:"status"`
+	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
 }
 
 // EventLine is a single parsed event in a session trace.
