@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/loop"
+	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -258,10 +259,22 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
+	resolver := skill.Resolver{SearchPaths: s.config.Skills.Paths}
+	taskTypes, err := resolver.DiscoverTaskTypes()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	names := make([]string, len(taskTypes))
+	for i, t := range taskTypes {
+		names[i] = t.Name
+	}
+
 	resp := map[string]any{
-		"provider": s.config.Routing.Defaults.Provider,
-		"model":    s.config.Routing.Defaults.Model,
-		"autonomy": s.config.Autonomy,
+		"provider":   s.config.Routing.Defaults.Provider,
+		"model":      s.config.Routing.Defaults.Model,
+		"autonomy":   s.config.Autonomy,
+		"task_types": names,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

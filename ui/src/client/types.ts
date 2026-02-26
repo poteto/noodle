@@ -142,6 +142,7 @@ export interface ConfigDefaults {
   provider: string;
   model: string;
   autonomy: string;
+  task_types: string[];
 }
 
 // Kanban column derivation from flat snapshot.

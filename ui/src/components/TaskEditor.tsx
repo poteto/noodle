@@ -8,7 +8,9 @@ export function TaskEditor({ onClose, editItemId }: { onClose: () => void; editI
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const [prompt, setPrompt] = useState("");
-  const [taskKey, setTaskKey] = useState("execute");
+  const taskTypes = config?.task_types ?? [];
+  const [taskKeyOverride, setTaskKeyOverride] = useState<string | null>(null);
+  const taskKey = taskKeyOverride ?? taskTypes[0] ?? "";
   const [providerOverride, setProviderOverride] = useState<string | null>(null);
   const [modelOverride, setModelOverride] = useState<string | null>(null);
   // Derive from config, allow user override
@@ -113,13 +115,11 @@ export function TaskEditor({ onClose, editItemId }: { onClose: () => void; editI
                 id="task-type"
                 className="w-full px-2.5 py-1.5 font-mono text-xs border-2 border-border bg-bg-1 text-text-0 outline-none focus:border-nyellow"
                 value={taskKey}
-                onChange={(e) => setTaskKey(e.target.value)}
+                onChange={(e) => setTaskKeyOverride(e.target.value)}
               >
-                <option value="execute">execute</option>
-                <option value="review">review</option>
-                <option value="plan">plan</option>
-                <option value="reflect">reflect</option>
-                <option value="schedule">schedule</option>
+                {taskTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
             </div>
 
