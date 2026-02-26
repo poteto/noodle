@@ -138,7 +138,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	})
 	l.pendingReview["42"] = &pendingReviewCook{queueItem: QueueItem{ID: "42"}}
 
-	plan := l.planCycleSpawns(queue, mise.Brief{})
+	plan := l.planCycleSpawns(queue, mise.Brief{}, l.config.Concurrency.MaxCooks)
 	if len(plan) != 1 || plan[0].ID != "43" {
 		t.Fatalf("spawn plan = %#v, want only 43", plan)
 	}

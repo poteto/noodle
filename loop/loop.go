@@ -245,6 +245,9 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		l.registryStale.Store(false)
 	}
 
+	// Snapshot capacity before control commands can mutate it.
+	cycleCapacity := l.config.Concurrency.MaxCooks
+
 	ready, err := l.runCycleMaintenance(ctx)
 	if err != nil {
 		return err
@@ -269,7 +272,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	plan := l.planCycleSpawns(queue, brief)
+	plan := l.planCycleSpawns(queue, brief, cycleCapacity)
 	if err := l.spawnPlannedItems(ctx, plan); err != nil {
 		return err
 	}
@@ -408,7 +411,7 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 	return queue, true, nil
 }
 
-func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
+func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief, capacity int) []QueueItem {
 	busyTargets := make(map[string]struct{}, len(l.activeByTarget))
 	for targetID := range l.activeByTarget {
 		busyTargets[targetID] = struct{}{}
@@ -439,7 +442,7 @@ func (l *Loop) planCycleSpawns(queue Queue, brief mise.Brief) []QueueItem {
 
 	return planSpawnItems(spawnPlanInput{
 		QueueItems:      queue.Items,
-		Capacity:        l.config.Concurrency.MaxCooks,
+		Capacity:        capacity,
 		ActiveCount:     len(l.activeByID),
 		AdoptedCount:    len(l.adoptedTargets),
 		BusyTargets:     busyTargets,
