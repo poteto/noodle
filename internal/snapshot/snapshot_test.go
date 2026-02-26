@@ -538,3 +538,17 @@ func TestSnapshotPendingReviewIncludesReason(t *testing.T) {
 		t.Errorf("reason = %q, want %q", parsed.PendingReviews[0].Reason, "max retries exceeded")
 	}
 }
+
+func TestInferTaskTypeDasherizedCookName(t *testing.T) {
+	got := InferTaskType("plan-49-phase-10-2-request-changes")
+	if got != "request-changes" {
+		t.Fatalf("InferTaskType() = %q, want %q", got, "request-changes")
+	}
+}
+
+func TestInferTaskTypeLegacyColonFormat(t *testing.T) {
+	got := InferTaskType("42:0:execute")
+	if got != "execute" {
+		t.Fatalf("InferTaskType() = %q, want %q", got, "execute")
+	}
+}

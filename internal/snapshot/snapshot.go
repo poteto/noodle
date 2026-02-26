@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -170,7 +171,7 @@ func readSessions(runtimeDir string) ([]Session, error) {
 			LoopState:             strings.TrimSpace(meta.LoopState),
 			DispatchWarning:       spawnInfo.dispatchWarning,
 			WorktreeName:          spawnInfo.worktreeName,
-			TaskKey:               InferTaskType(sessionID),
+			TaskKey:               InferTaskType(stringx.NonEmpty(spawnInfo.worktreeName, sessionID)),
 			Title:                 spawnInfo.title,
 		})
 	}
@@ -710,15 +711,20 @@ func readGitBranch(dir string) string {
 	return filepath.Base(dir)
 }
 
-// InferTaskType extracts a task type from a session ID convention.
-// New format: orderID:stageIndex:taskKey (e.g., "29:0:execute").
-// Old format: prefix matching (e.g., "execute-..." → "execute").
-func InferTaskType(sessionID string) string {
-	// Try new colon-separated format: orderID:stageIndex:taskKey
-	parts := strings.SplitN(sessionID, ":", 3)
+// InferTaskType extracts a task type from session/worktree naming conventions.
+// Supported formats:
+// - orderID:stageIndex:taskKey (legacy)
+// - order-id-stageIndex-task-key (current, dasherized)
+func InferTaskType(value string) string {
+	lower := strings.ToLower(strings.TrimSpace(value))
+	if lower == "" {
+		return ""
+	}
+
+	// Legacy colon-separated format: orderID:stageIndex:taskKey
+	parts := strings.SplitN(lower, ":", 3)
 	if len(parts) == 3 {
-		taskKey := strings.ToLower(strings.TrimSpace(parts[2]))
-		// Strip any suffix after the task key (e.g., random session ID suffix).
+		taskKey := strings.TrimSpace(parts[2])
 		if idx := strings.IndexByte(taskKey, '-'); idx > 0 {
 			taskKey = taskKey[:idx]
 		}
@@ -727,9 +733,24 @@ func InferTaskType(sessionID string) string {
 		}
 	}
 
-	// Fallback: old prefix-based matching for pre-migration sessions.
-	known := []string{"execute", "plan", "review", "reflect", "schedule"}
-	lower := strings.ToLower(sessionID)
+	known := []string{"execute", "plan", "review", "reflect", "schedule", "quality", "debugging", "meditate", "oops", "bootstrap", "repair", "request-changes"}
+
+	// Dasherized format: find the stage index segment and read the trailing task key.
+	if dashParts := strings.Split(lower, "-"); len(dashParts) >= 3 {
+		for i := len(dashParts) - 2; i >= 0; i-- {
+			if _, err := strconv.Atoi(dashParts[i]); err != nil {
+				continue
+			}
+			taskCandidate := strings.Join(dashParts[i+1:], "-")
+			for _, key := range known {
+				if taskCandidate == key || strings.HasPrefix(taskCandidate, key+"-") {
+					return key
+				}
+			}
+		}
+	}
+
+	// Older prefix-based session IDs (e.g., "execute-...").
 	for _, prefix := range known {
 		if strings.HasPrefix(lower, prefix) {
 			return prefix

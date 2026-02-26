@@ -12,10 +12,29 @@ const STAGE_INDICATOR: Record<StageStatus, { symbol: string; class: string }> = 
 function StageIndicator({ stage }: { stage: Stage }) {
   const ind = STAGE_INDICATOR[stage.status];
   return (
-    <span className={`font-mono text-xs ${ind.class}`} title={`${stage.task_key ?? "stage"}: ${stage.status}`}>
+    <span
+      className={`font-mono text-xs ${ind.class}`}
+      title={`${stage.task_key ?? "stage"}: ${stage.status}`}
+    >
       {ind.symbol}
     </span>
   );
+}
+
+function stageReactKey(stage: Stage): string {
+  const key = [
+    stage.task_key,
+    stage.prompt,
+    stage.skill,
+    stage.provider,
+    stage.model,
+    stage.runtime,
+    stage.status,
+  ]
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join("|");
+  return key || "stage";
 }
 
 function StagePipeline({ stages, label }: { stages: Stage[]; label?: string }) {
@@ -26,7 +45,7 @@ function StagePipeline({ stages, label }: { stages: Stage[]; label?: string }) {
     <div className="flex items-center gap-1 font-mono text-xs text-text-2">
       {label && <span className="text-text-3 mr-0.5">{label}</span>}
       {stages.map((stage, i) => (
-        <span key={stage.task_key ?? i} className="flex items-center gap-1">
+        <span key={stageReactKey(stage)} className="flex items-center gap-1">
           {i > 0 && <span className="text-text-3">&rarr;</span>}
           <span className="flex items-center gap-0.5">
             {stage.task_key && <span>{stage.task_key}</span>}
@@ -40,7 +59,10 @@ function StagePipeline({ stages, label }: { stages: Stage[]; label?: string }) {
 
 /** Find the active stage, or the first pending stage if none active. */
 function currentStage(order: Order): Stage | undefined {
-  return order.stages.find((s) => s.status === "active") ?? order.stages.find((s) => s.status === "pending");
+  return (
+    order.stages.find((s) => s.status === "active") ??
+    order.stages.find((s) => s.status === "pending")
+  );
 }
 
 export function OrderCard({

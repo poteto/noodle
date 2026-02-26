@@ -37,8 +37,8 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 		orderID:      "42",
 		stageIndex:   0,
 		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"},
-		worktreeName: "42:0:execute",
-		worktreePath: filepath.Join(projectDir, ".worktrees", "42:0:execute"),
+		worktreeName: "42-0-execute",
+		worktreePath: filepath.Join(projectDir, ".worktrees", "42-0-execute"),
 		sessionID:    "sess-42",
 	}
 	if err := l.writePendingReview(); err != nil {
@@ -143,7 +143,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
 		stage:        Stage{TaskKey: "execute"},
-		worktreeName: "42:0:execute",
+		worktreeName: "42-0-execute",
 	}
 
 	if err := l.controlRequestChanges("42", "fix tests"); err != nil {
@@ -449,7 +449,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
 		stage:        Stage{TaskKey: "execute"},
-		worktreeName: "42:0:execute",
+		worktreeName: "42-0-execute",
 	}
 
 	if err := l.controlReject("42"); err != nil {
@@ -639,7 +639,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
 		stage:        Stage{TaskKey: "execute"},
-		worktreeName: "42:0:execute",
+		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
 	}
 
@@ -696,7 +696,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
 		stage:        Stage{TaskKey: "execute"},
-		worktreeName: "42:0:execute",
+		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
 	}
 
@@ -737,7 +737,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 	l.pendingReview["42"] = &pendingReviewCook{
 		orderID: "42", stageIndex: 0,
 		stage:        Stage{TaskKey: "debugging"},
-		worktreeName: "42:0:debugging",
+		worktreeName: "42-0-debugging",
 		sessionID:    "sess-42",
 	}
 

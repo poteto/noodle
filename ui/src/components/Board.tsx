@@ -189,7 +189,8 @@ export function Board() {
   // leaves pending_reviews, and uses up-to-date metadata if item returns.
   const activeReviewItem =
     panelState?.type === "review"
-      ? (optimisticSnapshot.pending_reviews.find((r) => r.order_id === panelState.item.order_id) ?? null)
+      ? (optimisticSnapshot.pending_reviews.find((r) => r.order_id === panelState.item.order_id) ??
+        null)
       : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
@@ -216,9 +217,7 @@ export function Board() {
     if (srcIndex === -1 || srcIndex === dropIndex) {
       return;
     }
-    const fullQueueIndex = snapshot.orders.findIndex(
-      (o) => o.id === columns.queued[dropIndex]?.id,
-    );
+    const fullQueueIndex = snapshot.orders.findIndex((o) => o.id === columns.queued[dropIndex]?.id);
     if (fullQueueIndex !== -1) {
       optimisticSend({ action: "reorder", order_id: id, value: String(fullQueueIndex) });
     }

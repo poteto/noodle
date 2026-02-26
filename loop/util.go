@@ -88,11 +88,19 @@ func sanitizeToken(value string) string {
 }
 
 // cookBaseName returns the worktree name for a stage dispatch.
-// Format: orderID:stageIndex:taskKey (e.g., "29:0:execute").
+// Format: order-id-stageIndex-task-key (e.g., "29-0-execute").
+// Tokens are dasherized so branch/worktree names stay git- and fs-safe.
 func cookBaseName(orderID string, stageIndex int, taskKey string) string {
-	return fmt.Sprintf("%s:%d:%s", orderID, stageIndex, taskKey)
+	orderToken := sanitizeToken(orderID)
+	if orderToken == "" {
+		orderToken = "order"
+	}
+	taskToken := sanitizeToken(taskKey)
+	if taskToken == "" {
+		taskToken = "task"
+	}
+	return fmt.Sprintf("%s-%d-%s", orderToken, stageIndex, taskToken)
 }
-
 
 func truncateToken(token string, maxLen int) string {
 	if maxLen <= 0 {

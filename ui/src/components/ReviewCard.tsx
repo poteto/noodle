@@ -14,7 +14,9 @@ export function ReviewCard({ item, onClick }: { item: PendingReviewItem; onClick
         <div className="flex items-center gap-1.5 mb-2">
           {item.task_key && <Badge type={item.task_key} />}
         </div>
-        <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{item.title || item.order_id}</div>
+        <div className="font-bold text-[1.0625rem] text-text-0 mb-1">
+          {item.title || item.order_id}
+        </div>
         {item.reason && (
           <div className="font-mono text-xs font-bold text-nred leading-[1.4] mb-2">
             {item.reason}

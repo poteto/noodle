@@ -198,7 +198,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	existingWorktree := filepath.Join(projectDir, ".worktrees", "42:0:execute")
+	existingWorktree := filepath.Join(projectDir, ".worktrees", "42-0-execute")
 	if err := os.MkdirAll(existingWorktree, 0o755); err != nil {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "42:0:execute"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "42-0-execute"), 0o755); err != nil {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
@@ -298,7 +298,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		t.Fatalf("expected spawn error, got %v", err)
 	}
 	for _, name := range wt.cleaned {
-		if name == "42:0:execute" {
+		if name == "42-0-execute" {
 			t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
 		}
 	}
@@ -334,7 +334,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 	created42 := false
 	for _, name := range wt.created {
-		if name == "42:0:execute" {
+		if name == "42-0-execute" {
 			created42 = true
 			break
 		}
@@ -344,7 +344,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 	cleaned42 := false
 	for _, name := range wt.cleaned {
-		if name == "42:0:execute" {
+		if name == "42-0-execute" {
 			cleaned42 = true
 			break
 		}
@@ -775,15 +775,22 @@ func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 
 func TestCookBaseNameIncludesOrderStageTask(t *testing.T) {
 	name := cookBaseName("42", 0, "execute")
-	if name != "42:0:execute" {
+	if name != "42-0-execute" {
 		t.Fatalf("unexpected cook name: %q", name)
 	}
 }
 
 func TestCookBaseName(t *testing.T) {
 	name := cookBaseName("42", 0, "execute")
-	if name != "42:0:execute" {
-		t.Fatalf("cookBaseName = %q, want 42:0:execute", name)
+	if name != "42-0-execute" {
+		t.Fatalf("cookBaseName = %q, want 42-0-execute", name)
+	}
+}
+
+func TestCookBaseNameDasherizesUnsafeTokens(t *testing.T) {
+	name := cookBaseName("Plan 49/Phase:10", 2, "Request Changes")
+	if name != "plan-49-phase-10-2-request-changes" {
+		t.Fatalf("cookBaseName = %q, want plan-49-phase-10-2-request-changes", name)
 	}
 }
 
@@ -1043,7 +1050,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
-	if len(wt.merged) != 1 || wt.merged[0] != "42:0:execute" {
+	if len(wt.merged) != 1 || wt.merged[0] != "42-0-execute" {
 		t.Fatalf("unexpected merged worktrees: %#v", wt.merged)
 	}
 	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
@@ -1453,6 +1460,7 @@ func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.Disp
 //     item lands in pendingRetry. Cycle returns the spawn error.
 //  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
 //     Item is in activeByTarget with attempt > 0.
+//
 // TestRetryCookRespectsMaxCooks verifies that retryCook defers to pendingRetry
 // when the loop is already at max concurrency. Without this check, two adopted
 // sessions completing with errors in the same collectAdoptedCompletions call
@@ -1633,7 +1641,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	}
 	if cook37.attempt == 0 {
 		t.Errorf(
-			"BUG: item '37' was spawned fresh (attempt 0) instead of via "+
+			"BUG: item '37' was spawned fresh (attempt 0) instead of via " +
 				"pendingRetry (attempt counter lost between failed retry and next cycle)",
 		)
 	}

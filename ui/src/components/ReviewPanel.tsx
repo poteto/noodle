@@ -35,9 +35,7 @@ export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClos
           </button>
         </div>
         {item.reason && (
-          <div className="font-mono text-xs font-bold text-nred mb-1">
-            {item.reason}
-          </div>
+          <div className="font-mono text-xs font-bold text-nred mb-1">{item.reason}</div>
         )}
         <div className="flex items-center gap-2 font-mono text-xs text-text-2">
           <WorktreeLabel name={item.worktree_name} />

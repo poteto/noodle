@@ -72,8 +72,8 @@ cat > .noodle.toml <<'EOF'
 autonomy = "auto"
 
 [routing.defaults]
-provider = "claude"
-model = "claude-opus-4-6"
+provider = "codex"
+model = "gpt-5.3-codex"
 
 [skills]
 paths = [".agents/skills"]
@@ -168,7 +168,7 @@ Back to [[plans/01-user-auth/overview]]
 
 # Phase 2: OAuth2 flow
 
-**Routing:** `claude` / `claude-opus-4-6` — integration work, provider-specific quirks
+**Routing:** `codex` / `gpt-5.3-codex` — integration work, provider-specific quirks
 
 ## Goal
 
@@ -292,17 +292,35 @@ cat > .noodle/mise.json <<'EOF'
 }
 EOF
 
-cat > .noodle/queue.json <<'EOF'
-[
-  {
-    "target": "todo-4",
-    "task_type": "cook",
-    "provider": "claude",
-    "model": "claude-opus-4-6",
-    "runtime": "tmux",
-    "reason": "Bug fix — goroutine leak is a reliability issue, small scope, high impact."
-  }
-]
+cat > .noodle/orders.json <<'EOF'
+{
+  "orders": [
+    {
+      "id": "todo-4",
+      "title": "Fix goroutine leak in WebSocket handler",
+      "status": "active",
+      "rationale": "Bug fix — reliability issue, small scope, high impact.",
+      "stages": [
+        {
+          "task_key": "execute",
+          "provider": "codex",
+          "model": "gpt-5.3-codex",
+          "runtime": "tmux",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}
+EOF
+
+cat > .noodle/status.json <<'EOF'
+{
+  "active": [],
+  "loop_state": "running",
+  "autonomy": "auto",
+  "max_cooks": 1
+}
 EOF
 
 git add -A

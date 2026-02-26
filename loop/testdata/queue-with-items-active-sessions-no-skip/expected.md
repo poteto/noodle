@@ -17,7 +17,7 @@ source_hash: 0d745d2727716062da960818f3d90babbcaaf2a1299161eb69ddbd095ef82662
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
       "first_spawn": {
-        "name": "42:0:execute",
+        "name": "42-0-execute",
         "provider": "codex",
         "model": "gpt-5.3-codex"
       }

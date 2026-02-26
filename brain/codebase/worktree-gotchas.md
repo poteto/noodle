@@ -24,4 +24,10 @@ When multiple sessions merge to main simultaneously, the second merge's rebase c
 
 Use `setupTestRepo()` which includes robust cleanup (`git worktree prune`, removing `.git/worktrees`, `.worktrees`). Ad-hoc `t.TempDir()+git init` repos can flake under parallel load.
 
+## Worktree/branch names must be dasherized
+
+`git worktree add ... -b <branch>` rejects names containing `:`. Loop stage names that used `order:stage:task` caused runtime failures like `failed to create worktree: exit status 255`.
+
+Use dasherized names (`order-stage-task`, e.g. `todo-4-0-execute`) for both branch and `.worktrees/` directory safety.
+
 See also [[principles/fix-root-causes]], [[principles/encode-lessons-in-structure]], [[principles/serialize-shared-state-mutations]], [[codebase/adopted-session-reconciliation]]
