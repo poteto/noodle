@@ -29,10 +29,18 @@ The `Done()` channel on `SessionHandle` **must** close exactly once on completio
 
 **`loop/defaults.go`** — Build the runtime map from config. Call `Start()` on each runtime during loop init. Call `Close()` during shutdown. Preserve fallback: if a non-tmux dispatch fails, retry via tmux runtime (existing `factory.go` behavior).
 
+**`dispatcher/`** — Delete the `dispatcher` package after all callers are migrated to the `runtime` package. The `factory.go` fallback logic moves into `loop/defaults.go` (runtime map construction). Per migrate-callers-then-delete: inventory all `dispatcher` imports (loop, control, cook, schedule, server, cmd), migrate each to `runtime`, then remove the package entirely. No adapter shim.
+
+**Per-runtime concurrency**: Each `Runtime` implementation enforces its own `MaxConcurrent` limit (from config), returning a "concurrency limit reached" error from `Dispatch()`. The loop's global `MaxCooks` remains as a ceiling. This allows e.g. 50 cloud agents + 4 tmux agents within a global cap of 54.
+
+**Quality verdicts**: `SessionHandle` gains a `VerdictPath() string` method returning the path where the quality verdict for this session is written. For local runtimes, this is `.noodle/quality/<session-id>.json`. For cloud runtimes, the verdict is fetched on completion and written to the same local path. The loop's quality gate reads from this path uniformly.
+
+**Internal sequencing**: (a) Define `Runtime` interface + `SessionHandle` + `DispatchRequest` types; (b) implement `TmuxRuntime` wrapping existing dispatcher; (c) rewrite `reconcile.go` to use `Runtime.Recover()`; (d) implement `SpritesRuntime`; (e) migrate all `dispatcher` imports and delete the package.
+
 ## Data structures
 
 - `Runtime` interface — `Start(ctx)`, `Dispatch(ctx, req) → (SessionHandle, error)`, `Kill(SessionHandle) error`, `Recover(ctx) → ([]RecoveredSession, error)`, `Close() error`
-- `SessionHandle` — `ID() string`, `Done() <-chan struct{}`, `Status() string`, `TotalCost() float64`
+- `SessionHandle` — `ID() string`, `Done() <-chan struct{}`, `Status() SessionStatus` (typed constant, not bare string), `TotalCost() float64`, `VerdictPath() string`
 - `RecoveredSession` — `OrderID string`, `SessionHandle SessionHandle`
 - Runtime map: `map[string]Runtime` keyed by runtime name ("tmux", "sprites", "cursor")
 
@@ -47,6 +55,7 @@ The `Done()` channel on `SessionHandle` **must** close exactly once on completio
 - `dispatcher.Dispatcher` interface no longer referenced from loop package
 - `adoptedTargets`/`adoptedSessions` removed from Loop struct
 - Loop imports `runtime` package, not `dispatcher` directly
+- `dispatcher/` package deleted — no remaining imports anywhere in the codebase
 - Every Runtime implementation's `Close()` stops all background goroutines
 
 ### Runtime

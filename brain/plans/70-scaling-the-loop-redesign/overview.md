@@ -56,6 +56,7 @@ This redesign makes the cycle O(events + orders), independent of total sessions.
 - `testing` — Fixture framework, integration tests
 - `codex` — Mechanical refactoring phases (map removal, interface extraction)
 - `execute` — Implementation methodology
+- `frontend-design` — Stage rail UI component in phase 8
 
 ## Phases
 
@@ -68,6 +69,26 @@ This redesign makes the cycle O(events + orders), independent of total sessions.
 - [[plans/70-scaling-the-loop-redesign/phase-07-async-merge-queue]]
 - [[plans/70-scaling-the-loop-redesign/phase-08-snapshot-and-web-ui-decoupling]]
 - [[plans/70-scaling-the-loop-redesign/phase-09-integration-tests-at-scale]]
+
+### Dependency DAG
+
+Hard dependencies (must complete before):
+```
+P1 → P2 → P3 → P4 → P7
+                ↓      ↓
+               P6    P8 ← P5
+                ↓
+               P9 (depends on P2, P3, P4, P6, P7)
+```
+
+- **P5** and **P6** are independent after P3/P4 and can run in parallel
+- **P7** should run before P5/P6 — it's higher risk and later phases benefit from merge queue existing
+- **P8** depends on P4 (in-memory state) + P5 (ActiveSummary contract)
+- **P9** depends on all loop-mechanics phases (P2-P7)
+
+### Concurrency model at scale
+
+The global `MaxCooks` config gates total concurrent dispatches. At cloud scale (100-1000 agents), this needs per-runtime concurrency limits: `config.Runtime.Sprites.MaxConcurrent`, `config.Runtime.Cursor.MaxConcurrent`, with `MaxCooks` as the global ceiling. Each runtime enforces its own cap in `Dispatch()`, and the loop enforces the global cap. Phase 3 should introduce per-runtime caps alongside the Runtime interface.
 
 ## Verification
 

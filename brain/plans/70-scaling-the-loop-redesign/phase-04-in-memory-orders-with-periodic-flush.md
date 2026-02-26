@@ -22,12 +22,18 @@ Hold orders in memory as the authoritative state during the cycle. Write to disk
 
 **`loop/failures.go`** — `failed.json` is flushed alongside orders. The in-memory `failedTargets` map is already authoritative; the file becomes a periodic snapshot.
 
+**`pendingRetry` persistence**: `pendingRetry` entries are included in `flushState()` — written to `pending-retry.json` alongside orders. On crash recovery, `loadOrders()` also reads `pending-retry.json` and repopulates the in-memory map. Without this, a crash loses retry intent: an `"active"` stage with no live session and no pending retry would become stuck.
+
 **Crash safety:** Write-before-dispatch is preserved — `flushOrders()` is called before `Dispatch()`. This means the stage is marked `"active"` on disk before the session starts. On crash after dispatch but before cycle-end flush, the worst case is that a completion isn't recorded — the stage is still `"active"` on disk, and `Runtime.Recover()` (phase 3) finds the orphaned session. Non-idempotent side effects (backlog `done` callback) are guarded: mark the order as completed in memory first, flush, then call the callback. If the callback fails, the order is already marked done and won't re-trigger.
+
+**`flushState()` atomicity**: Each file is written via write-to-temp + rename (atomic replace). The files (`orders.json`, `pending-review.json`, `failed.json`, `pending-retry.json`) are written sequentially in a fixed order. This isn't cross-file atomic, but crash at any point produces recoverable state: `loadOrders()` on restart re-derives consistency from the orders file (source of truth) plus `Runtime.Recover()`.
+
+**Internal sequencing**: (a) Add in-memory orders field + `loadOrders()` + `flushOrders()` with write-rename; (b) migrate `advanceOrder()`/`failStage()` to in-memory mutation; (c) migrate control commands to in-memory mutation; (d) add `pendingRetry` persistence; (e) add `flushState()` writing all files at cycle end.
 
 ## Data structures
 
 - No new types. `orderx.OrdersFile` is the existing type, just held in memory instead of read per-operation.
-- `flushState()` writes `orders.json`, `pending-review.json`, and `failed.json` atomically at cycle end.
+- `flushState()` writes `orders.json`, `pending-review.json`, `failed.json`, and `pending-retry.json` via write-to-temp + rename. Orders file is written first (source of truth).
 
 ## Routing
 
@@ -47,4 +53,6 @@ Hold orders in memory as the authoritative state during the cycle. Write to disk
 - Race detector: `go test -race ./loop/...`
 - Test: `consumeOrdersNext()` merges into in-memory state and triggers a flush
 - Test: control `enqueue` command mutates in-memory state, visible in next cycle's dispatch
-- Test: pending-review.json and failed.json are consistent with orders.json after crash recovery
+- Test: pending-review.json and failed.json are re-derived from orders.json after crash recovery
+- Test: `"active"` stage with no live session resets to `"pending"` on startup (pendingRetry recovery)
+- Test: crash between writing orders.json and pending-review.json — startup re-derives pending reviews from orders

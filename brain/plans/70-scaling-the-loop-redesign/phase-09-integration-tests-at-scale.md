@@ -39,10 +39,10 @@ Prove the redesign works at scale with integration tests that simulate 100+ conc
 - `go test -bench ./loop/...` — benchmarks produce cycle time numbers
 
 ### Runtime
-- Throughput test passes: 100 orders × 3 stages complete in <60s test time
-- Burst test passes: 50 completions in one cycle processed correctly
-- Crash test passes: kill-9 and restart converges to correct state
-- Shutdown test passes: all goroutines exit cleanly, no leaked watchers
-- Goroutine leak test passes: count returns to baseline after each stop
-- Benchmark shows cycle time <200ms at 1000 sessions
-- Race detector clean: `go test -race ./loop/... ./runtime/...`
+- Throughput test: 100 orders × 3 stages complete in <60s wall time, all orders reach `"done"` status, merge queue processes all requests
+- Burst test: 50 completions in one cycle — verify `drainCompletions()` returns 50, all stages advance to next, no send blocked >1ms
+- Crash test: kill loop with 50 active sessions → restart → `Runtime.Recover()` called, all active stages either re-attached or reset to pending. Stages in `"merging"` state recovered via deterministic algorithm (phase 7)
+- Shutdown test: `goleak.VerifyNone(t)` — zero leaked goroutines. All watcher goroutines, health observers, merge worker, and runtime observation goroutines exit
+- Goroutine leak test: `runtime.NumGoroutine()` at baseline, after 3 start/stop cycles, delta is 0 (±2 for runtime internals)
+- Benchmark: cycle time at 1000 sessions < 200ms (p99), memory growth < 100MB over 10,000 cycles
+- Race detector clean: `go test -race ./loop/... ./runtime/...` with all scale tests enabled

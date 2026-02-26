@@ -16,6 +16,8 @@ Remove `activeByTarget` and `activeByID` maps from the Loop struct. Replace with
 
 **`loop/orders.go`** — Add `ActiveOrderIDs(orders OrdersFile) []string` and `BusyTargets(orders OrdersFile) map[string]bool` helper functions that derive state from the orders file directly.
 
+**Internal sequencing**: (a) Define `cookHandle` type and `activeCooksByOrder` map; (b) migrate `spawnCook()` + `collectCompleted()` to use the new map; (c) migrate `collectAdoptedCompletions()` and verify adoption; (d) clean up dead code from old maps.
+
 ## Data structures
 
 - `cookHandle` — `orderID`, `stageIndex`, `isOnFailure`, `orderStatus`, `plan []string`, `attempt int`, `displayName string`, `done <-chan struct{}`, `worktreeName`, `worktreePath`, `session dispatcher.Session`
