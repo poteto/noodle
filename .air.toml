@@ -26,4 +26,4 @@ silent = true
 time = true
 
 [misc]
-clean_on_exit = true
+clean_on_exit = false
