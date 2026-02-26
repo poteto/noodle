@@ -306,6 +306,37 @@ func TestPostControlEnqueue(t *testing.T) {
 	}
 }
 
+func TestPostControlAcceptsCamelCaseOrderID(t *testing.T) {
+	s, dir := testServer(t)
+
+	body := strings.NewReader(`{"action":"merge","orderId":"task-42"}`)
+	req := httptest.NewRequest("POST", "/api/control", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, body = %s", resp.StatusCode, raw)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control: %v", err)
+	}
+	var cmd loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &cmd); err != nil {
+		t.Fatalf("parse command: %v", err)
+	}
+	if cmd.Action != "merge" {
+		t.Fatalf("action = %q, want merge", cmd.Action)
+	}
+	if cmd.OrderID != "task-42" {
+		t.Fatalf("order_id = %q, want task-42", cmd.OrderID)
+	}
+}
+
 func TestSSEHubDiffGating(t *testing.T) {
 	hub := newSSEHub()
 	dir := t.TempDir()

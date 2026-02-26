@@ -34,6 +34,7 @@
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
+- [[codebase/control-api-snake-camel-compat]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
 - [[codebase/runtime-routing-owned-by-queue]]

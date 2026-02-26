@@ -194,6 +194,7 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 type controlRequest struct {
 	Action   string `json:"action"`
 	OrderID  string `json:"order_id,omitempty"`
+	OrderID2 string `json:"orderId,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Target   string `json:"target,omitempty"`
 	Prompt   string `json:"prompt,omitempty"`
@@ -242,6 +243,9 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 		Model:    strings.TrimSpace(req.Model),
 		Skill:    strings.TrimSpace(req.Skill),
 		At:       s.now().UTC(),
+	}
+	if cmd.OrderID == "" {
+		cmd.OrderID = strings.TrimSpace(req.OrderID2)
 	}
 	cmd.ID = fmt.Sprintf("web-%d", cmd.At.UnixNano())
 
