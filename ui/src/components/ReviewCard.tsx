@@ -3,9 +3,15 @@ import { Badge } from "./Badge";
 import { WorktreeLabel } from "./WorktreeLabel";
 import { ReviewActions } from "./ReviewActions";
 
-export function ReviewCard({ item }: { item: PendingReviewItem }) {
+export function ReviewCard({
+  item,
+  onClick,
+}: {
+  item: PendingReviewItem;
+  onClick?: () => void;
+}) {
   return (
-    <div className="group cursor-pointer">
+    <div className="group cursor-pointer" onClick={onClick}>
     <div className="bg-bg-1 border-2 border-border p-[18px] shadow-card transition-[transform,box-shadow] duration-150 ease-out group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:shadow-card-hover">
       <div className="flex items-center gap-1.5 mb-2">
         {item.task_key && <Badge type={item.task_key} />}
@@ -22,7 +28,10 @@ export function ReviewCard({ item }: { item: PendingReviewItem }) {
         <WorktreeLabel name={item.worktree_name} />
         {item.model && <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">{item.model}</span>}
       </div>
-      <ReviewActions itemId={item.id} />
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <ReviewActions itemId={item.id} />
+      </div>
     </div>
     </div>
   );

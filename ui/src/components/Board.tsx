@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useOptimistic, useTransition } from "react";
 import { useSuspenseSnapshot, deriveKanbanColumns, sendControl } from "~/client";
-import type { Snapshot, Session, QueueItem, ControlCommand } from "~/client";
+import type { Snapshot, Session, QueueItem, PendingReviewItem, ControlCommand } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
@@ -8,11 +8,17 @@ import { QueueCard } from "./QueueCard";
 import { ReviewCard } from "./ReviewCard";
 import { DoneCard } from "./DoneCard";
 import { ChatPanel } from "./ChatPanel";
+import { ReviewPanel } from "./ReviewPanel";
 import { TaskEditor } from "./TaskEditor";
 import { QueueAddCard } from "./QueueAddCard";
 import { ConcurrencyBadge } from "./ConcurrencyBadge";
 import { SkeletonCard } from "./SkeletonCard";
 import { ControlContext } from "./ControlContext";
+
+type PanelState =
+  | { type: "chat"; sessionId: string }
+  | { type: "review"; item: PendingReviewItem }
+  | null;
 
 function pendingSession(item: QueueItem): Session {
   return {
@@ -65,12 +71,16 @@ function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): S
       };
     case "merge":
     case "reject":
-    case "request-changes":
       return {
         ...current,
         pending_reviews: current.pending_reviews.filter((r) => r.id !== action.item),
         pending_review_count: Math.max(0, current.pending_review_count - 1),
       };
+    case "request-changes":
+      // Don't optimistically remove — request-changes can no-op at max
+      // concurrency, keeping the item in review. The next SSE snapshot
+      // will reflect the real state.
+      return current;
     case "set-max-cooks": {
       const n = parseInt(action.value ?? "", 10);
       return isNaN(n) ? current : { ...current, max_cooks: n };
@@ -106,7 +116,7 @@ export function Board() {
   const { data: snapshot } = useSuspenseSnapshot();
   const [, startTransition] = useTransition();
   const [optimisticSnapshot, applyOptimistic] = useOptimistic(snapshot, applyOptimisticSnapshot);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [panelState, setPanelState] = useState<PanelState>(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -154,9 +164,19 @@ export function Board() {
     columns.cooking.length === 0 &&
     columns.done.length === 0;
 
-  const selectedSession = selectedSessionId
-    ? snapshot.sessions.find((s) => s.id === selectedSessionId) ?? null
-    : null;
+  const selectedSession =
+    panelState?.type === "chat"
+      ? snapshot.sessions.find((s) => s.id === panelState.sessionId) ?? null
+      : null;
+
+  // Auto-close review panel when the item leaves pending_reviews (merged/rejected).
+  useEffect(() => {
+    if (panelState?.type !== "review") return;
+    const stillPending = optimisticSnapshot.pending_reviews.some(
+      (r) => r.id === panelState.item.id,
+    );
+    if (!stillPending) setPanelState(null);
+  }, [panelState, optimisticSnapshot.pending_reviews]);
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
     const item = columns.queued[index];
@@ -271,7 +291,7 @@ export function Board() {
                 <AgentCard
                   key={session.id}
                   session={session}
-                  onClick={() => setSelectedSessionId(session.id)}
+                  onClick={() => setPanelState({ type: "chat", sessionId: session.id })}
                 />
               ))}
             </div>
@@ -279,13 +299,17 @@ export function Board() {
 
           <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">
             {columns.review.map((item) => (
-              <ReviewCard key={item.id} item={item} />
+              <ReviewCard
+                key={item.id}
+                item={item}
+                onClick={() => setPanelState({ type: "review", item })}
+              />
             ))}
           </BoardColumn>
 
           <BoardColumn title="Done" count={columns.done.length} emptyText="No completed tasks">
             {columns.done.map((session) => (
-              <DoneCard key={session.id} session={session} onClick={() => setSelectedSessionId(session.id)} />
+              <DoneCard key={session.id} session={session} onClick={() => setPanelState({ type: "chat", sessionId: session.id })} />
             ))}
           </BoardColumn>
         </div>
@@ -293,7 +317,14 @@ export function Board() {
         {selectedSession && (
           <ChatPanel
             session={selectedSession}
-            onClose={() => setSelectedSessionId(null)}
+            onClose={() => setPanelState(null)}
+          />
+        )}
+
+        {panelState?.type === "review" && (
+          <ReviewPanel
+            item={panelState.item}
+            onClose={() => setPanelState(null)}
           />
         )}
 
