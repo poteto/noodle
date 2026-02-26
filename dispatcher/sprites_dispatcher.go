@@ -108,11 +108,21 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, err
 	}
 
-	fullSystemPrompt := joinNonEmpty(buildSessionPreamble(), skillBundle.SystemPrompt)
-	// Sprites always runs claude — system prompt goes via --append-system-prompt.
+	preamble := buildSessionPreamble()
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 
 	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
 		return nil, fmt.Errorf("write prompt file: %w", err)
+	}
+
+	// input.txt: full composed prompt piped to agent stdin (includes
+	// inlined skill content for providers without system prompt support).
+	inputFile := promptPath
+	if composedPrompt != req.Prompt {
+		inputFile = filepath.Join(sessionDir, "input.txt")
+		if err := os.WriteFile(inputFile, []byte(composedPrompt), 0o644); err != nil {
+			return nil, fmt.Errorf("write input file: %w", err)
+		}
 	}
 
 	sprite := d.newSprite(d.spriteName)
@@ -142,17 +152,22 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	}
 
 	// Upload prompt file to sprite.
-	if err := uploadFileToSprite(ctx, sprite, promptPath, "/work/prompt.txt"); err != nil {
+	if err := uploadFileToSprite(ctx, sprite, inputFile, "/work/prompt.txt"); err != nil {
 		return nil, fmt.Errorf("upload prompt to sprite: %w", err)
 	}
 
-	// Build the claude command to run on the sprite.
-	claudeArgs := buildSpriteClaudeArgs(req, fullSystemPrompt)
+	// Build the provider command to run on the sprite.
+	var agentArgs []string
+	if strings.EqualFold(strings.TrimSpace(req.Provider), "codex") {
+		agentArgs = buildSpriteCodexArgs(req)
+	} else {
+		agentArgs = buildSpriteClaudeArgs(req, systemPrompt)
+	}
 
-	// Start claude on the sprite, reading prompt from the uploaded file.
+	// Start agent on the sprite, reading prompt from the uploaded file.
 	// Sprites stdin doesn't reliably forward data, so we use shell redirect.
-	quotedArgs := make([]string, len(claudeArgs))
-	for i, arg := range claudeArgs {
+	quotedArgs := make([]string, len(agentArgs))
+	for i, arg := range agentArgs {
 		quotedArgs[i] = shellx.Quote(arg)
 	}
 	shellCmd := fmt.Sprintf("cat /work/prompt.txt | %s", strings.Join(quotedArgs, " "))
@@ -165,7 +180,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start claude on sprite: %w", err)
+		return nil, fmt.Errorf("start agent on sprite: %w", err)
 	}
 
 	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
@@ -259,6 +274,22 @@ func uploadFileToSprite(ctx context.Context, sprite spriteHandle, localPath, rem
 		return fmt.Errorf("write remote file: %s: %w", strings.TrimSpace(string(out)), err)
 	}
 	return nil
+}
+
+// buildSpriteCodexArgs builds the argument list for running codex on the sprite.
+func buildSpriteCodexArgs(req DispatchRequest) []string {
+	args := []string{
+		"codex",
+		"--ask-for-approval", "never",
+		"exec",
+		"--skip-git-repo-check",
+		"--sandbox", "workspace-write",
+		"--json",
+	}
+	if strings.TrimSpace(req.Model) != "" {
+		args = append(args, "--model", req.Model)
+	}
+	return args
 }
 
 // buildSpriteClaudeArgs builds the argument list for running claude on the sprite.
