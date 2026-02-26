@@ -16,3 +16,5 @@
 - [x] [[archived_plans/28-rename-prioritize-to-schedule/overview]]
 - [x] [[archived_plans/37-skip-prioritize-with-queue/overview]]
 - [x] [[archived_plans/46-web-ui/overview]]
+- [x] [[archived_plans/31-structured-loop-logging/overview]]
+- [x] [[archived_plans/47-delete-go-tui/overview]]

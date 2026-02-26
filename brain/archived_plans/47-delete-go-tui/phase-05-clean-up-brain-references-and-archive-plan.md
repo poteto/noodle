@@ -1,4 +1,4 @@
-Back to [[plans/47-delete-go-tui/overview]]
+Back to [[archived_plans/47-delete-go-tui/overview]]
 
 # Phase 5 — Clean up references and archive plan
 

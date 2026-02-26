@@ -1,7 +1,7 @@
 ---
 id: 31
 created: 2026-02-24
-status: ready
+status: done
 ---
 
 # Structured Loop Logging
@@ -42,11 +42,11 @@ This plan adds structured logging to the loop using Go's stdlib `log/slog`. Ever
 
 ## Phases
 
-- [[plans/31-structured-loop-logging/phase-01-logger-type-and-interface]]
-- [[plans/31-structured-loop-logging/phase-02-inject-logger-into-loop]]
-- [[plans/31-structured-loop-logging/phase-03-log-dispatch-and-completion-events]]
-- [[plans/31-structured-loop-logging/phase-04-log-queue-mutations-and-state-transitions]]
-- [[plans/31-structured-loop-logging/phase-05-tests]]
+- [[archived_plans/31-structured-loop-logging/phase-01-logger-type-and-interface]]
+- [[archived_plans/31-structured-loop-logging/phase-02-inject-logger-into-loop]]
+- [[archived_plans/31-structured-loop-logging/phase-03-log-dispatch-and-completion-events]]
+- [[archived_plans/31-structured-loop-logging/phase-04-log-queue-mutations-and-state-transitions]]
+- [[archived_plans/31-structured-loop-logging/phase-05-tests]]
 
 ## Verification
 

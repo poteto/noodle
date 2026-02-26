@@ -1,7 +1,7 @@
 ---
 id: 47
 created: 2026-02-25
-status: ready
+status: done
 ---
 
 # Delete Go TUI
@@ -43,11 +43,11 @@ None — mostly deletion plus a small log streamer.
 
 ## Phases
 
-1. [[plans/47-delete-go-tui/phase-01-delete-tui-package]]
-2. [[plans/47-delete-go-tui/phase-02-rewrite-cmd-start-go-without-tui]]
-3. [[plans/47-delete-go-tui/phase-03-remove-charm-dependencies-and-go-mod-tidy]]
-4. [[plans/47-delete-go-tui/phase-04-delete-bubbletea-tui-skill]]
-5. [[plans/47-delete-go-tui/phase-05-clean-up-brain-references-and-archive-plan]]
+1. [[archived_plans/47-delete-go-tui/phase-01-delete-tui-package]]
+2. [[archived_plans/47-delete-go-tui/phase-02-rewrite-cmd-start-go-without-tui]]
+3. [[archived_plans/47-delete-go-tui/phase-03-remove-charm-dependencies-and-go-mod-tidy]]
+4. [[archived_plans/47-delete-go-tui/phase-04-delete-bubbletea-tui-skill]]
+5. [[archived_plans/47-delete-go-tui/phase-05-clean-up-brain-references-and-archive-plan]]
 
 ## Verification
 

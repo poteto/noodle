@@ -1,4 +1,4 @@
-Back to [[plans/47-delete-go-tui/overview]]
+Back to [[archived_plans/47-delete-go-tui/overview]]
 
 # Phase 3 — Remove Charm dependencies and go mod tidy
 

@@ -1,4 +1,4 @@
-Back to [[plans/31-structured-loop-logging/overview]]
+Back to [[archived_plans/31-structured-loop-logging/overview]]
 
 # Phase 1: Logger type and interface
 
