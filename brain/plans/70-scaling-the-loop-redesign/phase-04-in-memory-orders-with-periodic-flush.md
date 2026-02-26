@@ -14,13 +14,15 @@ Hold orders in memory as the authoritative state during the cycle. Write to disk
 
 **`loop/loop.go`** — At cycle end, call `flushOrders()` once. Also flush before dispatch (write-before-dispatch preserved for crash safety — see below). On startup, call `loadOrders()`. The fsnotify watch on `orders.json` is removed (the loop owns this file). The fsnotify watch on `orders-next.json` remains (external input).
 
-**`loop/cook.go`** — `spawnCook()` marks stage active in memory, flushes to disk, then dispatches. If dispatch fails, reverts in memory and flushes again. This preserves the write-before-dispatch invariant. `handleCompletion()` calls `advanceOrder()` or `failStage()` on the in-memory copy (flushed at cycle end).
+**`loop/cook.go`** — `spawnCook()` marks stage active in memory, flushes to disk, then dispatches. If dispatch fails, reverts in memory and flushes again. This preserves the write-before-dispatch invariant. `handleCompletion()` calls `advanceOrder()` or `failStage()` on the in-memory copy. **Critical state transitions flush immediately**: after a successful merge result advances a stage, flush before proceeding — a crash after merge but before flush would leave the stage `"active"` on disk with no session to recover, causing a re-dispatch of already-merged work. The rule: any transition that follows an irreversible side effect (merge, backlog callback) must flush before continuing.
 
-**`loop/control.go`** — Migrate all control commands to operate on in-memory orders instead of reading/writing `orders.json` directly. Commands affected: `controlMerge()` (`control.go:242`), `controlReject()` (`control.go:313`), `controlEnqueue()` (`control.go:401`), `controlSkip()` (`control.go:487`), `controlSteer()` (`control.go:558`), `controlReschedule()` (`schedule.go:206`). Each command mutates `l.orders` and the flush happens at cycle end (or immediately for commands that need the write visible to external readers).
+**`loop/control.go`** — Migrate **all** control commands to operate on in-memory orders instead of reading/writing `orders.json` directly. Full inventory: `controlMerge()` (`control.go:242`), `controlReject()` (`control.go:313`), `controlRequestChanges()` (`control.go:333`), `controlEnqueue()` (`control.go:401`), `controlEditItem()` (`control.go:422`), `controlSkip()` (`control.go:487`), `controlRequeue()` (`control.go:498`), `controlReorder()` (`control.go:545`), `controlSteer()` (`control.go:558`), `controlReschedule()` (`schedule.go:206`). Each command mutates `l.orders` in memory.
+
+**Control command durability**: The control processing sequence must be: (1) process commands → mutate in-memory state, (2) flush state to disk, (3) ack + truncate `control.ndjson`. Never ack before flush — a crash after ack but before flush permanently loses accepted commands. The current code persists immediately per-command; the new code batches mutations but must flush before acking.
 
 **`loop/pending_review.go`** — Pending review persistence (`pending-review.json`) is flushed alongside orders at cycle end. Both files are written atomically in `flushState()` to maintain consistency.
 
-**`loop/failures.go`** — `failed.json` is flushed alongside orders. The in-memory `failedTargets` map is already authoritative; the file becomes a periodic snapshot.
+**`loop/failures.go`** — `failed.json` is flushed alongside orders at cycle end AND immediately when a failure occurs. The in-memory `failedTargets` map is authoritative, but failure metadata (error reason, session ID, timestamp) must survive crashes for `requeue` to work. Failure is a critical transition — flush immediately after recording it, same as merge advancement.
 
 **`pendingRetry` persistence**: `pendingRetry` entries are included in `flushState()` — written to `pending-retry.json` alongside orders. On crash recovery, `loadOrders()` also reads `pending-retry.json` and repopulates the in-memory map. Without this, a crash loses retry intent: an `"active"` stage with no live session and no pending retry would become stuck.
 
@@ -56,3 +58,6 @@ Hold orders in memory as the authoritative state during the cycle. Write to disk
 - Test: pending-review.json and failed.json are re-derived from orders.json after crash recovery
 - Test: `"active"` stage with no live session resets to `"pending"` on startup (pendingRetry recovery)
 - Test: crash between writing orders.json and pending-review.json — startup re-derives pending reviews from orders
+- Test: control command ack happens after flush — crash between mutation and ack replays the command on restart (idempotent)
+- Test: merge-advance flushes immediately — crash after merge but before cycle end does NOT leave stage "active"
+- Test: failure flushes immediately — crash after failStage but before cycle end preserves failure metadata for requeue

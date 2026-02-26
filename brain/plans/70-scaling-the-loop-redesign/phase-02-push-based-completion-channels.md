@@ -10,13 +10,15 @@ Replace per-cycle iteration of all active sessions with a single completion chan
 
 **`loop/types.go`** — Add `StageResult` type. Add `completions chan StageResult` to the Loop struct. The channel is buffered generously (e.g., 1024) and watcher goroutines use non-blocking send with a fallback mutex-guarded overflow slice. The loop goroutine is the sole consumer: it drains the channel, then locks and drains the overflow. Only the loop goroutine reads the overflow slice — no concurrent read/write. This is the standard fan-in-with-overflow pattern.
 
-**`loop/cook.go`** — `spawnCook()` starts a goroutine per dispatched session that blocks on `session.Done()`, then sends a `StageResult` to the completions channel. `collectCompleted()` becomes `drainCompletions()` — drains the channel then the overflow slice. **Dedup by order ID + stage index + attempt**: if a result arrives for a stage already processed (e.g., `Kill()` closes `Done()` and control path also emits a result), skip the duplicate. The attempt number in the dedup key prevents a late-arriving result from attempt N being confused with attempt N+1 after a retry. Track processed stage keys in a set cleared each cycle.
+**`loop/cook.go`** — `spawnCook()` starts a goroutine per dispatched session that blocks on `session.Done()`, then sends a `StageResult` to the completions channel. `collectCompleted()` becomes `drainCompletions()` — drains the channel then the overflow slice. **Dedup by session ID**: if a result arrives for a session already processed, skip it. Session IDs are globally unique, so there's no collision between a killed session and its replacement — even if `steer` respawns the same order+stage+attempt, the new session has a different ID. Track processed session IDs in a set cleared each cycle.
 
 **Bootstrap session**: The existing `bootstrapInFlight` / `collectBootstrapCompletion()` path is migrated to the same watcher goroutine pattern. The bootstrap session gets a watcher goroutine that sends a `StageResult` on completion, same as any cook. Remove `collectBootstrapCompletion()` — bootstrap is no longer a special case for completion detection.
 
 **Schedule session**: `spawnSchedule()` is migrated to use the same dispatch lifecycle as `spawnCook()`. The schedule session gets a watcher goroutine on `Done()`. Schedule completion is communicated via the same `StageResult` channel (with a sentinel `OrderID` like `"__schedule__"` or a flag). This eliminates the separate code path where schedule sessions bypass the status-derived busy set.
 
 **`loop/loop.go`** — `runCycleMaintenance()` calls `drainCompletions()` first. The cycle no longer needs to know how many sessions exist — it only processes events that arrived since last cycle. **Shutdown quiescence**: the drain-exit condition is producer-count-based, not channel-emptiness: `len(activeCooksByOrder) == 0` (all watcher goroutines have exited). When all producers have exited, the completions channel is guaranteed empty. After the producer count reaches zero, do one final drain pass to process any results that arrived between the last check and now. Note: merge-results channel drain (phase 7) will extend this condition later — keep the shutdown logic extensible but don't reference it here.
+
+**Recovered sessions**: `Runtime.Recover()` (phase 3) returns `RecoveredSession` with a `SessionHandle`. The loop must register a watcher goroutine for each recovered session, identical to the dispatch path. Without this, recovered sessions that complete after restart never emit a `StageResult`, leaving orders stuck `"active"` forever and blocking shutdown quiescence.
 
 **`loop/control.go`** — Control commands that kill sessions (skip, reject) do NOT separately emit `StageResult` entries. Instead, they call `session.Kill()` which closes `Done()`, and the existing watcher goroutine produces the `StageResult`. This eliminates the duplicate-event problem at the source. The watcher goroutine reads `session.Status()` after `Done()` closes to determine the result status.
 
@@ -47,4 +49,5 @@ Replace per-cycle iteration of all active sessions with a single completion chan
 - Test: burst of 50 completions in one cycle — overflow slice drains correctly, all processed
 - Test: bootstrap session completes via watcher goroutine, no special-case collection
 - Test: schedule session completes via watcher goroutine, result processed correctly
-- Test: late StageResult from attempt 1 ignored when attempt 2 is already active (dedup by attempt)
+- Test: steer kills session A, respawns session B for same stage — A's late result is ignored (different session ID), B's result is processed
+- Test: recovered session gets watcher goroutine, completes normally, StageResult emitted and order advances

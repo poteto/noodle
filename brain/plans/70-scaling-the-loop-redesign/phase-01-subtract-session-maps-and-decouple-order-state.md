@@ -12,7 +12,9 @@ Remove `activeByTarget` and `activeByID` maps from the Loop struct. Replace with
 
 **`loop/cook.go`** — Rewrite `collectCompleted()` to iterate `activeCooksByOrder` (same O(n) for now — push-based replacement in phase 2). Rewrite `spawnCook()` to register in the single map instead of two. Keep `collectAdoptedCompletions()` working against the new structure — adopted sessions are tracked by order ID until phase 3 introduces `Runtime.Recover()`.
 
-**`loop/loop.go`** — Update `planCycleSpawns()` to derive the busy set from: (a) stages with status `"active"` in orders, AND (b) `pendingRetry` map keys. Both block re-dispatch for the same order. Update `stampStatus()` to derive counts from the new map.
+**`loop/loop.go`** — Update `planCycleSpawns()` to derive the busy set from: (a) stages with status `"active"` in orders, AND (b) `pendingRetry` map keys, AND (c) `activeCooksByOrder` keys (covers schedule sessions that don't mark stages `"active"`). All three block re-dispatch for the same order. Update `stampStatus()` to derive counts from the new map.
+
+**`loop/schedule.go`** — `spawnSchedule()` must mark the schedule order's stage `"active"` in orders before dispatching, same as `spawnCook()`. Without this, the busy-set derivation from stage statuses misses running schedule sessions, causing the same schedule order to dispatch every cycle (redispatch storm). This also means schedule sessions participate in `activeCooksByOrder` tracking.
 
 **`loop/orders.go`** — Add `ActiveOrderIDs(orders OrdersFile) []string` and `BusyTargets(orders OrdersFile) map[string]bool` helper functions that derive state from the orders file directly.
 
@@ -41,4 +43,5 @@ The `cookHandle` carries all fields from the current `activeCook` that retry log
 ### Runtime
 - Run `noodle start` with 2-3 orders, verify dispatch/completion/advancement works
 - Integration test: multi-stage order dispatches first stage, completes, advances to next
+- Test: schedule order dispatches once, stays busy until schedule session completes (no redispatch storm)
 - Kill and restart loop — verify adopted-session recovery still works

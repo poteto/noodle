@@ -8,19 +8,21 @@ Decouple worktree merges from the loop cycle. A background goroutine processes m
 
 ## Changes
 
-**`loop/merger.go`** (new) — `MergeQueue` struct with `requests chan MergeRequest`, `results chan MergeResult`, and a single background goroutine. The goroutine dequeues requests, acquires the merge lock, performs the rebase+merge, and sends the result. For cloud runtimes that push branches rather than local worktrees, the merge queue handles `MergeRemoteBranch()` transparently.
+**`loop/merger.go`** (new) — `MergeQueue` struct with `requests chan MergeRequest` (unbuffered or small buffer), `results chan MergeResult` (buffered to at least `MaxCooks` to prevent deadlock), and a single background goroutine. **Deadlock prevention**: the results channel must be large enough that the worker can always send a result without blocking. If results were unbuffered, the classic deadlock is: loop blocked enqueueing a request (requests channel full) while worker blocked sending a result (results channel full). With results buffered to `MaxCooks`, the worker always has room to send. The loop drains results before enqueueing new requests each cycle. For cloud runtimes that push branches rather than local worktrees, the merge queue handles `MergeRemoteBranch()` transparently.
 
 **Shutdown**: `MergeQueue.Close()` signals the goroutine to stop. If the goroutine is blocked waiting for the merge lock, it must respect context cancellation. Add context-aware lock acquisition to `worktree/lock.go` — the lock `Acquire()` method accepts a context and returns early if cancelled, instead of sleeping in an uninterruptible retry loop.
 
 **Crash recovery**: In-flight merge requests are not persisted. On crash, the stage is in `"merging"` state on disk. On restart, `loadOrders()` detects `"merging"` stages and applies a **deterministic** recovery algorithm (not heuristic):
 1. Check if the worktree branch is already merged to main (`git merge-base --is-ancestor <branch> main`). If yes → advance the stage to `"completed"`.
-2. If the worktree branch exists but is not merged → re-enqueue for merge (reset status to `"completed"`, enqueue `MergeRequest`).
+2. If the worktree branch exists but is not merged → keep status as `"merging"` and re-enqueue a `MergeRequest`. Do NOT set to `"completed"` — that would allow the next stage to dispatch before merge finishes, violating order sequencing.
 3. If the worktree branch doesn't exist and no session is alive → fail the stage.
 Each case maps to exactly one action — no ambiguity.
 
 **`loop/cook.go`** — `handleCompletion()` enqueues a `MergeRequest` instead of calling `WorktreeManager.Merge()` directly. Stage status moves to `"merging"` intermediate state. When the merge result arrives (next cycle), the loop advances or fails the stage.
 
-**`loop/loop.go`** — `runCycleMaintenance()` drains `MergeQueue.results` and processes them: successful merges → `advanceOrder()`, failed merges (conflict) → park in pending review or fail stage.
+**`loop/loop.go`** — `runCycleMaintenance()` drains `MergeQueue.results` and processes them: successful merges → `advanceOrder()` + immediate flush, failed merges (conflict) → park in pending review or fail stage.
+
+**`loop/control.go`** — `controlMerge()` (manual merge via control command) must enqueue through the `MergeQueue` instead of calling `WorktreeManager.Merge()` directly. This ensures manual merges respect the same serialization as automatic merges. Without this, manual and automatic merges can race on the merge lock and produce inconsistent state transitions.
 
 **`loop/types.go`** — Add `StageStatusMerging` as a typed constant (alongside existing status constants). Add MergeQueue to Dependencies. All stage status comparisons use typed constants, not bare strings.
 
@@ -48,7 +50,8 @@ Each case maps to exactly one action — no ambiguity.
 ### Static
 - `go test ./...` — all tests pass
 - `WorktreeManager.Merge()` not called directly from cook.go
-- Merge lock acquisition only happens in merger.go goroutine
+- Merge lock acquisition only happens in merger.go goroutine (including manual merge path)
+- `controlMerge()` enqueues through MergeQueue, not direct merge call
 - `"merging"` handled correctly in `dispatchableStages()`, `advanceOrder()`, `failStage()`
 
 ### Runtime
@@ -59,3 +62,6 @@ Each case maps to exactly one action — no ambiguity.
 - Test: crash with stage in "merging" state → restart recovers correctly
 - Race detector: `go test -race ./loop/...`
 - Measure: cycle time with 3 concurrent merges should be <50ms (merges happen in background)
+- Test: loop drains results before enqueueing — no deadlock with MaxCooks concurrent completions
+- Test: manual merge via control command goes through queue, serialized with automatic merges
+- Test: crash recovery step 2 keeps stage "merging" (not "completed"), next stage does NOT dispatch until merge finishes

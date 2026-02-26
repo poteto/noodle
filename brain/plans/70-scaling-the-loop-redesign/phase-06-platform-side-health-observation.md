@@ -10,9 +10,9 @@ Move session health monitoring into the Runtime. Each runtime observes its own s
 
 **`runtime/runtime.go`** — Add `HealthEvent` type with a monotonic sequence number per session to prevent stale events from regressing state. Add `Health() <-chan HealthEvent` method to the Runtime interface (already has `Start`/`Close` from phase 3 — observation goroutines start in `Start()` and stop in `Close()`).
 
-**`runtime/tmux.go`** — `TmuxRuntime.Start()` launches a background goroutine that runs the existing tmux observation logic (batch `tmux list-sessions`, meta file reads) on a configurable interval. Pushes `HealthEvent` entries for stuck, idle, or dead sessions. **Terminal events** (`dead`) use blocking send — they must not be dropped, as they represent a state transition the loop must act on. **Informational events** (`stuck`, `idle`, `healthy`) use non-blocking send with last-writer-wins per session — dropping a stale "still stuck" event is safe because the observer will re-emit it.
+**`runtime/tmux.go`** — `TmuxRuntime.Start()` launches a background goroutine that runs the existing tmux observation logic (batch `tmux list-sessions`, meta file reads) on a configurable interval. Pushes `HealthEvent` entries for stuck, idle, or dead sessions. **Terminal events** (`dead`) use context-aware blocking send (`select` on `ctx.Done()` and channel send) — they must not be dropped, but must also not block shutdown. If the context is cancelled (runtime closing), the event is lost but that's safe because the loop is shutting down anyway. **Informational events** (`stuck`, `idle`, `healthy`) use non-blocking send with last-writer-wins per session — dropping a stale "still stuck" event is safe because the observer will re-emit it.
 
-**`runtime/sprites.go`** — `SpritesRuntime` uses the existing heartbeat observer internally. Pushes HealthEvent on status changes. Same terminal-blocking, informational-non-blocking semantics.
+**`runtime/sprites.go`** — `SpritesRuntime` uses the existing heartbeat observer internally. Pushes HealthEvent on status changes. Same context-aware-blocking for terminal, non-blocking for informational.
 
 **`loop/loop.go`** — `runCycleMaintenance()` drains health channels from all registered runtimes (fan-in). For each event, update the session's known health state. If the event's sequence number is lower than the last seen for that session, discard it. Health events feed into stuck detection, failure handling, and status reporting.
 
@@ -41,7 +41,7 @@ Move session health monitoring into the Runtime. Each runtime observes its own s
 - Integration test: start a session, kill it externally, verify HealthEvent(dead) arrives and loop handles failure
 - Test: stuck session (no canonical.ndjson updates) produces HealthEvent(stuck)
 - Test: stale health event (lower seq) is discarded
-- Test: terminal event (dead) is never dropped even when channel is full (blocking send)
+- Test: terminal event (dead) blocks until loop drains, but unblocks when context is cancelled (no deadlock on Close())
 - Test: informational events (stuck, idle) use non-blocking send — observer doesn't block when channel is full
 - Race detector: `go test -race ./...`
 - Verify runtime observation goroutines stop cleanly when `Close()` is called

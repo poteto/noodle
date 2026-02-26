@@ -29,7 +29,7 @@ The `Done()` channel on `SessionHandle` **must** close exactly once on completio
 
 **`loop/defaults.go`** — Build the runtime map from config. Call `Start()` on each runtime during loop init. Call `Close()` during shutdown. Preserve fallback: if a non-tmux dispatch fails, retry via tmux runtime (existing `factory.go` behavior).
 
-**`dispatcher/`** — Delete the `dispatcher` package after all callers are migrated to the `runtime` package. The `factory.go` fallback logic moves into `loop/defaults.go` (runtime map construction). Per migrate-callers-then-delete: inventory all `dispatcher` imports (loop, control, cook, schedule, server, cmd), migrate each to `runtime`, then remove the package entirely. No adapter shim.
+**`dispatcher/`** — Delete the `dispatcher` package after all callers are migrated to the `runtime` package. The `factory.go` fallback logic moves into `loop/defaults.go` (runtime map construction). Per migrate-callers-then-delete: inventory all `dispatcher` imports — `loop/` (cook, control, schedule, types, defaults), `server/`, `cmd/`, `main.go` (`startRepairSession`), `app_helpers.go` (`ProviderConfigs`) — migrate each to `runtime`, then remove the package entirely. No adapter shim.
 
 **Per-runtime concurrency**: Each `Runtime` implementation enforces its own `MaxConcurrent` limit (from config), returning a "concurrency limit reached" error from `Dispatch()`. The loop's global `MaxCooks` remains as a ceiling. This allows e.g. 50 cloud agents + 4 tmux agents within a global cap of 54.
 
