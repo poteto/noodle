@@ -1,6 +1,6 @@
 Back to [[plans/49-work-orders-redesign/overview]]
 
-# Phase 5: Control commands and failed targets
+# Phase 6: Control commands and failed targets
 
 ## Goal
 
@@ -24,11 +24,11 @@ Migrate all control commands and the failed targets system to operate on orders 
 - Spawn planning checks `failedTargets` against order IDs
 - **Intentional stickiness:** If order "29" fails, a new order with the same ID "29" from the scheduler is blocked until `controlRequeue` clears the failure. This prevents infinite retry loops — same behavior as current queue items. The scheduler should not re-create work for failed IDs without human intervention.
 
-**`loop/cycle_spawn_plan.go`** — Already migrated in phase 4 to use `dispatchableStages()`. Verify `failedTargets` filtering works with order IDs.
+**`loop/cycle_spawn_plan.go`** — Already migrated in phase 5 to use `dispatchableStages()`. Verify `failedTargets` filtering works with order IDs.
 
 ## Data structures
 
-- No new types — uses Order/Stage from phase 1
+- No new types — uses Order/Stage from phase 2
 - Rename `ControlCommand` payload field from `item_id` to `order_id` (or equivalent — check existing struct and update all references)
 
 ## Routing

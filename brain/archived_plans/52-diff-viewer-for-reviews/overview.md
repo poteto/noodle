@@ -1,7 +1,7 @@
 ---
 id: 52
 created: 2026-02-26
-status: ready
+status: done
 ---
 
 # Diff Viewer for Reviews
@@ -49,14 +49,14 @@ When an agent completes work and it enters the Review column, the user currently
 
 ## Phases
 
-- [[plans/52-diff-viewer-for-reviews/phase-01-worktree-diff-function]]
-- [[plans/52-diff-viewer-for-reviews/phase-02-diff-api-endpoint]]
-- [[plans/52-diff-viewer-for-reviews/phase-03-client-diff-api-hook]]
-- [[plans/52-diff-viewer-for-reviews/phase-04-resizable-sidepanel-component]]
-- [[plans/52-diff-viewer-for-reviews/phase-05-refactor-chatpanel-onto-sidepanel]]
-- [[plans/52-diff-viewer-for-reviews/phase-06-diffviewer-component]]
-- [[plans/52-diff-viewer-for-reviews/phase-07-reviewpanel-component]]
-- [[plans/52-diff-viewer-for-reviews/phase-08-board-integration]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-01-worktree-diff-function]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-02-diff-api-endpoint]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-03-client-diff-api-hook]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-04-resizable-sidepanel-component]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-05-refactor-chatpanel-onto-sidepanel]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-06-diffviewer-component]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-07-reviewpanel-component]]
+- [[archived_plans/52-diff-viewer-for-reviews/phase-08-board-integration]]
 
 ## Verification
 

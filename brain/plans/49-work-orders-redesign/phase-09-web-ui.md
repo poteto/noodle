@@ -1,6 +1,6 @@
 Back to [[plans/49-work-orders-redesign/overview]]
 
-# Phase 8: Web UI
+# Phase 9: Web UI
 
 ## Goal
 
@@ -57,3 +57,4 @@ UI design judgment for pipeline rendering. Use `react-best-practices`, `ts-best-
 - Manual: verify completed stages show checkmarks, pending show empty dots
 - Manual: verify single-stage orders (schedule, meditate) render cleanly without pipeline clutter
 - Manual: verify `"failing"` order shows OnFailure stages with visual distinction from main pipeline
+- Automated: `npm run typecheck` covers type safety. Consider adding a component test for `OrderCard` rendering the pipeline from a fixture `Order` object (prevents regressions in stage status → indicator mapping after future refactors).

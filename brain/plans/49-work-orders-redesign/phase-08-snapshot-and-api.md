@@ -1,10 +1,10 @@
 Back to [[plans/49-work-orders-redesign/overview]]
 
-# Phase 7: Snapshot and API
+# Phase 8: Snapshot and API
 
 ## Goal
 
-Update the snapshot layer and SSE API to expose orders instead of flat queue items. The web UI (phase 8) consumes this.
+Update the snapshot layer and SSE API to expose orders instead of flat queue items. The web UI (phase 9) consumes this.
 
 ## Changes
 
@@ -16,10 +16,10 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 - Keep `ActionNeeded []string` (order-level, unchanged)
 
 **`internal/snapshot/snapshot.go`** — `LoadSnapshot()`:
-- Read `orders.json` instead of `queue.json`
-- Convert `queuex.OrdersFile` to `snapshot.Order` slice (package is still `queuex` at this point — optional rename to `orderx` happens in phase 9)
+- Read `orders.json` instead of `queue.json`. **Note:** Between phase 5 (loop migration) and this phase, `LoadSnapshot` still reads `queue.json` which is stale/empty. This means the web UI queue column is broken for phases 5-7. This is acceptable if phases are executed in close succession, but if there's a gap, consider a minimal `LoadSnapshot` patch in phase 5 to read `orders.json`.
+- Convert `queuex.OrdersFile` to `snapshot.Order` slice (package is still `queuex` at this point — optional rename to `orderx` happens in phase 10)
 - Populate `ActiveOrderIDs` from active sessions metadata
-- Update `queue-events.ndjson` parser: handle `order_drop` event type (phase 4 audit emits this instead of `queue_drop`). Keep `queue_drop` handling temporarily for events written before the migration.
+- Update `queue-events.ndjson` parser: handle `order_drop` event type (phase 5 audit emits this instead of `queue_drop`). Keep `queue_drop` handling temporarily for events written before the migration.
 
 **`server/sse.go`** — No changes needed if snapshot struct change is backward-compatible at the JSON level. The SSE hub serializes the full snapshot — it'll automatically include orders.
 
@@ -37,7 +37,7 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 |----------|-------|
 | `codex` | `gpt-5.3-codex` |
 
-Mechanical type migration. Clear spec from phase 1 types.
+Mechanical type migration. Clear spec from phase 2 types.
 
 ## Verification
 

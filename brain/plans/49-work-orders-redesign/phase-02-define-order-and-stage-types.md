@@ -1,6 +1,6 @@
 Back to [[plans/49-work-orders-redesign/overview]]
 
-# Phase 1: Define Order and Stage types
+# Phase 2: Define Order and Stage types
 
 ## Goal
 
@@ -8,12 +8,12 @@ Define the new `Order`, `Stage`, and `OrdersFile` types that replace `QueueItem`
 
 ## Changes
 
-**`loop/types.go`** — Add new types alongside existing ones (old types deleted in phase 9):
+**`loop/types.go`** — Add new types alongside existing ones (old types deleted in phase 10):
 - `Stage` — unit of work within an order. Carries the fields from QueueItem that are stage-specific: `TaskKey`, `Prompt`, `Skill`, `Provider`, `Model`, `Runtime`, `Status`, `Extra` (`map[string]json.RawMessage` for arbitrary skill-specific metadata — preserved through serialization round-trips, never interpreted by Go).
 - `Order` — a pipeline of stages. Carries grouping fields: `ID`, `Title`, `Plan`, `Rationale`, `Stages`, `Status`, `OnFailure` (`[]Stage` — optional secondary pipeline that runs when a stage fails after retries are exhausted. If empty, failure cancels remaining stages as before).
 - `OrdersFile` — top-level file structure: `GeneratedAt`, `Orders`, `ActionNeeded`. Replaces `Queue`.
 
-**`internal/queuex/queue.go`** — Add parallel types (`Stage`, `Order`, `OrdersFile`) in the `queuex` package, mirroring the loop types. These are the serialization types the I/O layer uses. Keep existing `queuex` queue types for now — they'll be deleted in phase 9. (Optional rename of `queuex` → `orderx` happens in phase 9.)
+**`internal/queuex/queue.go`** — Add parallel types (`Stage`, `Order`, `OrdersFile`) in the `queuex` package, mirroring the loop types. These are the serialization types the I/O layer uses. Keep existing `queuex` queue types for now — they'll be deleted in phase 10. (Optional rename of `queuex` → `orderx` happens in phase 10.)
 
 ## Data structures
 

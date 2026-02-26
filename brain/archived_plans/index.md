@@ -16,3 +16,4 @@
 - [x] [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]
 - [x] [[archived_plans/46-web-ui/overview]]
 - [x] [[archived_plans/47-delete-go-tui/overview]]
+- [x] [[archived_plans/52-diff-viewer-for-reviews/overview]]

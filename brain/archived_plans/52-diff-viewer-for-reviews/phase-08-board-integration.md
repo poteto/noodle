@@ -1,4 +1,4 @@
-Back to [[plans/52-diff-viewer-for-reviews/overview]]
+Back to [[archived_plans/52-diff-viewer-for-reviews/overview]]
 
 # Phase 8: Board integration
 
