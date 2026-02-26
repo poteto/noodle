@@ -8,7 +8,7 @@ import { ReviewActions } from "./ReviewActions";
 import { SidePanel } from "./SidePanel";
 
 export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClose: () => void }) {
-  const { data, isLoading, error } = useReviewDiff(item.id);
+  const { data, isLoading, error } = useReviewDiff(item.order_id);
 
   function handleAction(action: ReviewAction) {
     if (action === "merge" || action === "reject") {
@@ -23,7 +23,7 @@ export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClos
           <div className="flex items-center gap-2">
             {item.task_key && <Badge type={item.task_key} />}
             <span className="font-bold text-[1.125rem] text-text-0 whitespace-nowrap overflow-hidden text-ellipsis">
-              {item.title || item.id}
+              {item.title || item.order_id}
             </span>
           </div>
           <button
@@ -34,6 +34,11 @@ export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClos
             x
           </button>
         </div>
+        {item.reason && (
+          <div className="font-mono text-xs font-bold text-nred mb-1">
+            {item.reason}
+          </div>
+        )}
         <div className="flex items-center gap-2 font-mono text-xs text-text-2">
           <WorktreeLabel name={item.worktree_name} />
           {item.model && (
@@ -52,7 +57,7 @@ export function ReviewPanel({ item, onClose }: { item: PendingReviewItem; onClos
       />
 
       <div className="px-5 py-3 border-t-2 border-border shrink-0">
-        <ReviewActions itemId={item.id} onAction={handleAction} />
+        <ReviewActions itemId={item.order_id} onAction={handleAction} />
       </div>
     </SidePanel>
   );

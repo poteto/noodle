@@ -1,7 +1,10 @@
 export type {
   Snapshot,
   Session,
-  QueueItem,
+  Order,
+  Stage,
+  StageStatus,
+  OrderStatus,
   EventLine,
   FeedEvent,
   PendingReviewItem,

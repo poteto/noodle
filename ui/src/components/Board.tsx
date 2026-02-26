@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useOptimistic, useTransition } from "react";
 import { useSuspenseSnapshot, deriveKanbanColumns, sendControl } from "~/client";
-import type { Snapshot, Session, QueueItem, PendingReviewItem, ControlCommand } from "~/client";
+import type { Snapshot, Session, Order, PendingReviewItem, ControlCommand } from "~/client";
 import { BoardHeader } from "./BoardHeader";
 import { BoardColumn } from "./BoardColumn";
 import { AgentCard } from "./AgentCard";
-import { QueueCard } from "./QueueCard";
+import { OrderCard } from "./OrderCard";
 import { ReviewCard } from "./ReviewCard";
 import { DoneCard } from "./DoneCard";
 import { ChatPanel } from "./ChatPanel";
@@ -20,16 +20,17 @@ type PanelState =
   | { type: "review"; item: PendingReviewItem }
   | null;
 
-function pendingSession(item: QueueItem): Session {
+function pendingSession(order: Order): Session {
+  const activeStage = order.stages.find((s) => s.status === "active") ?? order.stages[0];
   return {
-    id: `pending-${item.id}`,
-    display_name: item.title || item.id,
-    title: item.title,
-    task_key: item.task_key,
+    id: `pending-${order.id}`,
+    display_name: order.title || order.id,
+    title: order.title,
+    task_key: activeStage?.task_key,
     status: "starting",
-    runtime: "",
-    provider: item.provider,
-    model: item.model,
+    runtime: activeStage?.runtime ?? "",
+    provider: activeStage?.provider ?? "",
+    model: activeStage?.model ?? "",
     total_cost_usd: 0,
     duration_seconds: 0,
     last_activity: new Date().toISOString(),
@@ -48,14 +49,14 @@ type OptimisticAction = { type: "move-to-cooking"; itemId: string } | ControlCom
 function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): Snapshot {
   // Special case: drag-to-cook creates a pending session placeholder.
   if ("type" in action) {
-    const item = current.queue.find((q) => q.id === action.itemId);
-    if (!item) {
+    const order = current.orders.find((o) => o.id === action.itemId);
+    if (!order) {
       return current;
     }
     return {
       ...current,
-      active_queue_ids: [...current.active_queue_ids, action.itemId],
-      active: [...current.active, pendingSession(item)],
+      active_order_ids: [...current.active_order_ids, action.itemId],
+      active: [...current.active, pendingSession(order)],
     };
   }
 
@@ -76,7 +77,7 @@ function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): S
     case "reject": {
       return {
         ...current,
-        pending_reviews: current.pending_reviews.filter((r) => r.id !== action.item),
+        pending_reviews: current.pending_reviews.filter((r) => r.order_id !== action.order_id),
         pending_review_count: Math.max(0, current.pending_review_count - 1),
       };
     }
@@ -91,23 +92,23 @@ function applyOptimisticSnapshot(current: Snapshot, action: OptimisticAction): S
       return Number.isNaN(n) ? current : { ...current, max_cooks: n };
     }
     case "reorder": {
-      if (!action.item || action.value === undefined) {
+      if (!action.order_id || action.value === undefined) {
         return current;
       }
-      const fromIndex = current.queue.findIndex((q) => q.id === action.item);
+      const fromIndex = current.orders.findIndex((o) => o.id === action.order_id);
       const toIndex = Number.parseInt(action.value, 10);
       if (fromIndex === -1 || Number.isNaN(toIndex)) {
         return current;
       }
-      const newQueue = [...current.queue];
-      const [moved] = newQueue.splice(fromIndex, 1);
-      newQueue.splice(toIndex, 0, moved);
-      return { ...current, queue: newQueue };
+      const newOrders = [...current.orders];
+      const [moved] = newOrders.splice(fromIndex, 1);
+      newOrders.splice(toIndex, 0, moved);
+      return { ...current, orders: newOrders };
     }
     case "requeue": {
       return {
         ...current,
-        recent: current.recent.filter((s) => s.id !== action.item),
+        recent: current.recent.filter((s) => s.id !== action.order_id),
       };
     }
     default: {
@@ -188,7 +189,7 @@ export function Board() {
   // leaves pending_reviews, and uses up-to-date metadata if item returns.
   const activeReviewItem =
     panelState?.type === "review"
-      ? (optimisticSnapshot.pending_reviews.find((r) => r.id === panelState.item.id) ?? null)
+      ? (optimisticSnapshot.pending_reviews.find((r) => r.order_id === panelState.item.order_id) ?? null)
       : null;
 
   function handleQueueDragStart(e: React.DragEvent, index: number) {
@@ -215,8 +216,8 @@ export function Board() {
     if (srcIndex === -1 || srcIndex === dropIndex) {
       return;
     }
-    const fullQueueIndex = snapshot.queue.findIndex(
-      (item) => item.id === columns.queued[dropIndex]?.id,
+    const fullQueueIndex = snapshot.orders.findIndex(
+      (o) => o.id === columns.queued[dropIndex]?.id,
     );
     if (fullQueueIndex !== -1) {
       optimisticSend({ action: "reorder", order_id: id, value: String(fullQueueIndex) });
@@ -268,17 +269,17 @@ export function Board() {
             emptyText={showQueueSkeleton ? undefined : "No tasks queued"}
           >
             {showQueueSkeleton && <SkeletonCard />}
-            {columns.queued.map((item, i) => (
-              <QueueCard
-                key={item.id}
-                item={item}
+            {columns.queued.map((order, i) => (
+              <OrderCard
+                key={order.id}
+                order={order}
                 index={i}
                 onDragStart={handleQueueDragStart}
                 onDragOver={handleQueueDragOver}
                 onDrop={handleQueueDrop}
                 onDragEnd={resetDrag}
                 isDragOver={dragOverIndex === i}
-                isDragging={draggingId === item.id}
+                isDragging={draggingId === order.id}
               />
             ))}
           </BoardColumn>
@@ -317,7 +318,7 @@ export function Board() {
           <BoardColumn title="Review" count={columns.review.length} emptyText="Nothing to review">
             {columns.review.map((item) => (
               <ReviewCard
-                key={item.id}
+                key={item.order_id}
                 item={item}
                 onClick={() => setPanelState({ type: "review", item })}
               />

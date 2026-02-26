@@ -11,8 +11,8 @@ export interface Snapshot {
   sessions: Session[];
   active: Session[];
   recent: Session[];
-  queue: QueueItem[];
-  active_queue_ids: string[];
+  orders: Order[];
+  active_order_ids: string[];
   action_needed: string[];
   events_by_session: Record<string, EventLine[]>;
   feed_events: FeedEvent[];
@@ -47,16 +47,28 @@ export interface Session {
   title?: string;
 }
 
-export interface QueueItem {
-  id: string;
+export type StageStatus = "pending" | "active" | "completed" | "failed" | "cancelled";
+export type OrderStatus = "active" | "completed" | "failed" | "failing";
+
+export interface Stage {
   task_key?: string;
-  title?: string;
   prompt?: string;
-  provider: string;
-  model: string;
   skill?: string;
+  provider?: string;
+  model?: string;
+  runtime?: string;
+  status: StageStatus;
+  extra?: Record<string, unknown>;
+}
+
+export interface Order {
+  id: string;
+  title?: string;
   plan?: string[];
   rationale?: string;
+  stages: Stage[];
+  on_failure?: Stage[];
+  status: OrderStatus;
 }
 
 export interface EventLine {
@@ -77,7 +89,8 @@ export interface FeedEvent {
 }
 
 export interface PendingReviewItem {
-  id: string;
+  order_id: string;
+  stage_index: number;
   task_key?: string;
   title?: string;
   prompt?: string;
@@ -90,6 +103,7 @@ export interface PendingReviewItem {
   worktree_name: string;
   worktree_path: string;
   session_id?: string;
+  reason?: string;
 }
 
 export interface DiffResponse {
@@ -147,16 +161,16 @@ export interface ConfigDefaults {
 
 // Kanban column derivation from flat snapshot.
 export interface KanbanColumns {
-  queued: QueueItem[];
+  queued: Order[];
   cooking: Session[];
   review: PendingReviewItem[];
   done: Session[];
 }
 
 export function deriveKanbanColumns(snapshot: Snapshot): KanbanColumns {
-  const activeSet = new Set(snapshot.active_queue_ids);
+  const activeSet = new Set(snapshot.active_order_ids);
   return {
-    queued: snapshot.queue.filter((item) => !activeSet.has(item.id)),
+    queued: snapshot.orders.filter((order) => !activeSet.has(order.id)),
     cooking: snapshot.active,
     review: snapshot.pending_reviews,
     done: snapshot.recent,
