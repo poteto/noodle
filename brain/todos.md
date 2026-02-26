@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 50 -->
+<!-- next-id: 51 -->
 
 ## Noodle Post-Plan 1
 
@@ -18,7 +18,8 @@
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command.
 47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[archived_plans/47-delete-go-tui/overview]]~~ — marked complete per user confirmation.
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
-49. [ ] Queue-aware rescheduling — when a queue item is removed (cancelled, failed, manually dropped), cascade to dependent items. E.g. removing an execute task should also remove its downstream quality review. Scheduler should detect orphaned dependents and either drop them or reschedule with updated context.
+50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
+49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. An order groups related stages (execute → quality → reflect) in an ordered array; stage position encodes dependency. The scheduler creates orders, the loop advances stages mechanically (no LLM between stages). On success: mark stage completed, next stage becomes dispatchable. On failure: mark stage failed, remaining stages cancelled — no cascade logic needed, just stop advancing. `queue.json` becomes a derived view (first pending stage per active order), not the source of truth. Types: `Order{ID, Title, Plan, Rationale, Stages, Status}`, `Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`. Touches: `loop/types.go`, `internal/queuex/`, `loop/cook.go` (dispatch + completion), `loop/schedule.go` (writes orders instead of queue items), schedule skill `SKILL.md` (emit orders), web UI (render order pipelines). Single-stage orders (meditate, debate) are just orders with one stage — no special case.
 
 ## Done
 
