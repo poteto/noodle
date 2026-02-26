@@ -440,7 +440,7 @@ func TestNormalizeAndValidateOrdersDropsUnknownTaskTypes(t *testing.T) {
 		},
 	}
 
-	got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -476,7 +476,7 @@ func TestNormalizeAndValidateOrdersRejectsDuplicateIDs(t *testing.T) {
 		},
 	}
 
-	_, _, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	_, _, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err == nil || !strings.Contains(err.Error(), "appears more than once") {
 		t.Fatalf("expected duplicate ID error, got: %v", err)
 	}
@@ -495,7 +495,7 @@ func TestNormalizeAndValidateOrdersRejectsEmptyStatus(t *testing.T) {
 		},
 	}
 
-	_, _, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	_, _, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err == nil {
 		t.Fatal("expected error for empty status")
 	}
@@ -522,7 +522,7 @@ func TestNormalizeAndValidateOrdersFailingEmptyOnFailureTerminal(t *testing.T) {
 		},
 	}
 
-	got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestNormalizeAndValidateOrdersValidatesOnFailureTaskTypes(t *testing.T) {
 			},
 		}
 
-		got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+		got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -589,7 +589,7 @@ func TestNormalizeAndValidateOrdersValidatesOnFailureTaskTypes(t *testing.T) {
 			},
 		}
 
-		got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+		got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -618,7 +618,7 @@ func TestNormalizeAndValidateOrdersDropsEmptyStages(t *testing.T) {
 		},
 	}
 
-	got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -646,7 +646,7 @@ func TestNormalizeAndValidateOrdersDropsOnlyOnFailureStages(t *testing.T) {
 		},
 	}
 
-	got, changed, err := NormalizeAndValidateOrders(of, nil, reg, cfg)
+	got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

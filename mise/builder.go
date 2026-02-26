@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +41,6 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
 	plans := make([]PlanSummary, 0)
-	needsScheduling := make([]int, 0)
 	nativePlans := make([]plan.Plan, 0)
 
 	if _, ok := b.config.Adapters["backlog"]; ok {
@@ -70,7 +68,6 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	} else {
 		nativePlans = readPlans
 		plans = toPlanSummaries(nativePlans)
-		needsScheduling = schedulablePlanIDs(nativePlans, backlog)
 	}
 
 	activeCooks, recentHistory, err := b.readSessionState()
@@ -104,17 +101,16 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 	}
 
 	brief := Brief{
-		GeneratedAt:     b.now().UTC(),
-		Backlog:         backlog,
-		Plans:           plans,
-		NeedsScheduling: needsScheduling,
-		ActiveCooks:     activeCooks,
-		Tickets:         tickets,
-		Resources:       resources,
-		RecentHistory:   recentHistory,
-		Routing:         routing,
-		TaskTypes:       b.TaskTypes,
-		Warnings:        warnings,
+		GeneratedAt:   b.now().UTC(),
+		Backlog:       backlog,
+		Plans:         plans,
+		ActiveCooks:   activeCooks,
+		Tickets:       tickets,
+		Resources:     resources,
+		RecentHistory: recentHistory,
+		Routing:       routing,
+		TaskTypes:     b.TaskTypes,
+		Warnings:      warnings,
 	}
 
 	if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
@@ -159,38 +155,6 @@ func toPlanSummaries(plans []plan.Plan) []PlanSummary {
 	return summaries
 }
 
-func schedulablePlanIDs(plans []plan.Plan, backlog []adapter.BacklogItem) []int {
-	openBacklogIDs := make(map[string]struct{}, len(backlog))
-	for _, item := range backlog {
-		if item.Status == adapter.BacklogStatusDone {
-			continue
-		}
-		id := strings.TrimSpace(item.ID)
-		if id == "" {
-			continue
-		}
-		openBacklogIDs[id] = struct{}{}
-	}
-	if len(openBacklogIDs) == 0 {
-		return nil
-	}
-
-	ids := make([]int, 0, len(plans))
-	for _, p := range plans {
-		backlogID := strings.TrimSpace(p.Meta.Backlog)
-		if backlogID == "" {
-			backlogID = strconv.Itoa(p.Meta.ID)
-		}
-		if _, ok := openBacklogIDs[backlogID]; !ok {
-			continue
-		}
-		ids = append(ids, p.Meta.ID)
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	return ids
-}
 
 func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
 	metas, err := sessionmeta.ReadAll(b.runtimeDir)

@@ -350,7 +350,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		processedIDs:   map[string]struct{}{},
 	}
 
-	brief := mise.Brief{NeedsScheduling: nil}
+	brief := mise.Brief{}
 	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
 	if err != nil {
 		t.Fatalf("prepareOrdersForCycle: %v", err)
@@ -446,7 +446,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		processedIDs:   map[string]struct{}{},
 	}
 
-	brief := mise.Brief{NeedsScheduling: nil}
+	brief := mise.Brief{}
 	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
 	if err != nil {
 		t.Fatalf("prepareOrdersForCycle: %v", err)

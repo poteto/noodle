@@ -69,15 +69,14 @@ type TaskTypeSummary struct {
 }
 
 type Brief struct {
-	GeneratedAt     time.Time             `json:"generated_at"`
-	Backlog         []adapter.BacklogItem `json:"backlog"`
-	Plans           []PlanSummary         `json:"plans"`
-	NeedsScheduling []int                 `json:"needs_scheduling,omitempty"`
-	ActiveCooks     []ActiveCook          `json:"active_cooks"`
-	Tickets         []event.Ticket        `json:"tickets"`
-	Resources       ResourceSnapshot      `json:"resources"`
-	RecentHistory   []HistoryItem         `json:"recent_history"`
-	Routing         RoutingSnapshot       `json:"routing"`
-	TaskTypes       []TaskTypeSummary     `json:"task_types,omitempty"`
-	Warnings        []string              `json:"warnings,omitempty"`
+	GeneratedAt   time.Time             `json:"generated_at"`
+	Backlog       []adapter.BacklogItem `json:"backlog"`
+	Plans         []PlanSummary         `json:"plans"`
+	ActiveCooks   []ActiveCook          `json:"active_cooks"`
+	Tickets       []event.Ticket        `json:"tickets"`
+	Resources     ResourceSnapshot      `json:"resources"`
+	RecentHistory []HistoryItem         `json:"recent_history"`
+	Routing       RoutingSnapshot       `json:"routing"`
+	TaskTypes     []TaskTypeSummary     `json:"task_types,omitempty"`
+	Warnings      []string              `json:"warnings,omitempty"`
 }

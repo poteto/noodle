@@ -565,14 +565,17 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if sp.calls[0].Skill != "schedule" {
 		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(schedule) to refresh the queue from .noodle/mise.json.") {
+	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from .noodle/mise.json.") {
 		t.Fatalf("spawn prompt missing skill invocation: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "queue-next.json") {
-		t.Fatalf("spawn prompt missing queue-next.json instruction: %q", sp.calls[0].Prompt)
+	if !strings.Contains(sp.calls[0].Prompt, "orders-next.json") {
+		t.Fatalf("spawn prompt missing orders-next.json instruction: %q", sp.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "queue.json schema (JSON):") {
-		t.Fatalf("spawn prompt missing queue schema: %q", sp.calls[0].Prompt)
+	if !strings.Contains(sp.calls[0].Prompt, "orders.json schema (JSON):") {
+		t.Fatalf("spawn prompt missing orders schema: %q", sp.calls[0].Prompt)
+	}
+	if !strings.Contains(sp.calls[0].Prompt, "on_failure") {
+		t.Fatalf("spawn prompt missing on_failure documentation: %q", sp.calls[0].Prompt)
 	}
 	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
@@ -591,9 +594,9 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	}
 	if !strings.Contains(
 		sp.calls[0].Prompt,
-		"You may synthesize queue items for non-execute task types",
+		"You may synthesize orders for non-execute task types",
 	) {
-		t.Fatalf("spawn prompt missing synthesized-item guidance: %q", sp.calls[0].Prompt)
+		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", sp.calls[0].Prompt)
 	}
 	if strings.Contains(sp.calls[0].Prompt, "mise.json schema (JSON):") {
 		t.Fatalf("spawn prompt must not include mise schema: %q", sp.calls[0].Prompt)
@@ -780,13 +783,13 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	}
 }
 
-func TestSteerScheduleRegeneratesQueueWithPromptRationale(t *testing.T) {
+func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queuePath := filepath.Join(runtimeDir, "queue.json")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Dispatcher: &fakeDispatcher{},
@@ -795,33 +798,30 @@ func TestSteerScheduleRegeneratesQueueWithPromptRationale(t *testing.T) {
 		Mise: &fakeMise{brief: mise.Brief{
 			Backlog: []adapter.BacklogItem{{ID: "1", Title: "Fix", Status: adapter.BacklogStatusOpen}},
 		}},
-		Monitor:   fakeMonitor{},
-		Registry:  testLoopRegistry(),
-		Now:       time.Now,
-		QueueFile: queuePath,
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
 	})
 
 	if err := l.steer(ScheduleTaskKey(), "schedule security tasks"); err != nil {
 		t.Fatalf("steer schedule: %v", err)
 	}
-	queue, err := readQueue(queuePath)
+	orders, err := readOrders(ordersPath)
 	if err != nil {
-		t.Fatalf("read queue: %v", err)
+		t.Fatalf("read orders: %v", err)
 	}
-	if len(queue.Items) != 1 {
-		t.Fatalf("queue items = %d", len(queue.Items))
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders count = %d", len(orders.Orders))
 	}
-	if queue.Items[0].ID != ScheduleTaskKey() {
-		t.Fatalf("unexpected id: %q", queue.Items[0].ID)
+	if orders.Orders[0].ID != ScheduleTaskKey() {
+		t.Fatalf("unexpected id: %q", orders.Orders[0].ID)
 	}
-	if queue.Items[0].Skill != "schedule" {
-		t.Fatalf("unexpected skill: %q", queue.Items[0].Skill)
+	if orders.Orders[0].Title == "Fix" {
+		t.Fatalf("expected schedule order, got backlog item title %q", orders.Orders[0].Title)
 	}
-	if queue.Items[0].Title == "Fix" {
-		t.Fatalf("expected schedule bootstrap item, got backlog item title %q", queue.Items[0].Title)
-	}
-	if queue.Items[0].Rationale != "Chef steer: schedule security tasks" {
-		t.Fatalf("unexpected rationale: %q", queue.Items[0].Rationale)
+	if orders.Orders[0].Rationale != "Chef steer: schedule security tasks" {
+		t.Fatalf("unexpected rationale: %q", orders.Orders[0].Rationale)
 	}
 }
 

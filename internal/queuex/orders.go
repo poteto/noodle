@@ -126,7 +126,6 @@ func applyStageRoutingDefaults(stage *Stage, reg taskreg.Registry, cfg config.Co
 // terminal: removed and an error annotation is appended.
 func NormalizeAndValidateOrders(
 	of OrdersFile,
-	planIDs []int,
 	reg taskreg.Registry,
 	cfg config.Config,
 ) (OrdersFile, bool, error) {

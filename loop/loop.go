@@ -338,18 +338,18 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 
 	// Normalize and validate orders.
-	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, l.registry, l.config)
 	if normErr != nil {
 		// Rebuild registry and retry on unknown task type.
 		l.rebuildRegistry()
-		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 		if normErr != nil {
 			l.auditOrders()
 			orders, err = readOrders(l.deps.OrdersFile)
 			if err != nil {
 				return OrdersFile{}, false, err
 			}
-			normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, brief.NeedsScheduling, l.registry, l.config)
+			normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 			if normErr != nil {
 				return OrdersFile{}, false, normErr
 			}
@@ -375,20 +375,13 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 
 	// Simplified filtering (#60): check for non-schedule orders.
 	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
-		hasNonSchedule := false
-		for _, order := range orders.Orders {
-			if !isScheduleOrder(order) {
-				hasNonSchedule = true
-				break
-			}
-		}
-		if !hasNonSchedule {
+		if !hasNonScheduleOrders(orders) {
 			if len(brief.Plans) == 0 {
 				l.setState(StateIdle)
 				return OrdersFile{}, false, nil
 			}
 			// Bootstrap a schedule order.
-			orders = bootstrapScheduleOrders(l.config, l.deps.Now().UTC())
+			orders = bootstrapScheduleOrder(l.config)
 			if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
 				return OrdersFile{}, false, err
 			}

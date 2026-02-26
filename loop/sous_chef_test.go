@@ -6,7 +6,7 @@ import (
 )
 
 func TestBuildQueueTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
-	prompt := buildQueueTaskTypesPrompt([]TaskType{
+	prompt := buildOrderTaskTypesPrompt([]TaskType{
 		{
 			Key:      "schedule",
 			CanMerge: false,
@@ -20,7 +20,7 @@ func TestBuildQueueTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
 }
 
 func TestBuildQueueTaskTypesPromptEmpty(t *testing.T) {
-	prompt := buildQueueTaskTypesPrompt(nil)
+	prompt := buildOrderTaskTypesPrompt(nil)
 	if !strings.Contains(prompt, "Task types you may schedule:") {
 		t.Fatalf("missing prompt header: %q", prompt)
 	}

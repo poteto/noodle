@@ -9,10 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/plan"
 )
 
 func TestBuilderBuildWritesMiseJSON(t *testing.T) {
@@ -131,75 +129,62 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	}
 }
 
-func TestSchedulablePlanIDsFallsBackToPlanID(t *testing.T) {
-	tests := []struct {
-		name    string
-		plans   []plan.Plan
-		backlog []adapter.BacklogItem
-		want    []int
-	}{
-		{
-			name: "explicit backlog field",
-			plans: []plan.Plan{
-				{Meta: plan.PlanMeta{ID: 10, Status: "active", Backlog: "42"}},
+func TestAllPlansAppearRegardlessOfBacklogStatus(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle"), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	// Create two plans: one with a done backlog item, one with no backlog link.
+	plansDir := filepath.Join(projectDir, "brain", "plans")
+	for _, dir := range []string{"10-done-backlog", "20-no-backlog"} {
+		if err := os.MkdirAll(filepath.Join(plansDir, dir), 0o755); err != nil {
+			t.Fatalf("mkdir plan: %v", err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "index.md"),
+		[]byte("# Plans\n\n- [[plans/10-done-backlog/overview]]\n- [[plans/20-no-backlog/overview]]\n"), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "10-done-backlog", "overview.md"),
+		[]byte("---\nid: 10\ncreated: 2026-02-20\nstatus: active\nbacklog: \"42\"\n---\n\n# Done Backlog Plan\n"), 0o644); err != nil {
+		t.Fatalf("write plan 10: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "20-no-backlog", "overview.md"),
+		[]byte("---\nid: 20\ncreated: 2026-02-20\nstatus: active\n---\n\n# No Backlog Plan\n"), 0o644); err != nil {
+		t.Fatalf("write plan 20: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Adapters = map[string]config.AdapterConfig{
+		"backlog": {
+			Scripts: map[string]string{
+				"sync": "printf '%s\\n' '{\"id\":\"42\",\"title\":\"Done item\",\"status\":\"done\"}'",
 			},
-			backlog: []adapter.BacklogItem{
-				{ID: "42", Status: adapter.BacklogStatusOpen},
-			},
-			want: []int{10},
-		},
-		{
-			name: "implicit match via plan ID",
-			plans: []plan.Plan{
-				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
-			},
-			backlog: []adapter.BacklogItem{
-				{ID: "38", Status: adapter.BacklogStatusOpen},
-			},
-			want: []int{38},
-		},
-		{
-			name: "explicit field takes precedence over plan ID",
-			plans: []plan.Plan{
-				{Meta: plan.PlanMeta{ID: 38, Status: "active", Backlog: "99"}},
-			},
-			backlog: []adapter.BacklogItem{
-				{ID: "38", Status: adapter.BacklogStatusOpen},
-				{ID: "99", Status: adapter.BacklogStatusOpen},
-			},
-			want: []int{38},
-		},
-		{
-			name: "no match when backlog item is done",
-			plans: []plan.Plan{
-				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
-			},
-			backlog: []adapter.BacklogItem{
-				{ID: "38", Status: adapter.BacklogStatusDone},
-			},
-			want: nil,
-		},
-		{
-			name: "no match when no backlog items",
-			plans: []plan.Plan{
-				{Meta: plan.PlanMeta{ID: 38, Status: "active"}},
-			},
-			backlog: nil,
-			want:    nil,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := schedulablePlanIDs(tt.plans, tt.backlog)
-			if len(got) != len(tt.want) {
-				t.Fatalf("schedulablePlanIDs = %v, want %v", got, tt.want)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Fatalf("schedulablePlanIDs[%d] = %d, want %d", i, got[i], tt.want[i])
-				}
-			}
-		})
+
+	builder := NewBuilder(projectDir, cfg)
+	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 1, 0, 0, time.UTC) }
+
+	brief, _, err := builder.Build(context.Background())
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	if len(brief.Plans) != 2 {
+		t.Fatalf("plans count = %d, want 2 (all plans regardless of backlog status)", len(brief.Plans))
+	}
+
+	ids := map[int]bool{}
+	for _, p := range brief.Plans {
+		ids[p.ID] = true
+	}
+	if !ids[10] {
+		t.Fatal("plan 10 (done backlog) missing from brief.Plans")
+	}
+	if !ids[20] {
+		t.Fatal("plan 20 (no backlog) missing from brief.Plans")
 	}
 }
 

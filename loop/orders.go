@@ -426,8 +426,8 @@ func fromStagesX(stages []queuex.Stage) []Stage {
 }
 
 // NormalizeAndValidateOrders wraps the queuex function for loop-layer types.
-func NormalizeAndValidateOrders(of OrdersFile, planIDs []int, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
-	updated, changed, err := queuex.NormalizeAndValidateOrders(toOrdersFileX(of), planIDs, reg, cfg)
+func NormalizeAndValidateOrders(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
+	updated, changed, err := queuex.NormalizeAndValidateOrders(toOrdersFileX(of), reg, cfg)
 	if err != nil {
 		return OrdersFile{}, false, err
 	}

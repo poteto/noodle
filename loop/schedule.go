@@ -5,33 +5,38 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/schemadoc"
 )
 
-const scheduleQueueID = "schedule"
+const scheduleOrderID = "schedule"
 
 func isScheduleItem(item QueueItem) bool {
-	return strings.EqualFold(strings.TrimSpace(item.ID), scheduleQueueID)
+	return strings.EqualFold(strings.TrimSpace(item.ID), scheduleOrderID)
 }
 
 func isScheduleStage(stage Stage) bool {
-	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), scheduleQueueID)
+	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), scheduleOrderID)
 }
 
 func isScheduleOrder(order Order) bool {
-	if len(order.Stages) == 0 {
-		return false
-	}
-	return isScheduleStage(order.Stages[0])
+	return strings.EqualFold(strings.TrimSpace(order.ID), scheduleOrderID)
 }
 
 func hasNonScheduleItems(queue Queue) bool {
 	for _, item := range queue.Items {
 		if !isScheduleItem(item) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNonScheduleOrders(orders OrdersFile) bool {
+	for _, order := range orders.Orders {
+		if !isScheduleOrder(order) {
 			return true
 		}
 	}
@@ -53,38 +58,39 @@ func filterStaleScheduleItems(queue Queue) Queue {
 	return filtered
 }
 
-func bootstrapScheduleQueue(cfg config.Config, prompt string, generatedAt time.Time) Queue {
-	return Queue{
-		GeneratedAt: generatedAt,
-		Items:       []QueueItem{scheduleQueueItem(cfg, prompt)},
-	}
-}
-
-func bootstrapScheduleOrders(cfg config.Config, generatedAt time.Time) OrdersFile {
+func bootstrapScheduleOrder(cfg config.Config) OrdersFile {
 	return OrdersFile{
-		GeneratedAt: generatedAt,
 		Orders: []Order{
-			{
-				ID:     scheduleQueueID,
-				Title:  "scheduling tasks based on your backlog",
-				Status: OrderStatusActive,
-				Stages: []Stage{
-					{
-						TaskKey:  scheduleQueueID,
-						Skill:    "schedule",
-						Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
-						Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
-						Status:   StageStatusPending,
-					},
-				},
-			},
+			scheduleOrder(cfg, ""),
 		},
 	}
 }
 
+func scheduleOrder(cfg config.Config, prompt string) Order {
+	order := Order{
+		ID:     scheduleOrderID,
+		Title:  "scheduling tasks based on your backlog",
+		Status: OrderStatusActive,
+		Stages: []Stage{
+			{
+				TaskKey:  scheduleOrderID,
+				Skill:    "schedule",
+				Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
+				Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
+				Status:   StageStatusPending,
+			},
+		},
+	}
+	prompt = strings.TrimSpace(prompt)
+	if prompt != "" {
+		order.Rationale = "Chef steer: " + prompt
+	}
+	return order
+}
+
 func scheduleQueueItem(cfg config.Config, prompt string) QueueItem {
 	item := QueueItem{
-		ID:       scheduleQueueID,
+		ID:       scheduleOrderID,
 		Title:    "scheduling tasks based on your backlog",
 		Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
 		Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
@@ -98,7 +104,7 @@ func scheduleQueueItem(cfg config.Config, prompt string) QueueItem {
 }
 
 func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, resumePrompt string) error {
-	name := scheduleQueueID
+	name := scheduleOrderID
 
 	skillName := nonEmpty(item.Skill, "schedule")
 	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
@@ -106,7 +112,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 		return l.spawnBootstrapIfNeeded(ctx, item)
 	}
 
-	taskTypesPrompt := buildQueueTaskTypesPrompt(l.registry.All())
+	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
 		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, item, resumePrompt),
@@ -125,7 +131,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 	cook := &activeCook{
 		orderID: item.ID,
 		stage: Stage{
-			TaskKey: scheduleQueueID,
+			TaskKey: scheduleOrderID,
 			Skill:   skillName,
 		},
 		session:      session,
@@ -161,13 +167,9 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	provider := nonEmpty(item.Provider, l.config.Routing.Defaults.Provider)
 	model := nonEmpty(item.Model, l.config.Routing.Defaults.Model)
 
-	prompt, err := buildBootstrapPrompt(provider, l.config.Skills.Paths)
-	if err != nil {
-		l.logger.Error("bootstrap skill resolution failed", "error", err)
-		return nil
-	}
+	prompt := buildBootstrapPrompt(provider)
 
-	name := bootstrapSessionPrefix + scheduleQueueID
+	name := bootstrapSessionPrefix + scheduleOrderID
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
 		Prompt:               "Create a schedule skill for this project. Follow the system prompt instructions exactly.",
@@ -190,7 +192,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	l.bootstrapInFlight = &activeCook{
 		orderID: item.ID,
 		stage: Stage{
-			TaskKey: scheduleQueueID,
+			TaskKey: scheduleOrderID,
 			Skill:   "bootstrap",
 		},
 		session:      session,
@@ -202,12 +204,14 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 
 func buildSchedulePrompt(skillName, taskTypesPrompt string, item QueueItem, resumePrompt string) string {
 	parts := []string{
-		"Use Skill(" + skillName + ") to refresh the queue from .noodle/mise.json.",
-		"Write to `.noodle/queue-next.json` (not queue.json). The loop promotes it atomically.",
+		"Use Skill(" + skillName + ") to refresh the schedule from .noodle/mise.json.",
+		"Write to `.noodle/orders-next.json` (not orders.json). The loop promotes it atomically.",
 		"Do not modify .noodle/mise.json.",
 		"Operate fully autonomously. Never ask the user questions.",
-		"You may synthesize queue items for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
-		queueSchemaPrompt(),
+		"You may synthesize orders for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
+		"Each order is a pipeline of stages. Group related stages (e.g. execute, quality, reflect) into one order.",
+		"You may specify on_failure stages for orders that need a recovery pipeline.",
+		ordersSchemaPrompt(),
 		taskTypesPrompt,
 	}
 	if rationale := strings.TrimSpace(item.Rationale); rationale != "" {
@@ -219,7 +223,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, item QueueItem, resu
 	return strings.Join(parts, "\n\n")
 }
 
-func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
+func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 	var b strings.Builder
 	b.WriteString("Task types you may schedule:")
 	if len(taskTypes) == 0 {
@@ -241,14 +245,18 @@ func buildQueueTaskTypesPrompt(taskTypes []TaskType) string {
 }
 
 func (l *Loop) rescheduleForChefPrompt(prompt string) error {
-	queue := bootstrapScheduleQueue(l.config, prompt, l.deps.Now().UTC())
-	return writeQueueAtomic(l.deps.QueueFile, queue)
+	orders := OrdersFile{
+		Orders: []Order{
+			scheduleOrder(l.config, prompt),
+		},
+	}
+	return writeOrdersAtomic(l.deps.OrdersFile, orders)
 }
 
-func queueSchemaPrompt() string {
-	prompt, err := schemadoc.RenderPromptJSON("queue")
+func ordersSchemaPrompt() string {
+	prompt, err := schemadoc.RenderPromptJSON("orders")
 	if err != nil {
-		return "queue.json schema (JSON):\n{}\n\nSchema generation error: " + err.Error()
+		return "orders.json schema (JSON):\n{}\n\nSchema generation error: " + err.Error()
 	}
 	return prompt
 }
