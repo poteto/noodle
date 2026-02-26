@@ -18,7 +18,6 @@ Thumbs.db
 *.skill
 .claude/settings.local.json
 .claude/worktrees/
-.codex-output/
 
 # Git worktrees
 .worktrees/

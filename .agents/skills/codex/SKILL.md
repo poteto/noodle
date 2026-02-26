@@ -43,13 +43,13 @@ Project defaults in `.codex/config.toml`. Always include `--skip-git-repo-check`
 
 | Use case | Command |
 | --- | --- |
-| Read-only analysis | `codex exec --skip-git-repo-check --json -o .codex-output/result.txt "prompt" 2>/dev/null` |
+| Read-only analysis | `codex exec --skip-git-repo-check --json -o "$CODEX_OUT" "prompt" 2>/dev/null` |
 | Speed-first interactive loop (Spark) | add `--model gpt-5.3-codex-spark` |
 | Apply local edits | add `--profile edit` |
 | Network / broad access | add `--profile full` |
-| Resume session | `echo "prompt" \| codex exec --skip-git-repo-check --json -o .codex-output/result.txt resume --last 2>/dev/null` |
+| Resume session | `echo "prompt" \| codex exec --skip-git-repo-check --json -o "$CODEX_OUT" resume --last 2>/dev/null` |
 
-**CRITICAL: Output path (`-o`) must be inside the working directory** (e.g., `.codex-output/`). Never use `/tmp/` — the sandbox blocks reads from outside allowed working directories, making the results unreadable.
+Create a temp file for output before running: `CODEX_OUT=$(mktemp)`. Read the result from `$CODEX_OUT` after completion.
 
 Run with Bash `run_in_background: true`. Monitor via `TaskOutput` with `block: true, timeout: 600000` — do NOT use `sleep` commands to poll. Read the `-o` file for the final answer.
 

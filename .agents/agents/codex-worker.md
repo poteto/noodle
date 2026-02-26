@@ -51,26 +51,24 @@ Your only tools are Bash (for running codex), TaskOutput (for waiting), and mess
 
    Your task prompt already has detailed context. Pass along the essential parts — goal, file paths, constraints — and let Codex do the rest. A 10-20 line prompt is ideal. Over 40 lines means you're overcomplicating it.
 
-2. **Determine CWD and output directory.** Your task prompt specifies a working directory:
+2. **Determine CWD and output file.** Your task prompt specifies a working directory:
    - **Worktree path** (e.g., `.worktrees/my-feature`): Codex sandbox **cannot write to worktree paths**. Always run `codex exec` from the **main repo root** and include absolute worktree paths in your prompt so Codex writes files there. The main repo root contains `.worktrees/` so the sandbox allows writes to all worktree subdirectories.
    - **Main repo root**: Run `codex exec` from there directly.
-   - Create `.codex-output/` in the **main repo root**: `mkdir -p <main-repo-root>/.codex-output`
+   - Create a temp file for output: `CODEX_OUT=$(mktemp)`
 
 3. **Run codex exec:**
    ```
-   codex exec --skip-git-repo-check --json -o .codex-output/<task-id>.txt --profile edit "<prompt>" 2>/dev/null
+   codex exec --skip-git-repo-check --json -o "$CODEX_OUT" --profile edit "<prompt>" 2>/dev/null
    ```
    Use `run_in_background: true`. Use `--profile edit` for file changes, omit for read-only.
 
-   **CRITICAL: Output path must be inside the main repo root** (e.g., `.codex-output/`). Never use `/tmp/`.
-
 4. **Monitor** — use `TaskOutput` with `block: true, timeout: 600000` to wait for completion. `sleep` commands are **structurally blocked** by the PreToolUse hook — don't attempt them.
 
-5. **Review** — read the `-o` result file via Bash (`cat .codex-output/<task-id>.txt`). Verify correctness against success criteria.
+5. **Review** — read the `-o` result file via Bash (`cat "$CODEX_OUT"`). Verify correctness against success criteria.
 
 6. **If wrong** — resume with specific corrections:
    ```
-   echo "<correction>" | codex exec --skip-git-repo-check --json -o .codex-output/<task-id>.txt resume --last 2>/dev/null
+   echo "<correction>" | codex exec --skip-git-repo-check --json -o "$CODEX_OUT" resume --last 2>/dev/null
    ```
 
 7. **Commit** — use the `commit` skill (invoke via Skill tool).
@@ -84,6 +82,6 @@ Your task prompt has all the context and rules you need. Follow them.
 - **NEVER read files, search code, or do research directly.** Delegate everything to codex exec.
 - **Be fast.** Your first `codex exec` call should happen within your first 1-2 turns. If you're spending turns thinking about the prompt, you're doing it wrong.
 - Always include `--skip-git-repo-check` and `2>/dev/null`.
-- Output path (`-o`) must be inside the main repo root, never `/tmp/`.
+- Output path (`-o`) should be a temp file created with `mktemp`.
 - If codex fails or hits quota, report to lead immediately — don't try to work around it.
 - Use `cat` via Bash to read the codex output file. You have no Read tool.

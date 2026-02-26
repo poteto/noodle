@@ -143,8 +143,6 @@ func (a *App) Merge(name string) error {
 		return fmt.Errorf("merge failed: %w", err)
 	}
 
-	codexOut := filepath.Join(wtPath, ".codex-output")
-	a.removeCodexOutput(codexOut, true)
 	warnings := a.cleanupWorktreeAndBranch(wtPath, mergeBranch, false)
 
 	a.installDeps(a.Root)
@@ -231,8 +229,6 @@ func (a *App) Cleanup(name string, force bool) error {
 		}
 	}
 
-	codexOut := filepath.Join(wtPath, ".codex-output")
-	a.removeCodexOutput(codexOut, false)
 	warnings := a.cleanupWorktreeAndBranch(wtPath, cleanupBranch, true)
 	for _, warning := range warnings {
 		a.warnf("WARNING: %s\n", warning)
@@ -253,16 +249,6 @@ func (a *App) ensureNoUnmergedCommits(name, branch string) error {
 		"use '%s cleanup %s --force' to discard, or '%s merge %s' to keep",
 		a.cmdName(), name, a.cmdName(), name,
 	)
-}
-
-func (a *App) removeCodexOutput(path string, withLog bool) {
-	if _, err := os.Stat(path); err != nil {
-		return
-	}
-	if withLog {
-		a.info("Removing .codex-output/...")
-	}
-	_ = os.RemoveAll(path)
 }
 
 func (a *App) cleanupWorktreeAndBranch(wtPath, branch string, allowForceDelete bool) []string {
