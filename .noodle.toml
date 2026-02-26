@@ -21,11 +21,11 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 
 [agents.claude]
-path = "/Users/lauren/code/noodle/.claude"
+path = "~/.claude"
 args = ["--dangerously-skip-permissions", "--verbose"]
 
 [agents.codex]
-path = "/Users/lauren/code/noodle/.codex"
+path = "~/.codex"
 
 [adapters.backlog]
 skill = "todo"
