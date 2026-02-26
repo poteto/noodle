@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 59 -->
+<!-- next-id: 67 -->
 
 ## Noodle Post-Plan 1
 
@@ -19,7 +19,7 @@
 47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag, and bubbletea-tui skill. Web UI is the only interface now. [[archived_plans/47-delete-go-tui/overview]]~~ — marked complete per user confirmation.
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
 50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
-49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. An order groups related stages (execute → quality → reflect) in an ordered array; stage position encodes dependency. The scheduler creates orders, the loop advances stages mechanically (no LLM between stages). On success: mark stage completed, next stage becomes dispatchable. On failure: mark stage failed, remaining stages cancelled — no cascade logic needed, just stop advancing. `queue.json` becomes a derived view (first pending stage per active order), not the source of truth. Types: `Order{ID, Title, Plan, Rationale, Stages, Status}`, `Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`. Touches: `loop/types.go`, `internal/queuex/`, `loop/cook.go` (dispatch + completion), `loop/schedule.go` (writes orders instead of queue items), schedule skill `SKILL.md` (emit orders), web UI (render order pipelines). Single-stage orders (meditate, debate) are just orders with one stage — no special case. [[plans/49-work-orders-redesign/overview]]
+49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. An order groups related stages (execute → quality → reflect) in an ordered array; stage position encodes dependency. The scheduler creates orders, the loop advances stages mechanically (no LLM between stages). On success: mark stage completed, next stage becomes dispatchable. On failure: mark stage failed, remaining stages cancelled — no cascade logic needed, just stop advancing. `queue.json` becomes a derived view (first pending stage per active order), not the source of truth. Types: `Order{ID, Title, Plan, Rationale, Stages, Status}`, `Stage{TaskKey, Prompt, Skill, Provider, Model, Runtime, Status}`. Touches: `loop/types.go`, `internal/queuex/`, `loop/cook.go` (dispatch + completion), `loop/schedule.go` (writes orders instead of queue items), schedule skill `SKILL.md` (emit orders), web UI (render order pipelines). Single-stage orders (meditate, debate) are just orders with one stage — no special case. Design consideration: support optional `on_failure` stages so an Order can route failures (quality rejection → debugging, compile error → retry with different model) instead of just cancelling remaining stages. Stages should also carry arbitrary metadata for skill-specific data. [[plans/49-work-orders-redesign/overview]]
 
 ## Web UI
 
@@ -27,10 +27,24 @@
 52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed).
 53. [ ] Work order pipeline view — once #49 lands, render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
 54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
-55. [ ] Session efficiency analytics — context window usage trends, compression events, per-skill context footprint, success/failure rates over time. Focus on efficiency, not cost. Data partially available in `Session.context_window_usage_pct`.
-56. [ ] Remote runtime indicators — surface `Session.runtime` and `Session.remote_host` on agent cards. Badge or label showing local vs remote, host name for remote agents. Becomes important when running mixed local/cloud.
-57. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
-58. [ ] Settings page — read/write view for provider defaults, model routing, autonomy mode, skill paths, recovery config. Currently these require editing `.noodle.toml` by hand. At minimum a read-only config viewer; ideally editable with control commands.
+55. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
+
+## Subtract Go Logic
+
+59. [ ] Bootstrap as embedded skill — move the ~60 line bootstrap prompt from `loop/builtin_bootstrap.go:9-72` into an embedded skill file. Loop dispatches the skill, prompt evolves without recompiling. Includes fixing silent bootstrap exhaustion (`builtin_bootstrap.go:109-115`) — skill can emit diagnostics with actionable next steps instead of the loop silently giving up.
+60. [ ] Simplify queue filtering in loop — `filterStaleScheduleItems` and `hasNonScheduleItems` in `loop/loop.go:384-403` have nested conditionals mixing queue inspection, session state, and plan existence checks. Simplify to: queue empty + work exists → run schedule. Keep validation (reject malformed items) but stop making scheduling judgments.
+61. [ ] Simplify mise.json building — `mise/builder.go:162-193` pre-filters which plans are "schedulable" and `schedule.go:148-165` builds a prompt listing available task types. Include all plans in mise.json, add task types as a structured field. Let the schedule skill decide what's actionable instead of Go pre-processing.
+
+## Resilience
+
+62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt.
+63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve.
+
+## Skill System Gaps
+
+64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic.
+65. [ ] Quality verdict → merge integration — loop merge decision (`cook.go:207-213`) only checks `permissions.merge` (bool) and `config.Autonomy`. Quality skill writes verdicts to `.noodle/quality/` but nobody reads them. Loop should check verdict for auto-merge decisions: pass → merge, fail → park for review or reschedule.
+66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows.
 ## Done
 
 46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
