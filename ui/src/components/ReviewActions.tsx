@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { useControl } from "./ControlContext";
 
-export function ReviewActions({ itemId }: { itemId: string }) {
+export function ReviewActions({
+  itemId,
+  onAction,
+}: {
+  itemId: string;
+  onAction?: (action: string) => void;
+}) {
   const send = useControl();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   function handleMerge() {
     send({ action: "merge", item: itemId });
+    onAction?.("merge");
   }
 
   function handleReject() {
     send({ action: "reject", item: itemId });
+    onAction?.("reject");
   }
 
   function handleRequestChanges() {
@@ -24,6 +32,7 @@ export function ReviewActions({ itemId }: { itemId: string }) {
       item: itemId,
       prompt: feedback,
     });
+    onAction?.("request-changes");
   }
 
   return (
