@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/loop"
+	"github.com/poteto/noodle/worktree"
 )
 
 //go:embed placeholder.html
@@ -75,6 +76,7 @@ func New(opts Options) *Server {
 	mux.HandleFunc("GET /api/sessions/{id}/events", s.handleSessionEvents)
 	mux.HandleFunc("POST /api/control", s.handleControl)
 	mux.HandleFunc("GET /api/config", s.handleConfig)
+	mux.HandleFunc("GET /api/reviews/{id}/diff", s.handleReviewDiff)
 	mux.Handle("GET /", uiOrPlaceholder(opts.UI))
 
 	s.httpServer = &http.Server{
@@ -262,6 +264,32 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"autonomy": s.config.Autonomy,
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleReviewDiff(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	items, err := loop.ReadPendingReview(s.runtimeDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var found *loop.PendingReviewItem
+	for i := range items {
+		if items[i].ID == id {
+			found = &items[i]
+			break
+		}
+	}
+	if found == nil {
+		http.Error(w, "review not found", http.StatusNotFound)
+		return
+	}
+	result, err := worktree.DiffWorktree(found.WorktreePath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func appendControlCommand(runtimeDir string, cmd loop.ControlCommand) error {
