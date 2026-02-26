@@ -96,16 +96,36 @@ Applying [[principles/redesign-from-first-principles]]: rather than fixing these
 
 ## Phases
 
-1. [[plans/49-work-orders-redesign/phase-01-subtract-go-logic]]
-2. [[plans/49-work-orders-redesign/phase-02-define-order-and-stage-types]]
-3. [[plans/49-work-orders-redesign/phase-03-orders-file-i-o]]
-4. [[plans/49-work-orders-redesign/phase-04-stage-lifecycle-functions]]
-5. [[plans/49-work-orders-redesign/phase-05-loop-core-migration]]
-6. [[plans/49-work-orders-redesign/phase-06-control-commands-and-failed-targets]]
-7. [[plans/49-work-orders-redesign/phase-07-schedule-handling-and-skill-contract]]
-8. [[plans/49-work-orders-redesign/phase-08-snapshot-and-api]]
-9. [[plans/49-work-orders-redesign/phase-09-web-ui]]
-10. [[plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]]
+1. ~~[[plans/49-work-orders-redesign/phase-01-subtract-go-logic]]~~ ✓ `36629cb`
+2. ~~[[plans/49-work-orders-redesign/phase-02-define-order-and-stage-types]]~~ ✓ `a872fd2`
+3. ~~[[plans/49-work-orders-redesign/phase-03-orders-file-i-o]]~~ ✓ `f612914`
+4. ~~[[plans/49-work-orders-redesign/phase-04-stage-lifecycle-functions]]~~ ✓ `f05194c`
+5. ~~[[plans/49-work-orders-redesign/phase-05-loop-core-migration]]~~ ✓ `f3bc053`
+6. ~~[[plans/49-work-orders-redesign/phase-06-control-commands-and-failed-targets]]~~ ✓ `d81b531`
+7. ~~[[plans/49-work-orders-redesign/phase-07-schedule-handling-and-skill-contract]]~~ ✓ `dc2303b`
+8. ~~[[plans/49-work-orders-redesign/phase-08-snapshot-and-api]]~~ ✓ `f261e11`
+9. ~~[[plans/49-work-orders-redesign/phase-09-web-ui]]~~ ✓ `5c055de`
+10. [[plans/49-work-orders-redesign/phase-10-test-migration-and-cleanup]] — **partial**
+
+### Phase 10 remaining work
+
+`go build ./...` passes. `go test ./...` all green. Core migration complete. Remaining items are cosmetic cleanup:
+
+1. **Test file queue.json string references** — These files use `"queue.json"` as a filename in test fixtures (not referencing deleted types). Update to `"orders.json"` for consistency:
+   - `dispatcher/tmux_session_test.go` — schedule prompt text mentions queue.json
+   - `internal/filex/filex_test.go` — uses "queue.json" as arbitrary test filename
+   - `internal/stringx/stringx.go` and `stringx_test.go` — docstring/test uses queue.json as example path
+   - `internal/testutil/fixturedir/fixturedir_test.go` and `sync_test.go` — fixture helpers create queue.json
+   - `server/server_test.go` — creates queue.json for snapshot test
+   - `cmd_debug_test.go` — references queue.json in debug paths
+
+2. **Optional package rename** — `internal/queuex/` → `internal/orderx/`. All functions are orders-related now.
+
+3. **Cross-phase integration tests** — The plan specifies integration tests for success pipeline, OnFailure pipeline, merge-conflict resolution, and snapshot→Board derivation. Unit tests cover individual functions but don't test multi-cycle state continuity.
+
+4. **New fixture scenarios** — Multi-stage order, OnFailure routing, merge conflict, failed-target stickiness, requeue recovery, domain skill dispatch (end-to-end from orders.json through dispatch).
+
+5. **Codex review** — Three independent reviews for major issues.
 
 ## Verification
 
