@@ -35,7 +35,7 @@ Migrate schedule handling to use orders, simplify mise.json by removing pre-filt
 - `hasNonScheduleOrders(orders)` — checks for non-schedule orders. This is the simplified check from #60 — replaces the nested `filterStaleScheduleItems`/`hasNonScheduleItems` conditionals.
 - `spawnSchedule()` — takes stage from schedule order instead of QueueItem. Prompt construction includes the new orders schema (not queue item schema).
 - `rescheduleForChefPrompt()` — creates schedule order with chef guidance in rationale.
-- `buildQueueTaskTypesPrompt()` — update to describe the orders output format and the unfiltered plans input.
+- `buildOrderTaskTypesPrompt()` — update to describe the orders output format and the unfiltered plans input.
 
 **`loop/loop.go`** — Update `prepareOrdersForCycle()` to use new schedule functions.
 

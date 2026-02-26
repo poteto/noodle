@@ -46,7 +46,8 @@ State machine semantics require judgment about edge cases.
 - Unit test: failStage with OnFailure stages — sets order status to `"failing"`, cancels remaining main stages, OnFailure stages become pending
 - Unit test: failStage during OnFailure pipeline (already failing) — removes order from OrdersFile (no double-failure recursion)
 - Unit test: advanceOrder on a `"failing"` order advances through OnFailure stages; when last OnFailure stage completes, removes order from OrdersFile and returns removed=true (caller calls markFailed, not adapter "done")
-- Unit test: cancelOrder on order with mix of completed and pending stages — completed stages preserved, pending cancelled
+- Unit test: cancelOrder on order with mix of completed and pending stages — completed stages preserved, pending cancelled, **order removed from OrdersFile**
+- Unit test: cancelOrder returns updated OrdersFile without the cancelled order (persisted removal verified)
 - Unit test: dispatchableStages skips orders in busy/failed/adopted/ticketed sets
 - Unit test: dispatchableStages returns first pending stage per order, respects array ordering
 - Unit test: dispatchableStages skips orders whose current stage is active (already dispatched)

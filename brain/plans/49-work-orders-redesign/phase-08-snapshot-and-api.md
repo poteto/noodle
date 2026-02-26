@@ -8,15 +8,17 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 
 ## Changes
 
+**`tui/`** — Delete the entire `tui/` package before replacing snapshot types. The TUI references `snapshot.QueueItem` extensively — if `QueueItem` is deleted first, the build breaks until `tui/` is also deleted. Deleting `tui/` here (not phase 10) ensures this phase lands with a clean build.
+
 **`internal/snapshot/types.go`** — Replace queue types:
-- Delete `QueueItem` struct
+- Delete `QueueItem` struct (safe now that `tui/` is deleted above)
 - Add `Order` and `Stage` structs mirroring the loop types (JSON-serializable)
 - Update `Snapshot` struct: replace `Queue []QueueItem` with `Orders []Order`
 - Replace `ActiveQueueIDs []string` with `ActiveOrderIDs []string`
 - Keep `ActionNeeded []string` (order-level, unchanged)
 
 **`internal/snapshot/snapshot.go`** — `LoadSnapshot()`:
-- Read `orders.json` instead of `queue.json`. **Note:** Between phase 5 (loop migration) and this phase, `LoadSnapshot` still reads `queue.json` which is stale/empty. This means the web UI queue column is broken for phases 5-7. This is acceptable if phases are executed in close succession, but if there's a gap, consider a minimal `LoadSnapshot` patch in phase 5 to read `orders.json`.
+- Read `orders.json` instead of `queue.json`. Phase 5 added a minimal `LoadSnapshot` patch that reads `orders.json` and converts to `QueueItem` shape as a bridge. This phase replaces that bridge with proper order types — delete the temporary conversion code from phase 5.
 - Convert `queuex.OrdersFile` to `snapshot.Order` slice (package is still `queuex` at this point — optional rename to `orderx` happens in phase 10)
 - Populate `ActiveOrderIDs` from active sessions metadata
 - Update `queue-events.ndjson` parser: handle `order_drop` event type (phase 5 audit emits this instead of `queue_drop`). Keep `queue_drop` handling temporarily for events written before the migration.
@@ -51,3 +53,5 @@ Mechanical type migration. Clear spec from phase 2 types.
 - Manual: start noodle, hit `/api/snapshot`, verify orders appear in JSON response
 - Unit test: LoadSnapshot handles both `order_drop` and legacy `queue_drop` event types in queue-events.ndjson
 - Manual: verify SSE stream sends snapshots with orders field
+- Unit test: snapshot serialization includes PendingReviewItem.Reason field (for phase 9 UI consumption)
+- Integration test note: snapshot/API shape (`orders`, `active_order_ids`, `OnFailure`, `Extra`) consumed correctly by Board column derivation — cover in phase 10 integration tests

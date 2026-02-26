@@ -19,7 +19,7 @@ Define the new `Order`, `Stage`, and `OrdersFile` types that replace `QueueItem`
 
 - `Stage.Status`: one of `"pending"`, `"active"`, `"completed"`, `"failed"`, `"cancelled"`
 - `Stage.Extra`: `map[string]json.RawMessage` — opaque bag for skill-specific data. Go never reads it; just round-trips it through JSON serialization. Schedulers and skills use it for custom metadata (priority, tags, deadline, etc.)
-- `Order.Status`: one of `"active"`, `"completed"`, `"failed"`, `"failing"` (running OnFailure stages). Note: `"completed"` and `"failed"` are transient — the lifecycle functions remove terminal orders from the OrdersFile immediately (same as current `skipQueueItem`). These statuses exist for type completeness and may appear briefly in memory but not in persisted `orders.json`.
+- `Order.Status`: one of `"active"`, `"completed"`, `"failed"`, `"failing"` (running OnFailure stages). **Newly created orders must have `Status: "active"`** — orders with `Status: ""` are validation errors (rejected by `NormalizeAndValidateOrders`). This prevents silent drops from `dispatchableStages`. Note: `"completed"` and `"failed"` are transient — the lifecycle functions remove terminal orders from the OrdersFile immediately (same as current `skipQueueItem`). These statuses exist for type completeness and may appear briefly in memory but not in persisted `orders.json`.
 - `Order.OnFailure`: `[]Stage` — optional. When present and a stage fails, the loop switches to running these stages instead of cancelling. When all OnFailure stages complete, the order status becomes `"failed"` (the original failure is not erased — OnFailure is remediation, not recovery). When OnFailure is empty or absent, failure cancels remaining stages as before.
 - Stage fields match current QueueItem fields (same JSON keys) so the scheduler's mental model stays consistent
 - Order-level fields (`Plan`, `Rationale`) move off the stage — they describe the work unit, not individual steps
@@ -46,3 +46,4 @@ Architectural decision — types shape everything downstream.
 - Test that `Stage.Extra` round-trips through JSON without data loss (arbitrary JSON preserved)
 - Test that `Order.OnFailure` serializes/deserializes correctly, including empty/nil case
 - Test that `Order.Status` includes the `"failing"` state
+- Test that `Order.Status: ""` fails validation (empty status is not valid)

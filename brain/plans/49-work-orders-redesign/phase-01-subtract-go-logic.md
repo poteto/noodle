@@ -35,7 +35,7 @@ DomainSkill string `yaml:"domain_skill,omitempty"`
 
 **`.agents/skills/bootstrap/SKILL.md`** — New file. Extract prompt content from `bootstrapPromptTemplate` in `loop/builtin_bootstrap.go`. Add frontmatter (`name: bootstrap`, `description: ...`). Keep `{{history_dirs}}` template variable — the loop substitutes it before dispatch. Use `skill-creator` skill.
 
-**`loop/builtin_bootstrap.go`** — Delete `bootstrapPromptTemplate` constant and `buildBootstrapPrompt()`. Replace with skill resolver lookup: resolve "bootstrap" skill, read content, strip frontmatter, substitute `{{history_dirs}}`, pass as `req.SystemPrompt`. If skill is missing, log actionable error ("bootstrap skill not found — create .agents/skills/bootstrap/SKILL.md or run noodle init") and return error. Also update any file path references from `queue-next.json` to `orders-next.json` — the bootstrap skill's output target changes with the migration.
+**`loop/builtin_bootstrap.go`** — Delete `bootstrapPromptTemplate` constant and `buildBootstrapPrompt()`. Replace with skill resolver lookup: resolve "bootstrap" skill, read content, strip frontmatter, substitute `{{history_dirs}}`, pass as `req.SystemPrompt`. If skill is missing, log actionable error ("bootstrap skill not found — create .agents/skills/bootstrap/SKILL.md or run noodle init") and return error. **Do NOT update `queue-next.json` → `orders-next.json` path references here** — the orders file format doesn't exist until phase 3 and the loop doesn't consume `orders-next.json` until phase 5. The path update happens in phase 5 alongside the loop migration.
 
 **`loop/schedule.go`** (~lines 109-115) — Replace silent `return nil` on `bootstrapExhausted` with logged warning: "bootstrap exhausted after N attempts — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors". Emit feed event for web UI visibility.
 
@@ -78,5 +78,8 @@ DomainSkill string `yaml:"domain_skill,omitempty"`
 - New test: bootstrap dispatch loads skill content from resolver
 - New test: missing bootstrap skill → actionable error logged
 - New test: bootstrap exhaustion → warning logged with next steps
+- New test: bootstrap exhaustion → feed event emitted with attempt count and next-steps payload
 - New test: mise build with missing sync script → returns brief with empty backlog + warning (not error)
+- New test: mise build with present-but-failing sync script (non-zero exit) → returns brief with empty backlog + warning (not error)
 - New test: cycle continues after missing sync script (not halted)
+- New test: cycle continues after failing sync script (not halted)
