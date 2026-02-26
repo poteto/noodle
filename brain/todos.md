@@ -42,9 +42,11 @@
 
 ## Skill System Gaps
 
+<!-- Planning order: #49 first (foundational data model, fold #65 into its design), #52 in parallel (independent UX win), #66 after #49 lands (needs orders/stages to trigger into). Subtract/resilience items (59-64) as cleanup between major efforts. -->
+
 64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic.
-65. [ ] Quality verdict → merge integration — loop merge decision (`cook.go:207-213`) only checks `permissions.merge` (bool) and `config.Autonomy`. Quality skill writes verdicts to `.noodle/quality/` but nobody reads them. Loop should check verdict for auto-merge decisions: pass → merge, fail → park for review or reschedule.
-66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows.
+65. [ ] Quality verdict → merge integration — loop merge decision (`cook.go:207-213`) only checks `permissions.merge` (bool) and `config.Autonomy`. Quality skill writes verdicts to `.noodle/quality/` but nobody reads them. Loop should check verdict for auto-merge decisions: pass → merge, fail → park for review or reschedule. Fold into #49 — same merge path gets rewritten.
+66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan; depends on #49.
 ## Done
 
 46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
