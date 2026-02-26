@@ -35,8 +35,8 @@ brain/.obsidian/
 brain/vision/slides/node_modules/
 brain/vision/slides/dist/
 
-# UI
-ui/node_modules/
+# Node
+node_modules/
 ui/dist/*
 !ui/dist/client/
 ui/dist/client/*

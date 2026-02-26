@@ -1,0 +1,29 @@
+{
+  "private": true,
+  "scripts": {
+    "setup": "pnpm install",
+    "build": "pnpm --filter noodle-ui build && go build -o ./bin/noodle .",
+    "generate": "go generate ./generate/...",
+    "test": "go test ./...",
+    "test:short": "go test -short ./...",
+    "vet": "go vet ./...",
+    "lint:arch": "sh scripts/lint-arch.sh",
+    "check": "pnpm run build && pnpm run test && pnpm run vet && pnpm run lint:arch && pnpm run fixtures:loop && pnpm run fixtures:hash",
+    "reset": "for d in .noodle .noodles; do rm -f \"$d/mise.json\" \"$d/queue.json\" \"$d/ticket.json\" \"$d/tickets.json\"; rm -rf \"$d/sessions\"; done && echo 'runtime state reset'",
+    "start": "go run . start",
+    "status": "go run . status",
+    "skills": "go run . skills list",
+    "dev": "mkdir -p ui/dist/client && concurrently -k -n vite,api -c blue,green \"pnpm --filter noodle-ui dev\" \"NOODLE_SERVER=1 NOODLE_BROWSER_URL=http://localhost:5173 NOODLE_DEV=1 go tool air -c .air.toml\"",
+    "dev:verbose": "mkdir -p ui/dist/client && concurrently -k -n vite,api -c blue,green \"pnpm --filter noodle-ui dev\" \"NOODLE_SERVER=1 NOODLE_BROWSER_URL=http://localhost:5173 NOODLE_DEV=1 go tool air -d -c .air.verbose.toml\"",
+    "fixtures:loop": "NOODLE_LOOP_FIXTURE_MODE=check go test ./loop -run TestLoopDirectoryFixtures -count=1 && go run ./scripts/fixturehash check --root loop/testdata",
+    "fixtures:loop:record": "NOODLE_LOOP_FIXTURE_MODE=record go test ./loop -run TestLoopDirectoryFixtures -count=1 && go run ./scripts/fixturehash sync --root loop/testdata",
+    "fixtures:hash": "go run ./scripts/fixturehash check",
+    "fixtures:hash:sync": "go run ./scripts/fixturehash sync",
+    "bugs": "sh scripts/bugs.sh",
+    "clean": "rm -f ./bin/noodle && rm -rf ui/dist/client/assets ui/dist/client/index.html",
+    "sandbox": "sh scripts/sandbox.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9"
+  }
+}

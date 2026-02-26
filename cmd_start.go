@@ -89,7 +89,7 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 
 // shouldStartServer determines if the web server should start.
 // If Enabled is explicitly set, use that. Otherwise auto-enable for interactive
-// sessions or when NOODLE_SERVER=1 (used by make watch).
+// sessions or when NOODLE_SERVER=1 (used by pnpm dev).
 func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 	if cfg.Enabled != nil {
 		return *cfg.Enabled
@@ -196,7 +196,11 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config) err
 
 	srv.WaitReady()
 	if os.Getenv("NOODLE_NO_BROWSER") != "1" {
-		openBrowserFunc("http://" + srv.Addr())
+		url := "http://" + srv.Addr()
+		if devURL := os.Getenv("NOODLE_BROWSER_URL"); devURL != "" {
+			url = devURL
+		}
+		openBrowserFunc(url)
 	}
 
 	return <-errCh

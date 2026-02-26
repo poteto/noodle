@@ -38,7 +38,7 @@ The file starts with YAML frontmatter delimited by `---`, then markdown sections
 | `schema_version` | int | Always `1` |
 | `expected_failure` | bool | Test expects an error |
 | `bug` | bool | Known failing test — requires `expected_failure: true` |
-| `source_hash` | string | SHA256 of inputs, auto-synced by `make fixtures-hash MODE=sync` |
+| `source_hash` | string | SHA256 of inputs, auto-synced by `pnpm fixtures:hash:sync` |
 
 ## Marking a Fixture as a Known Bug
 
@@ -51,7 +51,7 @@ bug: true
 
 Add a placeholder `## Expected Error` section with JSON body `{"any": true}`.
 
-Verify it appears in `make bugs`.
+Verify it appears in `pnpm bugs`.
 
 ## Scaffold Script
 
@@ -69,7 +69,7 @@ Creates the directory, empty input files, and expected.md with `source_hash: pen
 
 ```sh
 # Record new expected output
-make fixtures-loop MODE=record
+pnpm fixtures:loop:record
 
 # Or manually:
 NOODLE_LOOP_FIXTURE_MODE=record go test ./loop -run TestLoopDirectoryFixtures -count=1
@@ -78,7 +78,7 @@ NOODLE_LOOP_FIXTURE_MODE=record go test ./loop -run TestLoopDirectoryFixtures -c
 After recording, sync hashes:
 
 ```sh
-make fixtures-hash MODE=sync
+pnpm fixtures:hash:sync
 ```
 
 ## Test Helper API (internal/testutil/fixturedir)

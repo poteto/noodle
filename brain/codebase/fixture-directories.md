@@ -27,14 +27,14 @@ Rules:
 - `bug` is a boolean intent flag (`true` means this expected failure is a known bug tracked for future fix; `false` means it is not a tracked bug).
 - `expected.md` frontmatter `schema_version` must match `fixturedir.FixtureSchemaVersion`.
 - `source_hash` is derived from fixture input files (all files under the fixture except `expected.md`).
-- Use make-driven tooling for fixture maintenance; fixture dev commands are not exposed in `noodle` CLI.
+- Fixture dev commands are not exposed in `noodle` CLI; use pnpm scripts.
 
-## Dev Command
+## Dev Commands
 
-- `make fixtures-hash MODE=sync`: update `expected.md` `source_hash` values.
-- `make fixtures-hash MODE=check`: fail when any fixture `source_hash` is out of date.
-- `make fixtures-loop MODE=record`: regenerate `loop` fixture `Runtime Dump` sections and sync hashes.
-- `make fixtures-loop MODE=check`: verify `loop` runtime dumps and hashes are up to date.
+- `pnpm fixtures:hash:sync`: update `expected.md` `source_hash` values.
+- `pnpm fixtures:hash`: fail when any fixture `source_hash` is out of date.
+- `pnpm fixtures:loop:record`: regenerate `loop` fixture `Runtime Dump` sections and sync hashes.
+- `pnpm fixtures:loop`: verify `loop` runtime dumps and hashes are up to date.
 
 ## Config Precedence
 

@@ -31,6 +31,6 @@ jobs:
         run: |
           go run ./generate/cmd/gen-skill
           git diff --exit-code .agents/skills/noodle/SKILL.md || {
-            echo "noodle skill is out of date. Run 'make generate' to update."
+            echo "noodle skill is out of date. Run 'pnpm generate' to update."
             exit 1
           }
