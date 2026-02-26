@@ -193,16 +193,14 @@ func findQueueItemByTarget(items []QueueItem, targetID string) (QueueItem, bool)
 	return QueueItem{}, false
 }
 
-func shouldRecoverMissingSyncScripts(warnings []string, queue Queue) bool {
-	if len(queue.Items) > 0 {
-		return false
-	}
+// hasSyncWarnings returns true if any warning indicates a sync script problem.
+func hasSyncWarnings(warnings []string) bool {
 	for _, warning := range warnings {
 		warning = strings.ToLower(strings.TrimSpace(warning))
 		if warning == "" {
 			continue
 		}
-		if strings.Contains(warning, "sync script missing") {
+		if strings.Contains(warning, "sync script missing") || strings.Contains(warning, "sync script failed") {
 			return true
 		}
 	}

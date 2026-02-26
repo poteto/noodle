@@ -2,6 +2,7 @@
 name: execute
 description: Implementation methodology for executing tasks. Provides the how — scoping, decomposition, worktree workflow, verification, and commit conventions.
 noodle:
+  domain_skill: backlog
   schedule: "When backlog items with linked plans are ready for implementation"
 ---
 

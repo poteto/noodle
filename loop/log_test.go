@@ -150,7 +150,7 @@ func TestLogDispatchCook(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger)
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestLogCompletionMerge(t *testing.T) {
 		o.brief = &brief
 	})
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestLogCompletionParkForReview(t *testing.T) {
 	// Enable pending approval so cooks get parked.
 	tc.loop.config.Autonomy = config.AutonomyApprove
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestLogRetryAndFailure(t *testing.T) {
 		o.brief = &brief
 	})
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -437,7 +437,7 @@ func TestLogQueueItemSkipped(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger)
 
-	queue := Queue{Items: []QueueItem{{ID: "item-1", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "item-1", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(tc.queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -482,7 +482,7 @@ func TestLogQueueNextPromoted(t *testing.T) {
 
 	// Write a valid queue-next.json.
 	queueNextPath := filepath.Join(tc.runtimeDir, "queue-next.json")
-	nextQueue := Queue{Items: []QueueItem{{ID: "from-schedule", Provider: "claude", Model: "claude-opus-4-6"}}}
+	nextQueue := Queue{Items: []QueueItem{{ID: "from-schedule", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queueNextPath, nextQueue); err != nil {
 		t.Fatalf("write queue-next: %v", err)
 	}

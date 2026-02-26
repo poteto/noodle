@@ -133,7 +133,7 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(filepath.Join(runtimeDir, "queue.json"), queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -213,7 +213,7 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -250,7 +250,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -290,7 +290,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -341,7 +341,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
@@ -610,7 +610,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -869,7 +869,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 		t.Fatalf("write meta: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -907,7 +907,7 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -947,7 +947,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1010,7 +1010,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 		t.Fatalf("write spawn metadata: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-opus-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1069,7 +1069,7 @@ func TestMergeCookUsesRemoteBranchSyncResult(t *testing.T) {
 	}
 
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1089,7 +1089,7 @@ func TestMergeCookUsesRemoteBranchSyncResult(t *testing.T) {
 
 	if err := l.mergeCook(
 		context.Background(),
-		QueueItem{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"},
+		QueueItem{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		"42",
 		sessionID,
 	); err != nil {
@@ -1110,7 +1110,7 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}
@@ -1129,7 +1129,7 @@ func TestMergeCookFallsBackToLocalWorktreeMerge(t *testing.T) {
 
 	if err := l.mergeCook(
 		context.Background(),
-		QueueItem{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"},
+		QueueItem{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		"42",
 		"",
 	); err != nil {
@@ -1150,7 +1150,7 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
-	queue := Queue{Items: []QueueItem{{ID: "42", Provider: "claude", Model: "claude-sonnet-4-6"}}}
+	queue := Queue{Items: []QueueItem{{ID: "42", TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}}}
 	if err := writeQueueAtomic(queuePath, queue); err != nil {
 		t.Fatalf("write queue: %v", err)
 	}

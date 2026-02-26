@@ -107,12 +107,12 @@ func TestApplyQueueRoutingDefaultsFillsMissingRouting(t *testing.T) {
 	}
 }
 
-func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testing.T) {
+func TestNormalizeAndValidateQueueAssignsSkillForBacklogItems(t *testing.T) {
 	cfg := config.DefaultConfig()
 	reg := testQueueRegistry()
 	queue := Queue{
 		Items: []QueueItem{
-			{ID: "42", Title: "Implement fix"},
+			{ID: "42", TaskKey: "execute", Title: "Implement fix"},
 		},
 	}
 
@@ -128,6 +128,21 @@ func TestNormalizeAndValidateQueueAssignsExecuteTaskKeyForBacklogItems(t *testin
 	}
 	if got := updated.Items[0].Skill; got != "execute" {
 		t.Fatalf("skill = %q, want execute", got)
+	}
+}
+
+func TestNormalizeAndValidateQueueRejectsItemWithNoTaskKey(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := testQueueRegistry()
+	queue := Queue{
+		Items: []QueueItem{
+			{ID: "42", Title: "bare item without task key"},
+		},
+	}
+
+	_, _, err := normalizeAndValidateQueue(queue, nil, reg, cfg)
+	if err == nil {
+		t.Fatal("expected error for item with no task_key")
 	}
 }
 

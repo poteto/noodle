@@ -3,7 +3,7 @@ package loop
 import (
 	"context"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -107,6 +107,14 @@ func (l *Loop) spawnSchedule(ctx context.Context, item QueueItem, attempt int, r
 // regardless of bootstrap status.
 func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error {
 	if l.bootstrapExhausted {
+		l.logger.Warn("bootstrap exhausted — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors",
+			"attempts", l.bootstrapAttempts)
+		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
+		appendQueueEvent(eventsPath, QueueAuditEvent{
+			At:     l.deps.Now().UTC(),
+			Type:   "bootstrap_exhausted",
+			Reason: fmt.Sprintf("bootstrap exhausted after %d attempts — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors", l.bootstrapAttempts),
+		})
 		return nil
 	}
 	if l.bootstrapInFlight != nil {
@@ -116,20 +124,26 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, item QueueItem) error
 	provider := nonEmpty(item.Provider, l.config.Routing.Defaults.Provider)
 	model := nonEmpty(item.Model, l.config.Routing.Defaults.Model)
 
+	prompt, err := buildBootstrapPrompt(provider, l.config.Skills.Paths)
+	if err != nil {
+		l.logger.Error("bootstrap skill resolution failed", "error", err)
+		return nil
+	}
+
 	name := bootstrapSessionPrefix + scheduleQueueID
 	req := dispatcher.DispatchRequest{
 		Name:                 name,
 		Prompt:               "Create a schedule skill for this project. Follow the system prompt instructions exactly.",
 		Provider:             provider,
 		Model:                model,
-		SystemPrompt:         buildBootstrapPrompt(provider),
+		SystemPrompt:         prompt,
 		WorktreePath:         l.projectDir,
 		AllowPrimaryCheckout: true,
 		Title:                "bootstrapping schedule skill",
 	}
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap dispatch failed: %v\n", err)
+		l.logger.Warn("bootstrap dispatch failed", "error", err, "attempt", l.bootstrapAttempts+1)
 		l.bootstrapAttempts++
 		if l.bootstrapAttempts >= 3 {
 			l.bootstrapExhausted = true

@@ -184,6 +184,45 @@ func TestStripFrontmatterNoFrontmatter(t *testing.T) {
 	}
 }
 
+func TestParseFrontmatterDomainSkillPresent(t *testing.T) {
+	content := []byte(`---
+name: execute
+description: Execute tasks
+noodle:
+  domain_skill: backlog
+  schedule: "When ready"
+---
+Body.
+`)
+	fm, _, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fm.IsTaskType() {
+		t.Fatal("expected IsTaskType() == true")
+	}
+	if fm.Noodle.DomainSkill != "backlog" {
+		t.Fatalf("domain_skill = %q, want %q", fm.Noodle.DomainSkill, "backlog")
+	}
+}
+
+func TestParseFrontmatterDomainSkillAbsent(t *testing.T) {
+	content := []byte(`---
+name: reflect
+noodle:
+  schedule: "After a cook session completes"
+---
+Body.
+`)
+	fm, _, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fm.Noodle.DomainSkill != "" {
+		t.Fatalf("domain_skill = %q, want empty", fm.Noodle.DomainSkill)
+	}
+}
+
 func TestStripFrontmatterInvalidYAML(t *testing.T) {
 	content := []byte(`---
 : [broken

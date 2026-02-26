@@ -8,10 +8,11 @@ import (
 
 // TaskType is one schedulable task kind, discovered from skill frontmatter.
 type TaskType struct {
-	Key       string // skill name (e.g., "schedule", "execute", "deploy")
-	CanMerge  bool
-	Schedule  string // one-line guidance for schedule skill
-	SkillPath string // absolute path to skill directory
+	Key         string // skill name (e.g., "schedule", "execute", "deploy")
+	CanMerge    bool
+	Schedule    string // one-line guidance for schedule skill
+	SkillPath   string // absolute path to skill directory
+	DomainSkill string // domain context skill (e.g., "backlog")
 }
 
 // QueueItemInput contains queue item fields needed for task resolution.
@@ -37,10 +38,11 @@ func NewFromSkills(skills []skill.SkillMeta) Registry {
 			continue
 		}
 		types = append(types, TaskType{
-			Key:       s.Name,
-			CanMerge:  s.Frontmatter.Noodle.Permissions.CanMerge(),
-			Schedule:  s.Frontmatter.Noodle.Schedule,
-			SkillPath: s.Path,
+			Key:         s.Name,
+			CanMerge:    s.Frontmatter.Noodle.Permissions.CanMerge(),
+			Schedule:    s.Frontmatter.Noodle.Schedule,
+			SkillPath:   s.Path,
+			DomainSkill: s.Frontmatter.Noodle.DomainSkill,
 		})
 	}
 	reg := Registry{

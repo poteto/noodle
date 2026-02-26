@@ -39,6 +39,36 @@ func bootstrapMise() *fakeMise {
 	}
 }
 
+// createBootstrapSkillFixture creates a bootstrap SKILL.md in a temp
+// skill search path and returns the search path for config.
+func createBootstrapSkillFixture(t *testing.T, dir string) string {
+	t.Helper()
+	skillDir := filepath.Join(dir, ".agents", "skills", "bootstrap")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("create bootstrap skill dir: %v", err)
+	}
+	content := `---
+name: bootstrap
+description: Creates a schedule skill for new projects.
+---
+
+# Bootstrap: Create Schedule Skill
+
+You are a bootstrap agent. Read history from {{history_dirs}}.
+`
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write bootstrap SKILL.md: %v", err)
+	}
+	return filepath.Join(dir, ".agents", "skills")
+}
+
+// bootstrapConfig returns a config with skill search paths pointing to the fixture.
+func bootstrapConfig(skillSearchPath string) config.Config {
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{skillSearchPath}
+	return cfg
+}
+
 func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -46,9 +76,10 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -97,9 +128,10 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -137,9 +169,10 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -187,9 +220,10 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -231,6 +265,68 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 	}
 }
 
+func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
+
+	sp := &fakeDispatcher{}
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
+		Dispatcher: sp,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       bootstrapMise(),
+		Monitor:    fakeMonitor{},
+		Registry:   testRegistryWithoutSchedule(),
+		Now:        time.Now,
+		QueueFile:  queuePath,
+	})
+
+	// Exhaust bootstrap attempts.
+	for i := 0; i < 3; i++ {
+		if err := l.Cycle(context.Background()); err != nil {
+			t.Fatalf("dispatch cycle %d: %v", i, err)
+		}
+		if l.bootstrapInFlight == nil {
+			if l.bootstrapExhausted {
+				break
+			}
+			t.Fatalf("expected bootstrap in flight at attempt %d", i)
+		}
+		session := sp.sessions[len(sp.sessions)-1]
+		session.status = "failed"
+		close(session.done)
+		if err := l.Cycle(context.Background()); err != nil {
+			t.Fatalf("collect cycle %d: %v", i, err)
+		}
+	}
+
+	if !l.bootstrapExhausted {
+		t.Fatal("expected bootstrap to be exhausted")
+	}
+
+	// One more cycle triggers the exhaustion warning + feed event.
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("post-exhaustion cycle: %v", err)
+	}
+
+	eventsPath := filepath.Join(runtimeDir, "queue-events.ndjson")
+	data, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read events: %v", err)
+	}
+	if !strings.Contains(string(data), "bootstrap_exhausted") {
+		t.Fatal("expected bootstrap_exhausted event in queue-events.ndjson")
+	}
+	if !strings.Contains(string(data), "create .agents/skills/schedule/SKILL.md manually") {
+		t.Fatal("expected actionable message in bootstrap_exhausted event")
+	}
+}
+
 func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -238,9 +334,10 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -296,6 +393,7 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	queuePath := filepath.Join(runtimeDir, "queue.json")
+	skillPath := createBootstrapSkillFixture(t, projectDir)
 	// Queue has both schedule and a normal item.
 	queue := Queue{Items: []QueueItem{
 		{ID: "schedule", Provider: "claude", Model: "claude-opus-4-6", Skill: "schedule"},
@@ -306,7 +404,7 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 	}
 
 	sp := &fakeDispatcher{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
 		Dispatcher: sp,
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -337,6 +435,9 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 }
 
 func TestBootstrapPromptContainsHistoryDirForProvider(t *testing.T) {
+	dir := t.TempDir()
+	skillPath := createBootstrapSkillFixture(t, dir)
+
 	cases := []struct {
 		provider string
 		expected string
@@ -346,10 +447,24 @@ func TestBootstrapPromptContainsHistoryDirForProvider(t *testing.T) {
 		{"other", ".claude/"},
 	}
 	for _, tc := range cases {
-		prompt := buildBootstrapPrompt(tc.provider)
+		prompt, err := buildBootstrapPrompt(tc.provider, []string{skillPath})
+		if err != nil {
+			t.Fatalf("provider=%q: %v", tc.provider, err)
+		}
 		if !strings.Contains(prompt, tc.expected) {
 			t.Fatalf("provider=%q: prompt missing %q", tc.provider, tc.expected)
 		}
+	}
+}
+
+func TestBootstrapPromptMissingSkillReturnsError(t *testing.T) {
+	emptyDir := t.TempDir()
+	_, err := buildBootstrapPrompt("claude", []string{emptyDir})
+	if err == nil {
+		t.Fatal("expected error for missing bootstrap skill")
+	}
+	if !strings.Contains(err.Error(), "bootstrap skill not found") {
+		t.Fatalf("error = %q, want 'bootstrap skill not found'", err.Error())
 	}
 }
 

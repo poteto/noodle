@@ -110,7 +110,7 @@ func TestNormalizeAndValidateRejectsDuplicateIDs(t *testing.T) {
 func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	cfg := config.DefaultConfig()
 	reg := testRegistry()
-	queue := Queue{Items: []Item{{ID: "1", Title: "implement feature"}}}
+	queue := Queue{Items: []Item{{ID: "1", TaskKey: "execute", Title: "implement feature"}}}
 
 	got, changed, err := NormalizeAndValidate(queue, []int{1}, reg, cfg)
 	if err != nil {
@@ -124,6 +124,20 @@ func TestNormalizeAndValidateAppliesTaskDefaults(t *testing.T) {
 	}
 	if strings.TrimSpace(got.Items[0].Skill) == "" {
 		t.Fatalf("skill not populated: %+v", got.Items[0])
+	}
+}
+
+func TestNormalizeAndValidateRejectsItemWithNoTaskKey(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := testRegistry()
+	queue := Queue{Items: []Item{{ID: "1", Title: "bare item without task key"}}}
+
+	_, _, err := NormalizeAndValidate(queue, nil, reg, cfg)
+	if err == nil {
+		t.Fatal("expected error for item with no task_key")
+	}
+	if !errors.Is(err, ErrUnknownTaskType) {
+		t.Fatalf("expected ErrUnknownTaskType, got: %v", err)
 	}
 }
 

@@ -23,6 +23,7 @@ func (f Frontmatter) IsTaskType() bool { return f.Noodle != nil }
 type NoodleMeta struct {
 	Permissions Permissions `yaml:"permissions"`
 	Schedule    string      `yaml:"schedule"`
+	DomainSkill string      `yaml:"domain_skill,omitempty"`
 }
 
 type Permissions struct {

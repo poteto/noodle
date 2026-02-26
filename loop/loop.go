@@ -375,10 +375,14 @@ func (l *Loop) prepareQueueForCycle(brief mise.Brief, warnings []string) (Queue,
 		}
 		l.logger.Info("queue normalized")
 	}
-	if shouldRecoverMissingSyncScripts(warnings, queue) &&
-		len(l.activeByID) == 0 &&
-		len(l.adoptedTargets) == 0 {
-		return Queue{}, false, fmt.Errorf("mise.sync: %s", strings.Join(warnings, "; "))
+	if hasSyncWarnings(warnings) {
+		l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
+		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
+		appendQueueEvent(eventsPath, QueueAuditEvent{
+			At:     l.deps.Now().UTC(),
+			Type:   "sync_degraded",
+			Reason: strings.Join(warnings, "; "),
+		})
 	}
 	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
 		if hasNonScheduleItems(queue) {
