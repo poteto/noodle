@@ -52,7 +52,6 @@ Check installed skills (`.claude/skills/`) for any that match the review's domai
 
 | Domain | Skill | When |
 |--------|-------|------|
-| Bubble Tea TUI | `bubbletea-tui` | Terminal UI components, views, styling |
 | Frontend UI | `frontend-design` | Web UI components, layouts, visual design |
 | Codex delegation | `codex` | Tasks delegated to Codex workers |
 

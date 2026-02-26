@@ -8,7 +8,7 @@ output="${2:?Usage: snapshot.sh <brain-dir> <output-file>}"
 
 : > "$output"
 
-find "$brain_dir" -name '*.md' -type f | sort | while IFS= read -r f; do
+find "$brain_dir" -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/slides/*' | sort | while IFS= read -r f; do
   printf '=== %s ===\n' "$f" >> "$output"
   cat "$f" >> "$output"
   printf '\n\n' >> "$output"

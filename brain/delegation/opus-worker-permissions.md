@@ -26,4 +26,4 @@ The `codex-worker` template already specifies `mode: "bypassPermissions"` — th
 
 Use `mode: "acceptEdits"` if you want the worker to auto-accept edit tool calls but still require approval for potentially destructive Bash commands. For most worker tasks, `bypassPermissions` is simpler and correct.
 
-See also [[delegation]], [[delegation/share-what-you-know]], [[principles/boundary-discipline]], [[principles/encode-lessons-in-structure]]
+See also [[delegation]], [[principles/boundary-discipline]], [[principles/encode-lessons-in-structure]]

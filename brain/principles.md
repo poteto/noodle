@@ -14,12 +14,12 @@
 - [[principles/boundary-discipline]]
 - [[principles/make-operations-idempotent]]
 - [[principles/migrate-callers-then-delete-legacy-apis]]
+- [[principles/serialize-shared-state-mutations]]
 
 ## Verification
 
 - [[principles/prove-it-works]]
 - [[principles/fix-root-causes]]
-- [[principles/trust-the-output-not-the-report]]
 
 ## Delegation
 

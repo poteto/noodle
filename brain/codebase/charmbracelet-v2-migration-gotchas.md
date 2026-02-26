@@ -24,4 +24,4 @@
 - `go run . start` can exit immediately in detached tmux sessions, so scripted captures may produce empty panes.
 - `script`-based pseudo-TTY capture is more reliable for runtime transcript artifacts here.
 
-See also [[plans/39-charmbracelet-v2-upgrade/overview]], [[principles/migrate-callers-then-delete-legacy-apis]], [[principles/prove-it-works]]
+See also [[archived_plans/39-charmbracelet-v2-upgrade/overview]], [[principles/migrate-callers-then-delete-legacy-apis]], [[principles/prove-it-works]]

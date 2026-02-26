@@ -73,7 +73,6 @@ Check installed skills (`.claude/skills/`) for any that match the plan's domain.
 
 | Domain | Skill | When |
 |--------|-------|------|
-| Bubble Tea TUI | `bubbletea-tui` | TUI components, views, styling |
 | Codex delegation | `codex` | Tasks delegated to Codex workers |
 
 **Invoke matched skills now** — read their output and incorporate domain guidance into the plan.

@@ -30,10 +30,12 @@ After completing any task, ask: **"How do I prove this actually works?"**
 - If you can run it, run it
 - Prefer automated verification over manual inspection
 
-## Relationship to Other Principles
+### Delegation: trust artifacts, not self-reports
 
-[[principles/trust-the-output-not-the-report]] applies this to delegation — verify someone else's work via artifacts, not their self-report.
+When verifying delegated work, inspect the actual output artifact (`git diff --stat`, file contents, runtime behavior) — never the delegate's summary of what they claim to have done. Agents report what they intended, not always what happened. Scope violations and silent failures are invisible in self-reports but obvious in artifacts.
+
+## Relationship to Other Principles
 
 [[principles/fix-root-causes]] extends this to debugging — check the real cause, not the proxied symptom.
 
-See also [[principles/foundational-thinking]], [[delegation/specify-verification-boundary]]
+See also [[principles/foundational-thinking]], [[delegation/codex-scope-violations]]

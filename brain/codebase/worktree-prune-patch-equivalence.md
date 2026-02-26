@@ -7,4 +7,4 @@
 - Prune also requires a clean worktree (`git status --porcelain` empty). Patch-equivalent but dirty worktrees are skipped.
 - Stale directories in `.worktrees/` without git metadata are removed as filesystem cleanup.
 
-See also [[codebase/worktree-gotchas]], [[codebase/worktree-skill-entrypoint]]
+See also [[codebase/worktree-gotchas]], [[codebase/worktree-skill-entrypoint]], [[principles/make-operations-idempotent]]

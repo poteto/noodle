@@ -12,4 +12,10 @@ Codex workers given a scoped task (e.g., "edit these 4 files with these specific
 4. **Explicit "DO NOT DELETE" lists in prompts.** When parallel managers share a codebase and each owns different files, include a negative file list: "Do NOT modify or delete: inbox/, monitor/, cmd_messaging.go". The positive instruction ("only touch these files") is insufficient — Codex interprets "clean up" broadly.
 5. **Manager post-worker verification is critical.** The manager-level `git diff --stat` check is the last line of defense. Both Phase 5 and Phase 6 managers successfully caught and reversed scope violations.
 
-See also [[delegation/specify-verification-boundary]], [[delegation/share-what-you-know]], [[principles/boundary-discipline]]
+## When Codex Review Is Valuable
+
+Codex review catches real issues manual review misses (EPERM bugs, busy-spin anti-patterns, flaky tests). Most valuable for systems code with subtle correctness requirements (concurrency, signals, file locking). Less valuable for UI, docs, or mechanical refactors.
+
+Spawn with a review-focused prompt: "Review this diff for correctness issues, edge cases, and anti-patterns. Focus on error handling, concurrency, and cleanup paths."
+
+See also [[delegation/codex-worker-dispatch]], [[principles/boundary-discipline]], [[principles/prove-it-works]]

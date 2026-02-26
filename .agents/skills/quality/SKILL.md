@@ -61,6 +61,5 @@ Issues that don't warrant rejection (style nits, minor improvements, documentati
 
 ## Principles
 
-- [[trust-the-output-not-the-report]]
 - [[prove-it-works]]
 - [[outcome-oriented-execution]]

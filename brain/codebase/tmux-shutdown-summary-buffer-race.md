@@ -8,4 +8,4 @@
   buffered event and retry so the summary remains observable.
 - Keep durable logging to session event logs as the fallback source of truth.
 
-See also [[principles/fix-root-causes]], [[principles/trust-the-output-not-the-report]]
+See also [[principles/fix-root-causes]], [[principles/prove-it-works]], [[codebase/adopted-session-reconciliation]]

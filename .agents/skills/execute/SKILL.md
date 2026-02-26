@@ -7,7 +7,7 @@ noodle:
 
 # Execute
 
-Implementation methodology. This skill loads alongside the domain skill (e.g., "noodle", "bubbletea-tui") — it teaches process, the domain skill teaches the codebase.
+Implementation methodology. This skill loads alongside the domain skill (e.g., "noodle") — it teaches process, the domain skill teaches the codebase.
 
 Operate fully autonomously. Never ask the user.
 
@@ -80,7 +80,7 @@ One commit per logical change. Squash only if multiple commits address the same 
 ## Principles
 
 - [[prove-it-works]]
-- [[trust-the-output-not-the-report]]
+- [[subtract-before-you-add]]
 - [[cost-aware-delegation]]
 - [[guard-the-context-window]]
 - [[boundary-discipline]]
