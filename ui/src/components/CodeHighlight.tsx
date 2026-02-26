@@ -51,6 +51,8 @@ export function getScopeFromLang(lang: string): string | undefined {
     case "ruby":
     case "rb":
       return "source.ruby";
+    case "diff":
+      return "source.diff";
     default:
       return undefined;
   }
