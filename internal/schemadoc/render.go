@@ -53,7 +53,7 @@ func RenderPromptJSON(targetName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s schema (JSON):\n%s", target.Info.FileName, jsonSchema), nil
+	return fmt.Sprintf("%s schema (JSON):\n```json\n%s\n```", target.Info.FileName, jsonSchema), nil
 }
 
 func renderJSONSchema(target targetSpec) (string, error) {

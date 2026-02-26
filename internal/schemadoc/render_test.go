@@ -46,6 +46,12 @@ func TestRenderPromptJSONQueue(t *testing.T) {
 	if !strings.Contains(out, "queue.json schema (JSON):") {
 		t.Fatalf("missing queue prompt heading: %q", out)
 	}
+	if !strings.Contains(out, "```json\n") {
+		t.Fatalf("missing opening json code fence: %q", out)
+	}
+	if !strings.HasSuffix(out, "\n```") {
+		t.Fatalf("missing closing code fence: %q", out)
+	}
 	if !strings.Contains(out, `"generated_at":`) {
 		t.Fatalf("missing generated_at in queue prompt schema: %q", out)
 	}
