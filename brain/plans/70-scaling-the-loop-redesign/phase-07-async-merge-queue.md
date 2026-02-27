@@ -8,11 +8,13 @@ Decouple worktree merges from the loop cycle. A background goroutine processes m
 
 ## Changes
 
-**`loop/merger.go`** (new) — `MergeQueue` struct with a mutex-guarded request slice (not a channel) and `results chan MergeResult`, plus a single background goroutine. **Deadlock prevention**: using a channel for requests is unsafe because `controlSetMaxCooks` can change concurrency at runtime (`loop/control.go:612-625`) and control commands are processed before completion handling (`loop/loop.go:283-288`), so a channel-capacity proof based on `MaxCooks` doesn't hold. Instead: the loop appends requests to a mutex-guarded slice (non-blocking), and the worker goroutine locks, swaps the slice, unlocks, then processes. Results use a mutex-guarded slice too (non-blocking append by worker, non-blocking drain by loop). This eliminates all channel-sizing deadlock concerns. The loop drains results before appending new requests each cycle. For cloud runtimes that push branches rather than local worktrees, the merge queue handles `MergeRemoteBranch()` transparently.
+**`loop/merger.go`** (new) — `MergeQueue` struct with a mutex-guarded request slice (not a channel), `results` queue, and a single background goroutine. **Deadlock prevention**: using a channel for requests is unsafe because `controlSetMaxCooks` can change concurrency at runtime (`loop/control.go:612-625`) and control commands are processed before completion handling (`loop/loop.go:283-288`), so a channel-capacity proof based on `MaxCooks` doesn't hold. Instead: the loop appends requests to a mutex-guarded slice (non-blocking), and the worker goroutine locks, swaps the slice, unlocks, then processes. Results use a mutex-guarded slice too (non-blocking append by worker, non-blocking drain by loop). The queue tracks `pending` and `inFlight` counts separately. The loop drains results before appending new requests each cycle. For cloud runtimes that push branches rather than local worktrees, the merge queue handles `MergeRemoteBranch()` transparently.
+
+**Merge backpressure**: add `MergeBackpressureThreshold` config. When `pending + inFlight` exceeds threshold, planner suppresses new stage dispatches for that cycle (completions/merge processing still continue). This prevents unbounded merge backlog growth.
 
 **Shutdown**: `MergeQueue.Close()` signals the goroutine to stop. If the goroutine is blocked waiting for the merge lock, it must respect context cancellation. Add context-aware lock acquisition to `worktree/lock.go` — the lock `Acquire()` method accepts a context and returns early if cancelled, instead of sleeping in an uninterruptible retry loop.
 
-**Merge metadata persistence**: Before enqueueing a `MergeRequest`, persist merge metadata to the stage's `Extra` field in orders (worktree name, branch name, merge mode local/remote). This is flushed to disk as part of `flushState()`. Without persisted metadata, crash recovery can't determine what branch to check or re-merge.
+**Merge metadata persistence**: Before enqueueing a `MergeRequest`, persist merge metadata to the stage's `Extra` field in orders (worktree name, branch name, merge mode local/remote, merge generation token). This is flushed to disk as part of `flushState()`. Without persisted metadata, crash recovery can't determine what branch to check or re-merge.
 
 **Crash recovery**: In-flight merge requests are not persisted (they're transient). On crash, the stage is in `"merging"` state on disk with merge metadata in `Extra`. On restart, `loadOrders()` detects `"merging"` stages and applies a **deterministic** recovery algorithm:
 1. Read merge metadata from stage `Extra`. If missing → fail the stage (unrecoverable — shouldn't happen if persistence is correct).
@@ -23,7 +25,7 @@ Decouple worktree merges from the loop cycle. A background goroutine processes m
 6. If a pending review exists for this stage (`pending-review.json`) → keep as `"merging"` but route to pending review on merge result (conflict or review-required).
 Each case maps to exactly one action — no ambiguity.
 
-**`loop/cook.go`** — `handleCompletion()` enqueues a `MergeRequest` instead of calling `WorktreeManager.Merge()` directly. Stage status moves to `"merging"` intermediate state. When the merge result arrives (next cycle), the loop advances or fails the stage.
+**`loop/cook.go`** — `handleCompletion()` enqueues a `MergeRequest` instead of calling `WorktreeManager.Merge()` directly. Stage status moves to `"merging"` intermediate state. Each request carries `MergeGeneration` copied from the active handle generation for that stage attempt. When the merge result arrives, apply it only if generation matches the current stage metadata; stale results are discarded.
 
 **`loop/loop.go`** — `runCycleMaintenance()` drains `MergeQueue.results` and processes them: successful merges → `advanceOrder()` + immediate flush, failed merges (conflict) → park in pending review or fail stage.
 
@@ -47,7 +49,7 @@ Each case maps to exactly one action — no ambiguity.
 
 **`internal/orderx/queue.go`** — Add `StageStatusMerging` to valid stage statuses. Update validation to accept it.
 
-**Shutdown quiescence extension**: The drain-exit condition from phase 2 is extended: `watcherWG` signals done AND `mergeQueue.Pending() == 0`. After all watcher goroutines exit and the merge queue is empty, do one final drain of merge results before exit.
+**Shutdown quiescence extension**: The drain-exit condition from phase 2 is extended: `watcherWG` signals done AND `mergeQueue.Pending() == 0` AND `mergeQueue.InFlight() == 0`. After both pending and in-flight merges reach zero, do one final drain of merge results before exit.
 
 **`worktree/lock.go`** — The current `acquireMergeLock()` (`lock.go:91`) is called from `Merge()` and `MergeRemoteBranch()` (`commands.go:83,164`) with no context parameter. Add context-aware variants: either `MergeContext(ctx, name)` / `MergeRemoteBranchContext(ctx, name)` that thread context through to `acquireMergeLock`, or refactor `acquireMergeLock` to accept context directly. The merge queue worker passes its context so shutdown cancellation unblocks lock acquisition. Update `loop.WorktreeManager` interface if it exists to include the context-aware methods.
 
@@ -55,8 +57,8 @@ Each case maps to exactly one action — no ambiguity.
 
 ## Data structures
 
-- `MergeRequest` — `OrderID string`, `StageIndex int`, `WorktreeName string`, `IsRemoteBranch bool`, `BranchName string` (all fields also persisted in stage `Extra` for crash recovery)
-- `MergeResult` — `OrderID string`, `StageIndex int`, `Success bool`, `Error error`, `ConflictFiles []string`
+- `MergeRequest` — `OrderID string`, `StageIndex int`, `WorktreeName string`, `IsRemoteBranch bool`, `BranchName string`, `MergeGeneration uint64` (all fields also persisted in stage `Extra` for crash recovery)
+- `MergeResult` — `OrderID string`, `StageIndex int`, `MergeGeneration uint64`, `Success bool`, `Error error`, `ConflictFiles []string`
 
 ## Routing
 
@@ -88,3 +90,6 @@ Each case maps to exactly one action — no ambiguity.
 - Test: crash recovery — stage in "merging" with merge metadata → branch exists but not merged → re-enqueues, stays "merging"
 - Test: crash recovery — stage in "merging" but live session found via Recover() → resets to "active"
 - Test: crash recovery — stage in "merging" with no merge metadata → fails the stage
+- Test: stale merge result (generation N) arrives after replacement merge (generation N+1) — stale result is ignored
+- Test: shutdown waits for `Pending()==0` and `InFlight()==0` before final drain
+- Test: merge backlog above `MergeBackpressureThreshold` suppresses new dispatches until queue depth drops

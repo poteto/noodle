@@ -97,4 +97,4 @@ go test ./... && go vet ./...
 sh scripts/lint-arch.sh
 ```
 
-Each phase has phase-specific verification. End-to-end: run the loop with a mock cloud runtime dispatching 100+ simulated sessions and verify cycle time stays under 200ms.
+Each phase has phase-specific verification. End-to-end: run the loop with a mock cloud runtime dispatching 100+ simulated sessions, record cycle-time p95/p99, and compare against a checked-in baseline in a dedicated perf job (no hard latency gate in default CI).

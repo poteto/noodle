@@ -29,6 +29,8 @@ The `Done()` channel on `SessionHandle` **must** close exactly once on completio
 
 **`loop/defaults.go`** — Build the runtime map from config. Lifecycle anchoring: call `Runtime.Start()` for each runtime in `Loop.Run()` before reconcile (current startup is `Run` → reconcile → cycle at `loop/loop.go:152-169`). Call `Runtime.Close()` in `Loop.Shutdown()` after killing active sessions (current shutdown at `loop/loop.go:141-149`) — runtime close must happen after session kill so `Done()` channels fire before the runtime tears down its observation goroutines. Preserve fallback: if a non-tmux dispatch fails, retry via tmux runtime (existing `factory.go` behavior).
 
+**Shutdown fail-safe**: Add a bounded shutdown timeout for watcher quiescence. If runtime contract is violated (e.g., `Done()` never closes), shutdown must force-close runtimes and mark remaining sessions cancelled instead of waiting indefinitely.
+
 **`dispatcher/`** — Delete the `dispatcher` package after all callers are migrated. The `factory.go` fallback logic moves into `loop/defaults.go` (runtime map construction). Per migrate-callers-then-delete, the full import inventory is:
 - `loop/` — cook.go, control.go (session type refs), schedule.go, types.go (Dispatcher interface + Session interface), defaults.go (factory construction)
 - `main.go:281` — `startRepairSession` direct dispatch
@@ -76,3 +78,5 @@ Split into sub-steps: (a) extract shared types (`Session`, `DispatchRequest`, pr
 - Test: recovered sessions get watcher goroutines registered in `watcherWG`
 - Test: context cancellation causes `Close()` to stop all goroutines — verify via `watcherWG.Wait()` completing within 5s
 - Test: per-runtime concurrency cap — dispatch returns error when limit reached, global MaxCooks still enforced
+- Test: runtime fallback path — primary runtime dispatch failure falls back to tmux runtime and still dispatches once
+- Contract test: `Done()` closes exactly once under concurrent completion + `Kill()` + `Close()` races (no double-close panic, no leak)

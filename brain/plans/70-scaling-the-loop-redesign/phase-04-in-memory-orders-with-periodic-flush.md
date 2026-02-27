@@ -34,28 +34,28 @@ Each command mutates `l.orders` in memory. Note: `steer` and `rescheduleForChefP
 
 **Control command durability**: The control processing sequence must be: (1) process commands → mutate in-memory state, (2) flush state to disk, (3) ack + truncate `control.ndjson`. Never ack before flush — a crash after ack but before flush permanently loses accepted commands. The current code persists immediately per-command; the new code batches mutations but must flush before acking.
 
-**Replay idempotency**: Not all commands are replay-safe. `controlEnqueue()` (`control.go:390`) appends a new order — replaying after crash duplicates orders. Fix: assign each control command a unique ID (already present in `ControlCommand.ID` field). Persist the last-processed command ID in `flushState()`. On startup, skip commands with IDs ≤ the last-processed ID. This makes replay safe for all commands including non-idempotent ones.
+**Replay idempotency**: Not all commands are replay-safe. `controlEnqueue()` (`control.go:390`) appends a new order — replaying after crash duplicates orders. Fix: on ingest, assign each command a monotonic numeric `Sequence` (persisted with the command). `flushState()` persists `last-applied-sequence`. On startup, replay by sequence/stream position and skip only commands with `Sequence <= last-applied-sequence`. Do not rely on lexical or user-provided `ControlCommand.ID` ordering.
 
 **`loop/pending_review.go`** — Pending review persistence (`pending-review.json`) is flushed alongside orders at cycle end. Both files are written atomically in `flushState()` to maintain consistency.
 
 **`loop/failures.go`** — `failed.json` is flushed alongside orders at cycle end AND immediately when a failure occurs. The in-memory `failedTargets` map is authoritative, but failure metadata (error reason, session ID, timestamp) must survive crashes for `requeue` to work. Failure is a critical transition — flush immediately after recording it, same as merge advancement. Note: `failed.json` is NOT derivable from `orders.json` — terminal failures remove the order entirely (`failStage`, `loop/orders.go:150-152`) and failure reason survives only in `failed.json` (`loop/failures.go:43-64`). Treat `failed.json` as independently durable state.
 
-**`pendingRetry` persistence**: `pendingRetry` entries are included in `flushState()` — written to `pending-retry.json` alongside orders. On crash recovery, `loadOrders()` also reads `pending-retry.json` and repopulates the in-memory map. Without this, a crash loses retry intent: an `"active"` stage with no live session and no pending retry would become stuck.
+**`pendingRetry` persistence**: `pendingRetry` entries are included in `flushState()` — written to `pending-retry.json` alongside orders. On crash recovery, startup ordering is strict: (1) `loadOrders()`, (2) `Runtime.Recover()` across all runtimes, (3) build live-session index, (4) reconcile `pendingRetry`. Never demote `"active"` to `"pending"` before recovery completes. Without this barrier, still-running sessions can be redispatched.
 
 **Crash safety:** Write-before-dispatch is preserved — `flushOrders()` is called before `Dispatch()`. This means the stage is marked `"active"` on disk before the session starts. On crash after dispatch but before cycle-end flush, the worst case is that a completion isn't recorded — the stage is still `"active"` on disk, and `Runtime.Recover()` (phase 3) finds the orphaned session. Non-idempotent side effects (backlog `done` callback) are guarded: mark the order as completed in memory first, flush, then call the callback. If the callback fails, the order is already marked done and won't re-trigger.
 
-**`flushState()` atomicity**: Each file is written via write-to-temp + rename (atomic replace). The files (`orders.json`, `pending-review.json`, `failed.json`, `pending-retry.json`, `last-command-id`) are written sequentially in a fixed order. This isn't cross-file atomic, but crash at any point produces recoverable state: `loadOrders()` on restart re-derives `pending-review.json` from orders (which stages are in review state). `failed.json` is independently durable (not derivable from orders — see failures.go note above). `pending-retry.json` is re-derived by checking `"active"` stages with no live session and no pending retry entry.
+**`flushState()` atomicity**: Each file is written via write-to-temp + rename (atomic replace). The files (`orders.json`, `pending-review.json`, `failed.json`, `pending-retry.json`, `last-applied-sequence`) are written sequentially in a fixed order. This isn't cross-file atomic, but crash at any point produces recoverable state: `loadOrders()` on restart re-derives `pending-review.json` from orders (which stages are in review state). `failed.json` is independently durable (not derivable from orders — see failures.go note above). `pending-retry.json` is re-derived only after `Runtime.Recover()` completes and the live-session index is built.
 
 **Test hooks for crash safety**: Verification of crash-window tests requires deterministic mid-operation interruption. Add test seams: (a) a write barrier hook in `flushState()` that tests can inject to simulate crash between file writes; (b) an ack barrier hook in control processing that tests can inject to simulate crash between flush and ack. These are `func()` fields on the Loop struct, nil in production.
 
 **Full mutation call-site inventory** (verify all switch to in-memory): `spawnCook` (`cook.go:105-149`), `advanceAndPersist` (`cook.go:310-334`), `failAndPersist` (`cook.go:338-359`), `steer` → `spawnCook` (`cook.go:743-782`), all control handlers listed above, `rescheduleForChefPrompt` (`schedule.go:206-213`), `consumeOrdersNext` (`orders.go`).
 
-**Internal sequencing**: (a) Add in-memory orders field + `loadOrders()` + `flushOrders()` with write-rename; (b) add command ID tracking + `last-command-id` persistence; (c) migrate `advanceOrder()`/`failStage()` to in-memory mutation; (d) migrate control commands to in-memory mutation (inventory by `applyControlCommand` switch, including cross-file paths); (e) migrate schedule dispatch to write-before-dispatch; (f) add `pendingRetry` persistence; (g) add `flushState()` writing all files at cycle end; (h) add test barrier hooks for crash-window verification.
+**Internal sequencing**: (a) Add in-memory orders field + `loadOrders()` + `flushOrders()` with write-rename; (b) add monotonic command sequence tracking + `last-applied-sequence` persistence; (c) migrate `advanceOrder()`/`failStage()` to in-memory mutation; (d) migrate control commands to in-memory mutation (inventory by `applyControlCommand` switch, including cross-file paths); (e) migrate schedule dispatch to write-before-dispatch; (f) add `pendingRetry` persistence with strict startup recovery barrier (`Recover()` before demotion); (g) add `flushState()` writing all files at cycle end; (h) add test barrier hooks for crash-window verification.
 
 ## Data structures
 
 - No new types. `orderx.OrdersFile` is the existing type, just held in memory instead of read per-operation.
-- `flushState()` writes `orders.json`, `pending-review.json`, `failed.json`, `pending-retry.json`, and `last-command-id` via write-to-temp + rename. Orders file is written first (source of truth). `failed.json` is independently durable.
+- `flushState()` writes `orders.json`, `pending-review.json`, `failed.json`, `pending-retry.json`, and `last-applied-sequence` via write-to-temp + rename. Orders file is written first (source of truth). `failed.json` is independently durable.
 
 ## Routing
 
@@ -72,16 +72,17 @@ Each command mutates `l.orders` in memory. Note: `steer` and `rescheduleForChefP
 
 ### Runtime
 - Integration test: dispatch 5 stages in one cycle, verify only 2 writes to orders.json (1 pre-dispatch flush, 1 cycle-end flush)
-- Kill loop mid-cycle, restart, verify orders recover correctly (stages either pending or adopted)
+- Kill loop mid-cycle, restart, verify orders recover correctly (stages either pending or recovered via `Runtime.Recover()`)
 - Race detector: `go test -race ./loop/...`
 - Test: `consumeOrdersNext()` merges into in-memory state and triggers a flush
 - Test: control `enqueue` command mutates in-memory state, visible in next cycle's dispatch
 - Test: pending-review.json is re-derived from orders.json after crash recovery (stages in review state)
 - Test: failed.json survives crash independently — requeue works even if orders.json was written but failed.json wasn't
-- Test: `"active"` stage with no live session resets to `"pending"` on startup (pendingRetry recovery)
+- Test: `"active"` stage with no recovered live session resets to `"pending"` on startup (pendingRetry recovery)
 - Test: crash between writing orders.json and pending-review.json — startup re-derives pending reviews from orders
 - Test: control command ack happens after flush — crash between mutation and ack replays the command on restart
-- Test: replayed `enqueue` command with already-processed ID is skipped (no duplicate order)
+- Test: replayed `enqueue` command with already-applied sequence is skipped (no duplicate order)
+- Test: crash between `orders.json` and `last-applied-sequence` write replays deterministically without duplicate enqueue
 - Test: merge-advance flushes immediately — crash after merge but before cycle end does NOT leave stage "active"
 - Test: failure flushes immediately — crash after failStage but before cycle end preserves failure metadata for requeue
 - Test: schedule dispatch follows write-before-dispatch — crash after schedule dispatch recoverable via Recover()
