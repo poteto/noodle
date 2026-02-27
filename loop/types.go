@@ -200,8 +200,9 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
-	orders       OrdersFile
-	ordersLoaded bool
+	orders           OrdersFile
+	ordersLoaded     bool
+	schedulePromoted bool // set when consumeOrdersNext promotes after a schedule dispatch
 
 	activeSummary  mise.ActiveSummary
 	recentHistory  []mise.HistoryItem

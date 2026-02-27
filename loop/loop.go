@@ -408,6 +408,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
+		l.schedulePromoted = true
 		if err := l.loadOrdersState(); err != nil {
 			return OrdersFile{}, false, err
 		}

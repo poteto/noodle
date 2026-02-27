@@ -175,11 +175,11 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			l.logger.Info("schedule wrote orders-next before failing, treating as complete", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
-		// consumeOrdersNext merges incoming orders into orders.json without
-		// removing the schedule entry. If non-schedule orders now exist, the
-		// schedule's output was already promoted — clean up the schedule order.
-		orders, readErr := l.currentOrders()
-		if readErr == nil && hasNonScheduleOrders(orders) {
+		// consumeOrdersNext sets schedulePromoted when it promotes
+		// orders-next.json. Only treat the schedule as done if we know
+		// the promotion actually happened — pre-existing non-schedule
+		// orders should not suppress a retry.
+		if l.schedulePromoted {
 			l.logger.Info("schedule already promoted, removing schedule order", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}

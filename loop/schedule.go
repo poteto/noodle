@@ -61,6 +61,7 @@ func scheduleOrder(cfg config.Config, prompt string) Order {
 }
 
 func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resumePrompt string) error {
+	l.schedulePromoted = false // reset: new schedule dispatch invalidates prior promotion
 	name := scheduleOrderID
 	stageIndex, stagePtr := activeStageForOrder(order)
 	if stageIndex < 0 || stagePtr == nil {
