@@ -52,6 +52,15 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Runtime.Default != "tmux" {
 		t.Fatalf("runtime.default = %q, want tmux", config.Runtime.Default)
 	}
+	if config.Runtime.Tmux.MaxConcurrent != 4 {
+		t.Fatalf("runtime.tmux.max_concurrent default = %d, want 4", config.Runtime.Tmux.MaxConcurrent)
+	}
+	if config.Runtime.Sprites.MaxConcurrent != 50 {
+		t.Fatalf("runtime.sprites.max_concurrent default = %d, want 50", config.Runtime.Sprites.MaxConcurrent)
+	}
+	if config.Runtime.Cursor.MaxConcurrent != 10 {
+		t.Fatalf("runtime.cursor.max_concurrent default = %d, want 10", config.Runtime.Cursor.MaxConcurrent)
+	}
 
 	backlog, ok := config.Adapters["backlog"]
 	if !ok {
@@ -598,5 +607,57 @@ func TestSpritesTokenReadsCustomEnvVar(t *testing.T) {
 	cfg := SpritesConfig{TokenEnv: "NOODLE_SPRITES_TOKEN"}
 	if got := cfg.Token(); got != "chosen" {
 		t.Fatalf("token = %q, want chosen", got)
+	}
+}
+
+func TestParsePerRuntimeMaxConcurrent(t *testing.T) {
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[runtime.tmux]
+max_concurrent = 8
+
+[runtime.sprites]
+max_concurrent = 100
+sprite_name = "test"
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if cfg.Runtime.Tmux.MaxConcurrent != 8 {
+		t.Fatalf("runtime.tmux.max_concurrent = %d, want 8", cfg.Runtime.Tmux.MaxConcurrent)
+	}
+	if cfg.Runtime.Sprites.MaxConcurrent != 100 {
+		t.Fatalf("runtime.sprites.max_concurrent = %d, want 100", cfg.Runtime.Sprites.MaxConcurrent)
+	}
+	// Cursor was not set — should get default.
+	if cfg.Runtime.Cursor.MaxConcurrent != 10 {
+		t.Fatalf("runtime.cursor.max_concurrent = %d, want 10", cfg.Runtime.Cursor.MaxConcurrent)
+	}
+}
+
+func TestMaxConcurrentForLookup(t *testing.T) {
+	rc := RuntimeConfig{
+		Tmux:    TmuxConfig{MaxConcurrent: 4},
+		Sprites: SpritesConfig{MaxConcurrent: 50},
+		Cursor:  CursorConfig{MaxConcurrent: 10},
+	}
+	tests := []struct {
+		name string
+		want int
+	}{
+		{"tmux", 4},
+		{"Tmux", 4},
+		{"sprites", 50},
+		{"SPRITES", 50},
+		{"cursor", 10},
+		{"unknown", 0},
+	}
+	for _, tt := range tests {
+		if got := rc.MaxConcurrentFor(tt.name); got != tt.want {
+			t.Errorf("MaxConcurrentFor(%q) = %d, want %d", tt.name, got, tt.want)
+		}
 	}
 }

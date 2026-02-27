@@ -451,6 +451,16 @@ func validateParsedValues(config Config) error {
 		return err
 	}
 
+	if config.Runtime.Tmux.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.tmux.max_concurrent: must be greater than or equal to 0")
+	}
+	if config.Runtime.Sprites.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.sprites.max_concurrent: must be greater than or equal to 0")
+	}
+	if config.Runtime.Cursor.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.cursor.max_concurrent: must be greater than or equal to 0")
+	}
+
 	switch config.Plans.OnDone {
 	case "keep", "remove":
 	default:

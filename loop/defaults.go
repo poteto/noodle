@@ -47,7 +47,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		panic(err)
 	}
 	runtimes := map[string]loopruntime.Runtime{
-		"tmux": loopruntime.NewDispatcherRuntime("tmux", local, runtimeDir),
+		"tmux": loopruntime.NewTmuxRuntime(local, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
 	}
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)
@@ -66,7 +66,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 			if err := factory.Register("sprites", sd); err != nil {
 				panic(err)
 			}
-			runtimes["sprites"] = loopruntime.NewDispatcherRuntime("sprites", sd, runtimeDir)
+			runtimes["sprites"] = loopruntime.NewSpritesRuntime(sd, runtimeDir, cfg.Runtime.Sprites.MaxConcurrent)
 		}
 	}
 

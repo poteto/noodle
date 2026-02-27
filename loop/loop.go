@@ -25,7 +25,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 	if deps.Runtimes == nil && deps.Dispatcher != nil {
 		deps.Runtimes = map[string]loopruntime.Runtime{
-			"tmux": loopruntime.NewDispatcherRuntime("tmux", deps.Dispatcher, runtimeDir),
+			"tmux": loopruntime.NewTmuxRuntime(deps.Dispatcher, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
 		}
 	}
 	if deps.Dispatcher == nil || deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
@@ -57,7 +57,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 	if deps.Runtimes == nil && deps.Dispatcher != nil {
 		deps.Runtimes = map[string]loopruntime.Runtime{
-			"tmux": loopruntime.NewDispatcherRuntime("tmux", deps.Dispatcher, runtimeDir),
+			"tmux": loopruntime.NewTmuxRuntime(deps.Dispatcher, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
 		}
 	}
 	if deps.Now == nil {
@@ -327,6 +327,11 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
 		return err
 	}
+	// Flush all in-memory state to disk at cycle end.
+	if err := l.flushState(); err != nil {
+		return err
+	}
+	l.publishState()
 	return l.stampStatus()
 }
 
