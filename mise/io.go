@@ -8,7 +8,7 @@ import (
 )
 
 func writeBriefAtomic(path string, brief Brief) error {
-	data, err := json.Marshal(brief)
+	data, err := json.MarshalIndent(brief, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode mise json: %w", err)
 	}

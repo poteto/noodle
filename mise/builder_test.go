@@ -121,6 +121,34 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	if _, err := os.Stat(misePath); err != nil {
 		t.Fatalf("mise.json not written: %v", err)
 	}
+
+	// Second build with identical inputs should skip the write.
+	firstInfo, _ := os.Stat(misePath)
+	firstMod := firstInfo.ModTime()
+
+	// Advance the clock so GeneratedAt differs, but content is the same.
+	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 2, 0, 0, time.UTC) }
+	_, _, err = builder.Build(context.Background(), ActiveSummary{
+		Total:     1,
+		ByTaskKey: map[string]int{"execute": 1},
+		ByStatus:  map[string]int{"active": 1},
+		ByRuntime: map[string]int{"tmux": 1},
+	}, []HistoryItem{{
+		SessionID:   "cook-a",
+		OrderID:     "42",
+		TaskKey:     "execute",
+		Status:      "completed",
+		DurationS:   80,
+		CompletedAt: time.Date(2026, 2, 22, 16, 0, 0, 0, time.UTC),
+	}})
+	if err != nil {
+		t.Fatalf("second build: %v", err)
+	}
+
+	secondInfo, _ := os.Stat(misePath)
+	if secondInfo.ModTime() != firstMod {
+		t.Fatal("mise.json rewritten despite no content change")
+	}
 }
 
 func TestAllPlansAppearRegardlessOfBacklogStatus(t *testing.T) {

@@ -1,6 +1,7 @@
 package mise
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,12 +17,13 @@ import (
 )
 
 type Builder struct {
-	projectDir string
-	runtimeDir string
-	config     config.Config
-	runner     *adapter.Runner
-	now        func() time.Time
-	TaskTypes  []TaskTypeSummary
+	projectDir  string
+	runtimeDir  string
+	config      config.Config
+	runner      *adapter.Runner
+	now         func() time.Time
+	TaskTypes   []TaskTypeSummary
+	lastContent []byte // JSON sans GeneratedAt for change detection
 }
 
 func NewBuilder(projectDir string, cfg config.Config) *Builder {
@@ -120,8 +122,18 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 		Warnings:      warnings,
 	}
 
-	if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
-		return Brief{}, warnings, err
+	// Only write when content actually changed (ignore GeneratedAt).
+	cmp := brief
+	cmp.GeneratedAt = time.Time{}
+	content, err := json.Marshal(cmp)
+	if err != nil {
+		return Brief{}, warnings, fmt.Errorf("encode mise json for comparison: %w", err)
+	}
+	if !bytes.Equal(content, b.lastContent) {
+		if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
+			return Brief{}, warnings, err
+		}
+		b.lastContent = content
 	}
 	return brief, warnings, nil
 }
