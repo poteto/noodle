@@ -137,7 +137,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Active:             active,
 		Recent:             recent,
 		Orders:             orders,
-		ActiveOrderIDs:     nonNilStrings(state.ActiveOrderIDs),
+		ActiveOrderIDs:     nonNilStrings(cookingOrderIDs(cookSessionByOrder)),
 		ActionNeeded:       nonNilStrings(state.ActionNeeded),
 		EventsBySession:    map[string][]EventLine{},
 		FeedEvents:         nonNilFeedEvents(feedEvents),
@@ -494,10 +494,22 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 	return events
 }
 
+// cookingOrderIDs returns order IDs that have an active cook session.
+// This is a subset of the loop's ActiveOrderIDs — it excludes orders that are
+// "active" but waiting to be dispatched (no cook yet).
+func cookingOrderIDs(sessionByOrder map[string]string) []string {
+	ids := make([]string, 0, len(sessionByOrder))
+	for orderID := range sessionByOrder {
+		ids = append(ids, orderID)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
 // nonNil helpers ensure slices marshal to [] instead of null in JSON.
 
 func nonNilStrings(s []string) []string {
-	if s == nil {
+	if len(s) == 0 {
 		return []string{}
 	}
 	return append([]string(nil), s...)
