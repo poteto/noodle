@@ -1,4 +1,4 @@
-Back to [[plans/74-vestigial-queue-cleanup/overview]]
+Back to [[archived_plans/74-vestigial-queue-cleanup/overview]]
 
 # Phase 3: Update docs, skills, and brain
 
