@@ -66,7 +66,8 @@ func DetectProvider(line []byte) (string, error) {
 
 	switch probe.Type {
 	case "event_msg", "response_item", "session_meta", "turn_context",
-		"thread.started", "turn.started", "item.started", "item.completed", "compacted":
+		"thread.started", "turn.started", "turn.completed",
+		"item.started", "item.completed", "compacted":
 		return "codex", nil
 	default:
 		// Unknown line types default to Claude format.

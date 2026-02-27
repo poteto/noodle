@@ -16,6 +16,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -463,12 +464,14 @@ func applyFixturePendingRetry(l *Loop, retries []loopFixturePendingRetry) {
 		if orderID == "" {
 			continue
 		}
-		l.pendingRetry[orderID] = &pendingRetryCook{
-			orderID:     orderID,
-			stageIndex:  r.StageIndex,
-			stage:       r.Stage,
+		l.cooks.pendingRetry[orderID] = &pendingRetryCook{
+			cookIdentity: cookIdentity{
+				orderID:    orderID,
+				stageIndex: r.StageIndex,
+				stage:      r.Stage,
+			},
 			isOnFailure: r.IsOnFailure,
-			orderStatus: r.OrderStatus,
+			orderStatus: orderx.OrderStatus(r.OrderStatus),
 			attempt:     r.Attempt,
 			displayName: r.DisplayName,
 		}

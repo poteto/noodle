@@ -92,16 +92,31 @@ func TestProcessWritesStampedAndSidecarEvents(t *testing.T) {
 	}
 }
 
-func TestProcessRejectsInvalidJSONLine(t *testing.T) {
+func TestProcessSkipsNonJSONLines(t *testing.T) {
 	processor := NewProcessor()
-	var stamped bytes.Buffer
-
-	err := processor.Process(context.Background(), strings.NewReader("not-json\n"), &stamped, nil)
-	if err == nil {
-		t.Fatal("expected invalid JSON error")
+	processor.Now = func() time.Time {
+		return time.Date(2026, 2, 22, 17, 0, 0, 0, time.UTC)
 	}
-	if !strings.Contains(err.Error(), "parse JSON object") {
+
+	// Mix of non-JSON banner lines and valid JSON — banners are silently skipped.
+	input := strings.NewReader(strings.Join([]string{
+		"Reading prompt from stdin...",
+		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ok"}]}}`,
+		"some other banner",
+		"",
+	}, "\n"))
+
+	var stamped bytes.Buffer
+	err := processor.Process(context.Background(), input, &stamped, nil)
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(stamped.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 stamped line, got %d: %v", len(lines), lines)
+	}
+	if !strings.Contains(lines[0], `"_ts"`) {
+		t.Fatalf("missing _ts in stamped line: %s", lines[0])
 	}
 }
 

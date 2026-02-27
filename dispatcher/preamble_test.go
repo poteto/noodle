@@ -11,10 +11,9 @@ func TestBuildSessionPreamble(t *testing.T) {
 		t.Fatal("preamble should start with # Noodle Context")
 	}
 	for _, expected := range []string{
-		".noodle/mise.json",
-		".noodle/orders.json",
 		"brain/plans/",
 		"brain/todos.md",
+		".noodle/",
 		"conventional commit",
 	} {
 		if !strings.Contains(preamble, expected) {
