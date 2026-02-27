@@ -25,11 +25,16 @@ var placeholderHTML []byte
 
 // Options configures the HTTP server.
 type Options struct {
-	RuntimeDir string
-	Addr       string // host:port, defaults to "127.0.0.1:0"
-	Now        func() time.Time
-	UI         fs.FS          // embedded SPA assets; nil = placeholder only
-	Config     *config.Config // project config; nil = zero config
+	RuntimeDir        string
+	Addr              string // host:port, defaults to "127.0.0.1:0"
+	Now               func() time.Time
+	UI                fs.FS          // embedded SPA assets; nil = placeholder only
+	Config            *config.Config // project config; nil = zero config
+	LoopStateProvider LoopStateProvider
+}
+
+type LoopStateProvider interface {
+	State() loop.LoopState
 }
 
 // Server serves the web UI API.
@@ -40,6 +45,7 @@ type Server struct {
 	listener   net.Listener
 	sse        *sseHub
 	config     config.Config
+	provider   LoopStateProvider
 	ready      chan struct{}
 }
 
@@ -68,6 +74,7 @@ func New(opts Options) *Server {
 		now:        now,
 		sse:        newSSEHub(),
 		config:     cfg,
+		provider:   opts.LoopStateProvider,
 		ready:      make(chan struct{}),
 	}
 
@@ -113,7 +120,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.listener = ln
 	close(s.ready)
 
-	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now)
+	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now, s.provider)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -148,7 +155,7 @@ func (s *Server) Addr() string {
 func (s *Server) WaitReady() { <-s.ready }
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
-	snap, err := snapshot.LoadSnapshot(s.runtimeDir, s.now())
+	snap, err := s.loadSnapshot()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -162,13 +169,12 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "session ID required", http.StatusBadRequest)
 		return
 	}
-	snap, err := snapshot.LoadSnapshot(s.runtimeDir, s.now())
+	events, err := snapshot.ReadSessionEvents(s.runtimeDir, sessionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	events, ok := snap.EventsBySession[sessionID]
-	if !ok {
+	if len(events) == 0 {
 		writeJSON(w, http.StatusOK, []snapshot.EventLine{})
 		return
 	}
@@ -188,6 +194,13 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, events)
+}
+
+func (s *Server) loadSnapshot() (snapshot.Snapshot, error) {
+	if s.provider == nil {
+		return snapshot.LoadSnapshot(s.runtimeDir, s.now())
+	}
+	return snapshot.LoadSnapshotFromLoopState(s.runtimeDir, s.now(), s.provider.State())
 }
 
 // controlRequest is the JSON body for POST /api/control.

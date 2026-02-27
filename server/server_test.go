@@ -356,7 +356,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	hub.addClient(client)
 
 	// First load should broadcast.
-	hub.loadAndBroadcast(dir, now)
+	hub.loadAndBroadcast(dir, now, nil)
 	select {
 	case msg := <-client.ch:
 		if !strings.Contains(string(msg), "data: ") {
@@ -367,7 +367,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	}
 
 	// Second load with same data should NOT broadcast (diff gating).
-	hub.loadAndBroadcast(dir, now)
+	hub.loadAndBroadcast(dir, now, nil)
 	select {
 	case msg := <-client.ch:
 		t.Fatalf("expected no broadcast on unchanged data, got %s", msg)

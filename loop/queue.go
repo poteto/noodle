@@ -28,6 +28,7 @@ func (l *Loop) stampStatus() error {
 		l.lastStatus.LoopState == status.LoopState &&
 		l.lastStatus.Autonomy == status.Autonomy &&
 		l.lastStatus.MaxCooks == status.MaxCooks {
+		l.publishState()
 		return nil
 	}
 
@@ -35,6 +36,7 @@ func (l *Loop) stampStatus() error {
 		return err
 	}
 	l.lastStatus = status
+	l.publishState()
 	return nil
 }
 

@@ -114,6 +114,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		}
 		return loop.mergeCookWorktree(ctx, req.Cook)
 	})
+	loop.publishState()
 	return loop
 }
 
@@ -290,6 +291,9 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if l.registryStale.Load() {
 		l.rebuildRegistry()
 		l.registryStale.Store(false)
+	}
+	if err := l.loadOrdersState(); err != nil {
+		return err
 	}
 
 	// Snapshot capacity before control commands can mutate it.

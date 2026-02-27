@@ -4,6 +4,7 @@ import { Badge } from "./Badge";
 const STAGE_INDICATOR: Record<StageStatus, { symbol: string; class: string }> = {
   completed: { symbol: "\u2713", class: "text-ngreen" },
   active: { symbol: "\u25CF", class: "text-nyellow" },
+  merging: { symbol: "\u25C9", class: "text-nyellow" },
   pending: { symbol: "\u25CB", class: "text-text-3" },
   failed: { symbol: "\u2717", class: "text-nred" },
   cancelled: { symbol: "\u2013", class: "text-text-3" },
@@ -60,7 +61,7 @@ function StagePipeline({ stages, label }: { stages: Stage[]; label?: string }) {
 /** Find the active stage, or the first pending stage if none active. */
 function currentStage(order: Order): Stage | undefined {
   return (
-    order.stages.find((s) => s.status === "active") ??
+    order.stages.find((s) => s.status === "active" || s.status === "merging") ??
     order.stages.find((s) => s.status === "pending")
   );
 }

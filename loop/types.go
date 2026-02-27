@@ -272,6 +272,7 @@ type Loop struct {
 	recentHistory []mise.HistoryItem
 	sessionHealth map[string]loopruntime.HealthEvent
 	mergeQueue    *MergeQueue
+	publishedState atomic.Pointer[LoopState]
 
 	lastStatus statusfile.Status
 }

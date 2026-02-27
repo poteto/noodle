@@ -73,7 +73,7 @@ func (h *sseHub) broadcast(data []byte) {
 
 // watchAndBroadcast watches the runtime directory for changes and broadcasts
 // snapshot updates to SSE clients. Debounces rapid filesystem events.
-func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now func() time.Time) {
+func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now func() time.Time, provider LoopStateProvider) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return
@@ -97,7 +97,7 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 	pending := false
 
 	// Send initial snapshot.
-	h.loadAndBroadcast(runtimeDir, now)
+	h.loadAndBroadcast(runtimeDir, now, provider)
 
 	for {
 		select {
@@ -123,15 +123,23 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 			// Ignore watch errors.
 		case <-timer.C:
 			pending = false
-			h.loadAndBroadcast(runtimeDir, now)
+			h.loadAndBroadcast(runtimeDir, now, provider)
 		}
 	}
 }
 
 // loadAndBroadcast loads a snapshot, diffs against the last hash, and
 // broadcasts if changed.
-func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time) {
-	snap, err := snapshot.LoadSnapshot(runtimeDir, now())
+func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provider LoopStateProvider) {
+	var (
+		snap snapshot.Snapshot
+		err  error
+	)
+	if provider == nil {
+		snap, err = snapshot.LoadSnapshot(runtimeDir, now())
+	} else {
+		snap, err = snapshot.LoadSnapshotFromLoopState(runtimeDir, now(), provider.State())
+	}
 	if err != nil {
 		return
 	}
@@ -186,7 +194,7 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	defer s.sse.removeClient(client)
 
 	// Send current snapshot immediately.
-	snap, err := snapshot.LoadSnapshot(s.runtimeDir, s.now())
+	snap, err := s.loadSnapshot()
 	if err == nil {
 		data, err := json.Marshal(snap)
 		if err == nil {
