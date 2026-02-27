@@ -10,6 +10,7 @@ import (
 const (
 	StageStatusPending   = "pending"
 	StageStatusActive    = "active"
+	StageStatusMerging   = "merging"
 	StageStatusCompleted = "completed"
 	StageStatusFailed    = "failed"
 	StageStatusCancelled = "cancelled"
@@ -68,7 +69,7 @@ func ValidateOrderStatus(status string) error {
 // ValidateStageStatus returns an error if the stage status is not valid.
 func ValidateStageStatus(status string) error {
 	switch status {
-	case StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled:
+	case StageStatusPending, StageStatusActive, StageStatusMerging, StageStatusCompleted, StageStatusFailed, StageStatusCancelled:
 		return nil
 	case "":
 		return fmt.Errorf("stage status is required")

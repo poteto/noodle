@@ -44,7 +44,7 @@ func activeStageForOrder(order Order) (int, *Stage) {
 	}
 	for i := range stages {
 		switch stages[i].Status {
-		case StageStatusActive, StageStatusPending:
+		case StageStatusActive, StageStatusMerging, StageStatusPending:
 			return i, &stages[i]
 		}
 	}
@@ -215,7 +215,7 @@ func ActiveStageOrderIDs(orders OrdersFile) map[string]struct{} {
 			stages = order.OnFailure
 		}
 		for _, s := range stages {
-			if s.Status == StageStatusActive {
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging {
 				result[order.ID] = struct{}{}
 				break
 			}
@@ -263,10 +263,9 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 			continue
 		}
 
-		// Find first pending stage; skip if current stage is active (already dispatched).
+		// Find first pending stage; skip if current stage is active or merging.
 		for i, s := range stages {
-			if s.Status == StageStatusActive {
-				// Already dispatched — order is busy at stage level.
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging {
 				break
 			}
 			if s.Status == StageStatusPending {
