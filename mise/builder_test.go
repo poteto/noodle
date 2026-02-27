@@ -66,7 +66,7 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 		Total:     1,
 		ByTaskKey: map[string]int{"execute": 1},
 		ByStatus:  map[string]int{"active": 1},
-		ByRuntime: map[string]int{"tmux": 1},
+		ByRuntime: map[string]int{"process": 1},
 	}, []HistoryItem{{
 		SessionID:   "cook-a",
 		OrderID:     "42",
@@ -133,7 +133,7 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 		Total:     1,
 		ByTaskKey: map[string]int{"execute": 1},
 		ByStatus:  map[string]int{"active": 1},
-		ByRuntime: map[string]int{"tmux": 1},
+		ByRuntime: map[string]int{"process": 1},
 	}, []HistoryItem{{
 		SessionID:   "cook-a",
 		OrderID:     "42",

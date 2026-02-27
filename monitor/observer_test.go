@@ -2,52 +2,11 @@ package monitor
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
-
-func TestTmuxObserverDetectsDeadPaneAndLogStats(t *testing.T) {
-	runtimeDir := t.TempDir()
-	sessionID := "cook-a"
-	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
-	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
-		t.Fatalf("mkdir session path: %v", err)
-	}
-
-	canonicalPath := filepath.Join(sessionPath, "canonical.ndjson")
-	content := []byte("{\"type\":\"init\",\"timestamp\":\"2026-02-22T15:00:00Z\"}\n")
-	if err := os.WriteFile(canonicalPath, content, 0o644); err != nil {
-		t.Fatalf("write canonical file: %v", err)
-	}
-
-	observer := NewTmuxObserver(runtimeDir)
-	observer.run = func(name string, args ...string) error {
-		if name != "tmux" {
-			return fmt.Errorf("unexpected command %q", name)
-		}
-		return fmt.Errorf("session missing")
-	}
-
-	observation, err := observer.Observe(sessionID)
-	if err != nil {
-		t.Fatalf("observe session: %v", err)
-	}
-	if observation.Alive {
-		t.Fatal("expected dead pane")
-	}
-	if observation.LogSize == 0 {
-		t.Fatal("expected non-zero log size")
-	}
-	if observation.LogMTime.IsZero() {
-		t.Fatal("expected log mtime")
-	}
-	if observation.LogMTime.After(time.Now().Add(1 * time.Second)) {
-		t.Fatalf("unexpected mtime in future: %v", observation.LogMTime)
-	}
-}
 
 func TestHeartbeatObserverAliveWhenFresh(t *testing.T) {
 	runtimeDir := t.TempDir()
@@ -140,19 +99,19 @@ func (o *countingObserver) Observe(sessionID string) (Observation, error) {
 
 func TestCompositeObserverRoutesByRuntime(t *testing.T) {
 	runtimeDir := t.TempDir()
-	sessionTmux := "cook-local"
+	sessionLocal := "cook-local"
 	sessionRemote := "cook-remote"
-	for _, sessionID := range []string{sessionTmux, sessionRemote} {
+	for _, sessionID := range []string{sessionLocal, sessionRemote} {
 		if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", sessionID), 0o755); err != nil {
 			t.Fatalf("mkdir session path: %v", err)
 		}
 	}
 	if err := os.WriteFile(
-		filepath.Join(runtimeDir, "sessions", sessionTmux, "spawn.json"),
-		[]byte(`{"runtime":"tmux"}`),
+		filepath.Join(runtimeDir, "sessions", sessionLocal, "spawn.json"),
+		[]byte(`{"runtime":"process"}`),
 		0o644,
 	); err != nil {
-		t.Fatalf("write tmux spawn: %v", err)
+		t.Fatalf("write local spawn: %v", err)
 	}
 	if err := os.WriteFile(
 		filepath.Join(runtimeDir, "sessions", sessionRemote, "spawn.json"),
@@ -162,19 +121,19 @@ func TestCompositeObserverRoutesByRuntime(t *testing.T) {
 		t.Fatalf("write remote spawn: %v", err)
 	}
 
-	tmuxObserver := &countingObserver{}
+	localObserver := &countingObserver{}
 	remoteObserver := &countingObserver{}
-	composite := NewCompositeObserver(runtimeDir, tmuxObserver, remoteObserver)
+	composite := NewCompositeObserver(runtimeDir, localObserver, remoteObserver)
 
-	if _, err := composite.Observe(sessionTmux); err != nil {
-		t.Fatalf("observe tmux: %v", err)
+	if _, err := composite.Observe(sessionLocal); err != nil {
+		t.Fatalf("observe local: %v", err)
 	}
 	if _, err := composite.Observe(sessionRemote); err != nil {
 		t.Fatalf("observe remote: %v", err)
 	}
 
-	if len(tmuxObserver.calls) != 1 || tmuxObserver.calls[0] != sessionTmux {
-		t.Fatalf("tmux observer calls = %#v", tmuxObserver.calls)
+	if len(localObserver.calls) != 1 || localObserver.calls[0] != sessionLocal {
+		t.Fatalf("local observer calls = %#v", localObserver.calls)
 	}
 	if len(remoteObserver.calls) != 1 || remoteObserver.calls[0] != sessionRemote {
 		t.Fatalf("remote observer calls = %#v", remoteObserver.calls)
@@ -192,14 +151,14 @@ func TestCompositeObserverCachesRoutingDecision(t *testing.T) {
 		t.Fatalf("write spawn: %v", err)
 	}
 
-	tmuxObserver := &countingObserver{}
+	localObserver := &countingObserver{}
 	remoteObserver := &countingObserver{}
-	composite := NewCompositeObserver(runtimeDir, tmuxObserver, remoteObserver)
+	composite := NewCompositeObserver(runtimeDir, localObserver, remoteObserver)
 
 	if _, err := composite.Observe(sessionID); err != nil {
 		t.Fatalf("first observe: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(`{"runtime":"tmux"}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(`{"runtime":"process"}`), 0o644); err != nil {
 		t.Fatalf("rewrite spawn: %v", err)
 	}
 	if _, err := composite.Observe(sessionID); err != nil {
@@ -209,7 +168,7 @@ func TestCompositeObserverCachesRoutingDecision(t *testing.T) {
 	if len(remoteObserver.calls) != 2 {
 		t.Fatalf("remote observer calls = %#v, want 2", remoteObserver.calls)
 	}
-	if len(tmuxObserver.calls) != 0 {
-		t.Fatalf("tmux observer calls = %#v, want none", tmuxObserver.calls)
+	if len(localObserver.calls) != 0 {
+		t.Fatalf("local observer calls = %#v, want none", localObserver.calls)
 	}
 }

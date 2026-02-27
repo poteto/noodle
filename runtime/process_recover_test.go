@@ -110,7 +110,7 @@ func TestProcessRuntimeRecoverDeadPIDUpdatesMetaToExited(t *testing.T) {
 
 func TestProcessRuntimeRecoverSkipsNoProcessJSON(t *testing.T) {
 	runtimeDir := t.TempDir()
-	sessionID := "cook-tmux-only"
+	sessionID := "cook-no-process-json"
 	sessionDir := filepath.Join(runtimeDir, "sessions", sessionID)
 	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

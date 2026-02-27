@@ -31,7 +31,7 @@ func (l *Loop) trackCookStarted(cook *cookHandle) {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
 	}
 	if runtimeName == "" {
-		runtimeName = "tmux"
+		runtimeName = "process"
 	}
 
 	l.activeSummary.Total++
@@ -54,7 +54,7 @@ func (l *Loop) trackCookCompleted(cook *cookHandle, result StageResult) {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
 	}
 	if runtimeName == "" {
-		runtimeName = "tmux"
+		runtimeName = "process"
 	}
 
 	if l.activeSummary.Total > 0 {

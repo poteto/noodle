@@ -23,7 +23,7 @@ func TestWritePendingRetryPersistsFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -96,7 +96,7 @@ func TestLoadPendingRetryHydratesState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -142,7 +142,7 @@ func TestReconcilePendingRetryPrunesRemovedOrders(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -183,7 +183,7 @@ func TestReconcilePendingRetryPrunesAdoptedSessions(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -245,7 +245,7 @@ func TestLoadPendingRetryReconcileDuringStartup(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -285,7 +285,7 @@ func TestLoadPendingRetryCorruptFileStartsFresh(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

@@ -134,7 +134,7 @@ func TestCycleSpawnsCookFromOrders(t *testing.T) {
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{},
@@ -175,7 +175,7 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -214,7 +214,7 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{createErr: errors.New("worktree '42' already exists at " + existingWorktree)}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -254,7 +254,7 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 	rt.dispatchErr = errors.New("spawn failed")
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -290,7 +290,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	rt.dispatchErr = errors.New("spawn failed")
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -342,7 +342,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	ar := &fakeAdapterRunner{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -388,7 +388,7 @@ func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -427,7 +427,7 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 	fm := &fakeMise{}
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       fm,
@@ -474,7 +474,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -566,7 +566,7 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -614,7 +614,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -676,7 +676,7 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -710,7 +710,7 @@ func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise: &fakeMise{brief: mise.Brief{
@@ -836,18 +836,6 @@ func TestReadSessionTargetDetectsSchedulePrompt(t *testing.T) {
 	}
 }
 
-func TestTmuxSessionNameMatchesSanitizedLength(t *testing.T) {
-	sessionID := strings.Repeat("A", 80) + "-with spaces"
-	name := loopruntime.TmuxSessionName(sessionID)
-	if !strings.HasPrefix(name, "noodle-") {
-		t.Fatalf("unexpected prefix: %q", name)
-	}
-	token := strings.TrimPrefix(name, "noodle-")
-	if len(token) > 48 {
-		t.Fatalf("token too long: %d", len(token))
-	}
-}
-
 func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -871,7 +859,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	cfg.Concurrency.MaxCooks = 1
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -907,7 +895,7 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "approve"
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -946,7 +934,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "auto"
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1009,7 +997,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1062,7 +1050,7 @@ func TestMergeCookWorktreeUsesRemoteBranchSyncResult(t *testing.T) {
 
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1096,7 +1084,7 @@ func TestMergeCookWorktreeFallsBackToLocalMerge(t *testing.T) {
 
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1139,7 +1127,7 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1203,7 +1191,7 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	ar := &fakeAdapterRunner{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1250,7 +1238,7 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1309,7 +1297,7 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1363,7 +1351,7 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1441,7 +1429,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	cfg.Recovery.MaxRetries = 3
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 29, Status: "open", Title: "Test", Directory: "test"}}}},
@@ -1487,12 +1475,18 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		t.Fatalf("write adopted prompt: %v", err)
 	}
 
+	// Write process.json so PID-based liveness check works.
+	procMeta, _ := json.Marshal(map[string]any{
+		"pid":        os.Getpid(),
+		"session_id": schedSessID,
+		"started_at": time.Now().UTC().Format(time.RFC3339),
+	})
+	if err := os.WriteFile(filepath.Join(schedSessionDir, "process.json"), procMeta, 0o644); err != nil {
+		t.Fatalf("write process.json: %v", err)
+	}
+
 	l.cooks.adoptedTargets["schedule"] = schedSessID
 	l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, schedSessID)
-
-	// Install tmux stub so refreshAdoptedTargets doesn't drop the session
-	// before collectAdoptedCompletions processes it.
-	installFixtureTmuxStub(t, []string{loopruntime.TmuxSessionName(schedSessID)})
 
 	// Run completion drain (which includes collectAdoptedCompletions).
 	// The adopted schedule session is "failed", so handleCompletion → retryCook.
@@ -1530,7 +1524,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	// Call 0: cycle 1 spawns "37" → succeeds
 	// Call 1: cycle 2 retry of "37" → fails (transient dispatch error)
 	// Call 2+: cycle 3 onward → succeeds
-	failAt := map[int]error{1: errors.New("tmux unavailable")}
+	failAt := map[int]error{1: errors.New("dispatch unavailable")}
 	rt := newMockRuntime()
 	callCount := 0
 	rt.dispatchHook = func(req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
@@ -1549,7 +1543,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	cfg.Recovery.MaxRetries = 3
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 37, Status: "open", Title: "Test", Directory: "test"}}}},
@@ -1618,7 +1612,7 @@ func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1678,7 +1672,7 @@ func TestPersistMergeMetadataRemoteMode(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1742,7 +1736,7 @@ func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1791,7 +1785,7 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1833,7 +1827,7 @@ func TestReconcileMergingStagesNoMergingStagesIsNoop(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

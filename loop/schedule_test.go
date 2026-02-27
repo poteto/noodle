@@ -158,7 +158,7 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

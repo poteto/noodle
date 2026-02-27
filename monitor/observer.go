@@ -4,55 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/poteto/noodle/internal/shellx"
 )
-
-type commandRunner func(name string, args ...string) error
-
-type TmuxObserver struct {
-	runtimeDir string
-	run        commandRunner
-}
-
-func NewTmuxObserver(runtimeDir string) *TmuxObserver {
-	return &TmuxObserver{
-		runtimeDir: strings.TrimSpace(runtimeDir),
-		run: func(name string, args ...string) error {
-			return exec.Command(name, args...).Run()
-		},
-	}
-}
-
-func (o *TmuxObserver) Observe(sessionID string) (Observation, error) {
-	sessionID = strings.TrimSpace(sessionID)
-	if sessionID == "" {
-		return Observation{}, fmt.Errorf("session ID is required")
-	}
-	if o.runtimeDir == "" {
-		return Observation{}, fmt.Errorf("runtime directory is required")
-	}
-
-	obs, err := canonicalLogObservation(o.runtimeDir, sessionID)
-	if err != nil {
-		return Observation{}, err
-	}
-
-	tmuxName := monitorTmuxName(sessionID)
-	if err := o.run("tmux", "has-session", "-t", tmuxName); err == nil {
-		obs.Alive = true
-	}
-	return obs, nil
-}
-
-func monitorTmuxName(sessionID string) string {
-	return "noodle-" + shellx.SanitizeToken(sessionID, "cook")
-}
 
 type HeartbeatObserver struct {
 	runtimeDir string
@@ -105,17 +61,17 @@ func (o *HeartbeatObserver) Observe(sessionID string) (Observation, error) {
 
 type CompositeObserver struct {
 	runtimeDir string
-	tmux       Observer
+	local      Observer
 	remote     Observer
 
 	mu    sync.RWMutex
 	cache map[string]Observer
 }
 
-func NewCompositeObserver(runtimeDir string, tmux Observer, remote Observer) *CompositeObserver {
+func NewCompositeObserver(runtimeDir string, local Observer, remote Observer) *CompositeObserver {
 	return &CompositeObserver{
 		runtimeDir: strings.TrimSpace(runtimeDir),
-		tmux:       tmux,
+		local:      local,
 		remote:     remote,
 		cache:      map[string]Observer{},
 	}
@@ -137,7 +93,7 @@ func (o *CompositeObserver) observerForSession(sessionID string) (Observer, erro
 	if o.runtimeDir == "" {
 		return nil, fmt.Errorf("runtime directory is required")
 	}
-	if o.tmux == nil || o.remote == nil {
+	if o.local == nil || o.remote == nil {
 		return nil, fmt.Errorf("composite observer not configured")
 	}
 
@@ -148,9 +104,9 @@ func (o *CompositeObserver) observerForSession(sessionID string) (Observer, erro
 		return cached, nil
 	}
 
-	selected := o.tmux
+	selected := o.local
 	if runtime, err := readSessionRuntime(o.runtimeDir, sessionID); err == nil {
-		if runtime != "" && runtime != "tmux" {
+		if runtime != "" && runtime != "process" && runtime != "tmux" {
 			selected = o.remote
 		}
 	}
@@ -178,7 +134,7 @@ func readSessionRuntime(runtimeDir, sessionID string) (string, error) {
 func normalizeObserverRuntime(runtime string) string {
 	runtime = strings.ToLower(strings.TrimSpace(runtime))
 	if runtime == "" {
-		return "tmux"
+		return "process"
 	}
 	return runtime
 }

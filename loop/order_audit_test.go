@@ -35,7 +35,7 @@ func TestRegistryErrorResilience(t *testing.T) {
 		registry:    taskreg.NewFromSkills(nil),
 		registryErr: registryErr,
 		deps: Dependencies{
-			Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+			Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 			Worktree:   &fakeWorktree{},
 			Adapter:    &fakeAdapterRunner{},
 			Mise:       &fakeMise{},
@@ -176,7 +176,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 		deps: Dependencies{
-			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+			Runtimes:       map[string]loopruntime.Runtime{"process": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},
@@ -275,7 +275,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 		deps: Dependencies{
-			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+			Runtimes:       map[string]loopruntime.Runtime{"process": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},

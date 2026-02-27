@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -165,7 +164,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 
 			l := New(projectDir, "noodle", baseCfg, Dependencies{
-				Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+				Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 				Worktree:   wt,
 				Adapter:    &fakeAdapterRunner{},
 				Mise:       &fakeMise{results: miseResults},
@@ -285,7 +284,6 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 	if len(targets) == 0 {
 		return
 	}
-	sessionNames := make([]string, 0, len(targets))
 	for _, target := range targets {
 		targetID := strings.TrimSpace(target.ID)
 		sessionID := strings.TrimSpace(target.SessionID)
@@ -294,7 +292,6 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 		}
 		l.cooks.adoptedTargets[targetID] = sessionID
 		l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, sessionID)
-		sessionNames = append(sessionNames, loopruntime.TmuxSessionName(sessionID))
 
 		sessionDir := filepath.Join(l.runtimeDir, "sessions", sessionID)
 		if err := os.MkdirAll(sessionDir, 0o755); err != nil {
@@ -313,74 +310,6 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 			t.Fatalf("write adopted session process.json %s: %v", sessionDir, err)
 		}
 	}
-	if len(sessionNames) == 0 {
-		return
-	}
-	installFixtureTmuxStub(t, sessionNames)
-}
-
-func installFixtureTmuxStub(t *testing.T, sessionNames []string) {
-	t.Helper()
-	binDir := t.TempDir()
-	if err := os.MkdirAll(binDir, 0o755); err != nil {
-		t.Fatalf("mkdir tmux stub dir %s: %v", binDir, err)
-	}
-
-	tmuxPath := filepath.Join(binDir, "tmux")
-	content := fixtureTmuxScript(sessionNames)
-	mode := os.FileMode(0o755)
-	if runtime.GOOS == "windows" {
-		tmuxPath = filepath.Join(binDir, "tmux.bat")
-		content = fixtureTmuxBatchScript(sessionNames)
-		mode = 0o644
-	}
-	if err := os.WriteFile(tmuxPath, []byte(content), mode); err != nil {
-		t.Fatalf("write tmux stub %s: %v", tmuxPath, err)
-	}
-	currentPath := os.Getenv("PATH")
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+currentPath)
-}
-
-func fixtureTmuxScript(sessionNames []string) string {
-	var body strings.Builder
-	body.WriteString("#!/bin/sh\n")
-	body.WriteString("if [ \"$1\" = \"list-sessions\" ]; then\n")
-	for _, name := range sessionNames {
-		trimmed := strings.TrimSpace(name)
-		if trimmed == "" {
-			continue
-		}
-		body.WriteString("  printf '%s\\n' '")
-		body.WriteString(strings.ReplaceAll(trimmed, "'", "'\\''"))
-		body.WriteString("'\n")
-	}
-	body.WriteString("  exit 0\n")
-	body.WriteString("fi\n")
-	body.WriteString("if [ \"$1\" = \"kill-session\" ]; then\n")
-	body.WriteString("  exit 0\n")
-	body.WriteString("fi\n")
-	body.WriteString("exit 0\n")
-	return body.String()
-}
-
-func fixtureTmuxBatchScript(sessionNames []string) string {
-	var body strings.Builder
-	body.WriteString("@echo off\r\n")
-	body.WriteString("if \"%1\"==\"list-sessions\" (\r\n")
-	for _, name := range sessionNames {
-		trimmed := strings.TrimSpace(name)
-		if trimmed == "" {
-			continue
-		}
-		body.WriteString("  echo ")
-		body.WriteString(trimmed)
-		body.WriteString("\r\n")
-	}
-	body.WriteString("  exit /b 0\r\n")
-	body.WriteString(")\r\n")
-	body.WriteString("if \"%1\"==\"kill-session\" exit /b 0\r\n")
-	body.WriteString("exit /b 0\r\n")
-	return body.String()
 }
 
 func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) {

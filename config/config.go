@@ -91,8 +91,8 @@ type AgentsConfig struct {
 
 // RuntimeConfig controls the default runtime for spawned cook sessions.
 type RuntimeConfig struct {
-	Default string        `toml:"default"` // runtime kind, defaults to tmux
-	Tmux    TmuxConfig    `toml:"tmux"`
+	Default string        `toml:"default"` // runtime kind, defaults to process
+	Process ProcessConfig `toml:"process"`
 	Sprites SpritesConfig `toml:"sprites"`
 	Cursor  CursorConfig  `toml:"cursor"`
 
@@ -104,8 +104,8 @@ type RuntimeConfig struct {
 // Returns 0 when unlimited (no per-runtime cap; the global MaxCooks ceiling applies).
 func (c RuntimeConfig) MaxConcurrentFor(name string) int {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "tmux":
-		return c.Tmux.MaxConcurrent
+	case "process":
+		return c.Process.MaxConcurrent
 	case "sprites":
 		return c.Sprites.MaxConcurrent
 	case "cursor":
@@ -115,7 +115,7 @@ func (c RuntimeConfig) MaxConcurrentFor(name string) int {
 	}
 }
 
-type TmuxConfig struct {
+type ProcessConfig struct {
 	MaxConcurrent int `toml:"max_concurrent"`
 }
 
@@ -163,7 +163,7 @@ type ConfigDiagnostic struct {
 
 const (
 	DiagnosticCodeRoutingDefaultsMissing = "routing_defaults_missing"
-	DiagnosticCodeRuntimeTmuxMissing     = "runtime_tmux_missing"
+	DiagnosticCodeRuntimeProcessMissing  = "runtime_process_missing"
 	DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
 	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
@@ -232,8 +232,8 @@ func DefaultConfig() Config {
 		},
 		Agents: AgentsConfig{},
 		Runtime: RuntimeConfig{
-			Default: "tmux",
-			Tmux:    TmuxConfig{MaxConcurrent: 4},
+			Default: "process",
+			Process: ProcessConfig{MaxConcurrent: 4},
 			Sprites: SpritesConfig{MaxConcurrent: 50},
 			Cursor:  CursorConfig{MaxConcurrent: 10},
 		},
@@ -348,10 +348,10 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	config.Runtime.spritesDefined = metadata.IsDefined("runtime", "sprites")
 	config.Runtime.cursorDefined = metadata.IsDefined("runtime", "cursor")
 	if !metadata.IsDefined("runtime", "default") {
-		config.Runtime.Default = "tmux"
+		config.Runtime.Default = "process"
 	}
-	if !metadata.IsDefined("runtime", "tmux", "max_concurrent") {
-		config.Runtime.Tmux.MaxConcurrent = 4
+	if !metadata.IsDefined("runtime", "process", "max_concurrent") {
+		config.Runtime.Process.MaxConcurrent = 4
 	}
 	if !metadata.IsDefined("runtime", "sprites", "max_concurrent") {
 		config.Runtime.Sprites.MaxConcurrent = 50
@@ -451,8 +451,8 @@ func validateParsedValues(config Config) error {
 		return err
 	}
 
-	if config.Runtime.Tmux.MaxConcurrent < 0 {
-		return fmt.Errorf("runtime.tmux.max_concurrent: must be greater than or equal to 0")
+	if config.Runtime.Process.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.process.max_concurrent: must be greater than or equal to 0")
 	}
 	if config.Runtime.Sprites.MaxConcurrent < 0 {
 		return fmt.Errorf("runtime.sprites.max_concurrent: must be greater than or equal to 0")
@@ -553,15 +553,7 @@ func Validate(config Config) ValidationResult {
 		})
 	}
 
-	if _, err := lookPath("tmux"); err != nil {
-		result.Diagnostics = append(result.Diagnostics, ConfigDiagnostic{
-			FieldPath: "runtime.tmux",
-			Message:   "tmux is not available on PATH",
-			Severity:  DiagnosticSeverityFatal,
-			Fix:       "Install tmux and ensure it is available on PATH.",
-			Code:      DiagnosticCodeRuntimeTmuxMissing,
-		})
-	}
+	// No PATH check needed for process runtime — it uses direct child processes.
 
 	appendAgentDirDiagnostic := func(fieldPath, value string) {
 		if value == "" {
@@ -665,7 +657,7 @@ func (c Config) PendingApproval() bool {
 }
 
 func (c Config) AvailableRuntimes() []string {
-	available := []string{"tmux"}
+	available := []string{"process"}
 	if c.Runtime.spritesDefined && c.Runtime.Sprites.Token() != "" {
 		available = append(available, "sprites")
 	}

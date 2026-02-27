@@ -22,7 +22,7 @@ type DispatcherRuntime struct {
 func NewDispatcherRuntime(name string, d dispatcher.Dispatcher, runtimeDir string) *DispatcherRuntime {
 	name = strings.ToLower(strings.TrimSpace(name))
 	if name == "" {
-		name = "tmux"
+		name = "process"
 	}
 	return &DispatcherRuntime{
 		name:       name,

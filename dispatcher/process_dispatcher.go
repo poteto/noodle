@@ -26,7 +26,7 @@ type ProcessDispatcherConfig struct {
 }
 
 // ProcessDispatcher dispatches provider sessions as direct child processes
-// with bidirectional pipes. Replaces TmuxDispatcher.
+// with bidirectional pipes. Replaces the tmux-based dispatcher.
 type ProcessDispatcher struct {
 	projectDir      string
 	runtimeDir      string

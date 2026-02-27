@@ -36,7 +36,7 @@ func TestRunDispatchBuildsRequestFromDefaults(t *testing.T) {
 	fake := &fakeDispatchCommandDispatcher{
 		session: fakeSession{id: "session-123"},
 	}
-	newDispatchCommandDispatcher = func(_ dispatcher.TmuxDispatcherConfig) dispatchCommandDispatcher {
+	newDispatchCommandDispatcher = func(_ dispatcher.ProcessDispatcherConfig) dispatchCommandDispatcher {
 		return fake
 	}
 

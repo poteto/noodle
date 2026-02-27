@@ -223,7 +223,7 @@ func (s *spritesSession) consumeCanonicalLine(line []byte) {
 		TokensOut: ce.TokensOut,
 	})
 
-	// Write to event log (reuse tmuxSession's eventFromCanonical).
+	// Write to event log.
 	if s.eventWriter != nil {
 		if record, ok := eventFromCanonical(s.id, ce); ok {
 			if err := s.eventWriter.Append(context.Background(), record); err != nil {

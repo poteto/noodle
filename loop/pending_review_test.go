@@ -24,7 +24,7 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -90,7 +90,7 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -132,7 +132,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 2
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

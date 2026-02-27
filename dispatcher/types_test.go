@@ -76,7 +76,7 @@ func TestDispatchRequestValidate(t *testing.T) {
 	}
 }
 
-func TestDispatchRequestValidateAcceptsNonTmuxProvider(t *testing.T) {
+func TestDispatchRequestValidateAcceptsNonProcessProvider(t *testing.T) {
 	req := DispatchRequest{
 		Name:         "cook-a",
 		Prompt:       "Say ok",

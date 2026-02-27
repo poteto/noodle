@@ -79,7 +79,7 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -129,7 +129,7 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -168,7 +168,7 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -216,7 +216,7 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -265,7 +265,7 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -324,7 +324,7 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -398,7 +398,7 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),

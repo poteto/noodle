@@ -58,7 +58,7 @@ func Commands() []Command {
 			{Name: "output", Short: "o", Type: "string", Desc: "Output path for stamped NDJSON"},
 			{Name: "events", Type: "string", Desc: "Output path for canonical sidecar events"},
 		}},
-		{Name: "dispatch", Short: "Dispatch a cook session in tmux", Flags: []Flag{
+		{Name: "dispatch", Short: "Dispatch a cook session as a child process", Flags: []Flag{
 			{Name: "name", Type: "string", Default: "cook", Desc: "Session name"},
 			{Name: "prompt", Type: "string", Desc: "Prompt text for the dispatched session"},
 			{Name: "provider", Type: "string", Desc: "Provider (claude or codex)"},

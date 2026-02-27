@@ -27,12 +27,6 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 		t.Fatalf("build noodle: %v\n%s", err, out)
 	}
 
-	// Create a fake tmux so the binary doesn't fail on tmux check
-	fakeTmux := filepath.Join(binDir, "tmux")
-	if err := os.WriteFile(fakeTmux, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("write fake tmux: %v", err)
-	}
-
 	// Run in a fresh temp directory with a git repo (worktrees need one)
 	projectDir := t.TempDir()
 	gitInit := exec.Command("git", "init")
@@ -111,54 +105,14 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 	}
 }
 
-// TestCLIIntegrationStartNoTmux verifies that noodle start fails with a
-// diagnostic when tmux is missing.
-func TestCLIIntegrationStartNoTmux(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-
-	// Build the binary
-	binDir := t.TempDir()
-	binPath := filepath.Join(binDir, "noodle")
-	build := exec.Command("go", "build", "-o", binPath, ".")
-	build.Dir = findProjectRoot(t)
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build noodle: %v\n%s", err, out)
-	}
-
-	// Run with a PATH that does NOT include tmux
-	projectDir := t.TempDir()
-	cmd := exec.Command(binPath, "start", "--once")
-	cmd.Dir = projectDir
-	cmd.Env = append(os.Environ(), "PATH="+binDir)
-
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		t.Fatal("expected non-zero exit when tmux is missing")
-	}
-	if !strings.Contains(string(output), "tmux") {
-		t.Fatalf("expected tmux diagnostic in output, got:\n%s", output)
-	}
-}
-
 // TestScaffoldedConfigValidation verifies the scaffolded config produces
-// no diagnostics at all (no fatals, no repairables). Uses a fake tmux on
-// PATH so the result is deterministic regardless of host environment.
+// no diagnostics at all (no fatals, no repairables).
 func TestScaffoldedConfigValidation(t *testing.T) {
 	dir := t.TempDir()
 	var buf strings.Builder
 	if err := startup.EnsureProjectStructure(dir, &buf); err != nil {
 		t.Fatalf("scaffold: %v", err)
 	}
-
-	// Stub tmux so the diagnostic is never environment-dependent.
-	fakeBin := t.TempDir()
-	fakeTmux := filepath.Join(fakeBin, "tmux")
-	if err := os.WriteFile(fakeTmux, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("write fake tmux: %v", err)
-	}
-	t.Setenv("PATH", fakeBin+":"+os.Getenv("PATH"))
 
 	origDir, _ := os.Getwd()
 	if err := os.Chdir(dir); err != nil {

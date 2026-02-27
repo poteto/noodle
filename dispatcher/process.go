@@ -14,7 +14,7 @@ import (
 )
 
 // ProcessHandle wraps an os/exec.Cmd with lifecycle primitives for child
-// process management. It replaces what tmux provided: process isolation,
+// process management. It replaces what the tmux dispatcher provided: process isolation,
 // liveness checking, and graceful shutdown.
 type ProcessHandle struct {
 	cmd *exec.Cmd

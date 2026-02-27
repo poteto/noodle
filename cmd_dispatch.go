@@ -15,8 +15,8 @@ type dispatchCommandDispatcher interface {
 	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
 }
 
-var newDispatchCommandDispatcher = func(config dispatcher.TmuxDispatcherConfig) dispatchCommandDispatcher {
-	return dispatcher.NewTmuxDispatcher(config)
+var newDispatchCommandDispatcher = func(config dispatcher.ProcessDispatcherConfig) dispatchCommandDispatcher {
+	return dispatcher.NewProcessDispatcher(config)
 }
 
 type envFlag map[string]string
@@ -128,7 +128,7 @@ func runDispatch(ctx context.Context, app *App, args dispatchArgs) error {
 		return err
 	}
 
-	s := newDispatchCommandDispatcher(dispatcher.TmuxDispatcherConfig{
+	s := newDispatchCommandDispatcher(dispatcher.ProcessDispatcherConfig{
 		ProjectDir:      cwd,
 		RuntimeDir:      runtimeDir,
 		NoodleBin:       noodleBin,

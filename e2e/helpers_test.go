@@ -176,7 +176,7 @@ edit = ".noodle/adapters/backlog-edit"
 max_cooks = 1
 
 [runtime]
-default = "tmux"
+default = "process"
 
 [server]
 enabled = true
@@ -312,37 +312,13 @@ func sessionCompleted(projectDir string) (bool, error) {
 	return false, nil
 }
 
-// cleanupNoodle kills a noodle process and any leaked tmux sessions.
-func cleanupNoodle(t *testing.T, cmd *exec.Cmd, projectDir string) {
+// cleanupNoodle kills a noodle process.
+func cleanupNoodle(t *testing.T, cmd *exec.Cmd, _ string) {
 	t.Helper()
 	if cmd != nil && cmd.Process != nil {
 		t.Logf("killing noodle process (pid %d)", cmd.Process.Pid)
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-	}
-	// Kill leaked tmux sessions matching the project prefix.
-	killLeakedTmux(t, projectDir)
-}
-
-// killLeakedTmux kills any tmux sessions that contain the project directory
-// in their name. Best-effort; ignores errors.
-func killLeakedTmux(t *testing.T, projectDir string) {
-	t.Helper()
-	out, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").CombinedOutput()
-	if err != nil {
-		return // tmux not running or no sessions
-	}
-	base := filepath.Base(projectDir)
-	for _, line := range strings.Split(string(out), "\n") {
-		name := strings.TrimSpace(line)
-		if name == "" {
-			continue
-		}
-		// Kill sessions that look like they belong to our test project.
-		if strings.Contains(name, base) || strings.HasPrefix(name, "noodle-") {
-			t.Logf("killing leaked tmux session: %s", name)
-			_ = exec.Command("tmux", "kill-session", "-t", name).Run()
-		}
 	}
 }
 

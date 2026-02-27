@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -49,7 +50,7 @@ func (p *processRuntime) Recover(_ context.Context) ([]RecoveredSession, error) 
 
 		pid, err := readRecoverPID(sessionDir)
 		if err != nil {
-			// No process.json — skip (could be a tmux session).
+			// No process.json — skip.
 			continue
 		}
 
@@ -112,4 +113,60 @@ func recoverPIDAlive(pid int) bool {
 		return true
 	}
 	return false
+}
+
+// recoveredSessionHandle represents a session discovered during crash recovery.
+type recoveredSessionHandle struct {
+	id     string
+	status string
+}
+
+func (s *recoveredSessionHandle) ID() string          { return s.id }
+func (s *recoveredSessionHandle) Status() string      { return s.status }
+func (s *recoveredSessionHandle) TotalCost() float64  { return 0 }
+func (s *recoveredSessionHandle) Kill() error         { return nil }
+func (s *recoveredSessionHandle) VerdictPath() string { return "" }
+func (s *recoveredSessionHandle) Controller() AgentController {
+	return dispatcher.NoopController()
+}
+
+func (s *recoveredSessionHandle) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
+// scheduleOrderID is the well-known order ID for the scheduler session.
+const scheduleOrderID = "schedule"
+
+// Prompt parsing patterns for extracting order IDs from session prompts.
+var (
+	promptOrderRegexp    = regexp.MustCompile(`(?im)^\[order:([^\]]+)\]`)
+	promptItemRegexp     = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
+	schedulePromptRegexp = regexp.MustCompile(`(?im)^\s*use skill\([^)]+\)\s+to refresh .+from \.noodle/mise\.json\.`)
+)
+
+// ReadSessionTarget extracts the order ID from a session's prompt file.
+func ReadSessionTarget(promptPath string) string {
+	data, err := os.ReadFile(promptPath)
+	if err != nil {
+		return ""
+	}
+
+	// Try new format first: [order:ID]
+	orderMatches := promptOrderRegexp.FindStringSubmatch(string(data))
+	if len(orderMatches) == 2 {
+		return strings.TrimSpace(orderMatches[1])
+	}
+
+	// Old format: Work backlog item <id>
+	matches := promptItemRegexp.FindStringSubmatch(string(data))
+	if len(matches) == 2 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	if schedulePromptRegexp.Match(data) {
+		return scheduleOrderID
+	}
+	return ""
 }

@@ -24,7 +24,7 @@ func BenchmarkPlanCycleSpawnsScale(b *testing.B) {
 			}
 
 			l := New(b.TempDir(), "noodle", config.DefaultConfig(), Dependencies{
-				Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+				Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 				Worktree:   &fakeWorktree{},
 				Adapter:    &fakeAdapterRunner{},
 				Mise:       &fakeMise{},
@@ -70,10 +70,10 @@ func benchCycleDispatch(b *testing.B, orderCount int) {
 
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = orderCount
-	cfg.Runtime.Tmux.MaxConcurrent = orderCount
+	cfg.Runtime.Process.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

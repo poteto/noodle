@@ -305,8 +305,7 @@ Skills live in ` + "`" + `.agents/skills/` + "`" + ` by default. Paths in ` + "`
 
 Run ` + "`" + `noodle debug` + "`" + ` to dump the full runtime state. Common issues:
 
-1. **"tmux is not available on PATH"** — Install tmux.
-2. **"fatal config diagnostics prevent start"** — Run ` + "`" + `noodle debug` + "`" + `, fix fields in ` + "`" + `.noodle.toml` + "`" + `.
+1. **"fatal config diagnostics prevent start"** — Run ` + "`" + `noodle debug` + "`" + `, fix fields in ` + "`" + `.noodle.toml` + "`" + `.
 3. **Missing adapter scripts** — Create scripts or update paths in config.
 4. **Stale worktrees** — ` + "`" + `noodle worktree list` + "`" + `, then ` + "`" + `noodle worktree prune` + "`" + `.
 

@@ -25,12 +25,12 @@ func (noOpWorktree) Cleanup(string, bool) error     { return nil }
 
 func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config, logger *slog.Logger) Dependencies {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
-	local := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
+	local := dispatcher.NewProcessDispatcher(dispatcher.ProcessDispatcherConfig{
 		ProjectDir:    projectDir,
 		RuntimeDir:    runtimeDir,
 		NoodleBin:     noodleBin,
 		SkillResolver: resolver,
-		RuntimeKind:   "tmux",
+		RuntimeKind:   "process",
 		ProviderConfigs: dispatcher.ProviderConfigs{
 			Claude: dispatcher.ProviderConfig{
 				Path: cfg.Agents.Claude.Path,
@@ -43,7 +43,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		},
 	})
 	runtimes := map[string]loopruntime.Runtime{
-		"tmux": loopruntime.NewTmuxRuntime(local, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
+		"process": loopruntime.NewProcessRuntime(local, runtimeDir, cfg.Runtime.Process.MaxConcurrent),
 	}
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)

@@ -87,7 +87,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		Skill:        stage.Skill,
 		WorktreePath: worktreePath,
 		TaskKey:      taskType.Key,
-		Runtime:      nonEmpty(stage.Runtime, "tmux"),
+		Runtime:      nonEmpty(stage.Runtime, "process"),
 		DisplayName:  opts.displayName,
 		Title:        order.Title,
 		RetryCount:   opts.attempt,
@@ -149,7 +149,7 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
 	}
 	if runtimeName == "" {
-		runtimeName = "tmux"
+		runtimeName = "process"
 	}
 
 	runtime := l.deps.Runtimes[runtimeName]
@@ -161,9 +161,9 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	if err == nil {
 		return session, nil
 	}
-	if runtimeName != "tmux" {
-		if fallback := l.deps.Runtimes["tmux"]; fallback != nil {
-			req.Runtime = "tmux"
+	if runtimeName != "process" {
+		if fallback := l.deps.Runtimes["process"]; fallback != nil {
+			req.Runtime = "process"
 			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
 			return fallback.Dispatch(ctx, req)
 		}

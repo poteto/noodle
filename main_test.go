@@ -15,10 +15,10 @@ func TestReportConfigDiagnosticsWarnsForReadOnlyCommands(t *testing.T) {
 	validation := config.ValidationResult{
 		Diagnostics: []config.ConfigDiagnostic{
 			{
-				FieldPath: "runtime.tmux",
-				Message:   "tmux is not available on PATH",
+				FieldPath: "agents.claude.path",
+				Message:   "directory not found",
 				Severity:  config.DiagnosticSeverityFatal,
-				Fix:       "Install tmux.",
+				Fix:       "Set agents.claude.path in .noodle.toml.",
 			},
 		},
 	}
@@ -36,10 +36,10 @@ func TestReportConfigDiagnosticsWarnsForReadOnlyCommands(t *testing.T) {
 	}
 
 	output := stderr.String()
-	if !strings.Contains(output, "config fatal: runtime.tmux: tmux is not available on PATH") {
+	if !strings.Contains(output, "config fatal: agents.claude.path: directory not found") {
 		t.Fatalf("unexpected diagnostic output: %q", output)
 	}
-	if !strings.Contains(output, "Fix: Install tmux.") {
+	if !strings.Contains(output, "Fix: Set agents.claude.path in .noodle.toml.") {
 		t.Fatalf("expected fix instructions in output: %q", output)
 	}
 }

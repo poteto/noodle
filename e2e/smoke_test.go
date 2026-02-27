@@ -22,7 +22,6 @@ func preflight(t *testing.T) {
 		env  string // optional: check env var instead of PATH
 	}{
 		{name: "codex"},
-		{name: "tmux"},
 		{name: "git"},
 	}
 

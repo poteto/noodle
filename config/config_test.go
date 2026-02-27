@@ -49,11 +49,11 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Plans.OnDone != "keep" {
 		t.Fatalf("plans.on_done default = %q, want keep", config.Plans.OnDone)
 	}
-	if config.Runtime.Default != "tmux" {
-		t.Fatalf("runtime.default = %q, want tmux", config.Runtime.Default)
+	if config.Runtime.Default != "process" {
+		t.Fatalf("runtime.default = %q, want process", config.Runtime.Default)
 	}
-	if config.Runtime.Tmux.MaxConcurrent != 4 {
-		t.Fatalf("runtime.tmux.max_concurrent default = %d, want 4", config.Runtime.Tmux.MaxConcurrent)
+	if config.Runtime.Process.MaxConcurrent != 4 {
+		t.Fatalf("runtime.process.max_concurrent default = %d, want 4", config.Runtime.Process.MaxConcurrent)
 	}
 	if config.Runtime.Sprites.MaxConcurrent != 50 {
 		t.Fatalf("runtime.sprites.max_concurrent default = %d, want 50", config.Runtime.Sprites.MaxConcurrent)
@@ -528,11 +528,11 @@ model = "claude-sonnet-4-6"
 	}
 }
 
-func TestAvailableRuntimesDefaultsToTmux(t *testing.T) {
+func TestAvailableRuntimesDefaultsToProcess(t *testing.T) {
 	cfg := DefaultConfig()
 	got := strings.Join(cfg.AvailableRuntimes(), ",")
-	if got != "tmux" {
-		t.Fatalf("available runtimes = %q, want tmux", got)
+	if got != "process" {
+		t.Fatalf("available runtimes = %q, want process", got)
 	}
 }
 
@@ -558,8 +558,8 @@ sprite_name = "noodle-dev"
 	}
 
 	got := strings.Join(cfg.AvailableRuntimes(), ",")
-	if got != "tmux,sprites" {
-		t.Fatalf("available runtimes = %q, want tmux,sprites", got)
+	if got != "process,sprites" {
+		t.Fatalf("available runtimes = %q, want process,sprites", got)
 	}
 }
 
@@ -585,8 +585,8 @@ sprite_name = "noodle-dev"
 	}
 
 	got := strings.Join(cfg.AvailableRuntimes(), ",")
-	if got != "tmux" {
-		t.Fatalf("available runtimes = %q, want tmux", got)
+	if got != "process" {
+		t.Fatalf("available runtimes = %q, want process", got)
 	}
 }
 
@@ -616,7 +616,7 @@ func TestParsePerRuntimeMaxConcurrent(t *testing.T) {
 provider = "claude"
 model = "claude-sonnet-4-6"
 
-[runtime.tmux]
+[runtime.process]
 max_concurrent = 8
 
 [runtime.sprites]
@@ -626,8 +626,8 @@ sprite_name = "test"
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if cfg.Runtime.Tmux.MaxConcurrent != 8 {
-		t.Fatalf("runtime.tmux.max_concurrent = %d, want 8", cfg.Runtime.Tmux.MaxConcurrent)
+	if cfg.Runtime.Process.MaxConcurrent != 8 {
+		t.Fatalf("runtime.process.max_concurrent = %d, want 8", cfg.Runtime.Process.MaxConcurrent)
 	}
 	if cfg.Runtime.Sprites.MaxConcurrent != 100 {
 		t.Fatalf("runtime.sprites.max_concurrent = %d, want 100", cfg.Runtime.Sprites.MaxConcurrent)
@@ -640,7 +640,7 @@ sprite_name = "test"
 
 func TestMaxConcurrentForLookup(t *testing.T) {
 	rc := RuntimeConfig{
-		Tmux:    TmuxConfig{MaxConcurrent: 4},
+		Process:    ProcessConfig{MaxConcurrent: 4},
 		Sprites: SpritesConfig{MaxConcurrent: 50},
 		Cursor:  CursorConfig{MaxConcurrent: 10},
 	}
@@ -648,8 +648,8 @@ func TestMaxConcurrentForLookup(t *testing.T) {
 		name string
 		want int
 	}{
-		{"tmux", 4},
-		{"Tmux", 4},
+		{"process", 4},
+		{"Process", 4},
 		{"sprites", 50},
 		{"SPRITES", 50},
 		{"cursor", 10},

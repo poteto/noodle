@@ -278,7 +278,7 @@ func startRepairSession(
 	runtimeDir := filepath.Join(worktreeApp.Root, ".noodle")
 	resolver := app.SkillResolver()
 	providerConfigs := app.ProviderConfigs()
-	d := dispatcher.NewTmuxDispatcher(dispatcher.TmuxDispatcherConfig{
+	d := dispatcher.NewProcessDispatcher(dispatcher.ProcessDispatcherConfig{
 		ProjectDir:      worktreeApp.Root,
 		RuntimeDir:      runtimeDir,
 		NoodleBin:       noodleBin,

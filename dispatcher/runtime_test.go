@@ -2,12 +2,12 @@ package dispatcher
 
 import "testing"
 
-func TestNormalizeRuntimeDefaultsToTmux(t *testing.T) {
-	if got := normalizeRuntime(""); got != "tmux" {
-		t.Fatalf("runtime = %q, want tmux", got)
+func TestNormalizeRuntimeDefaultsToProcess(t *testing.T) {
+	if got := normalizeRuntime(""); got != "process" {
+		t.Fatalf("runtime = %q, want process", got)
 	}
-	if got := normalizeRuntime("   "); got != "tmux" {
-		t.Fatalf("runtime = %q, want tmux", got)
+	if got := normalizeRuntime("   "); got != "process" {
+		t.Fatalf("runtime = %q, want process", got)
 	}
 }
 

@@ -109,7 +109,7 @@ var schemaTargets = []targetSpec{
 			"orders[].stages[].skill":         {Description: "skill name to load"},
 			"orders[].stages[].provider":      {Description: "provider used for this stage"},
 			"orders[].stages[].model":         {Description: "model used for this stage"},
-			"orders[].stages[].runtime":       {Description: "runtime used for this stage (tmux, sprites, etc.)"},
+			"orders[].stages[].runtime":       {Description: "runtime used for this stage (process, sprites, etc.)"},
 			"orders[].stages[].status":        {Type: "string (pending|active|completed|failed|cancelled)", Description: "stage lifecycle status"},
 			"orders[].stages[].extra{}[]":     {Description: "opaque extension data preserved across round-trips"},
 			"orders[].status":                 {Type: "string (active|completed|failed|failing)", Description: "order lifecycle status"},

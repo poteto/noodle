@@ -35,10 +35,10 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = orderCount
 	cfg.Concurrency.MergeBackpressureThreshold = orderCount * 2
-	cfg.Runtime.Tmux.MaxConcurrent = orderCount
+	cfg.Runtime.Process.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -97,7 +97,7 @@ func TestScaleLoopStateSnapshotIncludesActiveSummary(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -143,7 +143,7 @@ func TestMockRuntimeDispatchAndComplete(t *testing.T) {
 
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -203,13 +203,13 @@ func TestMockRuntimeRecoverBuildsAdoptedIndex(t *testing.T) {
 		{
 			OrderID:       "order-1",
 			SessionHandle: &mockSession{id: "sess-1", status: "running", done: make(chan struct{})},
-			RuntimeName:   "tmux",
+			RuntimeName:   "process",
 			Reason:        "test recovery",
 		},
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -262,7 +262,7 @@ func TestMockRuntimeScaleBurstViaRuntimes(t *testing.T) {
 	cfg.Concurrency.MergeBackpressureThreshold = orderCount * 2
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

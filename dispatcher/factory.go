@@ -40,11 +40,11 @@ func (f *DispatcherFactory) Dispatch(ctx context.Context, req DispatchRequest) (
 	}
 	req.Runtime = runtime
 	session, err := dispatcher.Dispatch(ctx, req)
-	if err != nil && runtime != "tmux" {
-		fallback, hasFallback := f.runtimes["tmux"]
+	if err != nil && runtime != "process" {
+		fallback, hasFallback := f.runtimes["process"]
 		if hasFallback {
-			fmt.Fprintf(os.Stderr, "dispatch: %s runtime failed, falling back to tmux: %v\n", runtime, err)
-			req.Runtime = "tmux"
+			fmt.Fprintf(os.Stderr, "dispatch: %s runtime failed, falling back to process: %v\n", runtime, err)
+			req.Runtime = "process"
 			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtime, err)
 			return fallback.Dispatch(ctx, req)
 		}

@@ -80,7 +80,7 @@ func newIntegrationEnv(t *testing.T, orders OrdersFile, opts ...integrationOpt) 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 
 	l := New(projectDir, "noodle", ic.cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},

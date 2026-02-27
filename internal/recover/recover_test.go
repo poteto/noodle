@@ -30,7 +30,7 @@ func TestRecoveryChainLength(t *testing.T) {
 
 func TestBuildResumeContext(t *testing.T) {
 	ctx := BuildResumeContext(RecoveryInfo{
-		ExitReason:   "tmux session died",
+		ExitReason:   "process exited unexpectedly",
 		LastAction:   "Edit src/auth/token.ts",
 		FilesChanged: []string{"src/auth/token.ts", "src/auth/middleware.ts"},
 	}, 2, 3)
@@ -38,7 +38,7 @@ func TestBuildResumeContext(t *testing.T) {
 	if ctx.Attempt != 2 {
 		t.Fatalf("attempt = %d", ctx.Attempt)
 	}
-	if !strings.Contains(ctx.Summary, "Failure: tmux session died") {
+	if !strings.Contains(ctx.Summary, "Failure: process exited unexpectedly") {
 		t.Fatalf("summary missing failure: %s", ctx.Summary)
 	}
 	if !strings.Contains(ctx.Summary, "Attempt: 2/3") {

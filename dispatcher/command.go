@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"crypto/rand"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,21 +13,6 @@ import (
 )
 
 const codexSkillRefsLimitBytes = 50 * 1024
-
-func buildProviderCommand(
-	req DispatchRequest,
-	promptFile string,
-	agentBinary string,
-	systemPrompt string,
-	stderrFile string,
-	extraArgs []string,
-) string {
-	provider := strings.ToLower(strings.TrimSpace(req.Provider))
-	if provider == "codex" {
-		return buildCodexCommand(req, promptFile, agentBinary, stderrFile, extraArgs)
-	}
-	return buildClaudeCommand(req, promptFile, agentBinary, systemPrompt, stderrFile, extraArgs)
-}
 
 // claudeBaseArgs returns the canonical Claude CLI flags for a dispatch request.
 // Callers prepend the binary path and append site-specific extras.
@@ -70,62 +56,6 @@ func codexBaseArgs(req DispatchRequest) []string {
 	return args
 }
 
-func buildClaudeCommand(req DispatchRequest, promptFile, agentBinary, systemPrompt, stderrFile string, extraArgs []string) string {
-	args := append([]string{agentBinary}, claudeBaseArgs(req, systemPrompt)...)
-	args = append(args, extraArgs...)
-	command := shellCommandWithInput(args, promptFile, true)
-	if strings.TrimSpace(stderrFile) != "" {
-		command += " 2> " + shellx.Quote(stderrFile)
-	}
-	return command
-}
-
-func buildCodexCommand(req DispatchRequest, promptFile, agentBinary, stderrFile string, extraArgs []string) string {
-	args := append([]string{agentBinary}, codexBaseArgs(req)...)
-	args = append(args, extraArgs...)
-	// Codex writes non-JSON progress banners to stderr even with --json.
-	// Keep stderr out of the stamp pipeline so parser input stays valid NDJSON.
-	command := shellCommandWithInput(args, promptFile, false)
-	if strings.TrimSpace(stderrFile) != "" {
-		command += " 2> " + shellx.Quote(stderrFile)
-	}
-	return command
-}
-
-func buildPipelineCommand(providerCmd, noodleBin, stampedPath, canonicalPath string) string {
-	return fmt.Sprintf(
-		"%s | %s stamp --output %s --events %s",
-		providerCmd,
-		shellx.Quote(noodleBin),
-		shellx.Quote(stampedPath),
-		shellx.Quote(canonicalPath),
-	)
-}
-
-func shellCommandWithInput(args []string, inputPath string, includeStderr bool) string {
-	var builder strings.Builder
-	for i, arg := range args {
-		if i > 0 {
-			builder.WriteByte(' ')
-		}
-		builder.WriteString(shellx.Quote(arg))
-	}
-	builder.WriteString(" < ")
-	builder.WriteString(shellx.Quote(inputPath))
-	if includeStderr {
-		builder.WriteString(" 2>&1")
-	}
-	return builder.String()
-}
-
-func tmuxSessionName(sessionID, fallbackName string) string {
-	name := strings.TrimSpace(sessionID)
-	if name == "" {
-		name = shellx.SanitizeToken(fallbackName, "cook")
-	}
-	return "noodle-" + shellx.SanitizeToken(name, "cook")
-}
-
 func generateSessionID(name string) (string, error) {
 	randBytes := make([]byte, 3)
 	if _, err := rand.Read(randBytes); err != nil {
@@ -147,4 +77,82 @@ func sessionPaths(runtimeDir, sessionID string) (sessionDir, promptPath, stamped
 
 func inputPath(sessionDir string) string {
 	return filepath.Join(sessionDir, "input.txt")
+}
+
+// resolveTemplateVars replaces {{key}} placeholders with verbatim values.
+// No shell quoting — the template author controls quoting in their template.
+func resolveTemplateVars(tmpl string, vars map[string]string) string {
+	result := tmpl
+	for key, value := range vars {
+		result = strings.ReplaceAll(result, "{{"+key+"}}", value)
+	}
+	return result
+}
+
+func expandHomePath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" || !strings.HasPrefix(path, "~") {
+		return path
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == "~" {
+		return homeDir
+	}
+	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, "~\\") {
+		return filepath.Join(homeDir, strings.TrimPrefix(strings.TrimPrefix(path, "~/"), "~\\"))
+	}
+	return path
+}
+
+func buildDispatchEnv(req DispatchRequest) []string {
+	env := make([]string, 0, len(os.Environ())+len(req.EnvVars)+4)
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.EqualFold(key, "CLAUDECODE") {
+			continue
+		}
+		env = append(env, entry)
+	}
+
+	env = append(env, "NOODLE_WORKTREE="+req.WorktreePath)
+	env = append(env, "NOODLE_PROVIDER="+req.Provider)
+	env = append(env, "NOODLE_MODEL="+req.Model)
+	if req.ReasoningLevel != "" {
+		env = append(env, "NOODLE_REASONING_LEVEL="+req.ReasoningLevel)
+	}
+	for key, value := range req.EnvVars {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		env = append(env, key+"="+value)
+	}
+	return env
+}
+
+func composePrompts(provider, requestPrompt, preamble, skillSystemPrompt string) (systemPrompt, finalPrompt string) {
+	finalPrompt = requestPrompt
+	fullSystemPrompt := joinNonEmpty(preamble, skillSystemPrompt)
+	if strings.EqualFold(provider, "claude") {
+		systemPrompt = fullSystemPrompt
+		return systemPrompt, finalPrompt
+	}
+	// Codex loads skills natively via Skill(name) — only inline the preamble.
+	if strings.EqualFold(provider, "codex") && strings.TrimSpace(preamble) != "" {
+		finalPrompt = requestPrompt + "\n\n---\n\n" + preamble
+	}
+	return systemPrompt, finalPrompt
+}
+
+func joinNonEmpty(parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, "\n\n")
 }

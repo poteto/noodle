@@ -7,6 +7,18 @@ import (
 	"time"
 )
 
+// ProviderConfig holds optional CLI binary directory and extra flags by provider.
+type ProviderConfig struct {
+	Path string
+	Args []string
+}
+
+// ProviderConfigs holds per-provider configuration.
+type ProviderConfigs struct {
+	Claude ProviderConfig
+	Codex  ProviderConfig
+}
+
 // DispatchRequest defines one session launch.
 type DispatchRequest struct {
 	Name                 string
@@ -22,7 +34,7 @@ type DispatchRequest struct {
 	AllowPrimaryCheckout bool
 	TaskKey              string // resolved task type key (e.g., "execute", "schedule")
 	DomainSkill          string // for execute: adapter-configured domain skill
-	Runtime              string // runtime kind from queue item (e.g., "tmux", "sprites")
+	Runtime              string // runtime kind from queue item (e.g., "process", "sprites")
 	SystemPrompt         string // if set, used directly as system prompt — skips skill resolution
 	DispatchWarning      string // set by factory on runtime fallback — carries the original dispatch error
 	DisplayName          string // stable short name preserved across retries

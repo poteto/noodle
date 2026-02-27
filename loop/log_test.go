@@ -109,7 +109,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	}
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       fm,

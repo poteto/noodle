@@ -45,7 +45,7 @@ func TestRefreshAdoptedTargetsPrunesDeadPIDs(t *testing.T) {
 		config:     config.DefaultConfig(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+			Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 			Now:      time.Now,
 		},
 		cooks: cookTracker{

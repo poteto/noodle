@@ -25,7 +25,7 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, rt *mockRuntime) *Loop {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -134,7 +134,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -229,7 +229,7 @@ func TestControlEnqueueCreatesSingleStageOrder(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -292,7 +292,7 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -352,7 +352,7 @@ func TestControlReorderChangesOrderPosition(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -401,7 +401,7 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -439,7 +439,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -488,7 +488,7 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -547,7 +547,7 @@ func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -583,7 +583,7 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -628,7 +628,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -684,7 +684,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 	}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    ar,
 		Mise:       &fakeMise{},
@@ -724,7 +724,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -770,7 +770,7 @@ func TestCommandSequenceAssignment(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -815,7 +815,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -845,7 +845,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 
 	// Create a new loop and hydrate — should recover the sequence.
 	l2 := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -873,7 +873,7 @@ func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -917,7 +917,7 @@ func TestCommandSequenceIdempotentReplay(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -962,7 +962,7 @@ func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1009,7 +1009,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

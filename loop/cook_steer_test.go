@@ -59,7 +59,7 @@ func newSteerTestLoop(t *testing.T, rt *mockRuntime) *Loop {
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	return New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

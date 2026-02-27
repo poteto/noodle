@@ -969,7 +969,7 @@ func TestOrdersFileCloneRoundTrip(t *testing.T) {
 						Skill:    "execute",
 						Provider: "claude",
 						Model:    "claude-opus-4-6",
-						Runtime:  "tmux",
+						Runtime:  "process",
 						Status:   StageStatusPending,
 						Extra: map[string]json.RawMessage{
 							"key": json.RawMessage(`"value"`),
@@ -1006,7 +1006,7 @@ func TestOrdersFileCloneRoundTrip(t *testing.T) {
 		t.Fatalf("Stages len = %d", len(o.Stages))
 	}
 	s := o.Stages[0]
-	if s.TaskKey != "execute" || s.Provider != "claude" || s.Runtime != "tmux" {
+	if s.TaskKey != "execute" || s.Provider != "claude" || s.Runtime != "process" {
 		t.Errorf("stage fields mismatch")
 	}
 	if string(s.Extra["key"]) != `"value"` {
