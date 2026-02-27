@@ -1,7 +1,7 @@
 ---
 id: 70
 created: 2026-02-26
-status: ready
+status: done
 ---
 
 # Scaling the Loop Redesign
@@ -60,15 +60,15 @@ This redesign makes the cycle O(events + orders), independent of total sessions.
 
 ## Phases
 
-- [[plans/70-scaling-the-loop-redesign/phase-01-subtract-session-maps-and-decouple-order-state]]
-- [[plans/70-scaling-the-loop-redesign/phase-02-push-based-completion-channels]]
-- [[plans/70-scaling-the-loop-redesign/phase-03-pluggable-runtime-interface]]
-- [[plans/70-scaling-the-loop-redesign/phase-04-in-memory-orders-with-periodic-flush]]
-- [[plans/70-scaling-the-loop-redesign/phase-05-aggregate-mise-brief]]
-- [[plans/70-scaling-the-loop-redesign/phase-06-platform-side-health-observation]]
-- [[plans/70-scaling-the-loop-redesign/phase-07-async-merge-queue]]
-- [[plans/70-scaling-the-loop-redesign/phase-08-snapshot-and-web-ui-decoupling]]
-- [[plans/70-scaling-the-loop-redesign/phase-09-integration-tests-at-scale]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-01-subtract-session-maps-and-decouple-order-state]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-02-push-based-completion-channels]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-03-pluggable-runtime-interface]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-04-in-memory-orders-with-periodic-flush]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-05-aggregate-mise-brief]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-06-platform-side-health-observation]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-07-async-merge-queue]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-08-snapshot-and-web-ui-decoupling]]
+- [[archived_plans/70-scaling-the-loop-redesign/phase-09-integration-tests-at-scale]]
 
 ### Dependency DAG
 

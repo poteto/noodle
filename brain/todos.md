@@ -4,7 +4,7 @@
 
 ## Scaling
 
-70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[plans/70-scaling-the-loop-redesign/overview]]
+70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archived_plans/70-scaling-the-loop-redesign/overview]]
 
 ## Noodle Post-Plan 1
 

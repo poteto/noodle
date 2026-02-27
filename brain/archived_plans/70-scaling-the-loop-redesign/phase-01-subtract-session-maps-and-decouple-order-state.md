@@ -1,4 +1,4 @@
-Back to [[plans/70-scaling-the-loop-redesign/overview]]
+Back to [[archived_plans/70-scaling-the-loop-redesign/overview]]
 
 # Phase 1: Subtract session maps and decouple order state
 
