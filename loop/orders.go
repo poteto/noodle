@@ -306,6 +306,34 @@ func cloneOrder(o Order) Order {
 	return o
 }
 
+// loadOrders reads orders.json from disk into in-memory state.
+func (l *Loop) loadOrders() error {
+	of, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		return err
+	}
+	l.orders = of
+	l.ordersDirty = false
+	return nil
+}
+
+// flushOrders writes the in-memory orders to disk atomically.
+func (l *Loop) flushOrders() error {
+	if !l.ordersDirty {
+		return nil
+	}
+	if err := writeOrdersAtomic(l.deps.OrdersFile, l.orders); err != nil {
+		return err
+	}
+	l.ordersDirty = false
+	return nil
+}
+
+// markOrdersDirty flags the in-memory orders as needing a flush.
+func (l *Loop) markOrdersDirty() {
+	l.ordersDirty = true
+}
+
 func readOrders(path string) (OrdersFile, error) {
 	of, err := orderx.ReadOrders(path)
 	if err != nil {

@@ -68,7 +68,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
 	}
 
-	return &Loop{
+	l := &Loop{
 		projectDir:            projectDir,
 		runtimeDir:            runtimeDir,
 		config:                cfg,
@@ -76,7 +76,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		registryErr:           registryErr,
 		deps:                  deps,
 		logger:                deps.Logger,
-		state:                 StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
+		state:                 StateRunning,
 		activeCooksByOrder:    map[string]*cookHandle{},
 		completions:           make(chan StageResult, 1024),
 		adoptedTargets:        map[string]string{},
@@ -86,6 +86,9 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		pendingRetry:          map[string]*pendingRetryCook{},
 		processedIDs:          map[string]struct{}{},
 	}
+	// Hydrate in-memory orders from disk if the file exists.
+	_ = l.loadOrders()
+	return l
 }
 
 func (l *Loop) setState(next State) {
@@ -239,6 +242,12 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		l.registryStale.Store(false)
 	}
 
+	// Load orders from disk at cycle start to pick up external changes
+	// (orders-next.json promotion, manual edits).
+	if err := l.loadOrders(); err != nil {
+		return err
+	}
+
 	// Snapshot capacity before control commands can mutate it.
 	cycleCapacity := l.config.Concurrency.MaxCooks
 
@@ -247,6 +256,9 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !ready {
+		if err := l.flushOrders(); err != nil {
+			return err
+		}
 		return l.stampStatus()
 	}
 
@@ -255,6 +267,9 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !running {
+		if err := l.flushOrders(); err != nil {
+			return err
+		}
 		return l.stampStatus()
 	}
 
@@ -263,11 +278,17 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return err
 	}
 	if !shouldContinue {
+		if err := l.flushOrders(); err != nil {
+			return err
+		}
 		return l.stampStatus()
 	}
 
 	candidates := l.planCycleSpawns(orders, brief, cycleCapacity)
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
+		return err
+	}
+	if err := l.flushOrders(); err != nil {
 		return err
 	}
 	return l.stampStatus()
@@ -313,31 +334,31 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 }
 
 func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (OrdersFile, bool, error) {
-	// Consume orders-next.json if the schedule session wrote one.
+	// Consume orders-next.json — merge into in-memory state.
 	promoted, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
 		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
+		// Reload from disk since consumeOrdersNext wrote the merged result.
+		if err := l.loadOrders(); err != nil {
+			return OrdersFile{}, false, err
+		}
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return OrdersFile{}, false, err
-	}
+	orders := l.orders
 
 	// Normalize and validate orders.
 	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, l.registry, l.config)
 	if normErr != nil {
-		// Rebuild registry and retry on unknown task type.
 		l.rebuildRegistry()
 		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 		if normErr != nil {
 			l.auditOrders()
-			orders, err = readOrders(l.deps.OrdersFile)
-			if err != nil {
+			if err := l.loadOrders(); err != nil {
 				return OrdersFile{}, false, err
 			}
+			orders = l.orders
 			normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 			if normErr != nil {
 				return OrdersFile{}, false, normErr
@@ -346,9 +367,8 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 	if changed {
 		orders = normalizedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-			return OrdersFile{}, false, err
-		}
+		l.orders = orders
+		l.markOrdersDirty()
 		l.logger.Info("orders normalized")
 	}
 
@@ -369,20 +389,17 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 				l.setState(StateIdle)
 				return OrdersFile{}, false, nil
 			}
-			// Bootstrap a schedule order.
 			orders = bootstrapScheduleOrder(l.config)
-			if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-				return OrdersFile{}, false, err
-			}
+			l.orders = orders
+			l.markOrdersDirty()
 			l.logger.Info("orders empty, bootstrapping schedule")
 		}
 	}
 
 	if updatedOrders, changed := ApplyOrderRoutingDefaults(orders, l.registry, l.config); changed {
 		orders = updatedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-			return OrdersFile{}, false, err
-		}
+		l.orders = orders
+		l.markOrdersDirty()
 	}
 	return orders, true, nil
 }

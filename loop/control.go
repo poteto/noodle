@@ -238,19 +238,13 @@ func (l *Loop) controlMerge(orderID string) error {
 	// Quality verdict gate — even the manual merge path respects quality verdicts.
 	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
 	if hasVerdict && !verdict.Accept {
-		// Quality gate failed — call failStage instead of merging.
-		orders, err := readOrders(l.deps.OrdersFile)
-		if err != nil {
-			return err
-		}
 		reason := "quality rejected: " + verdict.Feedback
-		orders, terminal, err := failStage(orders, orderID, reason)
+		orders, terminal, err := failStage(l.orders, orderID, reason)
 		if err != nil {
 			return err
 		}
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-			return err
-		}
+		l.orders = orders
+		l.markOrdersDirty()
 		if strings.TrimSpace(pending.worktreeName) != "" {
 			_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 		}
@@ -278,11 +272,7 @@ func (l *Loop) controlMerge(orderID string) error {
 		done:         sess.Done(),
 	}
 	// Determine actual order status for advanceAndPersist.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return fmt.Errorf("merge: read orders: %w", err)
-	}
-	for _, o := range orders.Orders {
+	for _, o := range l.orders.Orders {
 		if o.ID == orderID {
 			cook.orderStatus = o.Status
 			cook.isOnFailure = o.Status == OrderStatusFailing
@@ -312,18 +302,12 @@ func (l *Loop) controlReject(orderID string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 	// User rejection skips OnFailure — cancel and remove the order directly.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := cancelOrder(l.orders, orderID)
 	if err != nil {
-		return err
-	}
-	orders, err = cancelOrder(orders, orderID)
-	if err != nil {
-		// Order may already be gone — not fatal.
 		l.logger.Warn("controlReject: cancelOrder", "error", err)
 	} else {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-			return err
-		}
+		l.orders = orders
+		l.markOrdersDirty()
 	}
 	if err := l.markFailed(orderID, "rejected by user"); err != nil {
 		return err
@@ -346,23 +330,17 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		return nil
 	}
 
-	// Call failStage — if OnFailure stages exist, they run; if not, terminal failure.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
 	reason := "changes requested"
 	trimmedFeedback := strings.TrimSpace(feedback)
 	if trimmedFeedback != "" {
 		reason += ": " + trimmedFeedback
 	}
-	orders, terminal, err := failStage(orders, orderID, reason)
+	orders, terminal, err := failStage(l.orders, orderID, reason)
 	if err != nil {
 		return err
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-		return err
-	}
+	l.orders = orders
+	l.markOrdersDirty()
 	if terminal {
 		if err := l.markFailed(orderID, reason); err != nil {
 			return err
@@ -400,10 +378,6 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		taskKey = "execute"
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
 	newOrder := Order{
 		ID:    orderID,
 		Title: titleFromPrompt(prompt, 8),
@@ -417,8 +391,9 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 			Status:   StageStatusPending,
 		}},
 	}
-	orders.Orders = append(orders.Orders, newOrder)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	l.orders.Orders = append(l.orders.Orders, newOrder)
+	l.markOrdersDirty()
+	return nil
 }
 
 func (l *Loop) controlEditItem(cmd ControlCommand) error {
@@ -429,28 +404,23 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if _, active := l.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
 	found := false
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
+	for i := range l.orders.Orders {
+		if l.orders.Orders[i].ID != orderID {
 			continue
 		}
 		found = true
 		// Edit order-level fields.
 		if title := strings.TrimSpace(cmd.Prompt); title != "" {
-			orders.Orders[i].Title = titleFromPrompt(title, 8)
+			l.orders.Orders[i].Title = titleFromPrompt(title, 8)
 		}
-		// Edit stage-level fields on the current pending stage.
-		stageIdx, stage := activeStageForOrder(orders.Orders[i])
+		stageIdx, stage := activeStageForOrder(l.orders.Orders[i])
 		if stageIdx < 0 || stage == nil {
 			return fmt.Errorf("order %q has no editable stage", orderID)
 		}
-		stages := &orders.Orders[i].Stages
-		if orders.Orders[i].Status == OrderStatusFailing {
-			stages = &orders.Orders[i].OnFailure
+		stages := &l.orders.Orders[i].Stages
+		if l.orders.Orders[i].Status == OrderStatusFailing {
+			stages = &l.orders.Orders[i].OnFailure
 		}
 		if prompt := strings.TrimSpace(cmd.Prompt); prompt != "" {
 			(*stages)[stageIdx].Prompt = prompt
@@ -472,7 +442,8 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if !found {
 		return fmt.Errorf("order %q not found", orderID)
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	l.markOrdersDirty()
+	return nil
 }
 
 func (l *Loop) controlStopAll() {
@@ -486,15 +457,13 @@ func (l *Loop) controlSkip(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("skip requires order_id")
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := cancelOrder(l.orders, orderID)
 	if err != nil {
 		return err
 	}
-	orders, err = cancelOrder(orders, orderID)
-	if err != nil {
-		return err
-	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	l.orders = orders
+	l.markOrdersDirty()
+	return nil
 }
 
 func (l *Loop) controlRequeue(orderID string) error {
@@ -506,29 +475,15 @@ func (l *Loop) controlRequeue(orderID string) error {
 		return fmt.Errorf("order %q not in failed state", orderID)
 	}
 
-	// If order still exists in orders.json, reset all failed/cancelled stages
-	// in both Stages and OnFailure to "pending", set Order.Status to "active".
-	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
-	// on I/O errors.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return fmt.Errorf("requeue: read orders: %w", err)
-	}
-	updated := false
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
+	for i := range l.orders.Orders {
+		if l.orders.Orders[i].ID != orderID {
 			continue
 		}
-		orders.Orders[i].Status = OrderStatusActive
-		resetStages(&orders.Orders[i].Stages)
-		resetStages(&orders.Orders[i].OnFailure)
-		updated = true
+		l.orders.Orders[i].Status = OrderStatusActive
+		resetStages(&l.orders.Orders[i].Stages)
+		resetStages(&l.orders.Orders[i].OnFailure)
+		l.markOrdersDirty()
 		break
-	}
-	if updated {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-			return err
-		}
 	}
 	delete(l.failedTargets, orderID)
 	return l.writeFailedTargets()
@@ -557,13 +512,9 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		}
 		newIndex = n
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
 	srcIdx := -1
-	for i := range orders.Orders {
-		if orders.Orders[i].ID == orderID {
+	for i := range l.orders.Orders {
+		if l.orders.Orders[i].ID == orderID {
 			srcIdx = i
 			break
 		}
@@ -571,16 +522,17 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 	if srcIdx < 0 {
 		return fmt.Errorf("order %q not found", orderID)
 	}
-	order := orders.Orders[srcIdx]
-	orders.Orders = append(orders.Orders[:srcIdx], orders.Orders[srcIdx+1:]...)
+	order := l.orders.Orders[srcIdx]
+	l.orders.Orders = append(l.orders.Orders[:srcIdx], l.orders.Orders[srcIdx+1:]...)
 	if newIndex < 0 {
 		newIndex = 0
 	}
-	if newIndex > len(orders.Orders) {
-		newIndex = len(orders.Orders)
+	if newIndex > len(l.orders.Orders) {
+		newIndex = len(l.orders.Orders)
 	}
-	orders.Orders = append(orders.Orders[:newIndex], append([]Order{order}, orders.Orders[newIndex:]...)...)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	l.orders.Orders = append(l.orders.Orders[:newIndex], append([]Order{order}, l.orders.Orders[newIndex:]...)...)
+	l.markOrdersDirty()
+	return nil
 }
 
 func (l *Loop) controlStop(name string) error {

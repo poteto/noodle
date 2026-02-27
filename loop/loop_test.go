@@ -756,6 +756,7 @@ func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 	if err := l.steer(ScheduleTaskKey(), "schedule security tasks"); err != nil {
 		t.Fatalf("steer schedule: %v", err)
 	}
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)

@@ -106,7 +106,8 @@ func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
 	if _, ok := l.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed (no OnFailure stages)")
 	}
-	// Order should be removed from orders.json.
+	// Order should be removed from in-memory orders.
+	_ = l.flushOrders()
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -156,7 +157,8 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 	if _, ok := l.failedTargets["42"]; ok {
 		t.Fatal("order should not be in failedTargets (OnFailure exists)")
 	}
-	// Order should still be in orders.json with status "failing".
+	// Order should still be in in-memory orders with status "failing".
+	_ = l.flushOrders()
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -250,6 +252,7 @@ func TestControlEnqueueCreatesSingleStageOrder(t *testing.T) {
 		t.Fatalf("controlEnqueue: %v", err)
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -313,6 +316,7 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		t.Fatalf("controlEditItem: %v", err)
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -366,6 +370,7 @@ func TestControlReorderChangesOrderPosition(t *testing.T) {
 		t.Fatalf("controlReorder: %v", err)
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -413,6 +418,7 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 		t.Fatalf("controlSkip: %v", err)
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -459,6 +465,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 	if _, ok := l.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be in failed targets after reject")
 	}
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -510,6 +517,7 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 		t.Fatal("order 42 should not be in failed targets after requeue")
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -564,6 +572,7 @@ func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
 		t.Fatalf("controlRequeue: %v", err)
 	}
 
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
@@ -786,6 +795,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 	l.failedTargets = map[string]string{"42": "previous failure"}
 
 	// Dispatching should skip this order due to failed target stickiness.
+	_ = l.flushOrders()
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)

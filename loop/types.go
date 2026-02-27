@@ -253,6 +253,8 @@ type Loop struct {
 	registryStale    atomic.Bool
 	registryFailCount int
 
+	orders             OrdersFile
+	ordersDirty        bool
 	activeCooksByOrder map[string]*cookHandle
 	adoptedTargets  map[string]string
 	adoptedSessions []string

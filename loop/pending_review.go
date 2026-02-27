@@ -168,10 +168,7 @@ func (l *Loop) reconcilePendingReview() error {
 	if len(l.pendingReview) == 0 {
 		return nil
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return nil // no orders file yet — nothing to reconcile
-	}
+	orders := l.orders
 	orderIDs := make(map[string]struct{}, len(orders.Orders))
 	for _, o := range orders.Orders {
 		orderIDs[o.ID] = struct{}{}

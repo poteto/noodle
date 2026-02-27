@@ -82,39 +82,35 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	// Persist active status BEFORE spawning — crash safety.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != order.ID {
+	// Mark stage active in memory, flush BEFORE spawning — crash safety.
+	for i := range l.orders.Orders {
+		if l.orders.Orders[i].ID != order.ID {
 			continue
 		}
-		if len(orders.Orders[i].Stages) > 0 {
-			orders.Orders[i].Stages[0].Status = StageStatusActive
+		if len(l.orders.Orders[i].Stages) > 0 {
+			l.orders.Orders[i].Stages[0].Status = StageStatusActive
 		}
 		break
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	l.markOrdersDirty()
+	if err := l.flushOrders(); err != nil {
 		return err
 	}
 
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
-		// Revert stage status to pending on dispatch failure.
-		if revert, readErr := readOrders(l.deps.OrdersFile); readErr == nil {
-			for i := range revert.Orders {
-				if revert.Orders[i].ID != order.ID {
-					continue
-				}
-				if len(revert.Orders[i].Stages) > 0 {
-					revert.Orders[i].Stages[0].Status = StageStatusPending
-				}
-				_ = writeOrdersAtomic(l.deps.OrdersFile, revert)
-				break
+		// Revert stage status to pending in memory.
+		for i := range l.orders.Orders {
+			if l.orders.Orders[i].ID != order.ID {
+				continue
 			}
+			if len(l.orders.Orders[i].Stages) > 0 {
+				l.orders.Orders[i].Stages[0].Status = StageStatusPending
+			}
+			break
 		}
+		l.markOrdersDirty()
+		_ = l.flushOrders()
 		return err
 	}
 	sess := session
@@ -243,12 +239,13 @@ func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 }
 
 func (l *Loop) rescheduleForChefPrompt(prompt string) error {
-	orders := OrdersFile{
+	l.orders = OrdersFile{
 		Orders: []Order{
 			scheduleOrder(l.config, prompt),
 		},
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	l.markOrdersDirty()
+	return nil
 }
 
 func ordersSchemaPrompt() string {

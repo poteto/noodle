@@ -224,6 +224,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		pendingRetry:       map[string]*pendingRetryCook{},
 		processedIDs:       map[string]struct{}{},
 	}
+	_ = l.loadOrders()
 
 	brief := mise.Brief{}
 	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
@@ -319,6 +320,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		pendingRetry:       map[string]*pendingRetryCook{},
 		processedIDs:       map[string]struct{}{},
 	}
+	_ = l.loadOrders()
 
 	brief := mise.Brief{}
 	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)

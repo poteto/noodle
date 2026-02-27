@@ -104,28 +104,22 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		req.DomainSkill = taskType.DomainSkill
 	}
 
-	// Persist active status BEFORE spawning session — restart safety.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		if created {
-			_ = l.deps.Worktree.Cleanup(name, true)
-		}
-		return err
-	}
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != cand.OrderID {
+	// Mark stage active in memory, flush to disk BEFORE spawning — restart safety.
+	for i := range l.orders.Orders {
+		if l.orders.Orders[i].ID != cand.OrderID {
 			continue
 		}
-		stages := &orders.Orders[i].Stages
+		stages := &l.orders.Orders[i].Stages
 		if cand.IsOnFailure {
-			stages = &orders.Orders[i].OnFailure
+			stages = &l.orders.Orders[i].OnFailure
 		}
 		if cand.StageIndex < len(*stages) {
 			(*stages)[cand.StageIndex].Status = StageStatusActive
 		}
 		break
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	l.markOrdersDirty()
+	if err := l.flushOrders(); err != nil {
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
@@ -134,24 +128,22 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 
 	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
 	if err != nil {
-		// Revert stage status to pending — otherwise restart sees "active"
-		// with no session, permanently stranding the stage.
-		if revert, readErr := readOrders(l.deps.OrdersFile); readErr == nil {
-			for i := range revert.Orders {
-				if revert.Orders[i].ID != cand.OrderID {
-					continue
-				}
-				stages := &revert.Orders[i].Stages
-				if cand.IsOnFailure {
-					stages = &revert.Orders[i].OnFailure
-				}
-				if cand.StageIndex < len(*stages) {
-					(*stages)[cand.StageIndex].Status = StageStatusPending
-				}
-				_ = writeOrdersAtomic(l.deps.OrdersFile, revert)
-				break
+		// Revert stage status to pending in memory and flush.
+		for i := range l.orders.Orders {
+			if l.orders.Orders[i].ID != cand.OrderID {
+				continue
 			}
+			stages := &l.orders.Orders[i].Stages
+			if cand.IsOnFailure {
+				stages = &l.orders.Orders[i].OnFailure
+			}
+			if cand.StageIndex < len(*stages) {
+				(*stages)[cand.StageIndex].Status = StageStatusPending
+			}
+			break
 		}
+		l.markOrdersDirty()
+		_ = l.flushOrders()
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
@@ -402,17 +394,18 @@ func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
 	return verdict, true
 }
 
-// advanceAndPersist advances the order stage and persists the result.
+// advanceAndPersist advances the order stage in memory and flushes
+// immediately after irreversible side effects (merge, adapter callback).
 func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, removed, err := advanceOrder(l.orders, cook.orderID)
 	if err != nil {
 		return err
 	}
-	orders, removed, err := advanceOrder(orders, cook.orderID)
-	if err != nil {
-		return err
-	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	l.orders = orders
+	l.markOrdersDirty()
+	// Flush immediately — a crash after merge but before flush would
+	// leave the stage "active" with no session.
+	if err := l.flushOrders(); err != nil {
 		return err
 	}
 	if removed {
@@ -430,17 +423,15 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	return nil
 }
 
-// failAndPersist calls failStage and persists the result.
+// failAndPersist calls failStage on in-memory orders and flushes immediately.
 func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, terminal, err := failStage(l.orders, cook.orderID, reason)
 	if err != nil {
 		return err
 	}
-	orders, terminal, err := failStage(orders, cook.orderID, reason)
-	if err != nil {
-		return err
-	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	l.orders = orders
+	l.markOrdersDirty()
+	if err := l.flushOrders(); err != nil {
 		return err
 	}
 	if terminal {
@@ -624,12 +615,7 @@ func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
 }
 
 func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*cookHandle, bool, error) {
-	// Try orders-based lookup first.
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return nil, false, err
-	}
-	for _, order := range orders.Orders {
+	for _, order := range l.orders.Orders {
 		if order.ID != targetID {
 			continue
 		}
@@ -800,27 +786,21 @@ func retryFailureReason(base string, info recover.RecoveryInfo) string {
 	return base
 }
 
-// removeOrder removes an order from orders.json by ID.
+// removeOrder removes an order from in-memory state by ID.
 func (l *Loop) removeOrder(id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return fmt.Errorf("remove requires order ID")
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
-	filtered := make([]Order, 0, len(orders.Orders))
-	for _, order := range orders.Orders {
+	filtered := make([]Order, 0, len(l.orders.Orders))
+	for _, order := range l.orders.Orders {
 		if order.ID == id {
 			continue
 		}
 		filtered = append(filtered, order)
 	}
-	orders.Orders = filtered
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
-		return err
-	}
+	l.orders.Orders = filtered
+	l.markOrdersDirty()
 	l.logger.Info("order removed", "order", id)
 	return nil
 }
