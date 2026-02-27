@@ -55,6 +55,45 @@ Some task types run as standalone single-stage orders:
 - **meditate** after several reflects have accumulated — audit the brain vault (expensive, don't over-schedule)
 - **debate** when a plan item has an unresolved design question — prepend as a stage before execute
 
+## Recent Events
+
+The mise brief includes a `recent_events` array — lifecycle events emitted by the loop since the last schedule run. These are context for your scheduling decisions, not commands.
+
+### Internal Events
+
+These are emitted automatically by the loop:
+
+| Event type | Meaning |
+|------------|---------|
+| `stage.completed` | A stage finished successfully (includes order ID, task key) |
+| `stage.failed` | A stage failed (includes reason) |
+| `order.completed` | All stages in an order finished — the order is done |
+| `order.failed` | An order failed terminally (no more retries or on_failure stages) |
+| `order.dropped` | An order was removed because its task type is no longer registered |
+| `order.requeued` | A failed order was reset and re-queued for another attempt |
+| `worktree.merged` | A cook's worktree was merged back to main |
+| `merge.conflict` | A merge failed due to conflicts |
+| `quality.written` | A quality verdict was recorded (accept or reject) |
+| `registry.rebuilt` | The skill registry was rebuilt (skills added or removed) |
+| `sync.degraded` | The backlog sync script encountered issues |
+
+### External Events
+
+Users can inject custom events via `noodle event emit <type> [payload]`. These have arbitrary types like `ci.failed`, `deploy.completed`, `test.flaky`, etc. You won't know every possible type — interpret them from context and the summary string.
+
+### Using Events for Scheduling
+
+Events are context, not commands. Consider them alongside backlog state and session history when deciding what to schedule:
+
+- After `stage.failed` or `order.failed` — consider whether the failure needs a debugging order, or if the item should be retried with a different approach.
+- After `order.completed` — consider follow-up work (reflect, related items that were blocked).
+- After `merge.conflict` — the affected order may need manual attention; avoid re-scheduling it immediately.
+- After `quality.written` with a rejection — the item will go through on_failure stages automatically; don't duplicate that work.
+- After external events like `ci.failed` — consider scheduling an investigation or fix order if it seems actionable.
+- After `registry.rebuilt` — new task types may be available; check `task_types` for scheduling opportunities.
+
+Don't react mechanically to every event. Use judgment: a single stage failure in a long pipeline is normal; three consecutive failures of the same order suggests a deeper problem.
+
 ## Situational Awareness
 
 | Trigger | Action |
