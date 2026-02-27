@@ -2,10 +2,6 @@
 
 <!-- next-id: 75 -->
 
-## Noodle Post-Plan 1
-
-7. [ ] `go install` support — add proper module versioning so `go install github.com/poteto/noodle@latest` works without cloning the repo. Needs a version tag and release workflow. Update README quick start accordingly.
-
 ## Bootstrap Skill Fixes
 
 20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.

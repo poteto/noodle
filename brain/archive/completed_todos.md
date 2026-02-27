@@ -1,5 +1,7 @@
 # Completed Todos
 
+7. [x] ~~`go install` support~~ — superseded by Homebrew distribution (`brew install poteto/tap/noodle`).
+
 73. [x] ~~Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archive/plans/73-testing-strategy/overview]]~~ — done.
 70. [x] ~~Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archive/plans/70-scaling-the-loop-redesign/overview]]~~ — done.
 
