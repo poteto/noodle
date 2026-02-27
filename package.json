@@ -21,7 +21,8 @@
     "fixtures:hash:sync": "go run ./scripts/fixturehash sync",
     "bugs": "sh scripts/bugs.sh",
     "clean": "rm -f ./bin/noodle && rm -rf ui/dist/client/assets ui/dist/client/index.html",
-    "sandbox": "sh scripts/sandbox.sh"
+    "sandbox": "sh scripts/sandbox.sh",
+    "test:smoke": "go test -tags e2e -timeout 600s -count=1 ./e2e/"
   },
   "devDependencies": {
     "concurrently": "^9"

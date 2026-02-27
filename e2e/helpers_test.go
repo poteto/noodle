@@ -1,0 +1,373 @@
+//go:build e2e
+
+package e2e
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// noodleBinary is the path to the compiled noodle binary, built once per test run.
+var (
+	noodleBinaryOnce sync.Once
+	noodleBinaryPath string
+	noodleBinaryErr  error
+)
+
+// buildNoodle compiles the noodle binary and returns its path.
+// Uses sync.Once so the binary is built at most once per process.
+func buildNoodle(t *testing.T) string {
+	t.Helper()
+	noodleBinaryOnce.Do(func() {
+		dir := t.TempDir()
+		noodleBinaryPath = filepath.Join(dir, "noodle")
+		cmd := exec.Command("go", "build", "-o", noodleBinaryPath, ".")
+		cmd.Dir = repoRoot(t)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			noodleBinaryErr = fmt.Errorf("build noodle: %s: %w", string(out), err)
+		}
+	})
+	if noodleBinaryErr != nil {
+		t.Fatalf("build noodle binary: %v", noodleBinaryErr)
+	}
+	return noodleBinaryPath
+}
+
+// repoRoot returns the root of the noodle repository by walking up from the
+// test file location.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	// go test sets the working directory to the package directory (e2e/).
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	return filepath.Dir(wd)
+}
+
+// scaffoldProject creates a temporary directory with the full project
+// structure needed for a noodle E2E run. Returns the project directory path.
+func scaffoldProject(t *testing.T, noodleBin string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	// Initialize git repo with initial commit on main.
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	// Dummy project file.
+	writeFile(t, filepath.Join(dir, "main.go"), `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello from noodle e2e")
+}
+`)
+	run(t, dir, "git", "add", "main.go")
+	run(t, dir, "git", "commit", "-m", "add main.go")
+
+	// Brain scaffolding.
+	mkdirAll(t, filepath.Join(dir, "brain", "plans"))
+	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n")
+
+	// Todos with a trivial item.
+	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos
+
+<!-- next-id: 2 -->
+
+## Tasks
+
+1. [ ] Create a hello.txt file containing "hello world" ~small
+`)
+
+	// Skills directory — copy schedule and execute from the repo.
+	srcSkills := filepath.Join(repoRoot(t), ".agents", "skills")
+	dstSkills := filepath.Join(dir, ".agents", "skills")
+	for _, skill := range []string{"schedule", "execute"} {
+		src := filepath.Join(srcSkills, skill)
+		dst := filepath.Join(dstSkills, skill)
+		copyDir(t, src, dst)
+	}
+
+	// Backlog adapter script — a simple shell script that reads brain/todos.md.
+	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	mkdirAll(t, adapterDir)
+	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), `#!/bin/sh
+set -e
+TODOS="brain/todos.md"
+if [ ! -f "$TODOS" ]; then exit 0; fi
+# Parse todos.md into NDJSON — simplified for E2E.
+awk '
+/^[0-9]+\. \[[ xX]\]/ {
+  id = $1; sub(/\./, "", id)
+  mark = $0; sub(/.*\[/, "", mark); sub(/\].*/, "", mark)
+  title = $0; sub(/^[0-9]+\. \[[ xX]\] /, "", title)
+  sub(/ ~(small|medium|large)/, "", title)
+  status = (mark == " ") ? "open" : "done"
+  printf "{\"id\":\"%s\",\"title\":\"%s\",\"status\":\"%s\",\"tags\":[]}\n", id, title, status
+}' "$TODOS"
+`)
+	writeFile(t, filepath.Join(adapterDir, "backlog-done"), `#!/bin/sh
+echo "done: $1" >&2
+`)
+	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+
+	// .noodle.toml — codex provider, auto autonomy, max_cooks=1.
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
+
+[routing.defaults]
+provider = "codex"
+model = "gpt-5.3-codex"
+
+[skills]
+paths = [".agents/skills"]
+
+[agents.codex]
+path = "~/.codex"
+
+[adapters.backlog]
+skill = "todo"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+done = ".noodle/adapters/backlog-done"
+
+[concurrency]
+max_cooks = 1
+
+[runtime]
+default = "tmux"
+
+[server]
+enabled = false
+`)
+
+	// Runtime directory.
+	mkdirAll(t, filepath.Join(dir, ".noodle"))
+
+	// Commit scaffolding.
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "noodle e2e scaffolding")
+
+	return dir
+}
+
+// milestone represents a phased polling checkpoint.
+type milestone struct {
+	name    string
+	timeout time.Duration
+	check   func(projectDir string) (bool, error)
+}
+
+// pollMilestones polls milestones sequentially with per-phase deadlines and
+// exponential backoff. Returns an error if any milestone is not reached within
+// its deadline.
+func pollMilestones(t *testing.T, milestones []milestone, projectDir string) error {
+	t.Helper()
+	for _, ms := range milestones {
+		t.Logf("polling milestone: %s (timeout %s)", ms.name, ms.timeout)
+		deadline := time.Now().Add(ms.timeout)
+		backoff := 500 * time.Millisecond
+		maxBackoff := 5 * time.Second
+
+		for {
+			ok, err := ms.check(projectDir)
+			if err != nil {
+				return fmt.Errorf("milestone %s check error: %w", ms.name, err)
+			}
+			if ok {
+				t.Logf("milestone %s reached", ms.name)
+				break
+			}
+			if time.Now().After(deadline) {
+				return fmt.Errorf("milestone %s not reached within %s", ms.name, ms.timeout)
+			}
+			time.Sleep(backoff)
+			backoff = backoff * 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+	return nil
+}
+
+// ordersExist checks if .noodle/orders.json exists and has at least one order.
+func ordersExist(projectDir string) (bool, error) {
+	path := filepath.Join(projectDir, ".noodle", "orders.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	var orders struct {
+		Orders []json.RawMessage `json:"orders"`
+	}
+	if err := json.Unmarshal(data, &orders); err != nil {
+		return false, nil // treat parse errors as not-ready
+	}
+	return len(orders.Orders) > 0, nil
+}
+
+// sessionDirExists checks if any session directory exists under .noodle/sessions/.
+func sessionDirExists(projectDir string) (bool, error) {
+	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
+	entries, err := os.ReadDir(sessionsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// sessionCompleted checks if any session's meta.json shows status completed or merged.
+func sessionCompleted(projectDir string) (bool, error) {
+	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
+	entries, err := os.ReadDir(sessionsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		metaPath := filepath.Join(sessionsDir, entry.Name(), "meta.json")
+		data, err := os.ReadFile(metaPath)
+		if err != nil {
+			continue
+		}
+		var meta struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(data, &meta); err != nil {
+			continue
+		}
+		status := strings.ToLower(strings.TrimSpace(meta.Status))
+		if status == "completed" || status == "merged" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// cleanupNoodle kills a noodle process and any leaked tmux sessions.
+func cleanupNoodle(t *testing.T, cmd *exec.Cmd, projectDir string) {
+	t.Helper()
+	if cmd != nil && cmd.Process != nil {
+		t.Logf("killing noodle process (pid %d)", cmd.Process.Pid)
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}
+	// Kill leaked tmux sessions matching the project prefix.
+	killLeakedTmux(t, projectDir)
+}
+
+// killLeakedTmux kills any tmux sessions that contain the project directory
+// in their name. Best-effort; ignores errors.
+func killLeakedTmux(t *testing.T, projectDir string) {
+	t.Helper()
+	out, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").CombinedOutput()
+	if err != nil {
+		return // tmux not running or no sessions
+	}
+	base := filepath.Base(projectDir)
+	for _, line := range strings.Split(string(out), "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		// Kill sessions that look like they belong to our test project.
+		if strings.Contains(name, base) || strings.HasPrefix(name, "noodle-") {
+			t.Logf("killing leaked tmux session: %s", name)
+			_ = exec.Command("tmux", "kill-session", "-t", name).Run()
+		}
+	}
+}
+
+// run executes a command in the given directory and fails the test on error.
+func run(t *testing.T, dir string, name string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("run %s %v in %s: %s: %v", name, args, dir, string(out), err)
+	}
+	return string(out)
+}
+
+// writeFile creates parent directories and writes content to a file.
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	mkdirAll(t, filepath.Dir(path))
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+// mkdirAll creates directories, failing the test on error.
+func mkdirAll(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
+// chmodExec marks a file as executable.
+func chmodExec(t *testing.T, path string) {
+	t.Helper()
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatalf("chmod %s: %v", path, err)
+	}
+}
+
+// copyDir recursively copies src to dst.
+func copyDir(t *testing.T, src, dst string) {
+	t.Helper()
+	mkdirAll(t, dst)
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatalf("read dir %s: %v", src, err)
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			copyDir(t, srcPath, dstPath)
+			continue
+		}
+		data, err := os.ReadFile(srcPath)
+		if err != nil {
+			t.Fatalf("read %s: %v", srcPath, err)
+		}
+		if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+			t.Fatalf("write %s: %v", dstPath, err)
+		}
+	}
+}
