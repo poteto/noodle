@@ -363,7 +363,38 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 
 func (l *Loop) shutdownAndDrain() {
 	l.Shutdown()
-	l.watcherWG.Wait()
+
+	timeout, err := time.ParseDuration(l.config.Concurrency.ShutdownTimeout)
+	if err != nil || timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+
+	done := make(chan struct{})
+	go func() {
+		l.watcherWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All watchers quiesced normally.
+	case <-time.After(timeout):
+		l.logger.Warn("shutdown timeout exceeded, force-closing runtimes",
+			"timeout", timeout,
+			"leaked_watchers", l.watcherCount.Load(),
+		)
+		for _, runtime := range l.deps.Runtimes {
+			if runtime == nil {
+				continue
+			}
+			_ = runtime.Close()
+		}
+		for orderID, cook := range l.activeCooksByOrder {
+			_ = cook.session.Kill()
+			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
+		}
+	}
+
 	_ = l.drainCompletions(context.Background())
 }
 
