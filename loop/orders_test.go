@@ -876,14 +876,14 @@ func TestActiveOrderIDs(t *testing.T) {
 		},
 	}
 
-	got := ActiveOrderIDs(of)
+	got := activeOrderIDs(of)
 	want := []string{"active-pending", "active-active", "failing-pending"}
 	if len(got) != len(want) {
-		t.Fatalf("ActiveOrderIDs len = %d, want %d (%v)", len(got), len(want), got)
+		t.Fatalf("activeOrderIDs len = %d, want %d (%v)", len(got), len(want), got)
 	}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("ActiveOrderIDs[%d] = %q, want %q", i, got[i], want[i])
+			t.Fatalf("activeOrderIDs[%d] = %q, want %q", i, got[i], want[i])
 		}
 	}
 }
@@ -913,7 +913,7 @@ func TestBusyTargets(t *testing.T) {
 		},
 	}
 
-	busy := BusyTargets(of)
+	busy := busyTargets(of)
 	if !busy["busy-main"] {
 		t.Fatal("expected busy-main to be busy")
 	}

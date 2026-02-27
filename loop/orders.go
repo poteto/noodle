@@ -35,9 +35,9 @@ type dispatchCandidate struct {
 	IsOnFailure bool
 }
 
-// ActiveOrderIDs returns active/failing order IDs that still have work in the
+// activeOrderIDs returns active/failing order IDs that still have work in the
 // selected pipeline (main stages or on-failure stages).
-func ActiveOrderIDs(orders OrdersFile) []string {
+func activeOrderIDs(orders OrdersFile) []string {
 	ids := make([]string, 0, len(orders.Orders))
 	for _, order := range orders.Orders {
 		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
@@ -57,9 +57,9 @@ func ActiveOrderIDs(orders OrdersFile) []string {
 	return ids
 }
 
-// BusyTargets returns order IDs currently blocked by an active stage in the
+// busyTargets returns order IDs currently blocked by an active stage in the
 // selected pipeline (main stages or on-failure stages).
-func BusyTargets(orders OrdersFile) map[string]bool {
+func busyTargets(orders OrdersFile) map[string]bool {
 	busy := make(map[string]bool)
 	for _, order := range orders.Orders {
 		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {

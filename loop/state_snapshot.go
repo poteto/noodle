@@ -116,7 +116,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		RecentHistory:      l.snapshotRecentHistory(),
 		Status:             string(l.state),
 		ActiveSummary:      l.snapshotActiveSummary(),
-		ActiveOrderIDs:     ActiveOrderIDs(ordersFile),
+		ActiveOrderIDs:     activeOrderIDs(ordersFile),
 		TotalCostUSD:       totalCost,
 		MaxCooks:           l.config.Concurrency.MaxCooks,
 		Autonomy:           l.config.Autonomy,

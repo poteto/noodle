@@ -488,7 +488,7 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 		}
 	}
 
-	orderBusyTargets := BusyTargets(orders)
+	orderBusyTargets := busyTargets(orders)
 	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.pendingRetry)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
 	for targetID, busy := range orderBusyTargets {
 		if busy {

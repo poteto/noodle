@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/poteto/noodle/recover"
+	"github.com/poteto/noodle/internal/recover"
 )
 
 func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
