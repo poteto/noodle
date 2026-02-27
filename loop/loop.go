@@ -78,6 +78,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		logger:                deps.Logger,
 		state:                 StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
 		activeCooksByOrder:    map[string]*cookHandle{},
+		completions:           make(chan StageResult, 1024),
 		adoptedTargets:        map[string]string{},
 		adoptedSessions:       []string{},
 		failedTargets:         map[string]string{},
@@ -146,6 +147,8 @@ func (l *Loop) Shutdown() {
 		name := tmuxSessionName(sessionID)
 		_ = killTmuxSession(name)
 	}
+	// Wait for watcher goroutines to finish sending results.
+	l.watcherWG.Wait()
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -282,7 +285,7 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.processControlCommands(); err != nil {
 		return false, err
 	}
-	if err := l.collectCompleted(ctx); err != nil {
+	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}
 	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {

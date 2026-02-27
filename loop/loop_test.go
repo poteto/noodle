@@ -803,10 +803,11 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 
 	// Create a loop with a registry error (simulates discovery failure)
 	l := &Loop{
-		projectDir:     projectDir,
-		runtimeDir:     runtimeDir,
-		registryErr:    errors.New("task type discovery failed: bad frontmatter"),
+		projectDir:         projectDir,
+		runtimeDir:         runtimeDir,
+		registryErr:        errors.New("task type discovery failed: bad frontmatter"),
 		activeCooksByOrder: map[string]*cookHandle{},
+		completions:        make(chan StageResult, 1024),
 		adoptedTargets:     map[string]string{},
 		failedTargets:      map[string]string{},
 		processedIDs:       map[string]struct{}{},
@@ -1548,11 +1549,11 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	// before collectAdoptedCompletions processes it.
 	installFixtureTmuxStub(t, []string{tmuxSessionName(schedSessID)})
 
-	// Run collectCompleted (which includes collectAdoptedCompletions).
+	// Run drainCompletions (which includes collectAdoptedCompletions).
 	// The adopted schedule session is "failed", so handleCompletion → retryCook.
 	// Item 29 is still running, so activeCooksByOrder already has 1 entry.
-	if err := l.collectCompleted(context.Background()); err != nil {
-		t.Fatalf("collectCompleted: %v", err)
+	if err := l.drainCompletions(context.Background()); err != nil {
+		t.Fatalf("drainCompletions: %v", err)
 	}
 
 	// The invariant: activeCooksByOrder must never exceed max_cooks.

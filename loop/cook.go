@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/dispatcher"
@@ -170,66 +172,162 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		plan:         order.Plan,
 		session:      session,
 		done:         session.Done(),
+		generation:   l.nextGeneration,
 		worktreeName: name,
 		worktreePath: req.WorktreePath,
 		attempt:      opts.attempt,
 		displayName:  displayName,
 	}
+	l.nextGeneration++
 	l.activeCooksByOrder[cand.OrderID] = cook
+	l.startWatcher(cook)
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
 }
 
-func (l *Loop) collectCompleted(ctx context.Context) error {
-	l.collectBootstrapCompletion()
-
-	completed := make([]*cookHandle, 0)
-	for _, cook := range l.activeCooksByOrder {
+// startWatcher launches a goroutine that blocks on the cook's done channel
+// and sends a StageResult to the completions channel when the session finishes.
+func (l *Loop) startWatcher(cook *cookHandle) {
+	l.watcherWG.Add(1)
+	go func() {
+		defer l.watcherWG.Done()
+		<-cook.done
+		status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
+		var resultStatus StageResultStatus
+		if status == "completed" {
+			resultStatus = StageResultCompleted
+		} else {
+			resultStatus = StageResultFailed
+		}
+		r := StageResult{
+			OrderID:      cook.orderID,
+			StageIndex:   cook.stageIndex,
+			Attempt:      cook.attempt,
+			IsOnFailure:  cook.isOnFailure,
+			Status:       resultStatus,
+			SessionID:    cook.session.ID(),
+			Generation:   cook.generation,
+			IsSchedule:   isScheduleStage(cook.stage),
+			WorktreeName: cook.worktreeName,
+			WorktreePath: cook.worktreePath,
+		}
 		select {
-		case <-cook.done:
-			completed = append(completed, cook)
+		case l.completions <- r:
 		default:
+			l.completionsMu.Lock()
+			l.completionOver = append(l.completionOver, r)
+			l.completionsMu.Unlock()
+		}
+	}()
+}
+
+// startBootstrapWatcher launches a watcher for the bootstrap session.
+func (l *Loop) startBootstrapWatcher(cook *cookHandle) {
+	l.watcherWG.Add(1)
+	go func() {
+		defer l.watcherWG.Done()
+		<-cook.done
+		status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
+		var resultStatus StageResultStatus
+		if status == "completed" {
+			resultStatus = StageResultCompleted
+		} else {
+			resultStatus = StageResultFailed
+		}
+		r := StageResult{
+			OrderID:     cook.orderID,
+			IsBootstrap: true,
+			Status:      resultStatus,
+			SessionID:   cook.session.ID(),
+			Generation:  cook.generation,
+		}
+		select {
+		case l.completions <- r:
+		default:
+			l.completionsMu.Lock()
+			l.completionOver = append(l.completionOver, r)
+			l.completionsMu.Unlock()
+		}
+	}()
+}
+
+// drainCompletions processes all pending StageResults from the completions
+// channel and overflow slice. Replaces the old poll-based collectCompleted.
+func (l *Loop) drainCompletions(ctx context.Context) error {
+	if l.completions == nil {
+		return l.collectAdoptedCompletions(ctx)
+	}
+	// Yield to let watcher goroutines finish sending pending results.
+	// Watchers send to a buffered channel so they complete quickly once
+	// scheduled. Two yields + a minimal sleep covers both GOMAXPROCS=1
+	// (cooperative scheduling) and multi-core (thread synchronization).
+	runtime.Gosched()
+	runtime.Gosched()
+	time.Sleep(time.Millisecond)
+	// Drain channel.
+	for {
+		select {
+		case r := <-l.completions:
+			if err := l.processStageResult(ctx, r); err != nil {
+				return err
+			}
+		default:
+			goto overflow
 		}
 	}
-	for _, cook := range completed {
-		delete(l.activeCooksByOrder, cook.orderID)
-		if err := l.handleCompletion(ctx, cook); err != nil {
-			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
-				l.pendingRetry[cook.orderID] = &pendingRetryCook{
-					orderID:     cook.orderID,
-					stageIndex:  cook.stageIndex,
-					stage:       cook.stage,
-					isOnFailure: cook.isOnFailure,
-					orderStatus: cook.orderStatus,
-					plan:        cook.plan,
-					attempt:     cook.attempt + 1,
-					displayName: cook.displayName,
-				}
-				return conflictErr
-			}
+overflow:
+	// Drain overflow slice.
+	l.completionsMu.Lock()
+	over := l.completionOver
+	l.completionOver = nil
+	l.completionsMu.Unlock()
+	for _, r := range over {
+		if err := l.processStageResult(ctx, r); err != nil {
+			return err
 		}
 	}
 	return l.collectAdoptedCompletions(ctx)
 }
 
-// collectBootstrapCompletion checks if the bootstrap session has finished
-// and handles success/failure. Bootstrap has its own lifecycle — it does
-// not go through handleCompletion or retryCook.
-func (l *Loop) collectBootstrapCompletion() {
+// processStageResult handles a single completion result from a watcher goroutine.
+func (l *Loop) processStageResult(ctx context.Context, r StageResult) error {
+	if r.IsBootstrap {
+		l.processBootstrapResult(r)
+		return nil
+	}
+	cook, ok := l.activeCooksByOrder[r.OrderID]
+	if !ok {
+		return nil
+	}
+	if cook.generation != r.Generation {
+		return nil
+	}
+	delete(l.activeCooksByOrder, r.OrderID)
+	if err := l.handleCompletion(ctx, cook); err != nil {
+		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+			l.pendingRetry[cook.orderID] = &pendingRetryCook{
+				orderID:     cook.orderID,
+				stageIndex:  cook.stageIndex,
+				stage:       cook.stage,
+				isOnFailure: cook.isOnFailure,
+				orderStatus: cook.orderStatus,
+				plan:        cook.plan,
+				attempt:     cook.attempt + 1,
+				displayName: cook.displayName,
+			}
+			return conflictErr
+		}
+	}
+	return nil
+}
+
+// processBootstrapResult handles completion of the bootstrap session.
+func (l *Loop) processBootstrapResult(r StageResult) {
 	if l.bootstrapInFlight == nil {
 		return
 	}
-	select {
-	case <-l.bootstrapInFlight.done:
-	default:
-		return
-	}
-
-	cook := l.bootstrapInFlight
 	l.bootstrapInFlight = nil
-
-	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
-	if status == "completed" {
+	if r.Status == StageResultCompleted {
 		l.rebuildRegistry()
 		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
 		appendQueueEvent(eventsPath, QueueAuditEvent{
@@ -239,12 +337,11 @@ func (l *Loop) collectBootstrapCompletion() {
 		l.logger.Info("bootstrap completed")
 		return
 	}
-
 	l.bootstrapAttempts++
 	if l.bootstrapAttempts >= 3 {
 		l.bootstrapExhausted = true
 	}
-	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", status)
+	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts)
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {

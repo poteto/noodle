@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -126,6 +127,29 @@ type QualityVerdict struct {
 	Feedback string `json:"feedback,omitempty"`
 }
 
+// StageResultStatus indicates how a stage completed.
+type StageResultStatus string
+
+const (
+	StageResultCompleted StageResultStatus = "completed"
+	StageResultFailed    StageResultStatus = "failed"
+)
+
+// StageResult is pushed by a watcher goroutine when a session finishes.
+type StageResult struct {
+	OrderID      string
+	StageIndex   int
+	Attempt      int
+	IsOnFailure  bool
+	Status       StageResultStatus
+	SessionID    string
+	Generation   uint64
+	IsSchedule   bool
+	IsBootstrap  bool
+	WorktreeName string
+	WorktreePath string
+}
+
 type cookHandle struct {
 	orderID      string
 	stageIndex   int
@@ -135,6 +159,7 @@ type cookHandle struct {
 	plan         []string
 	session      dispatcher.Session
 	done         <-chan struct{}
+	generation   uint64
 	worktreeName string
 	worktreePath string
 	attempt      int
@@ -223,6 +248,12 @@ type Loop struct {
 	pendingReview   map[string]*pendingReviewCook
 	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
+
+	completions    chan StageResult
+	completionsMu  sync.Mutex
+	completionOver []StageResult
+	nextGeneration uint64
+	watcherWG      sync.WaitGroup
 
 	bootstrapAttempts  int
 	bootstrapExhausted bool

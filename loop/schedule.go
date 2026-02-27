@@ -126,11 +126,14 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		},
 		session:      sess,
 		done:         sess.Done(),
+		generation:   l.nextGeneration,
 		worktreeName: "",
 		worktreePath: l.projectDir,
 		attempt:      attempt,
 	}
+	l.nextGeneration++
 	l.activeCooksByOrder[order.ID] = cook
+	l.startWatcher(cook)
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }
@@ -188,9 +191,12 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		},
 		session:      session,
 		done:         session.Done(),
+		generation:   l.nextGeneration,
 		worktreeName: name,
 		worktreePath: l.projectDir,
 	}
+	l.nextGeneration++
+	l.startBootstrapWatcher(l.bootstrapInFlight)
 	return nil
 }
 
