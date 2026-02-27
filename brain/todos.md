@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 71 -->
+<!-- next-id: 72 -->
 
 ## Scaling
 
@@ -52,6 +52,10 @@
 
 62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt. Folded into #49 (phase 1). [[archived_plans/49-work-orders-redesign/overview]]
 63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve. Folded into #49 (phase 5). [[archived_plans/49-work-orders-redesign/overview]]
+
+## Infrastructure
+
+71. [ ] Investigate typesafe server/client protocol — evaluate protobuf, ConnectRPC, or similar for the Go↔TypeScript API boundary. Currently Go structs and TS interfaces are manually mirrored with JSON, and nil slices vs empty arrays cause runtime crashes (see fix e8b4e66). A shared schema would eliminate this class of bug entirely and auto-generate client types.
 
 ## Skill System Gaps
 
