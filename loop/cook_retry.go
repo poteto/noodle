@@ -100,6 +100,7 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 			ID:     p.orderID,
 			Status: p.orderStatus,
 			Plan:   p.plan,
+			Stages: []Stage{p.stage},
 		}
 		if err := l.spawnCook(ctx, cand, order, spawnOptions{
 			attempt:     p.attempt,
@@ -175,6 +176,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *cookHandle, reason string) e
 		Status:    cook.orderStatus,
 		Plan:      cook.plan,
 		Rationale: "",
+		Stages:    []Stage{cook.stage},
 	}
 	return l.spawnCook(ctx, cand, order, spawnOptions{
 		attempt:     nextAttempt,
