@@ -73,8 +73,9 @@ type MonitorConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	MaxCooks              int `toml:"max_cooks"`
-	MaxCompletionOverflow int `toml:"max_completion_overflow"`
+	MaxCooks                   int `toml:"max_cooks"`
+	MaxCompletionOverflow      int `toml:"max_completion_overflow"`
+	MergeBackpressureThreshold int `toml:"merge_backpressure_threshold"`
 }
 
 type ProviderConfig struct {
@@ -201,8 +202,9 @@ func DefaultConfig() Config {
 			PollInterval:   "5s",
 		},
 		Concurrency: ConcurrencyConfig{
-			MaxCooks:              4,
-			MaxCompletionOverflow: 1024,
+			MaxCooks:                   4,
+			MaxCompletionOverflow:      1024,
+			MergeBackpressureThreshold: 128,
 		},
 		Agents: AgentsConfig{},
 		Runtime: RuntimeConfig{
@@ -309,6 +311,9 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	if !metadata.IsDefined("concurrency", "max_completion_overflow") {
 		config.Concurrency.MaxCompletionOverflow = 1024
 	}
+	if !metadata.IsDefined("concurrency", "merge_backpressure_threshold") {
+		config.Concurrency.MergeBackpressureThreshold = 128
+	}
 
 	config.Runtime.spritesDefined = metadata.IsDefined("runtime", "sprites")
 	config.Runtime.cursorDefined = metadata.IsDefined("runtime", "cursor")
@@ -399,6 +404,9 @@ func validateParsedValues(config Config) error {
 	}
 	if config.Concurrency.MaxCompletionOverflow <= 0 {
 		return fmt.Errorf("concurrency.max_completion_overflow: must be greater than 0")
+	}
+	if config.Concurrency.MergeBackpressureThreshold <= 0 {
+		return fmt.Errorf("concurrency.merge_backpressure_threshold: must be greater than 0")
 	}
 
 	switch config.Plans.OnDone {

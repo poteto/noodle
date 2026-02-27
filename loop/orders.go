@@ -48,7 +48,7 @@ func ActiveOrderIDs(orders OrdersFile) []string {
 			stages = order.OnFailure
 		}
 		for _, stage := range stages {
-			if stage.Status == StageStatusActive || stage.Status == StageStatusPending {
+			if stage.Status == StageStatusActive || stage.Status == StageStatusMerging || stage.Status == StageStatusPending {
 				ids = append(ids, order.ID)
 				break
 			}
@@ -70,7 +70,7 @@ func BusyTargets(orders OrdersFile) map[string]bool {
 			stages = order.OnFailure
 		}
 		for _, stage := range stages {
-			if stage.Status == StageStatusActive {
+			if stage.Status == StageStatusActive || stage.Status == StageStatusMerging {
 				busy[order.ID] = true
 				break
 			}
@@ -91,7 +91,7 @@ func activeStageForOrder(order Order) (int, *Stage) {
 	}
 	for i := range stages {
 		switch stages[i].Status {
-		case StageStatusActive, StageStatusPending:
+		case StageStatusActive, StageStatusMerging, StageStatusPending:
 			return i, &stages[i]
 		}
 	}
@@ -125,7 +125,7 @@ func advanceOrder(orders OrdersFile, orderID string) (OrdersFile, bool, error) {
 	advanced := false
 	for i := range *stages {
 		switch (*stages)[i].Status {
-		case StageStatusActive, StageStatusPending:
+		case StageStatusActive, StageStatusMerging, StageStatusPending:
 			(*stages)[i].Status = StageStatusCompleted
 			advanced = true
 		}
@@ -206,7 +206,7 @@ func failCurrentAndCancelRest(stages *[]Stage) {
 	for i := range *stages {
 		s := &(*stages)[i]
 		if !foundCurrent {
-			if s.Status == StageStatusActive || s.Status == StageStatusPending {
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging || s.Status == StageStatusPending {
 				s.Status = StageStatusFailed
 				foundCurrent = true
 			}
@@ -290,7 +290,7 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 
 		// Find first pending stage; skip if current stage is active (already dispatched).
 		for i, s := range stages {
-			if s.Status == StageStatusActive {
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging {
 				// Already dispatched — order is busy at stage level.
 				break
 			}

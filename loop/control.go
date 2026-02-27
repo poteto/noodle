@@ -287,11 +287,21 @@ func (l *Loop) controlMerge(orderID string) error {
 			break
 		}
 	}
-	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
+	if err := l.persistOrderStageStatus(orderID, pending.stageIndex, cook.isOnFailure, StageStatusMerging); err != nil {
 		return err
 	}
-	if err := l.advanceAndPersist(context.Background(), cook); err != nil {
-		return err
+	if l.mergeQueue == nil {
+		if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
+			return err
+		}
+		if err := l.advanceAndPersist(context.Background(), cook); err != nil {
+			return err
+		}
+	} else {
+		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
+		if err := l.drainMergeResults(context.Background()); err != nil {
+			return err
+		}
 	}
 	delete(l.pendingReview, orderID)
 	return l.writePendingReview()

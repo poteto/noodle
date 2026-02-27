@@ -415,11 +415,19 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			return l.advanceAndPersist(ctx, cook)
 		}
 
-		l.logger.Info("cook completing", "order", cook.orderID, "session", cook.session.ID())
-		if err := l.mergeCookWorktree(ctx, cook); err != nil {
+		if err := l.persistOrderStageStatus(cook.orderID, cook.stageIndex, cook.isOnFailure, StageStatusMerging); err != nil {
 			return err
 		}
-		return l.advanceAndPersist(ctx, cook)
+		l.logger.Info("cook completing", "order", cook.orderID, "session", cook.session.ID())
+		if l.mergeQueue == nil {
+			if err := l.mergeCookWorktree(ctx, cook); err != nil {
+				return err
+			}
+			return l.advanceAndPersist(ctx, cook)
+		}
+		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
+		l.logger.Info("cook queued for merge", "order", cook.orderID, "session", cook.session.ID(), "stage", cook.stageIndex)
+		return nil
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
 }

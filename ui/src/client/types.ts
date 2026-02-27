@@ -47,7 +47,7 @@ export interface Session {
   title?: string;
 }
 
-export type StageStatus = "pending" | "active" | "completed" | "failed" | "cancelled";
+export type StageStatus = "pending" | "active" | "merging" | "completed" | "failed" | "cancelled";
 export type OrderStatus = "active" | "completed" | "failed" | "failing";
 
 export interface Stage {

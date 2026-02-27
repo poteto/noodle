@@ -82,7 +82,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
 	}
 
-	return &Loop{
+	loop := &Loop{
 		projectDir:         projectDir,
 		runtimeDir:         runtimeDir,
 		config:             cfg,
@@ -108,6 +108,13 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		recentHistory: make([]mise.HistoryItem, 0, 20),
 		sessionHealth: map[string]loopruntime.HealthEvent{},
 	}
+	loop.mergeQueue = NewMergeQueue(context.Background(), func(ctx context.Context, req MergeRequest) error {
+		if req.Cook == nil {
+			return nil
+		}
+		return loop.mergeCookWorktree(ctx, req.Cook)
+	})
+	return loop
 }
 
 func (l *Loop) setState(next State) {
@@ -161,6 +168,9 @@ func (l *Loop) rebuildRegistry() {
 
 // Shutdown kills all active agent sessions. Called during process exit.
 func (l *Loop) Shutdown() {
+	if l.mergeQueue != nil {
+		l.mergeQueue.Close()
+	}
 	for _, cook := range l.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
@@ -241,8 +251,15 @@ func (l *Loop) Run(ctx context.Context) error {
 			if err := l.Cycle(ctx); err != nil {
 				return err
 			}
-			if l.state == StateDraining && l.watcherCount.Load() == 0 {
+			mergeSettled := true
+			if l.mergeQueue != nil {
+				mergeSettled = l.mergeQueue.Pending() == 0 && l.mergeQueue.InFlight() == 0
+			}
+			if l.state == StateDraining && l.watcherCount.Load() == 0 && mergeSettled {
 				if err := l.drainCompletions(context.Background()); err != nil {
+					return err
+				}
+				if err := l.drainMergeResults(context.Background()); err != nil {
 					return err
 				}
 				return nil
@@ -321,6 +338,9 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}
+	if err := l.drainMergeResults(ctx); err != nil {
+		return false, err
+	}
 	if err := l.processControlCommands(); err != nil {
 		return false, err
 	}
@@ -329,6 +349,9 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	if err := l.drainCompletions(ctx); err != nil {
+		return false, err
+	}
+	if err := l.drainMergeResults(ctx); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -454,6 +477,13 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 }
 
 func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {
+	if l.mergeQueue != nil {
+		threshold := l.config.Concurrency.MergeBackpressureThreshold
+		if threshold > 0 && l.mergeQueue.Pending()+l.mergeQueue.InFlight() > threshold {
+			return nil
+		}
+	}
+
 	orderBusyTargets := BusyTargets(orders)
 	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.pendingRetry)+len(l.activeCooksByOrder)+len(l.adoptedTargets))
 	for targetID, busy := range orderBusyTargets {
