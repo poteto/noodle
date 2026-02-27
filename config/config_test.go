@@ -638,6 +638,47 @@ sprite_name = "test"
 	}
 }
 
+func TestValidateWarnsOnUnknownRuntimeDefault(t *testing.T) {
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[runtime]
+default = "tmux"
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+
+	result := Validate(cfg)
+	warnings := result.Warnings()
+	if len(warnings) == 0 {
+		t.Fatal("expected warning diagnostic for unknown runtime default")
+	}
+	found := false
+	for _, w := range warnings {
+		if w.Code == DiagnosticCodeRuntimeDefaultUnknown {
+			found = true
+			if !strings.Contains(w.Message, "tmux") {
+				t.Fatalf("warning message should mention tmux, got %q", w.Message)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected runtime_default_unknown diagnostic code")
+	}
+
+	// Known runtimes should produce no warning.
+	for _, valid := range []string{"process", "sprites", "cursor"} {
+		cfg.Runtime.Default = valid
+		result := Validate(cfg)
+		if len(result.Warnings()) != 0 {
+			t.Fatalf("unexpected warning for runtime.default=%q", valid)
+		}
+	}
+}
+
 func TestMaxConcurrentForLookup(t *testing.T) {
 	rc := RuntimeConfig{
 		Process:    ProcessConfig{MaxConcurrent: 4},

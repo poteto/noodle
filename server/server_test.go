@@ -319,7 +319,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	hub.addClient(client)
 
 	// First load should broadcast.
-	hub.loadAndBroadcast(dir, now, provider)
+	hub.loadAndBroadcast(dir, now, provider, nil)
 	select {
 	case msg := <-client.ch:
 		if !strings.Contains(string(msg), "data: ") {
@@ -330,7 +330,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	}
 
 	// Second load with same data should NOT broadcast (diff gating).
-	hub.loadAndBroadcast(dir, now, provider)
+	hub.loadAndBroadcast(dir, now, provider, nil)
 	select {
 	case msg := <-client.ch:
 		t.Fatalf("expected no broadcast on unchanged data, got %s", msg)
@@ -387,6 +387,39 @@ func TestFindPortSkipsBusy(t *testing.T) {
 	// Should have found port+1 or later.
 	if addr == fmt.Sprintf("127.0.0.1:%d", port) {
 		t.Fatalf("FindPort returned the busy port %d", port)
+	}
+}
+
+func TestSnapshotIncludesWarnings(t *testing.T) {
+	dir := t.TempDir()
+	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
+
+	s := New(Options{
+		RuntimeDir:        dir,
+		Addr:              "127.0.0.1:0",
+		Now:               func() time.Time { return fixed },
+		LoopStateProvider: &staticProvider{state: loop.LoopState{Status: "running"}},
+		Warnings:          []string{"unknown runtime \"tmux\" (valid: process, sprites, cursor)"},
+	})
+
+	req := httptest.NewRequest("GET", "/api/snapshot", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var snap snapshot.Snapshot
+	if err := json.NewDecoder(resp.Body).Decode(&snap); err != nil {
+		t.Fatalf("decode snapshot: %v", err)
+	}
+	if len(snap.Warnings) != 1 {
+		t.Fatalf("warnings count = %d, want 1", len(snap.Warnings))
+	}
+	if snap.Warnings[0] != "unknown runtime \"tmux\" (valid: process, sprites, cursor)" {
+		t.Fatalf("warning = %q", snap.Warnings[0])
 	}
 }
 

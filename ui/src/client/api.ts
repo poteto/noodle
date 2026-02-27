@@ -28,6 +28,7 @@ export function normalizeSnapshot(raw: Snapshot): Snapshot {
     events_by_session: raw.events_by_session ?? {},
     feed_events: raw.feed_events ?? [],
     pending_reviews: raw.pending_reviews ?? [],
+    warnings: raw.warnings ?? [],
   };
 }
 
@@ -43,7 +44,8 @@ function normalizeOrder(order: Snapshot["orders"][number]): Snapshot["orders"][n
 export async function fetchSnapshot(): Promise<Snapshot> {
   const res = await fetch("/api/snapshot");
   if (!res.ok) {
-    throw new Error(`fetchSnapshot: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`fetchSnapshot: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
   }
   return normalizeSnapshot(await jsonBody<Snapshot>(res));
 }
@@ -57,7 +59,8 @@ export async function fetchSessionEvents(sessionId: string, after?: string): Pro
   const url = `/api/sessions/${encodeURIComponent(sessionId)}/events${qs ? `?${qs}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`fetchSessionEvents: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`fetchSessionEvents: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
   }
   return jsonBody<EventLine[]>(res);
 }
@@ -69,7 +72,8 @@ export async function sendControl(cmd: ControlCommand): Promise<ControlAck> {
     body: JSON.stringify(cmd),
   });
   if (!res.ok) {
-    throw new Error(`sendControl: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`sendControl: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
   }
   return jsonBody<ControlAck>(res);
 }
@@ -77,7 +81,8 @@ export async function sendControl(cmd: ControlCommand): Promise<ControlAck> {
 export async function fetchConfig(): Promise<ConfigDefaults> {
   const res = await fetch("/api/config");
   if (!res.ok) {
-    throw new Error(`fetchConfig: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`fetchConfig: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
   }
   return jsonBody<ConfigDefaults>(res);
 }
@@ -85,7 +90,8 @@ export async function fetchConfig(): Promise<ConfigDefaults> {
 export async function fetchReviewDiff(reviewId: string): Promise<DiffResponse> {
   const res = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}/diff`);
   if (!res.ok) {
-    throw new Error(`fetchReviewDiff: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`fetchReviewDiff: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
   }
   return jsonBody<DiffResponse>(res);
 }

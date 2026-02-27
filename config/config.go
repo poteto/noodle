@@ -150,6 +150,7 @@ type DiagnosticSeverity string
 const (
 	DiagnosticSeverityRepairable DiagnosticSeverity = "repairable"
 	DiagnosticSeverityFatal      DiagnosticSeverity = "fatal"
+	DiagnosticSeverityWarning    DiagnosticSeverity = "warning"
 )
 
 type ConfigDiagnostic struct {
@@ -169,6 +170,7 @@ const (
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
 	DiagnosticCodeProviderUnknown        = "provider_unknown"
+	DiagnosticCodeRuntimeDefaultUnknown  = "runtime_default_unknown"
 )
 
 type ValidationResult struct {
@@ -185,6 +187,10 @@ func (r ValidationResult) Repairables() []ConfigDiagnostic {
 
 func (r ValidationResult) Fatals() []ConfigDiagnostic {
 	return filterDiagnostics(r.Diagnostics, DiagnosticSeverityFatal)
+}
+
+func (r ValidationResult) Warnings() []ConfigDiagnostic {
+	return filterDiagnostics(r.Diagnostics, DiagnosticSeverityWarning)
 }
 
 func filterDiagnostics(in []ConfigDiagnostic, severity DiagnosticSeverity) []ConfigDiagnostic {
@@ -551,6 +557,21 @@ func Validate(config Config) ValidationResult {
 			Fix:       "Set routing.defaults.provider to \"claude\" or \"codex\" in .noodle.toml.",
 			Code:      DiagnosticCodeProviderUnknown,
 		})
+	}
+
+	if rd := strings.ToLower(strings.TrimSpace(config.Runtime.Default)); rd != "" {
+		switch rd {
+		case "process", "sprites", "cursor":
+			// Known runtimes — ok.
+		default:
+			result.Diagnostics = append(result.Diagnostics, ConfigDiagnostic{
+				FieldPath: "runtime.default",
+				Message:   fmt.Sprintf("unknown runtime %q (valid: process, sprites, cursor)", config.Runtime.Default),
+				Severity:  DiagnosticSeverityWarning,
+				Fix:       "Set runtime.default to \"process\", \"sprites\", or \"cursor\" in .noodle.toml.",
+				Code:      DiagnosticCodeRuntimeDefaultUnknown,
+			})
+		}
 	}
 
 	// No PATH check needed for process runtime — it uses direct child processes.

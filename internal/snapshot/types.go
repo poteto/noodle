@@ -54,6 +54,7 @@ type Snapshot struct {
 	PendingReviewCount int                      `json:"pending_review_count"`
 	Autonomy           string                   `json:"autonomy"`
 	MaxCooks           int                      `json:"max_cooks"`
+	Warnings           []string                 `json:"warnings"`
 }
 
 // Session represents a single agent session.

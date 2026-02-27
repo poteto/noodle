@@ -19,6 +19,7 @@ function emptySnapshot(overrides?: Partial<Snapshot>): Snapshot {
     pending_review_count: 0,
     autonomy: "supervised",
     max_cooks: 4,
+    warnings: [],
     ...overrides,
   };
 }

@@ -69,9 +69,14 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	defer cancel()
 	defer runtimeLoop.Shutdown()
 
+	var warnings []string
+	for _, w := range app.Validation.Warnings() {
+		warnings = append(warnings, w.Message)
+	}
+
 	interactive := isInteractiveTerminal()
 	if shouldStartServer(app.Config.Server, interactive) {
-		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop) }()
+		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop, warnings) }()
 	}
 	return runtimeLoop.Run(ctx)
 }
@@ -89,7 +94,7 @@ func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 	return interactive
 }
 
-func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider) error {
+func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider, warnings []string) error {
 	port := cfg.Server.Port
 	if port == 0 {
 		port = 3000
@@ -104,6 +109,7 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, pro
 		UI:                uiClientFS(),
 		Config:            &cfg,
 		LoopStateProvider: provider,
+		Warnings:          warnings,
 	})
 
 	errCh := make(chan error, 1)

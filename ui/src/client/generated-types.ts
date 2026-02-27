@@ -60,6 +60,7 @@ export interface Snapshot {
   pending_review_count: number /* int */;
   autonomy: string;
   max_cooks: number /* int */;
+  warnings: string[];
 }
 /**
  * Session represents a single agent session.
@@ -111,6 +112,7 @@ export interface Stage {
   runtime?: string;
   status: string;
   extra?: { [key: string]: unknown};
+  session_id?: string;
 }
 /**
  * EventLine is a single parsed event in a session trace.

@@ -13,6 +13,7 @@ import { TaskEditor } from "./TaskEditor";
 import { QueueAddCard } from "./QueueAddCard";
 import { ConcurrencyBadge } from "./ConcurrencyBadge";
 import { SkeletonCard } from "./SkeletonCard";
+import { ConfigWarnings } from "./ConfigWarnings";
 import { ControlContext } from "./ControlContext";
 
 type PanelState =
@@ -259,6 +260,7 @@ export function Board() {
     <ControlContext.Provider value={optimisticSend}>
       <div className="flex flex-col h-screen bg-bg-0">
         <BoardHeader snapshot={optimisticSnapshot} onNewTask={() => setShowTaskEditor(true)} />
+        <ConfigWarnings warnings={optimisticSnapshot.warnings ?? []} />
 
         <div className="flex flex-1 overflow-x-auto overflow-y-hidden px-10 py-8 gap-6 bg-bg-2 min-h-0">
           <BoardColumn

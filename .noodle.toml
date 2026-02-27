@@ -48,8 +48,8 @@ ticket_stale = "30m"
 poll_interval = "5s"
 
 [runtime]
-# "tmux" | "sprites" | "cursor"
-default = "tmux"
+# "process" | "sprites"
+default = "process"
 
 [runtime.sprites]
 # token_env = "SPRITES_TOKEN"

@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"encoding/json"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -138,6 +139,137 @@ func TestSmokeAgentLoop(t *testing.T) {
 	if err := runPlaywrightTests(t, baseURL); err != nil {
 		t.Errorf("playwright UI smoke: %v", err)
 	}
+}
+
+func TestSmokeInvalidRuntimeFallback(t *testing.T) {
+	preflight(t)
+
+	noodleBin := buildNoodle(t)
+	dir := t.TempDir()
+
+	// Scaffold a minimal project with invalid runtime.default.
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	writeFile(t, filepath.Join(dir, "go.mod"), "module example.com/e2e\n\ngo 1.23\n")
+	writeFile(t, filepath.Join(dir, "main.go"), "package main\n\nfunc main() {}\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "init")
+
+	// Brain scaffolding — minimal plan for scheduling.
+	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
+	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n\n- [[plans/1-hello/overview]]\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "1-hello", "overview.md"), "---\nid: 1\nstatus: ready\n---\n\n# Hello\n\nCreate hello.txt.\n")
+	symlink(t, "overview.md", filepath.Join(dir, "brain", "plans", "1-hello", "overview"))
+	symlink(t, filepath.Join("brain", "plans"), filepath.Join(dir, "plans"))
+
+	writeFile(t, filepath.Join(dir, "brain", "todos.md"), "# Todos\n\n<!-- next-id: 2 -->\n\n## Tasks\n\n1. [ ] Create hello.txt ~small\n")
+
+	// Skills.
+	srcSkills := filepath.Join(repoRoot(t), ".agents", "skills")
+	dstSkills := filepath.Join(dir, ".agents", "skills")
+	for _, skill := range []string{"schedule", "execute"} {
+		copyDir(t, filepath.Join(srcSkills, skill), filepath.Join(dstSkills, skill))
+	}
+
+	// Adapter scripts.
+	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	mkdirAll(t, adapterDir)
+	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho '{\"id\":\"1\",\"title\":\"hello\",\"status\":\"open\",\"tags\":[]}'\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-add"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-edit"), "#!/bin/sh\n")
+	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
+
+	// Config with invalid runtime.default = "tmux".
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
+
+[routing.defaults]
+provider = "codex"
+model = "gpt-5.3-codex"
+
+[skills]
+paths = [".agents/skills"]
+
+[agents.codex]
+path = "~/.codex"
+
+[adapters.backlog]
+skill = "todo"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+done = ".noodle/adapters/backlog-done"
+add = ".noodle/adapters/backlog-add"
+edit = ".noodle/adapters/backlog-edit"
+
+[concurrency]
+max_cooks = 1
+
+[runtime]
+default = "tmux"
+
+[server]
+enabled = true
+port = 13738
+`)
+
+	mkdirAll(t, filepath.Join(dir, ".noodle"))
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "scaffolding")
+
+	// Start noodle.
+	cmd := exec.Command(noodleBin, "start")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	t.Cleanup(func() { cleanupNoodle(t, cmd, dir) })
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start noodle: %v", err)
+	}
+	t.Logf("noodle started (pid %d)", cmd.Process.Pid)
+
+	const baseURL = "http://127.0.0.1:13738"
+	if err := waitForServer(t, baseURL, 15*time.Second); err != nil {
+		t.Fatalf("server not reachable: %v", err)
+	}
+
+	// Verify snapshot contains warning about tmux runtime.
+	resp, err := http.Get(baseURL + "/api/snapshot")
+	if err != nil {
+		t.Fatalf("GET snapshot: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var snap struct {
+		Warnings []string `json:"warnings"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&snap); err != nil {
+		t.Fatalf("decode snapshot: %v", err)
+	}
+	if len(snap.Warnings) == 0 {
+		t.Fatal("expected warnings in snapshot for invalid runtime.default")
+	}
+	found := false
+	for _, w := range snap.Warnings {
+		if strings.Contains(w, "tmux") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected warning mentioning tmux, got %v", snap.Warnings)
+	}
+	t.Logf("snapshot warnings: %v", snap.Warnings)
 }
 
 // assertOrdersExist verifies orders.json exists and has valid structure.

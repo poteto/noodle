@@ -73,7 +73,7 @@ func (h *sseHub) broadcast(data []byte) {
 
 // watchAndBroadcast watches the runtime directory for changes and broadcasts
 // snapshot updates to SSE clients. Debounces rapid filesystem events.
-func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now func() time.Time, provider LoopStateProvider) {
+func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now func() time.Time, provider LoopStateProvider, warnings []string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return
@@ -97,7 +97,7 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 	pending := false
 
 	// Send initial snapshot.
-	h.loadAndBroadcast(runtimeDir, now, provider)
+	h.loadAndBroadcast(runtimeDir, now, provider, warnings)
 
 	for {
 		select {
@@ -123,14 +123,14 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 			// Ignore watch errors.
 		case <-timer.C:
 			pending = false
-			h.loadAndBroadcast(runtimeDir, now, provider)
+			h.loadAndBroadcast(runtimeDir, now, provider, warnings)
 		}
 	}
 }
 
 // loadAndBroadcast loads a snapshot, diffs against the last hash, and
 // broadcasts if changed.
-func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provider LoopStateProvider) {
+func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provider LoopStateProvider, warnings []string) {
 	if provider == nil {
 		return
 	}
@@ -138,6 +138,7 @@ func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provi
 	if err != nil {
 		return
 	}
+	snap.Warnings = warnings
 
 	// Zero volatile field for diff-gating so UpdatedAt doesn't defeat the hash.
 	hashSnap := snap
@@ -191,6 +192,7 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	// Send current snapshot immediately.
 	snap, err := s.loadSnapshot()
 	if err == nil {
+		snap.Warnings = s.warnings
 		data, err := json.Marshal(snap)
 		if err == nil {
 			fmt.Fprintf(w, "data: %s\n\n", data)

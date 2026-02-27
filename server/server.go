@@ -31,6 +31,7 @@ type Options struct {
 	UI                fs.FS          // embedded SPA assets; nil = placeholder only
 	Config            *config.Config // project config; nil = zero config
 	LoopStateProvider LoopStateProvider
+	Warnings          []string
 }
 
 type LoopStateProvider interface {
@@ -46,6 +47,7 @@ type Server struct {
 	sse        *sseHub
 	config     config.Config
 	provider   LoopStateProvider
+	warnings   []string
 	ready      chan struct{}
 }
 
@@ -75,6 +77,7 @@ func New(opts Options) *Server {
 		sse:        newSSEHub(),
 		config:     cfg,
 		provider:   opts.LoopStateProvider,
+		warnings:   opts.Warnings,
 		ready:      make(chan struct{}),
 	}
 
@@ -120,7 +123,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.listener = ln
 	close(s.ready)
 
-	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now, s.provider)
+	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now, s.provider, s.warnings)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -160,6 +163,7 @@ func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	snap.Warnings = s.warnings
 	writeJSON(w, http.StatusOK, snap)
 }
 

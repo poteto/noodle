@@ -153,6 +153,14 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	}
 
 	runtime := l.deps.Runtimes[runtimeName]
+	if runtime == nil && runtimeName != "process" {
+		if fallback := l.deps.Runtimes["process"]; fallback != nil {
+			l.logger.Warn("runtime not configured, falling back to process", "runtime", runtimeName)
+			runtime = fallback
+			runtimeName = "process"
+			req.Runtime = "process"
+		}
+	}
 	if runtime == nil {
 		return nil, fmt.Errorf("runtime %q not configured", runtimeName)
 	}
