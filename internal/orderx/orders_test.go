@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestQueuexStageJSONRoundTrip(t *testing.T) {
+func TestOrderxStageJSONRoundTrip(t *testing.T) {
 	original := Stage{
 		TaskKey:  "execute",
 		Prompt:   "implement feature X",
@@ -45,7 +45,7 @@ func TestQueuexStageJSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestQueuexOrderJSONRoundTrip(t *testing.T) {
+func TestOrderxOrderJSONRoundTrip(t *testing.T) {
 	original := Order{
 		ID:        "order-1",
 		Title:     "Implement auth",
@@ -85,7 +85,7 @@ func TestQueuexOrderJSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestQueuexOrdersFileJSONRoundTrip(t *testing.T) {
+func TestOrderxOrdersFileJSONRoundTrip(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	original := OrdersFile{
 		GeneratedAt: now,
@@ -130,7 +130,7 @@ func TestQueuexOrdersFileJSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestQueuexStageExtraRoundTrip(t *testing.T) {
+func TestOrderxStageExtraRoundTrip(t *testing.T) {
 	complexJSON := json.RawMessage(`{"nested":{"key":"value"},"arr":[1,2,3],"null_val":null}`)
 	stage := Stage{
 		Provider: "claude",
@@ -165,7 +165,7 @@ func TestQueuexStageExtraRoundTrip(t *testing.T) {
 	}
 }
 
-func TestQueuexOrderOnFailureNilAndEmpty(t *testing.T) {
+func TestOrderxOrderOnFailureNilAndEmpty(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		order := Order{
 			ID:        "1",
@@ -207,7 +207,7 @@ func TestQueuexOrderOnFailureNilAndEmpty(t *testing.T) {
 	})
 }
 
-func TestQueuexStageStatusConstants(t *testing.T) {
+func TestOrderxStageStatusConstants(t *testing.T) {
 	tests := []struct {
 		got  StageStatus
 		want StageStatus
@@ -225,7 +225,7 @@ func TestQueuexStageStatusConstants(t *testing.T) {
 	}
 }
 
-func TestQueuexOrderStatusConstants(t *testing.T) {
+func TestOrderxOrderStatusConstants(t *testing.T) {
 	tests := []struct {
 		got  OrderStatus
 		want OrderStatus
@@ -242,7 +242,7 @@ func TestQueuexOrderStatusConstants(t *testing.T) {
 	}
 }
 
-func TestQueuexValidateOrderStatus(t *testing.T) {
+func TestOrderxValidateOrderStatus(t *testing.T) {
 	valid := []OrderStatus{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
 	for _, s := range valid {
 		if err := ValidateOrderStatus(s); err != nil {
@@ -259,7 +259,7 @@ func TestQueuexValidateOrderStatus(t *testing.T) {
 	}
 }
 
-func TestQueuexValidateStageStatus(t *testing.T) {
+func TestOrderxValidateStageStatus(t *testing.T) {
 	valid := []StageStatus{StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled}
 	for _, s := range valid {
 		if err := ValidateStageStatus(s); err != nil {

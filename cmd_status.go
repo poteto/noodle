@@ -14,7 +14,7 @@ import (
 
 type statusSummary struct {
 	ActiveCooks int
-	QueueDepth  int
+	OrdersDepth  int
 	TotalCost   float64
 	LoopState   string
 }
@@ -43,8 +43,8 @@ func runStatus(app *App) error {
 	if summary.ActiveCooks == 0 {
 		fmt.Fprintf(
 			os.Stdout,
-			"no active cooks | queue=%d | cost=$%.2f | loop=%s\n",
-			summary.QueueDepth,
+			"no active cooks | orders=%d | cost=$%.2f | loop=%s\n",
+			summary.OrdersDepth,
 			summary.TotalCost,
 			summary.LoopState,
 		)
@@ -53,9 +53,9 @@ func runStatus(app *App) error {
 
 	fmt.Fprintf(
 		os.Stdout,
-		"active cooks=%d | queue=%d | cost=$%.2f | loop=%s\n",
+		"active cooks=%d | orders=%d | cost=$%.2f | loop=%s\n",
 		summary.ActiveCooks,
-		summary.QueueDepth,
+		summary.OrdersDepth,
 		summary.TotalCost,
 		summary.LoopState,
 	)
@@ -67,13 +67,13 @@ func readStatusSummary(runtimeDir string) (statusSummary, error) {
 	if err != nil {
 		return statusSummary{}, err
 	}
-	queueDepth, err := readOrdersDepth(filepath.Join(runtimeDir, "orders.json"))
+	ordersDepth, err := readOrdersDepth(filepath.Join(runtimeDir, "orders.json"))
 	if err != nil {
 		return statusSummary{}, err
 	}
 	return statusSummary{
 		ActiveCooks: active,
-		QueueDepth:  queueDepth,
+		OrdersDepth:  ordersDepth,
 		TotalCost:   cost,
 		LoopState:   loopState,
 	}, nil

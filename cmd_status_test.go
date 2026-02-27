@@ -29,15 +29,15 @@ func TestRunStatusNoActiveCooks(t *testing.T) {
 	if !strings.Contains(output, "no active cooks") {
 		t.Fatalf("expected no-active output, got: %q", output)
 	}
-	if !strings.Contains(output, "queue=0") {
-		t.Fatalf("expected queue depth output, got: %q", output)
+	if !strings.Contains(output, "orders=0") {
+		t.Fatalf("expected orders depth output, got: %q", output)
 	}
 	if !strings.Contains(output, "cost=$0.00") {
 		t.Fatalf("expected total cost output, got: %q", output)
 	}
 }
 
-func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
+func TestRunStatusReadsSessionsAndOrders(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 
@@ -79,8 +79,8 @@ func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 	if !strings.Contains(output, "active cooks=1") {
 		t.Fatalf("expected active cook count, got: %q", output)
 	}
-	if !strings.Contains(output, "queue=3") {
-		t.Fatalf("expected queue depth, got: %q", output)
+	if !strings.Contains(output, "orders=3") {
+		t.Fatalf("expected orders depth, got: %q", output)
 	}
 	if !strings.Contains(output, "cost=$0.00") {
 		t.Fatalf("expected total cost, got: %q", output)

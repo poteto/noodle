@@ -179,7 +179,7 @@ func TestLogDispatchSchedule(t *testing.T) {
 		o.brief = &brief
 	})
 
-	// Empty queue with plans triggers bootstrap schedule.
+	// Empty orders with plans triggers bootstrap schedule.
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestLogScheduleCompleted(t *testing.T) {
 		o.brief = &brief
 	})
 
-	// Empty queue + plans → bootstrap schedule dispatch.
+	// Empty orders + plans → bootstrap schedule dispatch.
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
@@ -419,7 +419,7 @@ func TestLogBootstrapSchedule(t *testing.T) {
 		o.brief = &brief
 	})
 
-	// No queue file → empty queue → triggers bootstrap schedule.
+	// No orders file → empty orders → triggers bootstrap schedule.
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestLogIdleTransition(t *testing.T) {
 	}
 }
 
-func TestLogQueueNextPromoted(t *testing.T) {
+func TestLogOrdersNextPromoted(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
