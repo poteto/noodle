@@ -203,18 +203,18 @@ Right now: you just change the struct and the JSON changes with it. No backward 
 
 **Busy-target tracking is multi-layered:**
 
-The loop maintains six maps that prevent duplicate work on the same order:
+The loop maintains five maps plus stage-status derivation that prevent duplicate work on the same order:
 
-| Map | Purpose |
-|-----|---------|
-| `activeByTarget` | Currently dispatched orders (keyed by order ID) |
-| `activeByID` | Currently running sessions (keyed by session ID) |
+| Source | Purpose |
+|--------|---------|
+| `activeCooksByOrder` | Currently dispatched orders (keyed by order ID) — single map replacing the former `activeByTarget`/`activeByID` dual maps |
 | `adoptedTargets` | Sessions from a previous loop run that are still alive |
 | `pendingReview` | Completed stages parked for human approval or merge conflict resolution |
 | `pendingRetry` | Stages whose dispatch failed (runtime unavailable, at max concurrency) |
 | `failedTargets` | Permanently failed orders (blocks scheduler from recreating them) |
+| Active stages in orders.json | Crash-safe busy detection — stages marked "active" before dispatch block re-dispatch even after restart |
 
-When planning spawns, every order is checked against all maps. If its ID appears anywhere, it's skipped — with one exception: orders in `"failing"` status (running their OnFailure pipeline) are exempt from the `failedTargets` check, because recovery stages must be allowed to dispatch.
+When planning spawns, every order is checked against all sources. If its ID appears anywhere, it's skipped — with one exception: orders in `"failing"` status (running their OnFailure pipeline) are exempt from the `failedTargets` check, because recovery stages must be allowed to dispatch.
 
 **What happens if two agents edit the same file?**
 
