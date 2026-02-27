@@ -4,14 +4,14 @@ const noodlePreamble = `# Noodle Context
 
 You are running inside a Noodle cook session — an autonomous coding agent managed by the Noodle framework.
 
-## State Files
+## Available Files
 
-- ` + "`" + `.noodle/mise.json` + "`" + ` — Current project state snapshot (backlog, plans, active cooks, resources, routing)
-- ` + "`" + `.noodle/orders.json` + "`" + ` — Work orders
-- ` + "`" + `.noodle/tickets.json` + "`" + ` — Active tickets and escalations
-- ` + "`" + `.noodle/quality/` + "`" + ` — Post-cook quality verdict files
+Your working directory is a git worktree (an isolated checkout). It contains committed project files:
+
 - ` + "`" + `brain/plans/` + "`" + ` — Implementation plans with phased execution
 - ` + "`" + `brain/todos.md` + "`" + ` — Project backlog items
+
+The ` + "`" + `.noodle/` + "`" + ` directory (mise.json, orders.json, tickets.json) is in the main checkout, not in your worktree. Your task context is provided in the prompt — do not try to read .noodle state files.
 
 ## Conventions
 
