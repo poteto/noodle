@@ -269,6 +269,7 @@ type Loop struct {
 
 	activeSummary mise.ActiveSummary
 	recentHistory []mise.HistoryItem
+	sessionHealth map[string]loopruntime.HealthEvent
 
 	lastStatus statusfile.Status
 }

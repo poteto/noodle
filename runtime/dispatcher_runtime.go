@@ -12,6 +12,7 @@ type DispatcherRuntime struct {
 	name       string
 	runtimeDir string
 	dispatcher dispatcher.Dispatcher
+	health     chan HealthEvent
 }
 
 func NewDispatcherRuntime(name string, d dispatcher.Dispatcher, runtimeDir string) *DispatcherRuntime {
@@ -19,7 +20,12 @@ func NewDispatcherRuntime(name string, d dispatcher.Dispatcher, runtimeDir strin
 	if name == "" {
 		name = "tmux"
 	}
-	return &DispatcherRuntime{name: name, runtimeDir: runtimeDir, dispatcher: d}
+	return &DispatcherRuntime{
+		name:       name,
+		runtimeDir: runtimeDir,
+		dispatcher: d,
+		health:     make(chan HealthEvent, 256),
+	}
 }
 
 func (r *DispatcherRuntime) Start(context.Context) error { return nil }
@@ -44,6 +50,13 @@ func (r *DispatcherRuntime) Kill(handle SessionHandle) error {
 
 func (r *DispatcherRuntime) Recover(context.Context) ([]RecoveredSession, error) {
 	return nil, nil
+}
+
+func (r *DispatcherRuntime) Health() <-chan HealthEvent {
+	if r == nil {
+		return nil
+	}
+	return r.health
 }
 
 func (r *DispatcherRuntime) Close() error { return nil }

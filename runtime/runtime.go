@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"path/filepath"
+	"time"
 
 	"github.com/poteto/noodle/dispatcher"
 )
@@ -28,12 +29,31 @@ type RecoveredSession struct {
 	Reason        string
 }
 
+type HealthEventType string
+
+const (
+	HealthHealthy HealthEventType = "healthy"
+	HealthIdle    HealthEventType = "idle"
+	HealthStuck   HealthEventType = "stuck"
+	HealthDead    HealthEventType = "dead"
+)
+
+type HealthEvent struct {
+	SessionID string
+	OrderID   string
+	Type      HealthEventType
+	Detail    string
+	At        time.Time
+	Seq       uint64
+}
+
 // Runtime dispatches, observes, and recovers sessions for one platform.
 type Runtime interface {
 	Start(ctx context.Context) error
 	Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error)
 	Kill(handle SessionHandle) error
 	Recover(ctx context.Context) ([]RecoveredSession, error)
+	Health() <-chan HealthEvent
 	Close() error
 }
 
