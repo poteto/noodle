@@ -77,7 +77,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -178,11 +178,13 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string) string {
+	miseFile := filepath.Join(runtimeDir, "mise.json")
+	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
 	parts := []string{
-		"Use Skill(" + skillName + ") to refresh the schedule from .noodle/mise.json.",
-		"Write to `.noodle/orders-next.json` (not orders.json). The loop promotes it atomically.",
-		"Do not modify .noodle/mise.json.",
+		"Use Skill(" + skillName + ") to refresh the schedule from " + miseFile + ".",
+		"Write to `" + ordersNextFile + "` (not orders.json). The loop promotes it atomically.",
+		"Do not modify " + miseFile + ".",
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize orders for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		"Each order is a pipeline of stages. Group related stages (e.g. execute, quality, reflect) into one order.",

@@ -493,10 +493,12 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if rt.calls[0].Skill != "schedule" {
 		t.Fatalf("spawn skill = %q", rt.calls[0].Skill)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from .noodle/mise.json.") {
+	expectedMise := filepath.Join(runtimeDir, "mise.json")
+	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from "+expectedMise+".") {
 		t.Fatalf("spawn prompt missing skill invocation: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "orders-next.json") {
+	expectedOrdersNext := filepath.Join(runtimeDir, "orders-next.json")
+	if !strings.Contains(rt.calls[0].Prompt, expectedOrdersNext) {
 		t.Fatalf("spawn prompt missing orders-next.json instruction: %q", rt.calls[0].Prompt)
 	}
 	if !strings.Contains(rt.calls[0].Prompt, "orders.json schema (JSON):") {
@@ -514,7 +516,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if strings.Contains(rt.calls[0].Prompt, "| config: ") || strings.Contains(rt.calls[0].Prompt, "| synthetic: ") {
 		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
+	if !strings.Contains(rt.calls[0].Prompt, "Do not modify "+expectedMise+".") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", rt.calls[0].Prompt)
 	}
 	if !strings.Contains(rt.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {

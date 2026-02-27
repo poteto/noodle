@@ -118,10 +118,13 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt([]TaskType{
 		{Key: "execute", Schedule: "When ready"},
 	})
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "")
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle")
 
-	if !strings.Contains(prompt, "orders-next.json") {
-		t.Fatal("prompt should reference orders-next.json")
+	if !strings.Contains(prompt, "/tmp/test/.noodle/orders-next.json") {
+		t.Fatal("prompt should reference absolute path to orders-next.json")
+	}
+	if !strings.Contains(prompt, "/tmp/test/.noodle/mise.json") {
+		t.Fatal("prompt should reference absolute path to mise.json")
 	}
 	if !strings.Contains(prompt, "on_failure") {
 		t.Fatal("prompt should mention on_failure stages")

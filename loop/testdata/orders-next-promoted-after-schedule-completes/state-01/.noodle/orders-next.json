@@ -1,0 +1,13 @@
+{
+  "orders": [
+    {
+      "id": "plan-42",
+      "title": "Implement feature X",
+      "stages": [
+        {"task_key": "execute", "provider": "claude", "model": "claude-opus-4-6", "status": "pending"},
+        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "status": "pending"}
+      ],
+      "status": "active"
+    }
+  ]
+}
