@@ -79,9 +79,11 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		return Brief{}, warnings, err
 	}
 
+	activeSummary := buildActiveSummary(activeCooks)
+
 	resources := ResourceSnapshot{
 		MaxCooks: b.config.Concurrency.MaxCooks,
-		Active:   len(activeCooks),
+		Active:   activeSummary.Total,
 	}
 	resources.Available = resources.MaxCooks - resources.Active
 	if resources.Available < 0 {
@@ -105,6 +107,7 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		Backlog:       backlog,
 		Plans:         plans,
 		ActiveCooks:   activeCooks,
+		ActiveSummary: activeSummary,
 		Tickets:       tickets,
 		Resources:     resources,
 		RecentHistory: recentHistory,
@@ -221,6 +224,19 @@ func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
 		}
 	}
 	return active, recent, nil
+}
+
+func buildActiveSummary(cooks []ActiveCook) ActiveSummary {
+	summary := ActiveSummary{
+		Total:     len(cooks),
+		ByTaskKey: make(map[string]int),
+		ByStatus:  make(map[string]int),
+		ByRuntime: make(map[string]int),
+	}
+	for _, c := range cooks {
+		summary.ByStatus[c.Status]++
+	}
+	return summary
 }
 
 func (b *Builder) readTickets() ([]event.Ticket, error) {

@@ -36,6 +36,15 @@ type ActiveCook struct {
 	DurationS int64   `json:"duration_s"`
 }
 
+// ActiveSummary provides aggregate counts of active sessions, replacing
+// per-session enumeration. Makes brief generation O(1) for the active section.
+type ActiveSummary struct {
+	Total     int            `json:"total"`
+	ByTaskKey map[string]int `json:"by_task_key,omitempty"`
+	ByStatus  map[string]int `json:"by_status,omitempty"`
+	ByRuntime map[string]int `json:"by_runtime,omitempty"`
+}
+
 type ResourceSnapshot struct {
 	MaxCooks  int `json:"max_cooks"`
 	Active    int `json:"active"`
@@ -73,6 +82,7 @@ type Brief struct {
 	Backlog       []adapter.BacklogItem `json:"backlog"`
 	Plans         []PlanSummary         `json:"plans"`
 	ActiveCooks   []ActiveCook          `json:"active_cooks"`
+	ActiveSummary ActiveSummary         `json:"active_summary"`
 	Tickets       []event.Ticket        `json:"tickets"`
 	Resources     ResourceSnapshot      `json:"resources"`
 	RecentHistory []HistoryItem         `json:"recent_history"`
