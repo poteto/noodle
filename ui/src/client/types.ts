@@ -59,6 +59,7 @@ export interface Stage {
   runtime?: string;
   status: StageStatus;
   extra?: Record<string, unknown>;
+  session_id?: string;
 }
 
 export interface Order {

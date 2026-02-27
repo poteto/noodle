@@ -279,6 +279,7 @@ export function Board() {
                 onDragEnd={resetDrag}
                 isDragOver={dragOverIndex === i}
                 isDragging={draggingId === order.id}
+                onSelectSession={(sessionId) => setPanelState({ type: "chat", sessionId })}
               />
             ))}
           </BoardColumn>

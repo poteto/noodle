@@ -57,11 +57,18 @@ func LoadSnapshotFromLoopState(runtimeDir string, now time.Time, state loop.Loop
 		return recent[i].LastActivity.After(recent[j].LastActivity)
 	})
 
+	// Build a lookup from order ID to active cook session ID.
+	cookSessionByOrder := make(map[string]string, len(state.ActiveCooks))
+	for _, cook := range state.ActiveCooks {
+		cookSessionByOrder[cook.OrderID] = cook.SessionID
+	}
+
 	orders := make([]Order, 0, len(state.Orders))
 	for _, order := range state.Orders {
+		activeSessionID := cookSessionByOrder[order.ID]
 		stages := make([]Stage, 0, len(order.Stages))
 		for _, stage := range order.Stages {
-			stages = append(stages, Stage{
+			s := Stage{
 				TaskKey:  stage.TaskKey,
 				Prompt:   stage.Prompt,
 				Skill:    stage.Skill,
@@ -70,11 +77,15 @@ func LoadSnapshotFromLoopState(runtimeDir string, now time.Time, state loop.Loop
 				Runtime:  stage.Runtime,
 				Status:   stage.Status,
 				Extra:    stage.Extra,
-			})
+			}
+			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+				s.SessionID = activeSessionID
+			}
+			stages = append(stages, s)
 		}
 		onFailure := make([]Stage, 0, len(order.OnFailure))
 		for _, stage := range order.OnFailure {
-			onFailure = append(onFailure, Stage{
+			s := Stage{
 				TaskKey:  stage.TaskKey,
 				Prompt:   stage.Prompt,
 				Skill:    stage.Skill,
@@ -83,7 +94,11 @@ func LoadSnapshotFromLoopState(runtimeDir string, now time.Time, state loop.Loop
 				Runtime:  stage.Runtime,
 				Status:   stage.Status,
 				Extra:    stage.Extra,
-			})
+			}
+			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+				s.SessionID = activeSessionID
+			}
+			onFailure = append(onFailure, s)
 		}
 		orders = append(orders, Order{
 			ID:        order.ID,
