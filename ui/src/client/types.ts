@@ -1,110 +1,55 @@
-// Mirrors Go snapshot.* and loop.* types.
-// All fields match the JSON keys from the Go server.
+// Re-exports generated Go types with narrowed enum fields.
+// Generated interfaces use `string` where Go has untyped constants;
+// we override those fields with the unions from enums.ts.
 
-export type TraceFilter = "all" | "tools" | "think" | "ticket";
-export type LoopState = "running" | "paused" | "draining" | "idle";
-export type Health = "green" | "yellow" | "red";
+import type {
+  Snapshot as RawSnapshot,
+  Session as RawSession,
+  Order as RawOrder,
+  Stage as RawStage,
+  EventLine as RawEventLine,
+} from "./generated-types";
+export type { FeedEvent } from "./generated-types";
+import type { PendingReviewItem } from "./generated-loop-types";
+export type { PendingReviewItem } from "./generated-loop-types";
 
-export interface Snapshot {
-  updated_at: string;
+export type {
+  LoopState,
+  Health,
+  TraceFilter,
+  StageStatus,
+  OrderStatus,
+} from "./enums";
+
+import type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
+
+export interface EventLine extends Omit<RawEventLine, "category"> {
+  category: TraceFilter;
+}
+
+// Narrow the `string` fields that correspond to enum-like Go constants.
+export interface Snapshot extends Omit<RawSnapshot, "loop_state" | "sessions" | "active" | "recent" | "orders" | "events_by_session"> {
   loop_state: LoopState;
   sessions: Session[];
   active: Session[];
   recent: Session[];
   orders: Order[];
-  active_order_ids: string[];
-  action_needed: string[];
-  events_by_session: Record<string, EventLine[]>;
-  feed_events: FeedEvent[];
-  total_cost_usd: number;
-  pending_reviews: PendingReviewItem[];
-  pending_review_count: number;
-  autonomy: string;
-  max_cooks: number;
+  events_by_session: { [key: string]: EventLine[] };
 }
 
-export interface Session {
-  id: string;
-  display_name: string;
-  status: string;
-  runtime: string;
-  provider: string;
-  model: string;
-  total_cost_usd: number;
-  duration_seconds: number;
-  last_activity: string;
-  current_action: string;
+export interface Session extends Omit<RawSession, "health" | "loop_state"> {
   health: Health;
-  context_window_usage_pct: number;
-  retry_count: number;
-  idle_seconds: number;
-  stuck_threshold_seconds: number;
   loop_state: LoopState;
-  remote_host?: string;
-  dispatch_warning?: string;
-  worktree_name?: string;
-  task_key?: string;
-  title?: string;
 }
 
-export type StageStatus = "pending" | "active" | "merging" | "completed" | "failed" | "cancelled";
-export type OrderStatus = "active" | "completed" | "failed" | "failing";
-
-export interface Stage {
-  task_key?: string;
-  prompt?: string;
-  skill?: string;
-  provider?: string;
-  model?: string;
-  runtime?: string;
+export interface Stage extends Omit<RawStage, "status"> {
   status: StageStatus;
-  extra?: Record<string, unknown>;
-  session_id?: string;
 }
 
-export interface Order {
-  id: string;
-  title?: string;
-  plan?: string[];
-  rationale?: string;
+export interface Order extends Omit<RawOrder, "status" | "stages" | "on_failure"> {
   stages: Stage[];
-  on_failure?: Stage[];
   status: OrderStatus;
-}
-
-export interface EventLine {
-  at: string;
-  label: string;
-  body: string;
-  category: TraceFilter;
-}
-
-export interface FeedEvent {
-  session_id: string;
-  agent_name: string;
-  task_type: string;
-  at: string;
-  label: string;
-  body: string;
-  category: string;
-}
-
-export interface PendingReviewItem {
-  order_id: string;
-  stage_index: number;
-  task_key?: string;
-  title?: string;
-  prompt?: string;
-  provider?: string;
-  model?: string;
-  runtime?: string;
-  skill?: string;
-  plan?: string[];
-  rationale?: string;
-  worktree_name: string;
-  worktree_path: string;
-  session_id?: string;
-  reason?: string;
+  on_failure?: Stage[];
 }
 
 export interface DiffResponse {

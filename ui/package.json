@@ -9,6 +9,9 @@
     "lint": "oxlint src",
     "fmt": "oxfmt --write src",
     "fmt:check": "oxfmt --check src",
+    "generate:types": "go generate ../internal/snapshot/...",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "verify": "concurrently --group --names tsc,lint,fmt \"pnpm typecheck\" \"pnpm lint\" \"pnpm fmt:check\""
   },
   "dependencies": {
@@ -24,15 +27,20 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "concurrently": "^9.2.1",
     "eslint-plugin-oxfmt": "^0.0.15",
+    "jsdom": "^28.1.0",
     "oxfmt": "^0.32.0",
     "oxlint": "^1.47.0",
     "typescript": "^5.7",
     "vite": "^7",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.0.18"
   }
 }

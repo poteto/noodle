@@ -1,0 +1,15 @@
+{
+  "recovery_max_retries": 2,
+  "pending_retry": [
+    {
+      "order_id": "retry-order-1",
+      "stage_index": 0,
+      "stage": {"task_key":"execute","skill":"execute","provider":"codex","model":"gpt-5.3-codex","status":"pending"},
+      "is_on_failure": false,
+      "order_status": "active",
+      "attempt": 2,
+      "display_name": "saucy-noodle"
+    }
+  ],
+  "dispatcher_error": "worktree environment broken"
+}

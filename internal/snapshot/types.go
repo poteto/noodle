@@ -1,5 +1,7 @@
 package snapshot
 
+//go:generate tygo generate --config ../../tygo.yaml
+
 import (
 	"encoding/json"
 	"time"

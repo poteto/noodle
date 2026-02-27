@@ -1,0 +1,6 @@
+{
+  "adopted_targets": [
+    {"id": "merge-conflict-order", "session_id": "adopted-sess-1"}
+  ],
+  "worktree_merge_error": "merge_conflict:noodle/merge-conflict-order-0-execute"
+}

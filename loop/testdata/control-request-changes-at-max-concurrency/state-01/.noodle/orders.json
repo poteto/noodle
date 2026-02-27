@@ -1,0 +1,9 @@
+{
+  "orders": [
+    {"id":"o-1","title":"A1","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"o-2","title":"A2","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"o-3","title":"A3","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"o-4","title":"A4","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"review-target","title":"Review target","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"}
+  ]
+}

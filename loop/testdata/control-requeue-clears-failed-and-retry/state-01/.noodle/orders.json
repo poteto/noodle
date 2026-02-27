@@ -1,0 +1,10 @@
+{
+  "orders": [
+    {
+      "id": "requeue-1",
+      "title": "Order to requeue",
+      "stages": [{"task_key":"execute","skill":"execute","provider":"claude","model":"claude-opus-4-6","status":"failed"}],
+      "status": "active"
+    }
+  ]
+}

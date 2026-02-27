@@ -1,0 +1,10 @@
+{
+  "orders": [
+    {
+      "id": "retry-order-1",
+      "title": "Retry order",
+      "stages": [{"task_key":"execute","skill":"execute","provider":"codex","model":"gpt-5.3-codex","status":"pending"}],
+      "status": "active"
+    }
+  ]
+}

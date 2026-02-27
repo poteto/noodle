@@ -1,0 +1,10 @@
+{
+  "orders": [
+    {
+      "id": "stale-1",
+      "title": "Order with old config",
+      "stages": [{"task_key":"execute","skill":"execute","provider":"old-provider","model":"old-model","status":"pending"}],
+      "status": "active"
+    }
+  ]
+}

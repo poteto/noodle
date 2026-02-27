@@ -1,0 +1,8 @@
+{
+  "active_sessions": [
+    {"id": "session-1", "target": "order-1"},
+    {"id": "session-2", "target": "order-2"},
+    {"id": "session-3", "target": "order-3"},
+    {"id": "session-4", "target": "order-4"}
+  ]
+}
