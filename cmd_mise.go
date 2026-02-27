@@ -40,7 +40,7 @@ func runMise(ctx context.Context, app *App) error {
 		}
 		builder.TaskTypes = summaries
 	}
-	brief, warnings, err := builder.Build(ctx, mise.ActiveSummary{}, nil)
+	brief, warnings, _, err := builder.Build(ctx, mise.ActiveSummary{}, nil)
 	if err != nil {
 		return err
 	}
