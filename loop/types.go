@@ -278,4 +278,9 @@ type Loop struct {
 	publishedState atomic.Pointer[LoopState]
 
 	lastStatus statusfile.Status
+
+	// Test hooks — nil in production. These allow tests to simulate crashes
+	// at specific points in the state-persistence pipeline.
+	TestFlushBarrier      func() // called between file writes in flushState()
+	TestControlAckBarrier func() // called between command processing and ack write in processControlCommands()
 }

@@ -138,6 +138,9 @@ func (l *Loop) processControlCommands() error {
 		l.processedIDs[cmd.ID] = struct{}{}
 		l.lastAppliedSeq = seq
 	}
+	if l.TestControlAckBarrier != nil {
+		l.TestControlAckBarrier()
+	}
 	if len(acks) > 0 {
 		if err := appendAcks(ackPath, acks); err != nil {
 			return err

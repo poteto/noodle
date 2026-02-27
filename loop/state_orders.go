@@ -83,14 +83,26 @@ func (l *Loop) flushState() error {
 			return fmt.Errorf("flush orders: %w", err)
 		}
 	}
+	if l.TestFlushBarrier != nil {
+		l.TestFlushBarrier()
+	}
 	if err := l.writePendingReview(); err != nil {
 		return fmt.Errorf("flush pending review: %w", err)
+	}
+	if l.TestFlushBarrier != nil {
+		l.TestFlushBarrier()
 	}
 	if err := l.writeFailedTargets(); err != nil {
 		return fmt.Errorf("flush failed targets: %w", err)
 	}
+	if l.TestFlushBarrier != nil {
+		l.TestFlushBarrier()
+	}
 	if err := l.writePendingRetry(); err != nil {
 		return fmt.Errorf("flush pending retry: %w", err)
+	}
+	if l.TestFlushBarrier != nil {
+		l.TestFlushBarrier()
 	}
 	if err := l.writeLastAppliedSeq(); err != nil {
 		return fmt.Errorf("flush last-applied-seq: %w", err)
