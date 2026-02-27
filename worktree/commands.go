@@ -200,7 +200,7 @@ func (a *App) MergeRemoteBranch(branch string) error {
 // Cleanup removes a worktree without merging. If force is false, it refuses
 // when unmerged commits exist.
 func (a *App) Cleanup(name string, force bool) error {
-	wtPath := WorktreePath(a.Root, name)
+	wtPath := a.resolveWorktreePath(name)
 	cleanupBranch := a.resolveBranchName(name)
 
 	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
@@ -219,8 +219,15 @@ func (a *App) Cleanup(name string, force bool) error {
 		return nil
 	}
 
-	if err := a.assertCWDSafe(name); err != nil {
+	cwd, err := os.Getwd()
+	if err != nil {
 		return err
+	}
+	if IsCWDInsideWorktree(cwd, wtPath) {
+		return fmt.Errorf(
+			"shell CWD is inside the worktree (%s).\n  Run first:  cd %s\n  Then retry",
+			cwd, a.Root,
+		)
 	}
 
 	if !force {
@@ -285,29 +292,35 @@ func (a *App) List() error {
 	_ = a.gitRun("worktree", "list")
 
 	base := a.integrationBranch()
-	a.printf("\nBranch status:\n")
-	names, err := a.managedWorktreeNames()
+	entries, err := a.allWorktreeEntries()
 	if err != nil {
-		return fmt.Errorf("list managed worktrees: %w", err)
+		return fmt.Errorf("list worktrees: %w", err)
 	}
-	if len(names) == 0 {
-		a.info("No managed worktrees under .worktrees/")
+	if len(entries) == 0 {
+		a.printf("\nNo managed worktrees found.\n")
 		return nil
 	}
-	for _, name := range names {
-		commits, equivalent, statusErr := a.cherryStatus(name)
+
+	a.printf("\nBranch status:\n")
+	lastSource := ""
+	for _, e := range entries {
+		if e.Source != lastSource {
+			a.printf("  [%s]\n", e.Source)
+			lastSource = e.Source
+		}
+		commits, equivalent, statusErr := a.cherryStatus(e.Name)
 		if statusErr != nil {
-			a.info(fmt.Sprintf("%s — status unknown (%v)", name, statusErr))
+			a.info(fmt.Sprintf("%s — status unknown (%v)", e.Name, statusErr))
 			continue
 		}
 		if commits == 0 {
 			if equivalent > 0 {
-				a.info(fmt.Sprintf("%s — patch-equivalent to %s (safe to clean up)", name, base))
+				a.info(fmt.Sprintf("%s — patch-equivalent to %s (safe to clean up)", e.Name, base))
 			} else {
-				a.info(fmt.Sprintf("%s — no commits ahead of %s (safe to clean up)", name, base))
+				a.info(fmt.Sprintf("%s — no commits ahead of %s (safe to clean up)", e.Name, base))
 			}
 		} else {
-			a.info(fmt.Sprintf("%s — %d unmerged commit(s)", name, commits))
+			a.info(fmt.Sprintf("%s — %d unmerged commit(s)", e.Name, commits))
 		}
 	}
 	return nil
@@ -319,54 +332,53 @@ func (a *App) List() error {
 // 2) the worktree has no uncommitted changes.
 func (a *App) Prune() error {
 	base := a.integrationBranch()
-	names, err := a.managedWorktreeNames()
+	entries, err := a.allWorktreeEntries()
 	if err != nil {
-		return fmt.Errorf("list managed worktrees: %w", err)
+		return fmt.Errorf("list worktrees: %w", err)
 	}
 
 	removed := 0
 	skipped := 0
 	warnings := []string{}
-	for _, name := range names {
-		dir := WorktreePath(a.Root, name)
-		if !IsRealWorktree(dir) {
+	for _, e := range entries {
+		if !IsRealWorktree(e.Path) {
 			skipped++
-			warnings = append(warnings, fmt.Sprintf("worktree path missing for %s: %s", name, dir))
+			warnings = append(warnings, fmt.Sprintf("worktree path missing for %s: %s", e.Name, e.Path))
 			continue
 		}
 
-		commits, equivalent, statusErr := a.cherryStatus(name)
+		commits, equivalent, statusErr := a.cherryStatus(e.Name)
 		if statusErr != nil {
 			skipped++
-			warnings = append(warnings, fmt.Sprintf("failed to assess %s against %s: %v", name, base, statusErr))
+			warnings = append(warnings, fmt.Sprintf("failed to assess %s against %s: %v", e.Name, base, statusErr))
 			continue
 		}
 		if commits > 0 {
-			a.info(fmt.Sprintf("%s — %d unmerged commit(s), skipping", name, commits))
+			a.info(fmt.Sprintf("%s — %d unmerged commit(s), skipping", e.Name, commits))
 			skipped++
 			continue
 		}
 
-		clean, cleanErr := a.isWorktreeClean(dir)
+		clean, cleanErr := a.isWorktreeClean(e.Path)
 		if cleanErr != nil {
 			skipped++
-			warnings = append(warnings, fmt.Sprintf("failed to read worktree status %s: %v", name, cleanErr))
+			warnings = append(warnings, fmt.Sprintf("failed to read worktree status %s: %v", e.Name, cleanErr))
 			continue
 		}
 		if !clean {
-			a.info(fmt.Sprintf("%s — patch-equivalent but dirty, skipping", name))
+			a.info(fmt.Sprintf("%s — patch-equivalent but dirty, skipping", e.Name))
 			skipped++
 			continue
 		}
 
 		if equivalent > 0 {
-			a.info(fmt.Sprintf("%s — patch-equivalent to %s, pruning", name, base))
+			a.info(fmt.Sprintf("%s — patch-equivalent to %s, pruning", e.Name, base))
 		} else {
-			a.info(fmt.Sprintf("%s — no commits ahead of %s, pruning", name, base))
+			a.info(fmt.Sprintf("%s — no commits ahead of %s, pruning", e.Name, base))
 		}
-		if err := a.Cleanup(name, false); err != nil {
+		if err := a.Cleanup(e.Name, false); err != nil {
 			skipped++
-			warnings = append(warnings, fmt.Sprintf("failed to prune %s: %v", name, err))
+			warnings = append(warnings, fmt.Sprintf("failed to prune %s: %v", e.Name, err))
 			continue
 		}
 		removed++
