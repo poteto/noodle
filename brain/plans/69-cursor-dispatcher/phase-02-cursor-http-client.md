@@ -24,7 +24,8 @@ Implement a typed HTTP client for the Cursor Cloud Agent API (v0). This is a pur
 - `StopAgent(ctx, agentID string) error` — POST `/v0/agents/{id}/stop`
 - `DeleteAgent(ctx, agentID string) error` — DELETE `/v0/agents/{id}`
 - Internal: `do(ctx, method, path, body) (*http.Response, error)` — applies Basic auth header (`base64(apiKey + ":")`), content-type, error response parsing.
-- HTTP errors → structured error type with status code and message.
+- HTTP errors → `APIError` (from phase 1) with `Retryable` classification: 429/5xx are retryable, 401/403/404/410 are terminal.
+- 429 responses: parse `Retry-After` header when present.
 
 **`dispatcher/cursor_client_test.go` (new)**
 - Tests using `httptest.NewServer` for each endpoint
@@ -32,7 +33,8 @@ Implement a typed HTTP client for the Cursor Cloud Agent API (v0). This is a pur
 - Test: get agent returns status and summary
 - Test: get conversation returns messages
 - Test: stop/delete succeed
-- Test: API error (401, 429, 500) → structured error with status code
+- Test: API error (401, 429, 500) → `APIError` with correct `Retryable` classification
+- Test: 429 with `Retry-After` header → parsed duration available
 - Test: malformed JSON response → error
 
 ## Verification

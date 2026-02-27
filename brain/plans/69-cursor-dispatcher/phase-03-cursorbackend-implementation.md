@@ -16,7 +16,7 @@ Replace the `CursorBackend` stub with a real `PollingBackend` implementation bac
 
 **`dispatcher/cursor_backend.go`** (rewrite)
 - `NewCursorBackend(apiKey, baseURL, repository string) *CursorBackend` — constructor creates internal `CursorClient`
-- `Launch(ctx, PollLaunchConfig) (string, error)` — builds `CreateAgentRequest` from config (`Prompt` → `prompt.text`, `Repository` → `source.repository`, `Model` → `model`, `Branch` → `source.ref`), calls `client.CreateAgent`, returns agent ID
+- `Launch(ctx, PollLaunchConfig) (LaunchResult, error)` — builds `CreateAgentRequest` from config (`Prompt` → `prompt.text`, `Repository` → `source.repository`, `Model` → `model`, `Branch` → `source.ref`), calls `client.CreateAgent`, returns `LaunchResult{RemoteID: agentID, TargetBranch: response.Target.BranchName}`
 - `PollStatus(ctx, remoteID) (PollResult, error)` — calls `client.GetAgent`, maps `CursorStatus` → `RemoteStatus` (CREATING/RUNNING → running, FINISHED → completed, ERROR → failed, EXPIRED → expired), populates `PollResult.Branch` from `target.branchName`, `PollResult.Summary` from `summary`
 - `GetConversation(ctx, remoteID) ([]ConversationMessage, error)` — calls `client.GetConversation`, maps `AgentMessage` → `ConversationMessage`
 - `Stop(ctx, remoteID) error` — calls `client.StopAgent`
@@ -25,7 +25,7 @@ Replace the `CursorBackend` stub with a real `PollingBackend` implementation bac
 
 **`dispatcher/cursor_backend_test.go`** (rewrite)
 - Test with `httptest.NewServer` backing the `CursorClient`
-- Test: Launch builds correct request body, returns agent ID
+- Test: Launch builds correct request body, returns `LaunchResult` with agent ID and target branch
 - Test: PollStatus maps each Cursor status correctly
 - Test: PollStatus populates Branch and Summary from response
 - Test: GetConversation maps messages

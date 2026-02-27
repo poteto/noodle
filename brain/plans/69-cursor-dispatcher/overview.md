@@ -32,9 +32,10 @@ Cursor's Cloud Agent API (v0, beta) supports: launching agents against GitHub re
 - Cursor API uses Basic auth (API key as username, empty password)
 - Agent pushes to an auto-generated branch (target.branchName in the response) — no PR by default
 - `PollLaunchConfig` already has `Prompt`, `Repository`, `Model`, `Branch` — maps directly to Cursor's POST body
-- `writeSyncResult` in `dispatcher/sprites_dispatcher.go` is package-level and reusable by `pollingSession`
-- `writeDispatchMetadata` creates `spawn.json`; `writeSyncResult` patches it with a `sync` field; loop reads `sync.Branch` and calls `Worktree.MergeRemoteBranch`
+- `Launch` must return structured metadata (`LaunchResult{RemoteID, TargetBranch}`) — branch is immutable launch-time data, not just poll-time data. Persist `remote_id` and `target_branch` in `spawn.json` immediately at launch for crash recovery.
+- `writeSyncResult` uses non-atomic read-modify-write on `spawn.json`. Replace with atomic writes (`filex.WriteFileAtomic`) or a separate `sync.json` file to avoid TOCTOU races with concurrent loop/monitor readers.
 - Webhooks require a publicly accessible URL — Noodle runs on localhost by default. Polling is the primary completion mechanism; webhooks are an optimization for users who expose their server.
+- HTTP errors from Cursor must be classified as retryable (429, 5xx, transient network) vs terminal (401, 403, 404, 410). Terminal errors fail the session immediately; retryable errors use exponential backoff with jitter and `Retry-After` support.
 
 ## Alternatives considered
 
@@ -54,8 +55,9 @@ Cursor's Cloud Agent API (v0, beta) supports: launching agents against GitHub re
 **PollStatus return type:**
 1. **Enrich to `PollResult` struct** — carries status, branch, summary. Generic enough for future backends. Only 2 existing implementors (stub + test), trivial migration.
 2. **Separate metadata method** — adds interface surface for no benefit.
+3. **Split Launch to return `LaunchResult` + keep PollResult for mutable state** — captures immutable metadata (target branch) at launch time, not just poll time. More robust: branch is available even if final poll fails.
 
-**Chosen: `PollResult` struct.** Per redesign-from-first-principles, this is what we'd build knowing Cursor exists.
+**Chosen: Both `LaunchResult` from `Launch` and `PollResult` from `PollStatus`.** Branch is captured at launch (immutable) and confirmed at poll (mutable). `LaunchResult` persisted immediately for crash recovery.
 
 ## Applicable skills
 
@@ -71,6 +73,21 @@ Cursor's Cloud Agent API (v0, beta) supports: launching agents against GitHub re
 - [[plans/69-cursor-dispatcher/phase-05-pollingdispatcher]]
 - [[plans/69-cursor-dispatcher/phase-06-cursorruntime-and-factory-wiring]]
 - [[plans/69-cursor-dispatcher/phase-07-webhook-receiver-endpoint]]
+
+## Review revisions (2026-02-27)
+
+6 independent reviewers (Codex, 2 rounds) all returned **Revise**. Consensus issues addressed:
+
+1. **Crash recovery** — persist `remote_id` in spawn.json at launch; add polling-runtime recovery that re-attaches to live Cursor agents on restart. Added to phases 1, 5, 6.
+2. **Atomic spawn.json writes** — replace `writeSyncResult` read-modify-write with atomic temp+rename or separate `sync.json`. Added to phase 4 constraints.
+3. **Error classification** — retryable (429, 5xx) vs terminal (401, 403, 404). Terminal fails fast; retryable uses backoff. Added to phases 2, 4.
+4. **Post-launch rollback** — if local steps fail after remote launch, call Stop/Delete best-effort. Added to phase 5.
+5. **Kill() terminal race** — single-owner state machine in poll loop. Kill() signals stop; poll loop performs final transition. Added to phase 4.
+6. **Webhook notifier wiring** — session registry (mutex-protected, register/unregister lifecycle) scaffolded in phases 4-5, wired through server options in phase 6. Added to phases 4, 5, 6, 7.
+7. **Launch returns LaunchResult** — `Launch` returns `LaunchResult{RemoteID, TargetBranch}` instead of bare string. Target branch persisted immediately. Added to phase 1.
+8. **Monitor/heartbeat integration** — pollingSession writes heartbeat on each poll and event-writer records. Added to phase 4.
+9. **Config validation** — validate repository non-empty, `webhook_secret_env` follows env-key pattern. Added to phases 6, 7.
+10. **Terminal cleanup** — call Delete on completed/failed/expired. Added to phase 4.
 
 ## Verification
 

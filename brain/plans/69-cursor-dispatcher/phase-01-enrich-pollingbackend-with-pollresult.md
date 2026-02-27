@@ -11,19 +11,25 @@ Change `PollingBackend.PollStatus` from returning `(RemoteStatus, error)` to `(P
 ## Data structures
 
 - `PollResult` struct — `Status RemoteStatus`, `Branch string`, `Summary string`
+- `LaunchResult` struct — `RemoteID string`, `TargetBranch string`
+- `APIError` struct — `StatusCode int`, `Message string`, `Retryable bool`
 
 ## Changes
 
 **`dispatcher/backend_types.go`**
 - Add `PollResult` struct after `RemoteStatus` constants
+- Add `LaunchResult` struct — immutable metadata returned from Launch
+- Add `APIError` struct with `Retryable` classification — used by HTTP client, consumed by pollingSession to distinguish terminal vs retryable errors
 
 **`dispatcher/backend.go`**
+- Change `Launch` signature: `Launch(ctx context.Context, config PollLaunchConfig) (LaunchResult, error)`
 - Change `PollStatus` signature: `PollStatus(ctx context.Context, remoteID string) (PollResult, error)`
 
 **`dispatcher/cursor_backend.go`**
-- Update stub to return `PollResult{Status: RemoteStatusUnknown}, err`
+- Update stub to return `LaunchResult{}, err` and `PollResult{Status: RemoteStatusUnknown}, err`
 
 **`dispatcher/backend_test.go`**
+- Update `pollingBackendStub.Launch` to return `LaunchResult{RemoteID: "test-id"}, nil`
 - Update `pollingBackendStub.PollStatus` to return `PollResult{Status: RemoteStatusRunning}, nil`
 
 ## Verification
@@ -35,4 +41,5 @@ Change `PollingBackend.PollStatus` from returning `(RemoteStatus, error)` to `(P
 
 ### Runtime
 - `go test ./dispatcher/... -race`
-- Existing `cursor_backend_test.go` passes with updated return type
+- Existing `cursor_backend_test.go` passes with updated return types
+- Test: `APIError.Retryable` classification for 429, 5xx (retryable) vs 401, 403, 404 (terminal)
