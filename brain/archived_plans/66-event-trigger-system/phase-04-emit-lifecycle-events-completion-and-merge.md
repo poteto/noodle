@@ -1,4 +1,4 @@
-Back to [[plans/66-event-trigger-system/overview]]
+Back to [[archived_plans/66-event-trigger-system/overview]]
 
 # Phase 4 — Emit Lifecycle Events: Completion and Merge
 

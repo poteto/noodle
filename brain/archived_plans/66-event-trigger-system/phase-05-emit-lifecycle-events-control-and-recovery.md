@@ -1,4 +1,4 @@
-Back to [[plans/66-event-trigger-system/overview]]
+Back to [[archived_plans/66-event-trigger-system/overview]]
 
 # Phase 5 — Emit Lifecycle Events: Control Commands and Recovery
 

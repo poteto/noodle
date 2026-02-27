@@ -1,7 +1,7 @@
 ---
 id: 66
 created: 2026-02-27
-status: ready
+status: done
 ---
 
 # Event Trigger System
@@ -78,15 +78,15 @@ This means:
 
 ## Phases
 
-1. [[plans/66-event-trigger-system/phase-01-event-bus-types-and-ndjson-writer]]
-2. [[plans/66-event-trigger-system/phase-02-delete-audit-infrastructure]]
-3. [[plans/66-event-trigger-system/phase-03-migrate-snapshot-consumer]]
-4. [[plans/66-event-trigger-system/phase-04-emit-lifecycle-events-completion-and-merge]]
-5. [[plans/66-event-trigger-system/phase-05-emit-lifecycle-events-control-and-recovery]]
-6. [[plans/66-event-trigger-system/phase-06-surface-events-in-mise-brief]]
-7. [[plans/66-event-trigger-system/phase-07-external-event-cli]]
-8. [[plans/66-event-trigger-system/phase-08-teach-schedule-skill]]
-9. [[plans/66-event-trigger-system/phase-09-integration-tests]]
+1. [[archived_plans/66-event-trigger-system/phase-01-event-bus-types-and-ndjson-writer]]
+2. [[archived_plans/66-event-trigger-system/phase-02-delete-audit-infrastructure]]
+3. [[archived_plans/66-event-trigger-system/phase-03-migrate-snapshot-consumer]]
+4. [[archived_plans/66-event-trigger-system/phase-04-emit-lifecycle-events-completion-and-merge]]
+5. [[archived_plans/66-event-trigger-system/phase-05-emit-lifecycle-events-control-and-recovery]]
+6. [[archived_plans/66-event-trigger-system/phase-06-surface-events-in-mise-brief]]
+7. [[archived_plans/66-event-trigger-system/phase-07-external-event-cli]]
+8. [[archived_plans/66-event-trigger-system/phase-08-teach-schedule-skill]]
+9. [[archived_plans/66-event-trigger-system/phase-09-integration-tests]]
 
 ## Verification
 
