@@ -8,7 +8,7 @@
 
 ## Structural Cleanup
 
-72. [ ] Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. Pure refactoring, no behavior changes. [[plans/72-go-structural-cleanup/overview]]
+72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. Pure refactoring, no behavior changes. [[plans/72-go-structural-cleanup/overview]]~~ — done. Unified types with orderx, typed OrderStatus/StageStatus enums, extracted cookIdentity, decomposed Loop into 3 sub-structs, split cook.go into 6 lifecycle files, moved recover/ to internal/, trimmed Runtime interface from 7→3 methods, documented runtime/dispatcher layering decision.
 
 ## Scaling
 
