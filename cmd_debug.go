@@ -137,7 +137,7 @@ func readDebugOrders(path string) (debugOrders, error) {
 		orders = append(orders, debugOrder{
 			ID:     o.ID,
 			Title:  o.Title,
-			Status: o.Status,
+			Status: string(o.Status),
 		})
 	}
 	return debugOrders{Orders: orders}, nil
