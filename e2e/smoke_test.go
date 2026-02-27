@@ -130,6 +130,15 @@ func TestSmokeAgentLoop(t *testing.T) {
 	// Assertions.
 	assertOrdersExist(t, projectDir)
 	assertSessionMeta(t, projectDir)
+
+	// UI smoke tests via Playwright.
+	const baseURL = "http://127.0.0.1:13737"
+	if err := waitForServer(t, baseURL, 15*time.Second); err != nil {
+		t.Fatalf("server not reachable: %v", err)
+	}
+	if err := runPlaywrightTests(t, baseURL); err != nil {
+		t.Errorf("playwright UI smoke: %v", err)
+	}
 }
 
 // assertOrdersExist verifies orders.json exists and has valid structure.

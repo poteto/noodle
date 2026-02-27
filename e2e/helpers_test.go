@@ -5,6 +5,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -127,6 +128,7 @@ echo "done: $1" >&2
 	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
 
 	// .noodle.toml — codex provider, auto autonomy, max_cooks=1.
+	// Server enabled on a fixed port so Playwright can hit the UI.
 	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
 
 [routing.defaults]
@@ -153,7 +155,8 @@ max_cooks = 1
 default = "tmux"
 
 [server]
-enabled = false
+enabled = true
+port = 13737
 `)
 
 	// Runtime directory.
@@ -345,6 +348,56 @@ func chmodExec(t *testing.T, path string) {
 	if err := os.Chmod(path, 0o755); err != nil {
 		t.Fatalf("chmod %s: %v", path, err)
 	}
+}
+
+// runPlaywrightTests installs deps and runs the Playwright UI smoke tests
+// against the running noodle server. Returns an error if any test fails.
+func runPlaywrightTests(t *testing.T, baseURL string) error {
+	t.Helper()
+	uiTestDir := filepath.Join(repoRoot(t), "e2e", "ui")
+
+	// Install deps (including playwright browsers).
+	install := exec.Command("pnpm", "install")
+	install.Dir = uiTestDir
+	if out, err := install.CombinedOutput(); err != nil {
+		return fmt.Errorf("pnpm install: %s: %w", string(out), err)
+	}
+
+	// Ensure chromium is installed for playwright.
+	browsers := exec.Command("npx", "playwright", "install", "chromium")
+	browsers.Dir = uiTestDir
+	if out, err := browsers.CombinedOutput(); err != nil {
+		return fmt.Errorf("playwright install chromium: %s: %w", string(out), err)
+	}
+
+	// Run the tests.
+	cmd := exec.Command("npx", "playwright", "test")
+	cmd.Dir = uiTestDir
+	cmd.Env = append(os.Environ(), "NOODLE_BASE_URL="+baseURL)
+	out, err := cmd.CombinedOutput()
+	t.Logf("playwright output:\n%s", string(out))
+	if err != nil {
+		return fmt.Errorf("playwright tests failed: %w", err)
+	}
+	return nil
+}
+
+// waitForServer polls the server until it responds to /api/snapshot or times out.
+func waitForServer(t *testing.T, baseURL string, timeout time.Duration) error {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(baseURL + "/api/snapshot")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				t.Logf("server ready at %s", baseURL)
+				return nil
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("server at %s not ready within %s", baseURL, timeout)
 }
 
 // copyDir recursively copies src to dst.
