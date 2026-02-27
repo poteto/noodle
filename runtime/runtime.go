@@ -53,7 +53,8 @@ type Runtime interface {
 	Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error)
 	Kill(handle SessionHandle) error
 	Recover(ctx context.Context) ([]RecoveredSession, error)
-	Health() <-chan HealthEvent
+	TerminalHealth() <-chan HealthEvent
+	InfoHealth() <-chan HealthEvent
 	Close() error
 }
 
