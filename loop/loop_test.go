@@ -1653,3 +1653,288 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 		)
 	}
 }
+
+func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{testOrder("order-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	cook := &cookHandle{
+		orderID:      "order-1",
+		stageIndex:   0,
+		isOnFailure:  false,
+		worktreeName: "order-1-0-execute",
+		generation:   42,
+		session:      &adoptedSession{id: "sess-1", status: "completed"},
+	}
+
+	if err := l.persistMergeMetadata(cook, "local", ""); err != nil {
+		t.Fatalf("persistMergeMetadata: %v", err)
+	}
+
+	got, err := l.currentOrders()
+	if err != nil {
+		t.Fatalf("currentOrders: %v", err)
+	}
+	stage := got.Orders[0].Stages[0]
+	if stage.Status != StageStatusMerging {
+		t.Errorf("status = %q, want %q", stage.Status, StageStatusMerging)
+	}
+	assertExtra := func(key, want string) {
+		t.Helper()
+		var val string
+		if err := json.Unmarshal(stage.Extra[key], &val); err != nil {
+			t.Errorf("Extra[%s] unmarshal: %v", key, err)
+			return
+		}
+		if val != want {
+			t.Errorf("Extra[%s] = %q, want %q", key, val, want)
+		}
+	}
+	assertExtra(mergeExtraWorktree, "order-1-0-execute")
+	assertExtra(mergeExtraMode, "local")
+	assertExtra(mergeExtraGeneration, "42")
+	assertExtra(mergeExtraBranch, "")
+}
+
+func TestPersistMergeMetadataRemoteMode(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{testOrder("order-r", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	cook := &cookHandle{
+		orderID:      "order-r",
+		stageIndex:   0,
+		worktreeName: "order-r-0-execute",
+		generation:   7,
+		session:      &adoptedSession{id: "sess-r", status: "completed"},
+	}
+
+	if err := l.persistMergeMetadata(cook, "remote", "noodle/remote-branch"); err != nil {
+		t.Fatalf("persistMergeMetadata: %v", err)
+	}
+
+	got, err := l.currentOrders()
+	if err != nil {
+		t.Fatalf("currentOrders: %v", err)
+	}
+	stage := got.Orders[0].Stages[0]
+	var mode string
+	if err := json.Unmarshal(stage.Extra[mergeExtraMode], &mode); err != nil {
+		t.Fatalf("unmarshal mode: %v", err)
+	}
+	if mode != "remote" {
+		t.Errorf("mode = %q, want %q", mode, "remote")
+	}
+	var branch string
+	if err := json.Unmarshal(stage.Extra[mergeExtraBranch], &branch); err != nil {
+		t.Fatalf("unmarshal branch: %v", err)
+	}
+	if branch != "noodle/remote-branch" {
+		t.Errorf("branch = %q, want %q", branch, "noodle/remote-branch")
+	}
+}
+
+func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	// Stage is "merging" but has no Extra metadata.
+	orders := OrdersFile{Orders: []Order{{
+		ID:     "stuck-1",
+		Status: OrderStatusActive,
+		Stages: []Stage{{
+			TaskKey: "execute",
+			Skill:   "execute",
+			Status:  StageStatusMerging,
+		}},
+	}}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.reconcileMergingStages(); err != nil {
+		t.Fatalf("reconcileMergingStages: %v", err)
+	}
+
+	got, err := l.currentOrders()
+	if err != nil {
+		t.Fatalf("currentOrders: %v", err)
+	}
+	// Order should have been removed (terminal failure).
+	if len(got.Orders) != 0 {
+		t.Errorf("expected order removed, got %d orders", len(got.Orders))
+	}
+}
+
+func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{{
+		ID:     "adopted-1",
+		Status: OrderStatusActive,
+		Stages: []Stage{{
+			TaskKey: "execute",
+			Skill:   "execute",
+			Status:  StageStatusMerging,
+			Extra: map[string]json.RawMessage{
+				mergeExtraWorktree: jsonQuote("adopted-1-0-execute"),
+				mergeExtraMode:     jsonQuote("local"),
+			},
+		}},
+	}}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// Simulate adopted session for this order.
+	l.adoptedTargets = map[string]string{"adopted-1": "sess-adopted"}
+
+	if err := l.reconcileMergingStages(); err != nil {
+		t.Fatalf("reconcileMergingStages: %v", err)
+	}
+
+	got, err := l.currentOrders()
+	if err != nil {
+		t.Fatalf("currentOrders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("expected 1 order, got %d", len(got.Orders))
+	}
+	if got.Orders[0].Stages[0].Status != StageStatusActive {
+		t.Errorf("status = %q, want %q", got.Orders[0].Stages[0].Status, StageStatusActive)
+	}
+}
+
+func TestReconcileMergingStagesNoMergingStagesIsNoop(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{testOrder("ok-1", "execute", "execute", "claude", "claude-opus-4-6")}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.reconcileMergingStages(); err != nil {
+		t.Fatalf("reconcileMergingStages: %v", err)
+	}
+
+	got, err := l.currentOrders()
+	if err != nil {
+		t.Fatalf("currentOrders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("expected 1 order unchanged, got %d", len(got.Orders))
+	}
+	if got.Orders[0].Stages[0].Status != StageStatusPending {
+		t.Errorf("status = %q, want %q", got.Orders[0].Stages[0].Status, StageStatusPending)
+	}
+}
+
+func TestExtraString(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra map[string]json.RawMessage
+		key   string
+		want  string
+	}{
+		{"nil map", nil, "key", ""},
+		{"missing key", map[string]json.RawMessage{"other": jsonQuote("val")}, "key", ""},
+		{"present", map[string]json.RawMessage{"key": jsonQuote("hello")}, "key", "hello"},
+		{"invalid json", map[string]json.RawMessage{"key": json.RawMessage(`not-json`)}, "key", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extraString(tt.extra, tt.key)
+			if got != tt.want {
+				t.Errorf("extraString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestJsonQuote(t *testing.T) {
+	got := jsonQuote("hello world")
+	if string(got) != `"hello world"` {
+		t.Errorf("jsonQuote = %s, want %q", got, `"hello world"`)
+	}
+}
