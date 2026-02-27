@@ -62,6 +62,11 @@ func (p *Processor) Process(
 			continue
 		}
 
+		// Skip non-JSON lines (e.g., codex "Reading prompt from stdin..." banner).
+		if len(rawLine) == 0 || rawLine[0] != '{' {
+			continue
+		}
+
 		stamped, events, err := p.ProcessLine([]byte(rawLine))
 		if err != nil {
 			return fmt.Errorf("process line %d: %w", lineNumber, err)
