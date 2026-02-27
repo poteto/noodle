@@ -76,7 +76,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 			resumePrompt = joinPromptParts(hint, resumePrompt)
 		}
 	}
-	prompt := buildCookPrompt(cand.OrderID, stage, order.Plan, order.Rationale, resumePrompt)
+	prompt := buildCookPrompt(cand.OrderID, stage, order.Plan, order.Title, order.Rationale, resumePrompt)
 
 	taskType, _ := l.registry.ByKey(stage.TaskKey)
 	req := loopruntime.DispatchRequest{

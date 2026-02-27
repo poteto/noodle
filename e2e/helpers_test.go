@@ -98,6 +98,9 @@ Create a hello.txt file containing "hello world".
 		"overview.md",
 		filepath.Join(dir, "brain", "plans", "1-hello", "overview"),
 	)
+	// Root-level plans → brain/plans symlink for codex which sometimes
+	// omits the brain/ prefix when resolving plan references.
+	symlink(t, filepath.Join("brain", "plans"), filepath.Join(dir, "plans"))
 
 	// Todos with a trivial item.
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos

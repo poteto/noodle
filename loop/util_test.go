@@ -30,7 +30,7 @@ func TestBuildCookPromptIncludesPrompt(t *testing.T) {
 	stage := Stage{
 		Prompt: "Refactor the auth module to use JWT tokens",
 	}
-	got := buildCookPrompt("execute-123", stage, nil, "", "")
+	got := buildCookPrompt("execute-123", stage, nil, "", "", "")
 	if want := "Refactor the auth module to use JWT tokens"; !containsSubstring(got, want) {
 		t.Fatalf("buildCookPrompt did not include prompt text\ngot: %q", got)
 	}
@@ -38,7 +38,7 @@ func TestBuildCookPromptIncludesPrompt(t *testing.T) {
 
 func TestBuildCookPromptWithoutPrompt(t *testing.T) {
 	stage := Stage{}
-	got := buildCookPrompt("execute-123", stage, nil, "", "")
+	got := buildCookPrompt("execute-123", stage, nil, "", "", "")
 	if containsSubstring(got, "\n\n\n") {
 		t.Fatalf("buildCookPrompt has double blank lines when prompt is empty\ngot: %q", got)
 	}

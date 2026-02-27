@@ -10,12 +10,15 @@ import (
 	"github.com/poteto/noodle/mise"
 )
 
-func buildCookPrompt(orderID string, stage Stage, plan []string, rationale string, resumePrompt string) string {
+func buildCookPrompt(orderID string, stage Stage, plan []string, title string, rationale string, resumePrompt string) string {
 	var header string
 	if len(plan) > 0 {
 		header = fmt.Sprintf("[order:%s] Work on plan: %s", orderID, strings.Join(plan, ", "))
 	} else {
 		header = fmt.Sprintf("[order:%s] Work backlog item %s", orderID, orderID)
+	}
+	if t := strings.TrimSpace(title); t != "" {
+		header += "\nTask: " + t
 	}
 	parts := []string{header}
 	if skill := strings.TrimSpace(stage.Skill); skill != "" {
