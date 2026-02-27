@@ -106,7 +106,7 @@ type cookHandle struct {
 	stageIndex   int
 	stage        Stage
 	isOnFailure  bool
-	orderStatus  string
+	orderStatus  orderx.OrderStatus
 	plan         []string
 	session      loopruntime.SessionHandle
 	worktreeName string
@@ -136,7 +136,7 @@ type pendingRetryCook struct {
 	stageIndex  int
 	stage       Stage
 	isOnFailure bool
-	orderStatus string
+	orderStatus orderx.OrderStatus
 	plan        []string
 	attempt     int    // the next attempt to use (already incremented)
 	displayName string // stable kitchen name from original spawn

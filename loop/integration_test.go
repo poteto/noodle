@@ -647,12 +647,12 @@ func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 	// Find order statuses.
 	orderStatuses := map[string]string{}
 	for _, o := range snap.Orders {
-		orderStatuses[o.ID] = o.Status
+		orderStatuses[o.ID] = string(o.Status)
 	}
-	if orderStatuses["snap-1"] != OrderStatusActive {
+	if orderStatuses["snap-1"] != string(OrderStatusActive) {
 		t.Fatalf("snap-1 status = %q, want active", orderStatuses["snap-1"])
 	}
-	if orderStatuses["snap-2"] != OrderStatusFailing {
+	if orderStatuses["snap-2"] != string(OrderStatusFailing) {
 		t.Fatalf("snap-2 status = %q, want failing", orderStatuses["snap-2"])
 	}
 

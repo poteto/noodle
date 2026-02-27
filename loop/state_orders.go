@@ -2,6 +2,8 @@ package loop
 
 import (
 	"fmt"
+
+	"github.com/poteto/noodle/internal/orderx"
 )
 
 func (l *Loop) loadOrdersState() error {
@@ -51,7 +53,7 @@ func (l *Loop) setOrdersState(orders OrdersFile) {
 	l.ordersLoaded = true
 }
 
-func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status string) error {
+func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status orderx.StageStatus) error {
 	if orderID == "" {
 		return fmt.Errorf("order id not set")
 	}

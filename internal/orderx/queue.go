@@ -6,22 +6,26 @@ import (
 	"time"
 )
 
-// Stage status constants.
+// StageStatus is the lifecycle status of a stage.
+type StageStatus string
+
 const (
-	StageStatusPending   = "pending"
-	StageStatusActive    = "active"
-	StageStatusMerging   = "merging"
-	StageStatusCompleted = "completed"
-	StageStatusFailed    = "failed"
-	StageStatusCancelled = "cancelled"
+	StageStatusPending   StageStatus = "pending"
+	StageStatusActive    StageStatus = "active"
+	StageStatusMerging   StageStatus = "merging"
+	StageStatusCompleted StageStatus = "completed"
+	StageStatusFailed    StageStatus = "failed"
+	StageStatusCancelled StageStatus = "cancelled"
 )
 
-// Order status constants.
+// OrderStatus is the lifecycle status of an order.
+type OrderStatus string
+
 const (
-	OrderStatusActive    = "active"
-	OrderStatusCompleted = "completed"
-	OrderStatusFailed    = "failed"
-	OrderStatusFailing   = "failing"
+	OrderStatusActive    OrderStatus = "active"
+	OrderStatusCompleted OrderStatus = "completed"
+	OrderStatusFailed    OrderStatus = "failed"
+	OrderStatusFailing   OrderStatus = "failing"
 )
 
 // Stage is a unit of work within an order (serialization type).
@@ -32,19 +36,19 @@ type Stage struct {
 	Provider string                     `json:"provider"`
 	Model    string                     `json:"model"`
 	Runtime  string                     `json:"runtime,omitempty"`
-	Status   string                     `json:"status"`
+	Status   StageStatus                `json:"status"`
 	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
 }
 
 // Order is a pipeline of stages (serialization type).
 type Order struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title,omitempty"`
-	Plan      []string `json:"plan,omitempty"`
-	Rationale string   `json:"rationale,omitempty"`
-	Stages    []Stage  `json:"stages"`
-	Status    string   `json:"status"`
-	OnFailure []Stage  `json:"on_failure,omitempty"`
+	ID        string      `json:"id"`
+	Title     string      `json:"title,omitempty"`
+	Plan      []string    `json:"plan,omitempty"`
+	Rationale string      `json:"rationale,omitempty"`
+	Stages    []Stage     `json:"stages"`
+	Status    OrderStatus `json:"status"`
+	OnFailure []Stage     `json:"on_failure,omitempty"`
 }
 
 // OrdersFile is the top-level orders.json structure (serialization type).
@@ -55,7 +59,7 @@ type OrdersFile struct {
 }
 
 // ValidateOrderStatus returns an error if the order status is not valid.
-func ValidateOrderStatus(status string) error {
+func ValidateOrderStatus(status OrderStatus) error {
 	switch status {
 	case OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing:
 		return nil
@@ -67,7 +71,7 @@ func ValidateOrderStatus(status string) error {
 }
 
 // ValidateStageStatus returns an error if the stage status is not valid.
-func ValidateStageStatus(status string) error {
+func ValidateStageStatus(status StageStatus) error {
 	switch status {
 	case StageStatusPending, StageStatusActive, StageStatusMerging, StageStatusCompleted, StageStatusFailed, StageStatusCancelled:
 		return nil

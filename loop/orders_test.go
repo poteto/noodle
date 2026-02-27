@@ -315,7 +315,7 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 
 // --- Stage lifecycle function tests ---
 
-func makeStage(status string) Stage {
+func makeStage(status orderx.StageStatus) Stage {
 	return Stage{
 		TaskKey:  "execute",
 		Provider: "claude",
@@ -324,7 +324,7 @@ func makeStage(status string) Stage {
 	}
 }
 
-func makeOrder(id, status string, stages []Stage, onFailure []Stage) Order {
+func makeOrder(id string, status orderx.OrderStatus, stages []Stage, onFailure []Stage) Order {
 	return Order{
 		ID:        id,
 		Title:     "order " + id,

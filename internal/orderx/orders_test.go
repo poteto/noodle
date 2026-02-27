@@ -209,8 +209,8 @@ func TestQueuexOrderOnFailureNilAndEmpty(t *testing.T) {
 
 func TestQueuexStageStatusConstants(t *testing.T) {
 	tests := []struct {
-		got  string
-		want string
+		got  StageStatus
+		want StageStatus
 	}{
 		{StageStatusPending, "pending"},
 		{StageStatusActive, "active"},
@@ -227,8 +227,8 @@ func TestQueuexStageStatusConstants(t *testing.T) {
 
 func TestQueuexOrderStatusConstants(t *testing.T) {
 	tests := []struct {
-		got  string
-		want string
+		got  OrderStatus
+		want OrderStatus
 	}{
 		{OrderStatusActive, "active"},
 		{OrderStatusCompleted, "completed"},
@@ -243,7 +243,7 @@ func TestQueuexOrderStatusConstants(t *testing.T) {
 }
 
 func TestQueuexValidateOrderStatus(t *testing.T) {
-	valid := []string{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
+	valid := []OrderStatus{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
 	for _, s := range valid {
 		if err := ValidateOrderStatus(s); err != nil {
 			t.Errorf("ValidateOrderStatus(%q) = %v, want nil", s, err)
@@ -260,7 +260,7 @@ func TestQueuexValidateOrderStatus(t *testing.T) {
 }
 
 func TestQueuexValidateStageStatus(t *testing.T) {
-	valid := []string{StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled}
+	valid := []StageStatus{StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled}
 	for _, s := range valid {
 		if err := ValidateStageStatus(s); err != nil {
 			t.Errorf("ValidateStageStatus(%q) = %v, want nil", s, err)

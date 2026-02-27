@@ -88,7 +88,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 				Provider: stage.Provider,
 				Model:    stage.Model,
 				Runtime:  stage.Runtime,
-				Status:   stage.Status,
+				Status:   string(stage.Status),
 				Extra:    stage.Extra,
 			}
 			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
@@ -105,7 +105,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 				Provider: stage.Provider,
 				Model:    stage.Model,
 				Runtime:  stage.Runtime,
-				Status:   stage.Status,
+				Status:   string(stage.Status),
 				Extra:    stage.Extra,
 			}
 			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
@@ -119,7 +119,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			Plan:      append([]string(nil), order.Plan...),
 			Rationale: order.Rationale,
 			Stages:    stages,
-			Status:    order.Status,
+			Status:    string(order.Status),
 			OnFailure: onFailure,
 		})
 	}

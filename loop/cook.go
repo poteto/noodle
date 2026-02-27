@@ -13,6 +13,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/recover"
@@ -983,7 +984,7 @@ func (l *Loop) steer(target string, prompt string) error {
 	return errors.New("session not found")
 }
 
-func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status string) error {
+func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status orderx.StageStatus) error {
 	return l.ensureOrderStageStatus(orderID, stageIndex, isOnFailure, status)
 }
 

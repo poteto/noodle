@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/orderx"
 )
 
 // PendingRetryItem is the serializable form of pendingRetryCook.
 type PendingRetryItem struct {
-	OrderID     string `json:"order_id"`
-	StageIndex  int    `json:"stage_index"`
-	IsOnFailure bool   `json:"is_on_failure,omitempty"`
-	OrderStatus string `json:"order_status"`
+	OrderID     string             `json:"order_id"`
+	StageIndex  int                `json:"stage_index"`
+	IsOnFailure bool               `json:"is_on_failure,omitempty"`
+	OrderStatus orderx.OrderStatus `json:"order_status"`
 	TaskKey     string `json:"task_key,omitempty"`
 	Prompt      string `json:"prompt,omitempty"`
 	Provider    string `json:"provider,omitempty"`
