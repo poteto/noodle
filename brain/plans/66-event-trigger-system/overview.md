@@ -40,11 +40,12 @@ This means:
 - Lifecycle event emission at every state-transition point (including control commands and crash recovery)
 - Events surfaced in mise brief as `recent_events`, watermarked by sequence number
 - NDJSON file truncation (cap at last N events)
-- Schedule skill updated to react to events
+- `noodle event emit` CLI command for external event injection
+- Schedule skill updated to react to events (internal and external)
 
 **Out of scope:**
 - Cron/timer triggers (different emission source — follow-up)
-- External event ingestion / webhooks (needs HTTP receiver — follow-up)
+- HTTP webhook receiver for push-based external events (follow-up — the CLI command covers pull/script-based ingestion)
 - Trigger frontmatter on skills (the schedule agent handles dispatch, not Go code)
 - UI event browser (can consume `loop-events.ndjson` when built)
 
@@ -83,8 +84,9 @@ This means:
 4. [[plans/66-event-trigger-system/phase-04-emit-lifecycle-events-completion-and-merge]]
 5. [[plans/66-event-trigger-system/phase-05-emit-lifecycle-events-control-and-recovery]]
 6. [[plans/66-event-trigger-system/phase-06-surface-events-in-mise-brief]]
-7. [[plans/66-event-trigger-system/phase-07-teach-schedule-skill]]
-8. [[plans/66-event-trigger-system/phase-08-integration-tests]]
+7. [[plans/66-event-trigger-system/phase-07-external-event-cli]]
+8. [[plans/66-event-trigger-system/phase-08-teach-schedule-skill]]
+9. [[plans/66-event-trigger-system/phase-09-integration-tests]]
 
 ## Verification
 

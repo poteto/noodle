@@ -1,10 +1,10 @@
 Back to [[plans/66-event-trigger-system/overview]]
 
-# Phase 8 — Integration Tests
+# Phase 9 — Integration Tests
 
 ## Goal
 
-End-to-end verification that events flow from emission through to the mise brief. Covers the full pipeline: state transition → EventWriter → NDJSON file → mise builder → brief.
+End-to-end verification that events flow from emission through to the mise brief. Covers the full pipeline: state transition → EventWriter → NDJSON file → mise builder → brief. Also covers external event injection.
 
 ## Changes
 
@@ -20,6 +20,7 @@ End-to-end verification that events flow from emission through to the mise brief
   - Merge path: merge completes → `worktree.merged` event appears
   - Control command: requeue → `order.requeued` event appears
   - Watermark: after `schedule.completed`, only newer events in brief
+  - External event: `EventWriter.Emit` with arbitrary type (e.g., `ci.failed`) appears in brief alongside internal events
 
 ## Data Structures
 
