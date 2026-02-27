@@ -2,8 +2,6 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -11,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
@@ -27,22 +26,26 @@ const (
 	StateIdle     State = "idle"
 )
 
-// Stage status constants.
+// Type aliases — orderx is canonical.
+type Stage = orderx.Stage
+type Order = orderx.Order
+type OrdersFile = orderx.OrdersFile
+
+// Re-export orderx status constants for in-package use.
 const (
-	StageStatusPending   = "pending"
-	StageStatusActive    = "active"
-	StageStatusMerging   = "merging"
-	StageStatusCompleted = "completed"
-	StageStatusFailed    = "failed"
-	StageStatusCancelled = "cancelled"
+	StageStatusPending   = orderx.StageStatusPending
+	StageStatusActive    = orderx.StageStatusActive
+	StageStatusMerging   = orderx.StageStatusMerging
+	StageStatusCompleted = orderx.StageStatusCompleted
+	StageStatusFailed    = orderx.StageStatusFailed
+	StageStatusCancelled = orderx.StageStatusCancelled
 )
 
-// Order status constants.
 const (
-	OrderStatusActive    = "active"
-	OrderStatusCompleted = "completed"
-	OrderStatusFailed    = "failed"
-	OrderStatusFailing   = "failing"
+	OrderStatusActive    = orderx.OrderStatusActive
+	OrderStatusCompleted = orderx.OrderStatusCompleted
+	OrderStatusFailed    = orderx.OrderStatusFailed
+	OrderStatusFailing   = orderx.OrderStatusFailing
 )
 
 type StageResultStatus string
@@ -52,60 +55,6 @@ const (
 	StageResultFailed    StageResultStatus = "failed"
 	StageResultCancelled StageResultStatus = "cancelled"
 )
-
-// Stage is a unit of work within an order.
-type Stage struct {
-	TaskKey  string                     `json:"task_key,omitempty"`
-	Prompt   string                     `json:"prompt,omitempty"`
-	Skill    string                     `json:"skill,omitempty"`
-	Provider string                     `json:"provider"`
-	Model    string                     `json:"model"`
-	Runtime  string                     `json:"runtime,omitempty"`
-	Status   string                     `json:"status"`
-	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
-}
-
-// Order is a pipeline of stages.
-type Order struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title,omitempty"`
-	Plan      []string `json:"plan,omitempty"`
-	Rationale string   `json:"rationale,omitempty"`
-	Stages    []Stage  `json:"stages"`
-	Status    string   `json:"status"`
-	OnFailure []Stage  `json:"on_failure,omitempty"`
-}
-
-// OrdersFile is the top-level orders.json structure.
-type OrdersFile struct {
-	GeneratedAt  time.Time `json:"generated_at"`
-	Orders       []Order   `json:"orders"`
-	ActionNeeded []string  `json:"action_needed,omitempty"`
-}
-
-// ValidateOrderStatus returns an error if the order status is not valid.
-func ValidateOrderStatus(status string) error {
-	switch status {
-	case OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing:
-		return nil
-	case "":
-		return fmt.Errorf("order status is required")
-	default:
-		return fmt.Errorf("unknown order status %q", status)
-	}
-}
-
-// ValidateStageStatus returns an error if the stage status is not valid.
-func ValidateStageStatus(status string) error {
-	switch status {
-	case StageStatusPending, StageStatusActive, StageStatusMerging, StageStatusCompleted, StageStatusFailed, StageStatusCancelled:
-		return nil
-	case "":
-		return fmt.Errorf("stage status is required")
-	default:
-		return fmt.Errorf("unknown stage status %q", status)
-	}
-}
 
 type ControlCommand struct {
 	ID       string    `json:"id"`
@@ -265,10 +214,9 @@ type Loop struct {
 	orders       OrdersFile
 	ordersLoaded bool
 
-	activeSummary mise.ActiveSummary
-	recentHistory []mise.HistoryItem
-	sessionHealth map[string]loopruntime.HealthEvent
-	mergeQueue    *MergeQueue
+	activeSummary  mise.ActiveSummary
+	recentHistory  []mise.HistoryItem
+	mergeQueue     *MergeQueue
 	publishedState atomic.Pointer[LoopState]
 
 	lastStatus statusfile.Status

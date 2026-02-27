@@ -3,7 +3,6 @@ package runtime
 import (
 	"context"
 	"path/filepath"
-	"time"
 
 	"github.com/poteto/noodle/dispatcher"
 )
@@ -38,32 +37,12 @@ type RecoveredSession struct {
 	Reason        string
 }
 
-type HealthEventType string
-
-const (
-	HealthHealthy HealthEventType = "healthy"
-	HealthIdle    HealthEventType = "idle"
-	HealthStuck   HealthEventType = "stuck"
-	HealthDead    HealthEventType = "dead"
-)
-
-type HealthEvent struct {
-	SessionID string
-	OrderID   string
-	Type      HealthEventType
-	Detail    string
-	At        time.Time
-	Seq       uint64
-}
-
 // Runtime dispatches, observes, and recovers sessions for one platform.
 type Runtime interface {
 	Start(ctx context.Context) error
 	Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error)
 	Kill(handle SessionHandle) error
 	Recover(ctx context.Context) ([]RecoveredSession, error)
-	TerminalHealth() <-chan HealthEvent
-	InfoHealth() <-chan HealthEvent
 	Close() error
 }
 
@@ -79,11 +58,4 @@ func (s dispatcherSessionHandle) TotalCost() float64    { return s.session.Total
 func (s dispatcherSessionHandle) Kill() error           { return s.session.Kill() }
 func (s dispatcherSessionHandle) VerdictPath() string {
 	return filepath.Join(s.runtimeDir, "quality", s.session.ID()+".json")
-}
-
-func WrapDispatcherSession(session dispatcher.Session, runtimeDir string) SessionHandle {
-	if session == nil {
-		return nil
-	}
-	return dispatcherSessionHandle{session: session, runtimeDir: runtimeDir}
 }

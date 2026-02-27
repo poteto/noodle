@@ -18,17 +18,11 @@ type mockRuntime struct {
 	recoverErr  error
 	recovered   []loopruntime.RecoveredSession
 
-	terminalHealth chan loopruntime.HealthEvent
-	infoHealth     chan loopruntime.HealthEvent
-
 	dispatchHook func(loopruntime.DispatchRequest) (loopruntime.SessionHandle, error)
 }
 
 func newMockRuntime() *mockRuntime {
-	return &mockRuntime{
-		terminalHealth: make(chan loopruntime.HealthEvent, 64),
-		infoHealth:     make(chan loopruntime.HealthEvent, 256),
-	}
+	return &mockRuntime{}
 }
 
 func (m *mockRuntime) Start(context.Context) error { return nil }
@@ -67,14 +61,6 @@ func (m *mockRuntime) Recover(_ context.Context) ([]loopruntime.RecoveredSession
 		return nil, m.recoverErr
 	}
 	return m.recovered, nil
-}
-
-func (m *mockRuntime) TerminalHealth() <-chan loopruntime.HealthEvent {
-	return m.terminalHealth
-}
-
-func (m *mockRuntime) InfoHealth() <-chan loopruntime.HealthEvent {
-	return m.infoHealth
 }
 
 func (m *mockRuntime) Close() error { return nil }

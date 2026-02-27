@@ -93,7 +93,6 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 			ByRuntime: map[string]int{},
 		},
 		recentHistory: make([]mise.HistoryItem, 0, 20),
-		sessionHealth: map[string]loopruntime.HealthEvent{},
 	}
 	loop.mergeQueue = NewMergeQueue(context.Background(), func(ctx context.Context, req MergeRequest) error {
 		if req.Cook == nil {
@@ -340,7 +339,6 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.processControlCommands(); err != nil {
 		return false, err
 	}
-	l.drainRuntimeHealth()
 	if err := l.processPendingRetries(ctx); err != nil {
 		return false, err
 	}

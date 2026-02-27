@@ -10,11 +10,9 @@ import (
 )
 
 type DispatcherRuntime struct {
-	name           string
-	runtimeDir     string
-	dispatcher     dispatcher.Dispatcher
-	terminalHealth chan HealthEvent
-	infoHealth     chan HealthEvent
+	name       string
+	runtimeDir string
+	dispatcher dispatcher.Dispatcher
 
 	maxConcurrent int // 0 = unlimited
 	mu            sync.Mutex
@@ -27,11 +25,9 @@ func NewDispatcherRuntime(name string, d dispatcher.Dispatcher, runtimeDir strin
 		name = "tmux"
 	}
 	return &DispatcherRuntime{
-		name:           name,
-		runtimeDir:     runtimeDir,
-		dispatcher:     d,
-		terminalHealth: make(chan HealthEvent, 64),
-		infoHealth:     make(chan HealthEvent, 256),
+		name:       name,
+		runtimeDir: runtimeDir,
+		dispatcher: d,
 	}
 }
 
@@ -87,20 +83,6 @@ func (r *DispatcherRuntime) Kill(handle SessionHandle) error {
 
 func (r *DispatcherRuntime) Recover(context.Context) ([]RecoveredSession, error) {
 	return nil, nil
-}
-
-func (r *DispatcherRuntime) TerminalHealth() <-chan HealthEvent {
-	if r == nil {
-		return nil
-	}
-	return r.terminalHealth
-}
-
-func (r *DispatcherRuntime) InfoHealth() <-chan HealthEvent {
-	if r == nil {
-		return nil
-	}
-	return r.infoHealth
 }
 
 func (r *DispatcherRuntime) Close() error { return nil }
