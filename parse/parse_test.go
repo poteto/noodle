@@ -217,6 +217,53 @@ func TestCodexAdapterParsesAgentMessagesFromEventAndItem(t *testing.T) {
 	}
 }
 
+func TestDetectProviderCodexTurnCompleted(t *testing.T) {
+	line := `{"type":"turn.completed","_ts":"2026-02-22T16:50:00Z"}`
+	got, err := DetectProvider([]byte(line))
+	if err != nil {
+		t.Fatalf("detect provider: %v", err)
+	}
+	if got != "codex" {
+		t.Fatalf("provider = %q, want codex", got)
+	}
+}
+
+func TestCodexAdapterParsesTurnCompleted(t *testing.T) {
+	adapter := CodexAdapter{}
+	line := `{"type":"turn.completed","_ts":"2026-02-22T16:50:00Z"}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse turn.completed: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventComplete {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventComplete)
+	}
+	if events[0].Message != "turn completed" {
+		t.Fatalf("event message: got %q want %q", events[0].Message, "turn completed")
+	}
+}
+
+func TestRegistryParsesTurnCompletedViaCodexAdapter(t *testing.T) {
+	registry := NewRegistry()
+	line := `{"type":"turn.completed","_ts":"2026-02-22T16:50:00Z"}`
+	provider, events, err := registry.ParseLine([]byte(line))
+	if err != nil {
+		t.Fatalf("parse line: %v", err)
+	}
+	if provider != "codex" {
+		t.Fatalf("provider = %q, want codex", provider)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count: got %d want 1", len(events))
+	}
+	if events[0].Type != EventComplete {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventComplete)
+	}
+}
+
 func TestCodexAdapterParsesItemStartedCommandExecution(t *testing.T) {
 	adapter := CodexAdapter{}
 
