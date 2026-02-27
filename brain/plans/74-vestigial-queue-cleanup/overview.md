@@ -1,7 +1,7 @@
 ---
 id: 74
 created: 2026-02-27
-status: ready
+status: done
 ---
 
 # Vestigial Queue Cleanup
@@ -44,10 +44,10 @@ The order system replaced the flat queue months ago (plan 49). The event system 
 
 Ordered per subtract-before-you-add: delete first, then rename, then update docs.
 
-- [ ] [[plans/74-vestigial-queue-cleanup/phase-01-delete-legacy-compat-code]] -- Delete compat shims and dead code
-- [ ] [[plans/74-vestigial-queue-cleanup/phase-02-rename-vestigial-files]] -- Rename misnamed Go files
-- [ ] [[plans/74-vestigial-queue-cleanup/phase-03-update-docs-skills-and-brain]] -- Update documentation references
-- [ ] [[plans/74-vestigial-queue-cleanup/phase-04-rename-go-symbols-and-test-names]] -- Rename Go symbols and test functions
+- [x] [[plans/74-vestigial-queue-cleanup/phase-01-delete-legacy-compat-code]] -- Delete compat shims and dead code
+- [x] [[plans/74-vestigial-queue-cleanup/phase-02-rename-vestigial-files]] -- Rename misnamed Go files
+- [x] [[plans/74-vestigial-queue-cleanup/phase-03-update-docs-skills-and-brain]] -- Update documentation references
+- [x] [[plans/74-vestigial-queue-cleanup/phase-04-rename-go-symbols-and-test-names]] -- Rename Go symbols and test functions
 
 ## Verification
 

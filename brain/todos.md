@@ -12,7 +12,7 @@
 
 ## Cleanup
 
-74. [ ] Vestigial queue naming, legacy compat shims, duplicated slicesEqual — rename schema target and misnamed files, update docs/skills referencing queue.json, delete OrderID2 compat shim and colon-separated format parser, replace duplicated slicesEqual with slices.Equal. [[plans/74-vestigial-queue-cleanup/overview]]
+74. [x] ~~Vestigial queue naming, legacy compat shims, duplicated slicesEqual — rename schema target and misnamed files, update docs/skills referencing queue.json, delete OrderID2 compat shim and colon-separated format parser, replace duplicated slicesEqual with slices.Equal. [[plans/74-vestigial-queue-cleanup/overview]]~~ — done.
 
 ## Noodle Post-Plan 1
 
