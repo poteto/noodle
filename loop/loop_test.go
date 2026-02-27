@@ -12,53 +12,12 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
-
-type fakeSession struct {
-	id     string
-	status string
-	done   chan struct{}
-}
-
-func (s *fakeSession) ID() string     { return s.id }
-func (s *fakeSession) Status() string { return s.status }
-func (s *fakeSession) Events() <-chan dispatcher.SessionEvent {
-	return make(chan dispatcher.SessionEvent)
-}
-func (s *fakeSession) Done() <-chan struct{} { return s.done }
-func (s *fakeSession) TotalCost() float64    { return 0 }
-func (s *fakeSession) VerdictPath() string   { return "" }
-func (s *fakeSession) Kill() error {
-	s.status = "killed"
-	select {
-	case <-s.done:
-	default:
-		close(s.done)
-	}
-	return nil
-}
-
-type fakeDispatcher struct {
-	calls       []dispatcher.DispatchRequest
-	sessions    []*fakeSession
-	dispatchErr error
-}
-
-func (f *fakeDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
-	f.calls = append(f.calls, req)
-	if f.dispatchErr != nil {
-		return nil, f.dispatchErr
-	}
-	s := &fakeSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
-	f.sessions = append(f.sessions, s)
-	return s, nil
-}
 
 type fakeWorktree struct {
 	created         []string
@@ -171,11 +130,11 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
 	ordersPath := writeTestOrders(t, runtimeDir, orders)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{},
@@ -188,8 +147,8 @@ func TestCycleSpawnsCookFromQueue(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
 	if len(wt.created) != 1 {
 		t.Fatalf("worktree creates = %d", len(wt.created))
@@ -213,10 +172,10 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -231,11 +190,11 @@ func TestCycleReusesExistingWorktree(t *testing.T) {
 	if len(wt.created) != 0 {
 		t.Fatalf("expected no worktree create calls, got %d", len(wt.created))
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
-	if sp.calls[0].WorktreePath != existingWorktree {
-		t.Fatalf("spawn worktree path = %q, want %q", sp.calls[0].WorktreePath, existingWorktree)
+	if rt.calls[0].WorktreePath != existingWorktree {
+		t.Fatalf("spawn worktree path = %q, want %q", rt.calls[0].WorktreePath, existingWorktree)
 	}
 }
 
@@ -252,10 +211,10 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	}
 
 	existingWorktree := filepath.Join(projectDir, ".worktrees", "42")
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{createErr: errors.New("worktree '42' already exists at " + existingWorktree)}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -270,8 +229,8 @@ func TestCycleIgnoresDuplicateWorktreeCreateError(t *testing.T) {
 	if len(wt.created) != 1 {
 		t.Fatalf("expected one create call, got %d", len(wt.created))
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
 }
 
@@ -291,10 +250,11 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		t.Fatalf("mkdir existing worktree: %v", err)
 	}
 
-	sp := &fakeDispatcher{dispatchErr: errors.New("spawn failed")}
+	rt := newMockRuntime()
+	rt.dispatchErr = errors.New("spawn failed")
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -326,10 +286,11 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeDispatcher{dispatchErr: errors.New("spawn failed")}
+	rt := newMockRuntime()
+	rt.dispatchErr = errors.New("spawn failed")
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -376,12 +337,12 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -392,11 +353,10 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -426,9 +386,9 @@ func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -443,8 +403,8 @@ func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
 	if l.state != StateIdle {
 		t.Fatalf("state = %s, want idle", l.state)
 	}
-	if len(sp.calls) != 0 {
-		t.Fatalf("expected no spawn calls when idle, got %d", len(sp.calls))
+	if len(rt.calls) != 0 {
+		t.Fatalf("expected no spawn calls when idle, got %d", len(rt.calls))
 	}
 
 	statusPath := filepath.Join(runtimeDir, "status.json")
@@ -465,9 +425,9 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 	}
 
 	fm := &fakeMise{}
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       fm,
@@ -494,11 +454,11 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 	if l.state != StateRunning {
 		t.Fatalf("state after cycle 2 = %s, want running", l.state)
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("expected 1 spawn call after wake, got %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("expected 1 spawn call after wake, got %d", len(rt.calls))
 	}
-	if sp.calls[0].Skill != "schedule" {
-		t.Fatalf("expected schedule spawn, got skill %q", sp.calls[0].Skill)
+	if rt.calls[0].Skill != "schedule" {
+		t.Fatalf("expected schedule spawn, got skill %q", rt.calls[0].Skill)
 	}
 }
 
@@ -510,11 +470,11 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -527,53 +487,53 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
-	if sp.calls[0].Skill != "schedule" {
-		t.Fatalf("spawn skill = %q", sp.calls[0].Skill)
+	if rt.calls[0].Skill != "schedule" {
+		t.Fatalf("spawn skill = %q", rt.calls[0].Skill)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from .noodle/mise.json.") {
-		t.Fatalf("spawn prompt missing skill invocation: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from .noodle/mise.json.") {
+		t.Fatalf("spawn prompt missing skill invocation: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "orders-next.json") {
-		t.Fatalf("spawn prompt missing orders-next.json instruction: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "orders-next.json") {
+		t.Fatalf("spawn prompt missing orders-next.json instruction: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "orders.json schema (JSON):") {
-		t.Fatalf("spawn prompt missing orders schema: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "orders.json schema (JSON):") {
+		t.Fatalf("spawn prompt missing orders schema: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "on_failure") {
-		t.Fatalf("spawn prompt missing on_failure documentation: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "on_failure") {
+		t.Fatalf("spawn prompt missing on_failure documentation: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Task types you may schedule:") {
-		t.Fatalf("spawn prompt missing task type catalog: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Task types you may schedule:") {
+		t.Fatalf("spawn prompt missing task type catalog: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "- schedule: ") || !strings.Contains(sp.calls[0].Prompt, "- execute: ") {
-		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "- schedule: ") || !strings.Contains(rt.calls[0].Prompt, "- execute: ") {
+		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", rt.calls[0].Prompt)
 	}
-	if strings.Contains(sp.calls[0].Prompt, "| config: ") || strings.Contains(sp.calls[0].Prompt, "| synthetic: ") {
-		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", sp.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "| config: ") || strings.Contains(rt.calls[0].Prompt, "| synthetic: ") {
+		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
-		t.Fatalf("spawn prompt missing mise immutability note: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Do not modify .noodle/mise.json.") {
+		t.Fatalf("spawn prompt missing mise immutability note: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(sp.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {
-		t.Fatalf("spawn prompt missing autonomous mode note: %q", sp.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {
+		t.Fatalf("spawn prompt missing autonomous mode note: %q", rt.calls[0].Prompt)
 	}
 	if !strings.Contains(
-		sp.calls[0].Prompt,
+		rt.calls[0].Prompt,
 		"You may synthesize orders for non-execute task types",
 	) {
-		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", sp.calls[0].Prompt)
+		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", rt.calls[0].Prompt)
 	}
-	if strings.Contains(sp.calls[0].Prompt, "mise.json schema (JSON):") {
-		t.Fatalf("spawn prompt must not include mise schema: %q", sp.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "mise.json schema (JSON):") {
+		t.Fatalf("spawn prompt must not include mise schema: %q", rt.calls[0].Prompt)
 	}
-	if !sp.calls[0].AllowPrimaryCheckout {
+	if !rt.calls[0].AllowPrimaryCheckout {
 		t.Fatal("expected schedule spawn to allow primary checkout")
 	}
-	if sp.calls[0].WorktreePath != projectDir {
-		t.Fatalf("worktree path = %q, want %q", sp.calls[0].WorktreePath, projectDir)
+	if rt.calls[0].WorktreePath != projectDir {
+		t.Fatalf("worktree path = %q, want %q", rt.calls[0].WorktreePath, projectDir)
 	}
 	if len(wt.created) != 0 {
 		t.Fatalf("unexpected worktree creates: %#v", wt.created)
@@ -604,7 +564,7 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -649,10 +609,10 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	cfg.Recovery.MaxRetries = 0
 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -664,18 +624,17 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "failed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("failed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("failure cycle: %v", err)
 	}
-	for _, call := range sp.calls[1:] {
+	for _, call := range rt.calls[1:] {
 		if call.Name == "42" {
-			t.Fatalf("expected no respawn for failed item 42, calls = %#v", sp.calls)
+			t.Fatalf("expected no respawn for failed item 42, calls = %#v", rt.calls)
 		}
 	}
 	if _, ok := l.failedTargets["42"]; !ok {
@@ -713,9 +672,9 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	cfg.Recovery.MaxRetries = 0
 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -726,11 +685,10 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "exited"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("exited")
 
 	err := l.Cycle(context.Background())
 	if err == nil {
@@ -750,7 +708,7 @@ func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise: &fakeMise{brief: mise.Brief{
@@ -905,9 +863,9 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 1
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -920,8 +878,8 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("spawn calls = %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
 	if len(l.adoptedTargets) != 0 {
 		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
@@ -943,7 +901,7 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "approve"
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -982,7 +940,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "auto"
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1045,7 +1003,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1098,7 +1056,7 @@ func TestMergeCookWorktreeUsesRemoteBranchSyncResult(t *testing.T) {
 
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1110,7 +1068,7 @@ func TestMergeCookWorktreeUsesRemoteBranchSyncResult(t *testing.T) {
 	cook := &cookHandle{
 		orderID:      "42",
 		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
-		session:      &fakeSession{id: sessionID, status: "completed", done: make(chan struct{})},
+		session:      &mockSession{id: sessionID, status: "completed", done: make(chan struct{})},
 		worktreeName: "42",
 	}
 	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
@@ -1133,7 +1091,7 @@ func TestMergeCookWorktreeFallsBackToLocalMerge(t *testing.T) {
 
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1145,7 +1103,7 @@ func TestMergeCookWorktreeFallsBackToLocalMerge(t *testing.T) {
 	cook := &cookHandle{
 		orderID:      "42",
 		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
-		session:      &fakeSession{id: "", status: "completed", done: make(chan struct{})},
+		session:      &mockSession{id: "", status: "completed", done: make(chan struct{})},
 		worktreeName: "42",
 	}
 	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
@@ -1172,12 +1130,12 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	}
 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{
 		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1188,11 +1146,11 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
 
-	sessionID := sp.sessions[0].id
+	sessionID := rt.sessions[0].id
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
 	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
 		t.Fatalf("mkdir session path: %v", err)
@@ -1205,8 +1163,7 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 		t.Fatalf("write spawn metadata: %v", err)
 	}
 
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -1237,12 +1194,12 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "auto"
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1253,11 +1210,10 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -1286,11 +1242,11 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "auto"
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1302,11 +1258,10 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -1346,11 +1301,11 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "approve"
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1361,11 +1316,10 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -1401,11 +1355,11 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Autonomy = "approve"
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -1416,11 +1370,10 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
 	}
-	sp.sessions[0].status = "completed"
-	close(sp.sessions[0].done)
+	rt.sessions[0].complete("completed")
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -1438,24 +1391,6 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	if len(items) != 1 || items[0].OrderID != "42" {
 		t.Fatalf("pending review file items = %#v", items)
 	}
-}
-
-// selectiveErrDispatcher fails on specific call indices, succeeds on others.
-type selectiveErrDispatcher struct {
-	calls    []dispatcher.DispatchRequest
-	sessions []*fakeSession
-	failAt   map[int]error // call index → error
-}
-
-func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
-	index := len(d.calls)
-	d.calls = append(d.calls, req)
-	if err, ok := d.failAt[index]; ok {
-		return nil, err
-	}
-	s := &fakeSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
-	d.sessions = append(d.sessions, s)
-	return s, nil
 }
 
 // TestNoDoubleSpawnAfterFailedRetry verifies that when a retry dispatch fails,
@@ -1494,7 +1429,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		t.Fatalf("write queue: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 
 	cfg := config.DefaultConfig()
@@ -1502,7 +1437,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	cfg.Recovery.MaxRetries = 3
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 29, Status: "open", Title: "Test", Directory: "test"}}}},
@@ -1512,7 +1447,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	})
 
 	// Simulate: item 29 was spawned in a previous cycle and is still running.
-	item29Session := &fakeSession{id: "29-sess", status: "running", done: make(chan struct{})}
+	item29Session := &mockSession{id: "29-sess", status: "running", done: make(chan struct{})}
 	item29Cook := &cookHandle{
 		orderID: "29",
 		stage: Stage{
@@ -1589,8 +1524,18 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	// Call 0: cycle 1 spawns "37" → succeeds
 	// Call 1: cycle 2 retry of "37" → fails (transient dispatch error)
 	// Call 2+: cycle 3 onward → succeeds
-	sp := &selectiveErrDispatcher{
-		failAt: map[int]error{1: errors.New("tmux unavailable")},
+	failAt := map[int]error{1: errors.New("tmux unavailable")}
+	rt := newMockRuntime()
+	callCount := 0
+	rt.dispatchHook = func(req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
+		idx := callCount
+		callCount++
+		if err, ok := failAt[idx]; ok {
+			return nil, err
+		}
+		s := &mockSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
+		rt.sessions = append(rt.sessions, s)
+		return s, nil
 	}
 	wt := &fakeWorktree{}
 
@@ -1598,7 +1543,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	cfg.Recovery.MaxRetries = 3
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 37, Status: "open", Title: "Test", Directory: "test"}}}},
@@ -1611,17 +1556,16 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}
-	if len(sp.sessions) != 1 {
-		t.Fatalf("expected 1 session after cycle 1, got %d", len(sp.sessions))
+	if len(rt.sessions) != 1 {
+		t.Fatalf("expected 1 session after cycle 1, got %d", len(rt.sessions))
 	}
 	if _, ok := l.activeCooksByOrder["37"]; !ok {
 		t.Fatal("expected item 37 in activeCooksByOrder after cycle 1")
 	}
 
 	// Simulate: session A fails
-	sessionA := sp.sessions[0]
-	sessionA.status = "failed"
-	close(sessionA.done)
+	sessionA := rt.sessions[0]
+	sessionA.complete("failed")
 
 	// Create the worktree directory so ensureWorktree doesn't call Create again
 	// (mirrors production: worktree exists from cycle 1's dispatch).
@@ -1668,7 +1612,7 @@ func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1729,7 +1673,7 @@ func TestPersistMergeMetadataRemoteMode(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1794,7 +1738,7 @@ func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1843,7 +1787,7 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1885,7 +1829,7 @@ func TestReconcileMergingStagesNoMergingStagesIsNoop(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

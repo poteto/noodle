@@ -42,10 +42,6 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 			},
 		},
 	})
-	factory := dispatcher.NewDispatcherFactory()
-	if err := factory.Register("tmux", local); err != nil {
-		panic(err)
-	}
 	runtimes := map[string]loopruntime.Runtime{
 		"tmux": loopruntime.NewTmuxRuntime(local, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
 	}
@@ -63,9 +59,6 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				Token:         cfg.Runtime.Sprites.Token(),
 				GitToken:      cfg.Runtime.Sprites.GitToken(),
 			})
-			if err := factory.Register("sprites", sd); err != nil {
-				panic(err)
-			}
 			runtimes["sprites"] = loopruntime.NewSpritesRuntime(sd, runtimeDir, cfg.Runtime.Sprites.MaxConcurrent)
 		}
 	}
@@ -80,7 +73,6 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		wt = noOpWorktree{}
 	}
 	return Dependencies{
-		Dispatcher:     factory,
 		Runtimes:       runtimes,
 		Worktree:       wt,
 		Adapter:        adapter.NewRunner(projectDir, cfg),

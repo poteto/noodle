@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func TestHasNonScheduleOrders(t *testing.T) {
@@ -152,9 +153,9 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -167,8 +168,8 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 	if err := l.spawnSchedule(context.Background(), order, 0, ""); err != nil {
 		t.Fatalf("spawnSchedule: %v", err)
 	}
-	if len(sp.calls) != 1 {
-		t.Fatalf("dispatch calls = %d, want 1", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("dispatch calls = %d, want 1", len(rt.calls))
 	}
 	if _, ok := l.activeCooksByOrder[scheduleOrderID]; !ok {
 		t.Fatal("expected schedule order in activeCooksByOrder")

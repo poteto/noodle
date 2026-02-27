@@ -12,6 +12,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 // logEntry is a captured slog record for test assertions.
@@ -94,7 +95,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	fm := &fakeMise{}
@@ -108,7 +109,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	}
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       fm,
@@ -120,7 +121,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	})
 	return &testLoopContext{
 		loop:       l,
-		dispatcher: sp,
+		runtime:    rt,
 		worktree:   wt,
 		adapter:    ar,
 		mise:       fm,
@@ -137,7 +138,7 @@ type testLoopOpts struct {
 
 type testLoopContext struct {
 	loop       *Loop
-	dispatcher *fakeDispatcher
+	runtime    *mockRuntime
 	worktree   *fakeWorktree
 	adapter    *fakeAdapterRunner
 	mise       *fakeMise
@@ -203,12 +204,11 @@ func TestLogCompletionMerge(t *testing.T) {
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(tc.dispatcher.sessions) != 1 {
-		t.Fatalf("sessions = %d, want 1", len(tc.dispatcher.sessions))
+	if len(tc.runtime.sessions) != 1 {
+		t.Fatalf("sessions = %d, want 1", len(tc.runtime.sessions))
 	}
 
-	tc.dispatcher.sessions[0].status = "completed"
-	close(tc.dispatcher.sessions[0].done)
+	tc.runtime.sessions[0].complete("completed")
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -241,8 +241,7 @@ func TestLogCompletionParkForReview(t *testing.T) {
 		t.Fatalf("spawn cycle: %v", err)
 	}
 
-	tc.dispatcher.sessions[0].status = "completed"
-	close(tc.dispatcher.sessions[0].done)
+	tc.runtime.sessions[0].complete("completed")
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -264,12 +263,11 @@ func TestLogScheduleCompleted(t *testing.T) {
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("spawn cycle: %v", err)
 	}
-	if len(tc.dispatcher.sessions) < 1 {
+	if len(tc.runtime.sessions) < 1 {
 		t.Fatal("expected schedule dispatch")
 	}
 
-	tc.dispatcher.sessions[0].status = "completed"
-	close(tc.dispatcher.sessions[0].done)
+	tc.runtime.sessions[0].complete("completed")
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("completion cycle: %v", err)
@@ -300,8 +298,7 @@ func TestLogRetryAndFailure(t *testing.T) {
 	}
 
 	// Fail the first session → triggers retry.
-	tc.dispatcher.sessions[0].status = "error"
-	close(tc.dispatcher.sessions[0].done)
+	tc.runtime.sessions[0].complete("error")
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("retry cycle: %v", err)
@@ -312,8 +309,7 @@ func TestLogRetryAndFailure(t *testing.T) {
 	}
 
 	// Fail the retry → exhausts retries → permanent failure.
-	tc.dispatcher.sessions[1].status = "error"
-	close(tc.dispatcher.sessions[1].done)
+	tc.runtime.sessions[1].complete("error")
 
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("failure cycle: %v", err)

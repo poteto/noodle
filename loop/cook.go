@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/adapter"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
@@ -87,7 +86,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	prompt := buildCookPrompt(cand.OrderID, stage, order.Plan, order.Rationale, resumePrompt)
 
 	taskType, _ := l.registry.ByKey(stage.TaskKey)
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:         name,
 		Prompt:       prompt,
 		Provider:     nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
@@ -350,7 +349,7 @@ func (l *Loop) takeCompletionOverflow() []StageResult {
 	return drained
 }
 
-func (l *Loop) dispatchSession(ctx context.Context, req dispatcher.DispatchRequest) (loopruntime.SessionHandle, error) {
+func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
 	runtimeName := strings.ToLower(strings.TrimSpace(req.Runtime))
 	if runtimeName == "" {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
@@ -359,30 +358,23 @@ func (l *Loop) dispatchSession(ctx context.Context, req dispatcher.DispatchReque
 		runtimeName = "tmux"
 	}
 
-	if runtime := l.deps.Runtimes[runtimeName]; runtime != nil {
-		session, err := runtime.Dispatch(ctx, req)
-		if err == nil {
-			return session, nil
-		}
-		if runtimeName != "tmux" {
-			if fallback := l.deps.Runtimes["tmux"]; fallback != nil {
-				req.Runtime = "tmux"
-				req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
-				return fallback.Dispatch(ctx, req)
-			}
-		}
-		return nil, err
+	runtime := l.deps.Runtimes[runtimeName]
+	if runtime == nil {
+		return nil, fmt.Errorf("runtime %q not configured", runtimeName)
 	}
 
-	// Backward-compatibility path for tests still wiring only Dispatcher.
-	if l.deps.Dispatcher != nil {
-		session, err := l.deps.Dispatcher.Dispatch(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return loopruntime.WrapDispatcherSession(session, l.runtimeDir), nil
+	session, err := runtime.Dispatch(ctx, req)
+	if err == nil {
+		return session, nil
 	}
-	return nil, fmt.Errorf("runtime %q not configured", runtimeName)
+	if runtimeName != "tmux" {
+		if fallback := l.deps.Runtimes["tmux"]; fallback != nil {
+			req.Runtime = "tmux"
+			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
+			return fallback.Dispatch(ctx, req)
+		}
+	}
+	return nil, err
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
@@ -511,7 +503,7 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 	if err != nil {
 		return err
 	}
-	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+	if hasSyncResult && syncResult.Type == loopruntime.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
 		if err := l.deps.Worktree.MergeRemoteBranch(syncResult.Branch); err != nil {
 			return fmt.Errorf("merge remote branch %s: %w", syncResult.Branch, err)
 		}
@@ -537,7 +529,7 @@ const (
 // name (empty for local merges).
 func (l *Loop) resolveMergeMode(cook *cookHandle) (mode string, branch string) {
 	syncResult, hasSyncResult, _ := l.readSessionSyncResult(cook.session.ID())
-	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+	if hasSyncResult && syncResult.Type == loopruntime.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
 		return "remote", strings.TrimSpace(syncResult.Branch)
 	}
 	return "local", ""
@@ -591,27 +583,27 @@ func (l *Loop) canMergeStage(stage Stage) bool {
 	return taskType.CanMerge
 }
 
-func (l *Loop) readSessionSyncResult(sessionID string) (dispatcher.SyncResult, bool, error) {
+func (l *Loop) readSessionSyncResult(sessionID string) (loopruntime.SyncResult, bool, error) {
 	sessionID = strings.TrimSpace(sessionID)
 	if sessionID == "" {
-		return dispatcher.SyncResult{}, false, nil
+		return loopruntime.SyncResult{}, false, nil
 	}
 	path := filepath.Join(l.runtimeDir, "sessions", sessionID, "spawn.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return dispatcher.SyncResult{}, false, nil
+			return loopruntime.SyncResult{}, false, nil
 		}
-		return dispatcher.SyncResult{}, false, fmt.Errorf("read spawn metadata: %w", err)
+		return loopruntime.SyncResult{}, false, fmt.Errorf("read spawn metadata: %w", err)
 	}
 	var payload struct {
-		Sync dispatcher.SyncResult `json:"sync"`
+		Sync loopruntime.SyncResult `json:"sync"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return dispatcher.SyncResult{}, false, fmt.Errorf("parse spawn metadata: %w", err)
+		return loopruntime.SyncResult{}, false, fmt.Errorf("parse spawn metadata: %w", err)
 	}
 	if strings.TrimSpace(payload.Sync.Type) == "" && strings.TrimSpace(payload.Sync.Branch) == "" {
-		return dispatcher.SyncResult{}, false, nil
+		return loopruntime.SyncResult{}, false, nil
 	}
 	payload.Sync.Type = strings.ToLower(strings.TrimSpace(payload.Sync.Type))
 	payload.Sync.Branch = strings.TrimSpace(payload.Sync.Branch)

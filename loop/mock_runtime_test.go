@@ -12,6 +12,7 @@ import (
 type mockRuntime struct {
 	mu sync.Mutex
 
+	calls       []loopruntime.DispatchRequest
 	sessions    []*mockSession
 	dispatchErr error
 	recoverErr  error
@@ -35,6 +36,8 @@ func (m *mockRuntime) Start(context.Context) error { return nil }
 func (m *mockRuntime) Dispatch(_ context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.calls = append(m.calls, req)
 
 	if m.dispatchHook != nil {
 		return m.dispatchHook(req)
@@ -91,6 +94,7 @@ func (s *mockSession) TotalCost() float64    { return s.cost }
 func (s *mockSession) VerdictPath() string   { return "" }
 
 func (s *mockSession) Kill() error {
+	s.status = "killed"
 	select {
 	case <-s.done:
 	default:

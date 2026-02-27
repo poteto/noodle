@@ -11,6 +11,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func BenchmarkPlanCycleSpawnsScale(b *testing.B) {
@@ -23,7 +24,7 @@ func BenchmarkPlanCycleSpawnsScale(b *testing.B) {
 			}
 
 			l := New(b.TempDir(), "noodle", config.DefaultConfig(), Dependencies{
-				Dispatcher: &fakeDispatcher{},
+				Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 				Worktree:   &fakeWorktree{},
 				Adapter:    &fakeAdapterRunner{},
 				Mise:       &fakeMise{},
@@ -72,7 +73,7 @@ func benchCycleDispatch(b *testing.B, orderCount int) {
 	cfg.Runtime.Tmux.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

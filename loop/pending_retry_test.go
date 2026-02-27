@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func TestWritePendingRetryPersistsFile(t *testing.T) {
@@ -22,7 +23,7 @@ func TestWritePendingRetryPersistsFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -93,7 +94,7 @@ func TestLoadPendingRetryHydratesState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -139,7 +140,7 @@ func TestReconcilePendingRetryPrunesRemovedOrders(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -180,7 +181,7 @@ func TestReconcilePendingRetryPrunesAdoptedSessions(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -242,7 +243,7 @@ func TestLoadPendingRetryReconcileDuringStartup(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -282,7 +283,7 @@ func TestLoadPendingRetryCorruptFileStartsFresh(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

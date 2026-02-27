@@ -11,6 +11,15 @@ import (
 // DispatchRequest is shared with the existing dispatcher boundary.
 type DispatchRequest = dispatcher.DispatchRequest
 
+// SyncResult aliases dispatcher.SyncResult so loop/ doesn't import dispatcher.
+type SyncResult = dispatcher.SyncResult
+
+// Sync result type constants.
+const (
+	SyncResultTypeNone   = dispatcher.SyncResultTypeNone
+	SyncResultTypeBranch = dispatcher.SyncResultTypeBranch
+)
+
 // SessionHandle is a runtime-agnostic session contract.
 type SessionHandle interface {
 	ID() string

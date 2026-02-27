@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
-func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loop {
+func newControlTestLoop(t *testing.T, wt *fakeWorktree, rt *mockRuntime) *Loop {
 	t.Helper()
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -24,7 +25,7 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -48,7 +49,7 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, sp *fakeDispatcher) *Loo
 }
 
 func TestControlMergeKeepsPendingOnMergeFailure(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{mergeErr: errors.New("merge failed")}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{mergeErr: errors.New("merge failed")}, newMockRuntime())
 
 	err := l.controlMerge("42")
 	if err == nil {
@@ -60,7 +61,7 @@ func TestControlMergeKeepsPendingOnMergeFailure(t *testing.T) {
 }
 
 func TestControlMergeRemovesPendingAfterSuccess(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlMerge("42"); err != nil {
 		t.Fatalf("controlMerge: %v", err)
@@ -78,7 +79,7 @@ func TestControlMergeRemovesPendingAfterSuccess(t *testing.T) {
 }
 
 func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlReject("42"); err != nil {
 		t.Fatalf("controlReject: %v", err)
@@ -94,7 +95,7 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 // controlRequestChanges now calls failStage (not dispatch). With no OnFailure stages,
 // it should be terminal — the order is removed and markFailed is called.
 func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlRequestChanges("42", "Add missing tests"); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
@@ -131,7 +132,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -176,7 +177,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 }
 
 func TestControlRequestChangesAllowsEmptyFeedback(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlRequestChanges("42", "   "); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
@@ -188,7 +189,7 @@ func TestControlRequestChangesAllowsEmptyFeedback(t *testing.T) {
 }
 
 func TestControlRequestChangesNotInPendingReview(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	err := l.controlRequestChanges("nonexistent", "feedback")
 	if err == nil {
@@ -200,7 +201,7 @@ func TestControlRequestChangesNotInPendingReview(t *testing.T) {
 }
 
 func TestControlRejectKeepsPendingOnFailure(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	// Make the runtime dir unwritable so markFailed cannot write failed.json.
 	if err := os.Chmod(l.runtimeDir, 0o444); err != nil {
@@ -227,7 +228,7 @@ func TestControlEnqueueCreatesSingleStageOrder(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -290,7 +291,7 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -350,7 +351,7 @@ func TestControlReorderChangesOrderPosition(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -399,7 +400,7 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -437,7 +438,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -487,7 +488,7 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -546,7 +547,7 @@ func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -582,7 +583,7 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -627,7 +628,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -657,7 +658,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 }
 
 func TestControlMergeNoVerdictProceeds(t *testing.T) {
-	l := newControlTestLoop(t, &fakeWorktree{}, &fakeDispatcher{})
+	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	// No quality verdict file at all — merge should proceed normally.
 	if err := l.controlMerge("42"); err != nil {
@@ -684,7 +685,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 	}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    ar,
 		Mise:       &fakeMise{},
@@ -725,7 +726,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -772,7 +773,7 @@ func TestCommandSequenceAssignment(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -817,7 +818,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -847,7 +848,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 
 	// Create a new loop and hydrate — should recover the sequence.
 	l2 := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -875,7 +876,7 @@ func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -919,7 +920,7 @@ func TestCommandSequenceIdempotentReplay(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -964,7 +965,7 @@ func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -1011,7 +1012,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes: map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

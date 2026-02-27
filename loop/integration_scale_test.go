@@ -30,7 +30,7 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = orderCount
@@ -38,7 +38,7 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	cfg.Runtime.Tmux.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -51,13 +51,12 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("dispatch cycle: %v", err)
 	}
-	if len(sp.sessions) != orderCount {
-		t.Fatalf("dispatched sessions = %d, want %d", len(sp.sessions), orderCount)
+	if len(rt.sessions) != orderCount {
+		t.Fatalf("dispatched sessions = %d, want %d", len(rt.sessions), orderCount)
 	}
 
-	for _, session := range sp.sessions {
-		session.status = "completed"
-		close(session.done)
+	for _, session := range rt.sessions {
+		session.complete("completed")
 	}
 
 	for i := 0; i < 20; i++ {
@@ -96,9 +95,9 @@ func TestScaleLoopStateSnapshotIncludesActiveSummary(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

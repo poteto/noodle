@@ -14,6 +14,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -69,7 +70,7 @@ func TestRegistryErrorResilience(t *testing.T) {
 		registry:       taskreg.NewFromSkills(nil),
 		registryErr:    registryErr,
 		deps: Dependencies{
-			Dispatcher: &fakeDispatcher{},
+			Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:   &fakeWorktree{},
 			Adapter:    &fakeAdapterRunner{},
 			Mise:       &fakeMise{},
@@ -204,7 +205,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher:     &fakeDispatcher{},
+			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},
@@ -298,7 +299,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher:     &fakeDispatcher{},
+			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},

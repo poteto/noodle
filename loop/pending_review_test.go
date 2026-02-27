@@ -9,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func TestParkPendingReviewWritesFile(t *testing.T) {
@@ -23,7 +24,7 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -90,7 +91,7 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -132,7 +133,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 2
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

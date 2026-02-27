@@ -11,7 +11,6 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
@@ -194,10 +193,6 @@ type pendingRetryCook struct {
 	displayName string // stable kitchen name from original spawn
 }
 
-type Dispatcher interface {
-	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
-}
-
 type WorktreeManager interface {
 	Create(name string) error
 	Merge(name string) error
@@ -218,7 +213,6 @@ type Monitor interface {
 }
 
 type Dependencies struct {
-	Dispatcher     Dispatcher
 	Runtimes       map[string]loopruntime.Runtime
 	Worktree       WorktreeManager
 	Adapter        AdapterRunner

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/schemadoc"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 const scheduleOrderID = "schedule"
@@ -75,7 +75,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	}
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:                 name,
 		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
@@ -139,7 +139,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	prompt := buildBootstrapPrompt(provider)
 
 	name := bootstrapSessionPrefix + scheduleOrderID
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:                 name,
 		Prompt:               "Create a schedule skill for this project. Follow the system prompt instructions exactly.",
 		Provider:             provider,

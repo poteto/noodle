@@ -23,16 +23,8 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
-	if deps.Runtimes == nil && deps.Dispatcher != nil {
-		deps.Runtimes = map[string]loopruntime.Runtime{
-			"tmux": loopruntime.NewTmuxRuntime(deps.Dispatcher, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
-		}
-	}
-	if deps.Dispatcher == nil || deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
+	if deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
 		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger)
-		if deps.Dispatcher == nil {
-			deps.Dispatcher = defaults.Dispatcher
-		}
 		if deps.Runtimes == nil {
 			deps.Runtimes = defaults.Runtimes
 		}
@@ -53,11 +45,6 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		}
 		if deps.StatusFile == "" {
 			deps.StatusFile = defaults.StatusFile
-		}
-	}
-	if deps.Runtimes == nil && deps.Dispatcher != nil {
-		deps.Runtimes = map[string]loopruntime.Runtime{
-			"tmux": loopruntime.NewTmuxRuntime(deps.Dispatcher, runtimeDir, cfg.Runtime.Tmux.MaxConcurrent),
 		}
 	}
 	if deps.Now == nil {

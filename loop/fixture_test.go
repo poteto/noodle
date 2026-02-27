@@ -17,7 +17,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -123,9 +122,9 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				t.Fatalf("mkdir runtime: %v", err)
 			}
 			miseResults := buildMiseResults(stateInputs)
-			sp := &fakeDispatcher{}
+			rt := newMockRuntime()
 			if strings.TrimSpace(setup.DispatcherError) != "" {
-				sp.dispatchErr = errors.New(strings.TrimSpace(setup.DispatcherError))
+				rt.dispatchErr = errors.New(strings.TrimSpace(setup.DispatcherError))
 			}
 			wt := &fakeWorktree{}
 			if strings.TrimSpace(setup.WorktreeCreateError) != "" {
@@ -151,7 +150,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 
 			l := New(projectDir, "noodle", baseCfg, Dependencies{
-				Dispatcher: sp,
+				Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 				Worktree:   wt,
 				Adapter:    &fakeAdapterRunner{},
 				Mise:       &fakeMise{results: miseResults},
@@ -188,13 +187,13 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				stateDump := loopFixtureStateDump{
 					CycleError:          normalizeDynamicText(errorString(err)),
 					Transition:          strings.ToLower(strings.TrimSpace(string(l.state))),
-					NormalTaskScheduled: len(sp.calls) > 0,
-					SpawnCalls:          len(sp.calls),
-					NormalSpawnCalls:    len(sp.calls),
+					NormalTaskScheduled: len(rt.calls) > 0,
+					SpawnCalls:          len(rt.calls),
+					NormalSpawnCalls:    len(rt.calls),
 					CreatedWorktrees:    len(wt.created),
 				}
-				if len(sp.calls) > 0 {
-					stateDump.FirstSpawn = requestDump(sp.calls[0])
+				if len(rt.calls) > 0 {
+					stateDump.FirstSpawn = requestDump(rt.calls[0])
 				}
 
 				observed.States[state.ID] = stateDump
@@ -246,7 +245,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 		}
 		cook := &cookHandle{
 			orderID: targetID,
-			session: &fakeSession{
+			session: &mockSession{
 				id:     sessionID,
 				status: "running",
 				done:   make(chan struct{}),
@@ -412,7 +411,7 @@ func errorString(err error) string {
 	return strings.TrimSpace(err.Error())
 }
 
-func requestDump(request dispatcher.DispatchRequest) *loopFixtureSpawnDump {
+func requestDump(request loopruntime.DispatchRequest) *loopFixtureSpawnDump {
 	dump := &loopFixtureSpawnDump{
 		Name:     strings.TrimSpace(request.Name),
 		Skill:    strings.TrimSpace(request.Skill),
