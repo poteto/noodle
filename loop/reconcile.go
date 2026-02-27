@@ -150,12 +150,14 @@ func (l *Loop) reconcileMergingStages() error {
 		if isBranchMerged(l.projectDir, checkBranch) {
 			l.logger.Info("merging stage branch already merged, advancing", "order", ms.order.ID, "stage", ms.stageIdx, "branch", checkBranch)
 			cook := &cookHandle{
-				orderID:     ms.order.ID,
-				stageIndex:  ms.stageIdx,
-				stage:       ms.stage,
+				cookIdentity: cookIdentity{
+					orderID:    ms.order.ID,
+					stageIndex: ms.stageIdx,
+					stage:      ms.stage,
+					plan:       ms.order.Plan,
+				},
 				isOnFailure: ms.isOnFailure,
 				orderStatus: ms.order.Status,
-				plan:        ms.order.Plan,
 			}
 			if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 				return err
@@ -167,12 +169,14 @@ func (l *Loop) reconcileMergingStages() error {
 		if branchExists(l.projectDir, checkBranch) {
 			l.logger.Info("merging stage branch exists, re-enqueueing merge", "order", ms.order.ID, "stage", ms.stageIdx, "branch", checkBranch)
 			cook := &cookHandle{
-				orderID:      ms.order.ID,
-				stageIndex:   ms.stageIdx,
-				stage:        ms.stage,
+				cookIdentity: cookIdentity{
+					orderID:    ms.order.ID,
+					stageIndex: ms.stageIdx,
+					stage:      ms.stage,
+					plan:       ms.order.Plan,
+				},
 				isOnFailure:  ms.isOnFailure,
 				orderStatus:  ms.order.Status,
-				plan:         ms.order.Plan,
 				worktreeName: wtName,
 				worktreePath: l.worktreePath(wtName),
 				session:      &adoptedSession{id: "crash-recovery", status: "completed"},

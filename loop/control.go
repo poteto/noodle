@@ -302,12 +302,9 @@ func (l *Loop) controlMerge(orderID string) error {
 
 	// Merge the worktree.
 	cook := &cookHandle{
-		orderID:      pending.orderID,
-		stageIndex:   pending.stageIndex,
-		stage:        pending.stage,
+		cookIdentity: pending.cookIdentity,
 		isOnFailure:  false,
 		orderStatus:  OrderStatusActive,
-		plan:         pending.plan,
 		worktreeName: pending.worktreeName,
 		worktreePath: pending.worktreePath,
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},

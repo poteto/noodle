@@ -34,9 +34,8 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	})
 
 	cook := &cookHandle{
-		orderID: "42",
-		stage:   Stage{TaskKey: "execute", Skill: "execute"},
-		session: &adoptedSession{id: "sess-42", status: "completed"},
+		cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute", Skill: "execute"}},
+		session:      &adoptedSession{id: "sess-42", status: "completed"},
 		worktreeName: "42",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42"),
 	}
@@ -142,7 +141,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{orderID: "42"}
+	l.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
 	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxCooks)
 	if len(plan) != 1 || plan[0].OrderID != "43" {

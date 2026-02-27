@@ -105,19 +105,21 @@ func (l *Loop) loadPendingRetry() error {
 			continue
 		}
 		next[id] = &pendingRetryCook{
-			orderID:     id,
-			stageIndex:  item.StageIndex,
+			cookIdentity: cookIdentity{
+				orderID:    id,
+				stageIndex: item.StageIndex,
+				stage: Stage{
+					TaskKey:  strings.TrimSpace(item.TaskKey),
+					Prompt:   strings.TrimSpace(item.Prompt),
+					Skill:    strings.TrimSpace(item.Skill),
+					Provider: strings.TrimSpace(item.Provider),
+					Model:    strings.TrimSpace(item.Model),
+					Runtime:  strings.TrimSpace(item.Runtime),
+				},
+				plan: item.Plan,
+			},
 			isOnFailure: item.IsOnFailure,
 			orderStatus: item.OrderStatus,
-			stage: Stage{
-				TaskKey:  strings.TrimSpace(item.TaskKey),
-				Prompt:   strings.TrimSpace(item.Prompt),
-				Skill:    strings.TrimSpace(item.Skill),
-				Provider: strings.TrimSpace(item.Provider),
-				Model:    strings.TrimSpace(item.Model),
-				Runtime:  strings.TrimSpace(item.Runtime),
-			},
-			plan:        item.Plan,
 			attempt:     item.Attempt,
 			displayName: item.DisplayName,
 		}

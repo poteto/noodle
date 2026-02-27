@@ -33,12 +33,14 @@ func TestWritePendingRetryPersistsFile(t *testing.T) {
 	})
 
 	l.pendingRetry["42"] = &pendingRetryCook{
-		orderID:     "42",
-		stageIndex:  0,
-		stage:       Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus"},
+		cookIdentity: cookIdentity{
+			orderID:    "42",
+			stageIndex: 0,
+			stage:      Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "opus"},
+			plan:       []string{"plans/42/overview"},
+		},
 		isOnFailure: false,
 		orderStatus: OrderStatusActive,
-		plan:        []string{"plans/42/overview"},
 		attempt:     2,
 		displayName: "chef-bravo",
 	}
@@ -150,8 +152,8 @@ func TestReconcilePendingRetryPrunesRemovedOrders(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 
-	l.pendingRetry["42"] = &pendingRetryCook{orderID: "42", stage: Stage{TaskKey: "execute"}, attempt: 1}
-	l.pendingRetry["43"] = &pendingRetryCook{orderID: "43", stage: Stage{TaskKey: "execute"}, attempt: 1}
+	l.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
 
 	if err := l.reconcilePendingRetry(); err != nil {
 		t.Fatalf("reconcilePendingRetry: %v", err)
@@ -193,8 +195,8 @@ func TestReconcilePendingRetryPrunesAdoptedSessions(t *testing.T) {
 
 	// Simulate that order "42" was recovered with a live session.
 	l.adoptedTargets["42"] = "sess-42"
-	l.pendingRetry["42"] = &pendingRetryCook{orderID: "42", stage: Stage{TaskKey: "execute"}, attempt: 1}
-	l.pendingRetry["43"] = &pendingRetryCook{orderID: "43", stage: Stage{TaskKey: "execute"}, attempt: 1}
+	l.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
 
 	if err := l.reconcilePendingRetry(); err != nil {
 		t.Fatalf("reconcilePendingRetry: %v", err)

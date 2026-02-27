@@ -244,7 +244,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 			continue
 		}
 		cook := &cookHandle{
-			orderID: targetID,
+			cookIdentity: cookIdentity{orderID: targetID},
 			session: &mockSession{
 				id:     sessionID,
 				status: "running",

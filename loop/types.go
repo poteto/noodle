@@ -101,13 +101,18 @@ type StageResult struct {
 	CompletedAt  time.Time
 }
 
+// cookIdentity holds the fields shared across all cook handle types.
+type cookIdentity struct {
+	orderID    string
+	stageIndex int
+	stage      Stage
+	plan       []string
+}
+
 type cookHandle struct {
-	orderID      string
-	stageIndex   int
-	stage        Stage
+	cookIdentity
 	isOnFailure  bool
 	orderStatus  orderx.OrderStatus
-	plan         []string
 	session      loopruntime.SessionHandle
 	worktreeName string
 	worktreePath string
@@ -119,10 +124,7 @@ type cookHandle struct {
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.
 type pendingReviewCook struct {
-	orderID      string
-	stageIndex   int
-	stage        Stage
-	plan         []string
+	cookIdentity
 	worktreeName string
 	worktreePath string
 	sessionID    string
@@ -132,12 +134,9 @@ type pendingReviewCook struct {
 // pendingRetryCook is a stage whose retry dispatch failed, waiting for
 // runtime repair before retrying.
 type pendingRetryCook struct {
-	orderID     string
-	stageIndex  int
-	stage       Stage
+	cookIdentity
 	isOnFailure bool
 	orderStatus orderx.OrderStatus
-	plan        []string
 	attempt     int    // the next attempt to use (already incremented)
 	displayName string // stable kitchen name from original spawn
 }

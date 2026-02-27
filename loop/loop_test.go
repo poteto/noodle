@@ -1066,8 +1066,7 @@ func TestMergeCookWorktreeUsesRemoteBranchSyncResult(t *testing.T) {
 	})
 
 	cook := &cookHandle{
-		orderID:      "42",
-		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
+		cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}},
 		session:      &mockSession{id: sessionID, status: "completed", done: make(chan struct{})},
 		worktreeName: "42",
 	}
@@ -1101,8 +1100,7 @@ func TestMergeCookWorktreeFallsBackToLocalMerge(t *testing.T) {
 	})
 
 	cook := &cookHandle{
-		orderID:      "42",
-		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
+		cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"}},
 		session:      &mockSession{id: "", status: "completed", done: make(chan struct{})},
 		worktreeName: "42",
 	}
@@ -1449,14 +1447,16 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	// Simulate: item 29 was spawned in a previous cycle and is still running.
 	item29Session := &mockSession{id: "29-sess", status: "running", done: make(chan struct{})}
 	item29Cook := &cookHandle{
-		orderID: "29",
-		stage: Stage{
-			TaskKey:  "execute",
-			Skill:    "execute",
-			Provider: "claude",
-			Model:    "claude-opus-4-6",
+		cookIdentity: cookIdentity{
+			orderID: "29",
+			stage: Stage{
+				TaskKey:  "execute",
+				Skill:    "execute",
+				Provider: "claude",
+				Model:    "claude-opus-4-6",
+			},
+			plan: []string{"plans/29-test/overview"},
 		},
-		plan:         []string{"plans/29-test/overview"},
 		session:      item29Session,
 		worktreeName: "29",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
@@ -1623,8 +1623,7 @@ func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 	})
 
 	cook := &cookHandle{
-		orderID:      "order-1",
-		stageIndex:   0,
+		cookIdentity: cookIdentity{orderID: "order-1", stageIndex: 0},
 		isOnFailure:  false,
 		worktreeName: "order-1-0-execute",
 		generation:   42,
@@ -1684,8 +1683,7 @@ func TestPersistMergeMetadataRemoteMode(t *testing.T) {
 	})
 
 	cook := &cookHandle{
-		orderID:      "order-r",
-		stageIndex:   0,
+		cookIdentity: cookIdentity{orderID: "order-r", stageIndex: 0},
 		worktreeName: "order-r-0-execute",
 		generation:   7,
 		session:      &adoptedSession{id: "sess-r", status: "completed"},

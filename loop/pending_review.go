@@ -76,10 +76,7 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 
 func (l *Loop) parkPendingReview(cook *cookHandle, reason string) error {
 	l.pendingReview[cook.orderID] = &pendingReviewCook{
-		orderID:      cook.orderID,
-		stageIndex:   cook.stageIndex,
-		stage:        cook.stage,
-		plan:         cook.plan,
+		cookIdentity: cook.cookIdentity,
 		worktreeName: cook.worktreeName,
 		worktreePath: cook.worktreePath,
 		sessionID:    cook.session.ID(),
@@ -140,17 +137,19 @@ func (l *Loop) loadPendingReview() error {
 			continue
 		}
 		next[id] = &pendingReviewCook{
-			orderID:    id,
-			stageIndex: item.StageIndex,
-			stage: Stage{
-				TaskKey:  strings.TrimSpace(item.TaskKey),
-				Prompt:   strings.TrimSpace(item.Prompt),
-				Skill:    strings.TrimSpace(item.Skill),
-				Provider: strings.TrimSpace(item.Provider),
-				Model:    strings.TrimSpace(item.Model),
-				Runtime:  strings.TrimSpace(item.Runtime),
+			cookIdentity: cookIdentity{
+				orderID:    id,
+				stageIndex: item.StageIndex,
+				stage: Stage{
+					TaskKey:  strings.TrimSpace(item.TaskKey),
+					Prompt:   strings.TrimSpace(item.Prompt),
+					Skill:    strings.TrimSpace(item.Skill),
+					Provider: strings.TrimSpace(item.Provider),
+					Model:    strings.TrimSpace(item.Model),
+					Runtime:  strings.TrimSpace(item.Runtime),
+				},
+				plan: item.Plan,
 			},
-			plan:         item.Plan,
 			worktreeName: name,
 			worktreePath: strings.TrimSpace(item.WorktreePath),
 			sessionID:    strings.TrimSpace(item.SessionID),

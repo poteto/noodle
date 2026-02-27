@@ -95,11 +95,13 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		return err
 	}
 	cook := &cookHandle{
-		orderID:      order.ID,
-		stageIndex:   stageIndex,
-		stage:        stage,
+		cookIdentity: cookIdentity{
+			orderID:    order.ID,
+			stageIndex: stageIndex,
+			stage:      stage,
+			plan:       order.Plan,
+		},
 		orderStatus:  order.Status,
-		plan:         order.Plan,
 		session:      session,
 		worktreeName: "",
 		worktreePath: l.projectDir,
@@ -159,10 +161,12 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		return nil
 	}
 	l.bootstrapInFlight = &cookHandle{
-		orderID: order.ID,
-		stage: Stage{
-			TaskKey: scheduleOrderID,
-			Skill:   "bootstrap",
+		cookIdentity: cookIdentity{
+			orderID: order.ID,
+			stage: Stage{
+				TaskKey: scheduleOrderID,
+				Skill:   "bootstrap",
+			},
 		},
 		session:      session,
 		worktreeName: name,

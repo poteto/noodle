@@ -35,9 +35,11 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, rt *mockRuntime) *Loop {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID:      "42",
-		stageIndex:   0,
-		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"},
+		cookIdentity: cookIdentity{
+			orderID:    "42",
+			stageIndex: 0,
+			stage:      Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6"},
+		},
 		worktreeName: "42-0-execute",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42-0-execute"),
 		sessionID:    "sess-42",
@@ -142,8 +144,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID: "42", stageIndex: 0,
-		stage:        Stage{TaskKey: "execute"},
+		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 	}
 
@@ -448,8 +449,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID: "42", stageIndex: 0,
-		stage:        Stage{TaskKey: "execute"},
+		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 	}
 
@@ -638,8 +638,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID: "42", stageIndex: 0,
-		stage:        Stage{TaskKey: "execute"},
+		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
 	}
@@ -695,8 +694,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID: "42", stageIndex: 0,
-		stage:        Stage{TaskKey: "execute"},
+		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
 	}
@@ -736,8 +734,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 	l.pendingReview["42"] = &pendingReviewCook{
-		orderID: "42", stageIndex: 0,
-		stage:        Stage{TaskKey: "debugging"},
+		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "debugging"}},
 		worktreeName: "42-0-debugging",
 		sessionID:    "sess-42",
 	}

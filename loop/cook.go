@@ -129,12 +129,14 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	}
 
 	cook := &cookHandle{
-		orderID:      cand.OrderID,
-		stageIndex:   cand.StageIndex,
-		stage:        stage,
+		cookIdentity: cookIdentity{
+			orderID:    cand.OrderID,
+			stageIndex: cand.StageIndex,
+			stage:      stage,
+			plan:       order.Plan,
+		},
 		isOnFailure:  cand.IsOnFailure,
 		orderStatus:  order.Status,
-		plan:         order.Plan,
 		session:      session,
 		worktreeName: name,
 		worktreePath: req.WorktreePath,
@@ -216,14 +218,11 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 	if err := l.handleCompletion(ctx, cook); err != nil {
 		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 			l.pendingRetry[cook.orderID] = &pendingRetryCook{
-				orderID:     cook.orderID,
-				stageIndex:  cook.stageIndex,
-				stage:       cook.stage,
-				isOnFailure: cook.isOnFailure,
-				orderStatus: cook.orderStatus,
-				plan:        cook.plan,
-				attempt:     cook.attempt + 1,
-				displayName: cook.displayName,
+				cookIdentity: cook.cookIdentity,
+				isOnFailure:  cook.isOnFailure,
+				orderStatus:  cook.orderStatus,
+				attempt:      cook.attempt + 1,
+				displayName:  cook.displayName,
 			}
 			_ = l.writePendingRetry()
 			return conflictErr
@@ -738,12 +737,14 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 		name := cookBaseName(order.ID, idx, stg.TaskKey)
 		worktreePath := l.worktreePath(name)
 		return &cookHandle{
-			orderID:     order.ID,
-			stageIndex:  idx,
-			stage:       *stg,
+			cookIdentity: cookIdentity{
+				orderID:    order.ID,
+				stageIndex: idx,
+				stage:      *stg,
+				plan:       order.Plan,
+			},
 			isOnFailure: order.Status == OrderStatusFailing,
 			orderStatus: order.Status,
-			plan:        order.Plan,
 			session: &adoptedSession{
 				id:     sessionID,
 				status: status,
@@ -803,14 +804,11 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 				continue
 			}
 			l.pendingRetry[p.orderID] = &pendingRetryCook{
-				orderID:     p.orderID,
-				stageIndex:  p.stageIndex,
-				stage:       p.stage,
-				isOnFailure: p.isOnFailure,
-				orderStatus: p.orderStatus,
-				plan:        p.plan,
-				attempt:     p.attempt + 1,
-				displayName: p.displayName,
+				cookIdentity: p.cookIdentity,
+				isOnFailure:  p.isOnFailure,
+				orderStatus:  p.orderStatus,
+				attempt:      p.attempt + 1,
+				displayName:  p.displayName,
 			}
 			continue
 		}
@@ -842,14 +840,11 @@ func (l *Loop) retryCook(ctx context.Context, cook *cookHandle, reason string) e
 
 	if l.atMaxConcurrency() {
 		l.pendingRetry[cook.orderID] = &pendingRetryCook{
-			orderID:     cook.orderID,
-			stageIndex:  cook.stageIndex,
-			stage:       cook.stage,
-			isOnFailure: cook.isOnFailure,
-			orderStatus: cook.orderStatus,
-			plan:        cook.plan,
-			attempt:     nextAttempt,
-			displayName: cook.displayName,
+			cookIdentity: cook.cookIdentity,
+			isOnFailure:  cook.isOnFailure,
+			orderStatus:  cook.orderStatus,
+			attempt:      nextAttempt,
+			displayName:  cook.displayName,
 		}
 		_ = l.writePendingRetry()
 		l.logger.Info("retry deferred: at max concurrency", "order", cook.orderID, "attempt", nextAttempt)
