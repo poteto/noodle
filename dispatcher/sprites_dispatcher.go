@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -171,15 +172,20 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		quotedArgs[i] = shellx.Quote(arg)
 	}
 	shellCmd := fmt.Sprintf("cat /work/prompt.txt | %s", strings.Join(quotedArgs, " "))
-	cmd := sprite.CommandContext(ctx, "sh", "-c", shellCmd)
-	cmd.Dir = spriteWorkDir
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("stdout pipe: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
+	// Create command + pipe inside closure so a fresh Cmd is used on retry.
+	var cmd *sprites.Cmd
+	var stdout io.ReadCloser
+	if err := recoverSpritePool(func() error {
+		cmd = sprite.CommandContext(ctx, "sh", "-c", shellCmd)
+		cmd.Dir = spriteWorkDir
+		var pipeErr error
+		stdout, pipeErr = cmd.StdoutPipe()
+		if pipeErr != nil {
+			return fmt.Errorf("stdout pipe: %w", pipeErr)
+		}
+		return cmd.Start()
+	}); err != nil {
 		return nil, fmt.Errorf("start agent on sprite: %w", err)
 	}
 
@@ -247,17 +253,36 @@ func authenticatedRemoteURL(remoteURL, token string) string {
 	return remoteURL
 }
 
+// recoverSpritePool wraps fn with a panic recovery for a known sprites-go bug
+// where controlPool.checkout panics with "slice bounds out of range" when
+// removing stale connections during range iteration. After the panic the pool
+// mutex is unlocked via defer, so a single retry with fresh commands succeeds.
+func recoverSpritePool(fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if msg := fmt.Sprint(r); strings.Contains(msg, "slice bounds out of range") {
+				err = fn()
+				return
+			}
+			panic(r)
+		}
+	}()
+	return fn()
+}
+
 // cloneOnSprite clones a repo from a remote URL onto the sprite.
 func cloneOnSprite(ctx context.Context, sprite spriteHandle, remoteURL, branch string) error {
-	// Clean stale repo from previous runs.
-	rmCmd := sprite.CommandContext(ctx, "rm", "-rf", spriteWorkDir)
-	_ = rmCmd.Run()
+	return recoverSpritePool(func() error {
+		// Clean stale repo from previous runs.
+		rmCmd := sprite.CommandContext(ctx, "rm", "-rf", spriteWorkDir)
+		_ = rmCmd.Run()
 
-	cloneCmd := sprite.CommandContext(ctx, "git", "clone", remoteURL, "--branch", branch, "--single-branch", "--quiet", spriteWorkDir)
-	if out, err := cloneCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
-	}
-	return nil
+		cloneCmd := sprite.CommandContext(ctx, "git", "clone", remoteURL, "--branch", branch, "--single-branch", "--quiet", spriteWorkDir)
+		if out, err := cloneCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+		}
+		return nil
+	})
 }
 
 // uploadFileToSprite writes a local file to a path on the sprite using base64
@@ -269,11 +294,13 @@ func uploadFileToSprite(ctx context.Context, sprite spriteHandle, localPath, rem
 	}
 	encoded := base64.StdEncoding.EncodeToString(data)
 	script := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, shellx.Quote(remotePath))
-	cmd := sprite.CommandContext(ctx, "sh", "-c", script)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("write remote file: %s: %w", strings.TrimSpace(string(out)), err)
-	}
-	return nil
+	return recoverSpritePool(func() error {
+		cmd := sprite.CommandContext(ctx, "sh", "-c", script)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("write remote file: %s: %w", strings.TrimSpace(string(out)), err)
+		}
+		return nil
+	})
 }
 
 func buildSpriteCodexArgs(req DispatchRequest) []string {
@@ -295,38 +322,43 @@ func gitRemoteURL(repoPath string) string {
 }
 
 // pushChangesFromSprite commits and pushes any changes on the sprite to a noodle branch.
-func pushChangesFromSprite(ctx context.Context, sprite spriteHandle, sessionID string) (SyncResult, error) {
-	branch := "noodle/" + sessionID
+func pushChangesFromSprite(ctx context.Context, sprite spriteHandle, sessionID string) (result SyncResult, err error) {
+	err = recoverSpritePool(func() error {
+		branch := "noodle/" + sessionID
 
-	// Commit all changes (if any).
-	commitScript := fmt.Sprintf(
-		"cd %s && git add -A && (git diff --cached --quiet || git commit -m %s)",
-		shellx.Quote(spriteWorkDir),
-		shellx.Quote("noodle: "+sessionID),
-	)
-	commitCmd := sprite.CommandContext(ctx, "sh", "-c", commitScript)
-	_ = commitCmd.Run() // OK if nothing to commit.
+		// Commit all changes (if any).
+		commitScript := fmt.Sprintf(
+			"cd %s && git add -A && (git diff --cached --quiet || git commit -m %s)",
+			shellx.Quote(spriteWorkDir),
+			shellx.Quote("noodle: "+sessionID),
+		)
+		commitCmd := sprite.CommandContext(ctx, "sh", "-c", commitScript)
+		_ = commitCmd.Run() // OK if nothing to commit.
 
-	// Check if HEAD has moved beyond origin (any new commits from the agent).
-	logCmd := sprite.CommandContext(ctx, "sh", "-c",
-		fmt.Sprintf("cd %s && git log --oneline @{upstream}..HEAD 2>/dev/null | head -1", shellx.Quote(spriteWorkDir)))
-	out, _ := logCmd.Output()
-	if strings.TrimSpace(string(out)) == "" {
-		return SyncResult{Type: SyncResultTypeNone}, nil
-	}
+		// Check if HEAD has moved beyond origin (any new commits from the agent).
+		logCmd := sprite.CommandContext(ctx, "sh", "-c",
+			fmt.Sprintf("cd %s && git log --oneline @{upstream}..HEAD 2>/dev/null | head -1", shellx.Quote(spriteWorkDir)))
+		out, _ := logCmd.Output()
+		if strings.TrimSpace(string(out)) == "" {
+			result = SyncResult{Type: SyncResultTypeNone}
+			return nil
+		}
 
-	// Push to remote branch.
-	pushScript := fmt.Sprintf(
-		"cd %s && git push origin HEAD:refs/heads/%s",
-		shellx.Quote(spriteWorkDir),
-		branch,
-	)
-	pushCmd := sprite.CommandContext(ctx, "sh", "-c", pushScript)
-	if pushOut, err := pushCmd.CombinedOutput(); err != nil {
-		return SyncResult{}, fmt.Errorf("push to %s: %s: %w", branch, strings.TrimSpace(string(pushOut)), err)
-	}
+		// Push to remote branch.
+		pushScript := fmt.Sprintf(
+			"cd %s && git push origin HEAD:refs/heads/%s",
+			shellx.Quote(spriteWorkDir),
+			branch,
+		)
+		pushCmd := sprite.CommandContext(ctx, "sh", "-c", pushScript)
+		if pushOut, pushErr := pushCmd.CombinedOutput(); pushErr != nil {
+			return fmt.Errorf("push to %s: %s: %w", branch, strings.TrimSpace(string(pushOut)), pushErr)
+		}
 
-	return SyncResult{Type: SyncResultTypeBranch, Branch: branch}, nil
+		result = SyncResult{Type: SyncResultTypeBranch, Branch: branch}
+		return nil
+	})
+	return
 }
 
 // writeSyncResult updates spawn.json with the sync result after session completion.
