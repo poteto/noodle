@@ -1,7 +1,7 @@
 # Brain
 
 ## Vision
-- [[vision/noodle]]
+- [[vision]]
 
 ## Principles
 - [[principles]]
