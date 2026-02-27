@@ -39,3 +39,58 @@ type OrderDroppedPayload struct {
 type SyncDegradedPayload struct {
 	Reason string `json:"reason"`
 }
+
+type StageCompletedPayload struct {
+	OrderID    string  `json:"order_id"`
+	StageIndex int     `json:"stage_index"`
+	TaskKey    string  `json:"task_key"`
+	SessionID  *string `json:"session_id,omitempty"`
+}
+
+type StageFailedPayload struct {
+	OrderID    string  `json:"order_id"`
+	StageIndex int     `json:"stage_index"`
+	Reason     string  `json:"reason"`
+	SessionID  *string `json:"session_id,omitempty"`
+}
+
+type OrderCompletedPayload struct {
+	OrderID string `json:"order_id"`
+}
+
+type OrderFailedPayload struct {
+	OrderID string `json:"order_id"`
+	Reason  string `json:"reason"`
+}
+
+type QualityWrittenPayload struct {
+	OrderID   string `json:"order_id"`
+	SessionID string `json:"session_id"`
+	Accept    bool   `json:"accept"`
+	Feedback  string `json:"feedback,omitempty"`
+}
+
+type ScheduleCompletedPayload struct {
+	SessionID string `json:"session_id"`
+}
+
+type WorktreeMergedPayload struct {
+	OrderID      string `json:"order_id"`
+	StageIndex   int    `json:"stage_index"`
+	WorktreeName string `json:"worktree_name"`
+}
+
+type MergeConflictPayload struct {
+	OrderID      string `json:"order_id"`
+	StageIndex   int    `json:"stage_index"`
+	WorktreeName string `json:"worktree_name"`
+}
+
+// sessionIDPtr returns a pointer to the session ID, or nil if the cook has no session.
+func sessionIDPtr(cook *cookHandle) *string {
+	if cook.session == nil {
+		return nil
+	}
+	id := cook.session.ID()
+	return &id
+}

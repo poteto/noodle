@@ -30,6 +30,11 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 		}
 	}
 	l.logger.Info("cook merged", "order", cook.orderID, "worktree", cook.worktreeName)
+	_ = l.events.Emit(LoopEventWorktreeMerged, WorktreeMergedPayload{
+		OrderID:      cook.orderID,
+		StageIndex:   cook.stageIndex,
+		WorktreeName: cook.worktreeName,
+	})
 	return nil
 }
 
@@ -141,5 +146,10 @@ func (l *Loop) handleMergeConflict(cook *cookHandle, err error) error {
 	if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
 		return parkErr
 	}
+	_ = l.events.Emit(LoopEventMergeConflict, MergeConflictPayload{
+		OrderID:      cook.orderID,
+		StageIndex:   cook.stageIndex,
+		WorktreeName: cook.worktreeName,
+	})
 	return nil
 }

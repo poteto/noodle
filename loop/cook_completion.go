@@ -123,6 +123,9 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 	if success {
 		if isScheduleStage(cook.stage) {
 			l.logger.Info("schedule completed", "session", cook.session.ID())
+			_ = l.events.Emit(LoopEventScheduleCompleted, ScheduleCompletedPayload{
+				SessionID: cook.session.ID(),
+			})
 			return l.removeOrder(cook.orderID)
 		}
 
@@ -137,9 +140,17 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 		// Quality verdict gate (auto autonomy mode only).
 		if canMerge {
 			verdict, hasVerdict := l.readQualityVerdict(cook.session.ID())
-			if hasVerdict && !verdict.Accept {
-				l.logger.Warn("quality verdict rejected", "order", cook.orderID, "session", cook.session.ID(), "feedback", verdict.Feedback)
-				return l.failAndPersist(cook, "quality rejected: "+verdict.Feedback)
+			if hasVerdict {
+				_ = l.events.Emit(LoopEventQualityWritten, QualityWrittenPayload{
+					OrderID:   cook.orderID,
+					SessionID: cook.session.ID(),
+					Accept:    verdict.Accept,
+					Feedback:  verdict.Feedback,
+				})
+				if !verdict.Accept {
+					l.logger.Warn("quality verdict rejected", "order", cook.orderID, "session", cook.session.ID(), "feedback", verdict.Feedback)
+					return l.failAndPersist(cook, "quality rejected: "+verdict.Feedback)
+				}
 			}
 		}
 
@@ -214,11 +225,20 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	_ = l.events.Emit(LoopEventStageCompleted, StageCompletedPayload{
+		OrderID:    cook.orderID,
+		StageIndex: cook.stageIndex,
+		TaskKey:    cook.stage.TaskKey,
+		SessionID:  sessionIDPtr(cook),
+	})
 	if removed {
 		if cook.orderStatus == OrderStatusFailing || cook.isOnFailure {
 			// OnFailure pipeline completed — the original failure stands.
 			return l.markFailed(cook.orderID, "on-failure pipeline completed")
 		}
+		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
+			OrderID: cook.orderID,
+		})
 		// Final stage of a non-failing order — fire adapter "done".
 		if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{cook.orderID}}); err != nil {
 			if !isMissingAdapter(err) {
@@ -242,7 +262,17 @@ func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    cook.orderID,
+		StageIndex: cook.stageIndex,
+		Reason:     reason,
+		SessionID:  sessionIDPtr(cook),
+	})
 	if terminal {
+		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+			OrderID: cook.orderID,
+			Reason:  reason,
+		})
 		if err := l.markFailed(cook.orderID, reason); err != nil {
 			return err
 		}
