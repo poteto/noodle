@@ -1,5 +1,8 @@
 # Completed Todos
 
+73. [x] ~~Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archive/plans/73-testing-strategy/overview]]~~ — done.
+70. [x] ~~Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archive/plans/70-scaling-the-loop-redesign/overview]]~~ — done.
+
 74. [x] ~~Vestigial queue naming, legacy compat shims, duplicated slicesEqual — rename schema target and misnamed files, update docs/skills referencing queue.json, delete OrderID2 compat shim and colon-separated format parser, replace duplicated slicesEqual with slices.Equal. [[archive/plans/74-vestigial-queue-cleanup/overview]]~~ — done.
 66. [x] Event/trigger system — loop emits lifecycle events (stage completed/failed, merge, quality verdict, order lifecycle) to an event bus with NDJSON persistence. Events surface in mise brief as `recent_events`. The schedule agent reads events and decides how to react — no mechanical trigger dispatch in Go, no trigger frontmatter. Agents are the orchestrator. Subsumes #34. [[archive/plans/66-event-trigger-system/overview]]
 67. [x] ~~Manual mode~~ — superseded by #68 (unified involvement levels).

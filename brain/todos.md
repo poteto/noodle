@@ -2,14 +2,6 @@
 
 <!-- next-id: 75 -->
 
-## Testing & Verification
-
-73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archive/plans/73-testing-strategy/overview]]
-
-## Scaling
-
-70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archive/plans/70-scaling-the-loop-redesign/overview]]
-
 ## Noodle Post-Plan 1
 
 7. [ ] `go install` support — add proper module versioning so `go install github.com/poteto/noodle@latest` works without cloning the repo. Needs a version tag and release workflow. Update README quick start accordingly.
