@@ -67,7 +67,8 @@ func scaffoldProject(t *testing.T, noodleBin string) string {
 	run(t, dir, "git", "config", "user.name", "Noodle Test")
 	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
 
-	// Dummy project file.
+	// Dummy project files — include go.mod so go vet/test work.
+	writeFile(t, filepath.Join(dir, "go.mod"), "module example.com/e2e\n\ngo 1.23\n")
 	writeFile(t, filepath.Join(dir, "main.go"), `package main
 
 import "fmt"
@@ -76,8 +77,8 @@ func main() {
 	fmt.Println("hello from noodle e2e")
 }
 `)
-	run(t, dir, "git", "add", "main.go")
-	run(t, dir, "git", "commit", "-m", "add main.go")
+	run(t, dir, "git", "add", "go.mod", "main.go")
+	run(t, dir, "git", "commit", "-m", "add project files")
 
 	// Brain scaffolding with a minimal plan so the scheduler triggers.
 	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
