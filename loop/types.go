@@ -275,5 +275,6 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
-	lastStatus statusfile.Status
+	stateSnapshot atomic.Pointer[LoopState]
+	lastStatus    statusfile.Status
 }

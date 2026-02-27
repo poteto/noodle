@@ -35,6 +35,7 @@ func (l *Loop) stampStatus() error {
 		return err
 	}
 	l.lastStatus = status
+	l.publishState()
 	return nil
 }
 
