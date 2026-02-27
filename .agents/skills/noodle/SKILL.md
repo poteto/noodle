@@ -47,6 +47,7 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `concurrency.max_completion_overflow` | integer | 1024 |  |
 | `concurrency.max_cooks` | integer | 4 | Maximum concurrent cook sessions |
 | `concurrency.merge_backpressure_threshold` | integer | 128 |  |
+| `concurrency.shutdown_timeout` | string | "30s" |  |
 | `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
 | `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |
@@ -57,12 +58,15 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `routing.tags` | table | {} | Per-tag model overrides keyed by tag name |
 | `runtime.cursor.api_key_env` | string | "" |  |
 | `runtime.cursor.base_url` | string | "" |  |
+| `runtime.cursor.max_concurrent` | integer | 10 |  |
 | `runtime.cursor.repository` | string | "" |  |
 | `runtime.default` | string | "tmux" | Default runtime command template for spawning cooks |
 | `runtime.sprites.base_url` | string | "" |  |
 | `runtime.sprites.git_token_env` | string | "" |  |
+| `runtime.sprites.max_concurrent` | integer | 50 |  |
 | `runtime.sprites.sprite_name` | string | "" |  |
 | `runtime.sprites.token_env` | string | "" |  |
+| `runtime.tmux.max_concurrent` | integer | 4 |  |
 | `schedule.model` | string | "claude-sonnet" | Model used for scheduling sessions |
 | `schedule.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
 | `server.enabled` | ptr | <nil> |  |
