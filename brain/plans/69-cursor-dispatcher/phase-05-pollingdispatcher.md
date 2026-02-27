@@ -24,7 +24,7 @@ Implement `PollingDispatcher` — a `Dispatcher` that uses a `PollingBackend` to
   3. Push worktree branch to GitHub — reuse `pushWorktreeBranch(ctx, worktreePath, branch)` (already package-level in `sprites_dispatcher.go`). If push fails, clean up session dir and return error.
   4. Build `PollLaunchConfig` from request (Prompt, Repository from config, Model, Branch)
   5. Call `backend.Launch(ctx, config)` → `LaunchResult{RemoteID, TargetBranch}`
-  6. Write `spawn.json` via `writeDispatchMetadata` — **include `remote_id` and `target_branch` in metadata** for crash recovery
+  6. Write `spawn.json` via `writeDispatchMetadata` — **include `remote_id`, `target_branch`, and `order_id`** in metadata for crash recovery (order identity needed by reconcile)
   7. If spawn.json write fails after launch: call `backend.Stop` + `backend.Delete` best-effort (rollback), clean session dir, return error
   8. Create `pollingSession` with `LaunchResult`, interval, runtime dir, event writer
   9. Register session in `pollingRegistry`
@@ -36,7 +36,7 @@ Implement `PollingDispatcher` — a `Dispatcher` that uses a `PollingBackend` to
 
 **`dispatcher/polling_dispatcher_test.go` (new)**
 - Test with mock `PollingBackend` (skip real git push — inject pushWorktreeBranch):
-  - Dispatch creates session directory, writes spawn.json with remote_id and target_branch
+  - Dispatch creates session directory, writes spawn.json with remote_id, target_branch, and order_id
   - Dispatch calls backend.Launch with correct config
   - Returned session is running and polling
   - Session registered in registry, unregistered on completion

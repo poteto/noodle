@@ -33,7 +33,7 @@ Cursor's Cloud Agent API (v0, beta) supports: launching agents against GitHub re
 - Agent pushes to an auto-generated branch (target.branchName in the response) — no PR by default
 - `PollLaunchConfig` already has `Prompt`, `Repository`, `Model`, `Branch` — maps directly to Cursor's POST body
 - `Launch` must return structured metadata (`LaunchResult{RemoteID, TargetBranch}`) — branch is immutable launch-time data, not just poll-time data. Persist `remote_id` and `target_branch` in `spawn.json` immediately at launch for crash recovery.
-- `writeSyncResult` uses non-atomic read-modify-write on `spawn.json`. Replace with atomic writes (`filex.WriteFileAtomic`) or a separate `sync.json` file to avoid TOCTOU races with concurrent loop/monitor readers.
+- `writeSyncResult` uses non-atomic read-modify-write on `spawn.json`. Use `filex.WriteFileAtomic` for atomic rewrite of `spawn.json` (not a separate `sync.json`) — loop merge readers already consume `sync` from `spawn.json` (`cook_merge.go:108`), so a separate file would require updating all consumers. Atomic rewrite avoids TOCTOU races while keeping a single source of truth.
 - Webhooks require a publicly accessible URL — Noodle runs on localhost by default. Polling is the primary completion mechanism; webhooks are an optimization for users who expose their server.
 - HTTP errors from Cursor must be classified as retryable (429, 5xx, transient network) vs terminal (401, 403, 404, 410). Terminal errors fail the session immediately; retryable errors use exponential backoff with jitter and `Retry-After` support.
 
@@ -88,6 +88,21 @@ Cursor's Cloud Agent API (v0, beta) supports: launching agents against GitHub re
 8. **Monitor/heartbeat integration** — pollingSession writes heartbeat on each poll and event-writer records. Added to phase 4.
 9. **Config validation** — validate repository non-empty, `webhook_secret_env` follows env-key pattern. Added to phases 6, 7.
 10. **Terminal cleanup** — call Delete on completed/failed/expired. Added to phase 4.
+
+## Review revisions round 3 (2026-02-27)
+
+3 independent reviewers (Codex, round 3) all returned **Revise**. Consensus issues addressed:
+
+1. **Canonical terminal events for monitor compatibility** — pollingSession must write `canonical.ndjson` terminal events (EventResult with completion/failure) so monitor claims can derive correct session status. Without this, recovered successful sessions would be misclassified as failed. Added to phase 4.
+2. **Recovery incompatible with PID-based adopted-session pruning** — `refreshAdoptedTargets` uses `SessionPIDAlive` which always fails for remote sessions. Added heartbeat-based liveness check for non-process runtimes to phase 6.
+3. **OrderID not populated during recovery** — `RecoveredSession.OrderID` must be set from `spawn.json` for reconcile to map sessions to orders. Added `order_id` persistence at dispatch time and recovery population to phases 5/6.
+4. **APIError missing RetryAfter field** — pollingSession needs server-specified backoff duration from 429 responses. Added `RetryAfter time.Duration` to `APIError` in phase 1, wired through phase 2 HTTP client, consumed in phase 4 poll loop.
+5. **Webhook notifier wiring through cmd_start.go** — concrete boundary path specified: `defaultDependencies()` → `runWebServer()` parameter → `server.Options.SessionNotifier`. Added to phase 6.
+6. **Context cancellation leaks remote agents** — cancel path must call `backend.Stop`/`Delete` before exiting, not just mark cancelled. Added to phase 4.
+7. **Sync persistence locked to atomic spawn.json** — eliminated sync.json alternative; `filex.WriteFileAtomic` on `spawn.json` is the single path. Updated overview constraint.
+8. **Registry collision semantics** — `Register` with existing key returns error (rejects duplicate). Added to phase 4.
+9. **410 (Gone) in terminal errors** — added to phase 1 and phase 4 terminal error list.
+10. **Recovery transient error handling** — 429/5xx during startup recovery treated as "still alive" (adopt for polling), not "failed". Added to phase 6.
 
 ## Verification
 

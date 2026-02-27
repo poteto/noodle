@@ -23,12 +23,12 @@ Implement `pollingSession` — a `Session` implementation that polls a `PollingB
   - Selects on: ticker (poll interval), nudge channel (webhook shortcut), stop channel (Kill request), ctx.Done()
   - Every N seconds (configurable, default 10s), calls `backend.PollStatus(remoteID)`
   - On status change: publishes `SessionEvent{Type: "action", Message: status description}`, writes heartbeat
-  - On FINISHED: fetches conversation via `backend.GetConversation`, emits each message as a `SessionEvent`, writes `SyncResult` atomically (use `filex.WriteFileAtomic` or separate `sync.json`), calls `backend.Delete` best-effort, marks done with "completed"
-  - On ERROR/EXPIRED: calls `backend.Delete` best-effort, marks done with "failed" status
-  - On terminal `APIError` (401/403/404): marks done with "failed" immediately — no retry
-  - On retryable error (429/5xx/transient): exponential backoff with jitter, publishes warning event, continues polling
-  - On stop request (from Kill): calls `backend.Stop(remoteID)`, then `backend.Delete` best-effort, marks done with "killed"
-  - On context cancellation: marks done with "cancelled"
+  - On FINISHED: fetches conversation via `backend.GetConversation`, emits each message as a `SessionEvent`, writes `SyncResult` atomically via `filex.WriteFileAtomic` on `spawn.json`, writes canonical terminal event (`EventResult` to `canonical.ndjson`) for monitor claims compatibility, calls `backend.Delete` best-effort, marks done with "completed"
+  - On ERROR/EXPIRED: writes canonical terminal event (`EventResult` with `Failed: true`), calls `backend.Delete` best-effort, marks done with "failed" status
+  - On terminal `APIError` (401/403/404/410): writes canonical failed event, marks done with "failed" immediately — no retry
+  - On retryable error (429/5xx/transient): if `APIError.RetryAfter > 0`, use that duration; otherwise exponential backoff with jitter. Publishes warning event, continues polling.
+  - On stop request (from Kill): calls `backend.Stop(remoteID)`, then `backend.Delete` best-effort, writes canonical failed event, marks done with "killed"
+  - On context cancellation: calls `backend.Stop(remoteID)` and `backend.Delete` best-effort (prevents remote agent leak), writes canonical failed event, marks done with "cancelled"
   - **Kill() does NOT call markDone directly** — it sends on the stop channel and the poll loop performs the final transition. This prevents the terminal-state race.
 - Heartbeat: writes a heartbeat file on each successful poll for monitor liveness detection
 - Event persistence: uses `event.EventWriter` to write event log records (like spritesSession) for UI/snapshot consumption
@@ -43,7 +43,7 @@ Implement `pollingSession` — a `Session` implementation that polls a `PollingB
 
 **`dispatcher/polling_registry.go` (new)**
 - `pollingRegistry` struct with `sync.RWMutex` and `map[string]*pollingSession`
-- `Register(remoteID, session)` — called at dispatch time
+- `Register(remoteID, session)` — called at dispatch time. If `remoteID` already exists, log a warning and reject (return error) — duplicate registration indicates a bug, not a valid state.
 - `Unregister(remoteID)` — called when session reaches terminal state
 - `Nudge(remoteID)` — looks up session, calls `session.Nudge()` if found, no-op if not
 - `SessionNotifier` interface — `Nudge(remoteID string)` — exposed to server for webhook notifier injection
@@ -62,6 +62,12 @@ Implement `pollingSession` — a `Session` implementation that polls a `PollingB
   - Kill() during FINISHED transition → single terminal state, no race
   - Heartbeat file written on each successful poll
   - Event writer receives event records
+  - Canonical terminal event written on completion (monitor claims can read it)
+  - Canonical failed event written on error/kill/cancel
+  - Context cancellation → backend.Stop called (remote agent cleanup, no leak)
+  - Retryable error with RetryAfter → uses server-specified delay instead of default backoff
+  - Registry.Register with duplicate remoteID → error returned
+  - Terminal APIError 410 (gone) → session fails immediately
 - All tests run with `-race`
 
 ## Verification

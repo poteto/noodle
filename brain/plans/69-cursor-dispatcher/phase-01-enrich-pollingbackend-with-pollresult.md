@@ -12,14 +12,14 @@ Change `PollingBackend.PollStatus` from returning `(RemoteStatus, error)` to `(P
 
 - `PollResult` struct — `Status RemoteStatus`, `Branch string`, `Summary string`
 - `LaunchResult` struct — `RemoteID string`, `TargetBranch string`
-- `APIError` struct — `StatusCode int`, `Message string`, `Retryable bool`
+- `APIError` struct — `StatusCode int`, `Message string`, `Retryable bool`, `RetryAfter time.Duration`
 
 ## Changes
 
 **`dispatcher/backend_types.go`**
 - Add `PollResult` struct after `RemoteStatus` constants
 - Add `LaunchResult` struct — immutable metadata returned from Launch
-- Add `APIError` struct with `Retryable` classification — used by HTTP client, consumed by pollingSession to distinguish terminal vs retryable errors
+- Add `APIError` struct with `Retryable` classification and `RetryAfter time.Duration` — used by HTTP client, consumed by pollingSession to distinguish terminal vs retryable errors and honor server backoff hints
 
 **`dispatcher/backend.go`**
 - Change `Launch` signature: `Launch(ctx context.Context, config PollLaunchConfig) (LaunchResult, error)`
@@ -42,4 +42,5 @@ Change `PollingBackend.PollStatus` from returning `(RemoteStatus, error)` to `(P
 ### Runtime
 - `go test ./dispatcher/... -race`
 - Existing `cursor_backend_test.go` passes with updated return types
-- Test: `APIError.Retryable` classification for 429, 5xx (retryable) vs 401, 403, 404 (terminal)
+- Test: `APIError.Retryable` classification for 429, 5xx (retryable) vs 401, 403, 404, 410 (terminal)
+- Test: `APIError.RetryAfter` populated from 429 response, zero for other errors

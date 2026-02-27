@@ -25,7 +25,7 @@ Implement a typed HTTP client for the Cursor Cloud Agent API (v0). This is a pur
 - `DeleteAgent(ctx, agentID string) error` — DELETE `/v0/agents/{id}`
 - Internal: `do(ctx, method, path, body) (*http.Response, error)` — applies Basic auth header (`base64(apiKey + ":")`), content-type, error response parsing.
 - HTTP errors → `APIError` (from phase 1) with `Retryable` classification: 429/5xx are retryable, 401/403/404/410 are terminal.
-- 429 responses: parse `Retry-After` header when present.
+- 429 responses: parse `Retry-After` header → set `APIError.RetryAfter` duration. pollingSession uses this to override default backoff.
 
 **`dispatcher/cursor_client_test.go` (new)**
 - Tests using `httptest.NewServer` for each endpoint
