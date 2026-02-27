@@ -167,6 +167,23 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 		l.logger.Info("cook queued for merge", "order", cook.orderID, "session", cook.session.ID(), "stage", cook.stageIndex)
 		return nil
 	}
+	// Schedule cooks may write orders-next.json before exiting non-cleanly
+	// (e.g., codex validation step fails after the file is written). If the
+	// deliverable exists or was already promoted, treat the schedule as done.
+	if isScheduleStage(cook.stage) {
+		if _, statErr := os.Stat(l.deps.OrdersNextFile); statErr == nil {
+			l.logger.Info("schedule wrote orders-next before failing, treating as complete", "session", cook.session.ID())
+			return l.removeOrder(cook.orderID)
+		}
+		// consumeOrdersNext merges incoming orders into orders.json without
+		// removing the schedule entry. If non-schedule orders now exist, the
+		// schedule's output was already promoted — clean up the schedule order.
+		orders, readErr := l.currentOrders()
+		if readErr == nil && hasNonScheduleOrders(orders) {
+			l.logger.Info("schedule already promoted, removing schedule order", "session", cook.session.ID())
+			return l.removeOrder(cook.orderID)
+		}
+	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
 }
 
