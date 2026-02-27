@@ -93,6 +93,11 @@ status: ready
 
 Create a hello.txt file containing "hello world".
 `)
+	// Symlink extensionless path so codex can find plan via wikilink reference.
+	symlink(t,
+		"overview.md",
+		filepath.Join(dir, "brain", "plans", "1-hello", "overview"),
+	)
 
 	// Todos with a trivial item.
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos
@@ -355,6 +360,14 @@ func mkdirAll(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
+// symlink creates a symbolic link.
+func symlink(t *testing.T, target, link string) {
+	t.Helper()
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink %s -> %s: %v", link, target, err)
 	}
 }
 
