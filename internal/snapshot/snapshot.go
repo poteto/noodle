@@ -24,21 +24,25 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 	active := make([]Session, 0, len(state.ActiveCooks))
 	recent := make([]Session, 0, len(state.RecentHistory))
 
+	reader := event.NewEventReader(runtimeDir)
 	for _, cook := range state.ActiveCooks {
 		status := strings.ToLower(strings.TrimSpace(cook.Status))
 		if status == "" {
 			status = "running"
 		}
 		session := Session{
-			ID:           cook.SessionID,
-			DisplayName:  cook.DisplayName,
-			Status:       status,
-			Runtime:      cook.Runtime,
-			Provider:     cook.Provider,
-			Model:        cook.Model,
-			LastActivity: now.UTC(),
-			TaskKey:      cook.TaskKey,
+			ID:              cook.SessionID,
+			DisplayName:     cook.DisplayName,
+			Status:          status,
+			Runtime:         cook.Runtime,
+			Provider:        cook.Provider,
+			Model:           cook.Model,
+			LastActivity:    now.UTC(),
+			TaskKey:         cook.TaskKey,
+			TotalCostUSD:    cook.TotalCostUSD,
+			DurationSeconds: int64(now.Sub(cook.StartedAt).Seconds()),
 		}
+		enrichActiveSession(reader, cook.SessionID, &session)
 		sessions = append(sessions, session)
 		active = append(active, session)
 	}
@@ -143,6 +147,39 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Autonomy:           state.Autonomy,
 		MaxCooks:           state.MaxCooks,
 	}, nil
+}
+
+// enrichActiveSession reads the session's event log and populates
+// CurrentAction and ContextWindowUsagePct on the given Session.
+func enrichActiveSession(reader *event.EventReader, sessionID string, session *Session) {
+	events, err := reader.ReadSession(sessionID, event.EventFilter{})
+	if err != nil || len(events) == 0 {
+		return
+	}
+
+	var totalTokensIn int
+	for _, ev := range events {
+		switch ev.Type {
+		case event.EventAction:
+			label, body, _ := formatAction(ev.Payload)
+			if body != "" {
+				session.CurrentAction = label + " " + body
+			}
+		case event.EventCost:
+			var cost struct {
+				TokensIn int `json:"tokens_in"`
+			}
+			if json.Unmarshal(ev.Payload, &cost) == nil {
+				totalTokensIn += cost.TokensIn
+			}
+		}
+	}
+
+	pct := float64(totalTokensIn) / 200_000 * 100
+	if pct > 100 {
+		pct = 100
+	}
+	session.ContextWindowUsagePct = pct
 }
 
 // ReadSessionEvents reads canonical events for a single session on demand.

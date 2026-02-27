@@ -9,16 +9,17 @@ import (
 )
 
 type CookSummary struct {
-	SessionID   string    `json:"session_id"`
-	OrderID     string    `json:"order_id"`
-	TaskKey     string    `json:"task_key,omitempty"`
-	Skill       string    `json:"skill,omitempty"`
-	Runtime     string    `json:"runtime,omitempty"`
-	Provider    string    `json:"provider,omitempty"`
-	Model       string    `json:"model,omitempty"`
-	StartedAt   time.Time `json:"started_at"`
-	DisplayName string    `json:"display_name,omitempty"`
-	Status      string    `json:"status"`
+	SessionID    string    `json:"session_id"`
+	OrderID      string    `json:"order_id"`
+	TaskKey      string    `json:"task_key,omitempty"`
+	Skill        string    `json:"skill,omitempty"`
+	Runtime      string    `json:"runtime,omitempty"`
+	Provider     string    `json:"provider,omitempty"`
+	Model        string    `json:"model,omitempty"`
+	StartedAt    time.Time `json:"started_at"`
+	DisplayName  string    `json:"display_name,omitempty"`
+	Status       string    `json:"status"`
+	TotalCostUSD float64   `json:"total_cost_usd"`
 }
 
 type LoopState struct {
@@ -64,16 +65,17 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		}
 		totalCost += cook.session.TotalCost()
 		activeCooks = append(activeCooks, CookSummary{
-			SessionID:   cook.session.ID(),
-			OrderID:     cook.orderID,
-			TaskKey:     cook.stage.TaskKey,
-			Skill:       cook.stage.Skill,
-			Runtime:     cook.stage.Runtime,
-			Provider:    cook.stage.Provider,
-			Model:       cook.stage.Model,
-			StartedAt:   cook.startedAt,
-			DisplayName: cook.displayName,
-			Status:      strings.ToLower(strings.TrimSpace(cook.session.Status())),
+			SessionID:    cook.session.ID(),
+			OrderID:      cook.orderID,
+			TaskKey:      cook.stage.TaskKey,
+			Skill:        cook.stage.Skill,
+			Runtime:      cook.stage.Runtime,
+			Provider:     cook.stage.Provider,
+			Model:        cook.stage.Model,
+			StartedAt:    cook.startedAt,
+			DisplayName:  cook.displayName,
+			Status:       strings.ToLower(strings.TrimSpace(cook.session.Status())),
+			TotalCostUSD: cook.session.TotalCost(),
 		})
 	}
 	sort.Slice(activeCooks, func(i, j int) bool {
