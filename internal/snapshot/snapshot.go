@@ -562,25 +562,11 @@ func nonNilReviews(s []loop.PendingReviewItem) []loop.PendingReviewItem {
 }
 
 // InferTaskType extracts a task type from session/worktree naming conventions.
-// Supported formats:
-// - orderID:stageIndex:taskKey (legacy)
-// - order-id-stageIndex-task-key (current, dasherized)
+// Format: order-id-stageIndex-task-key (dasherized)
 func InferTaskType(value string) string {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	if lower == "" {
 		return ""
-	}
-
-	// Legacy colon-separated format: orderID:stageIndex:taskKey
-	parts := strings.SplitN(lower, ":", 3)
-	if len(parts) == 3 {
-		taskKey := strings.TrimSpace(parts[2])
-		if idx := strings.IndexByte(taskKey, '-'); idx > 0 {
-			taskKey = taskKey[:idx]
-		}
-		if taskKey != "" {
-			return taskKey
-		}
 	}
 
 	known := []string{"execute", "plan", "review", "reflect", "schedule", "quality", "debugging", "meditate", "oops", "bootstrap", "repair", "request-changes"}

@@ -422,13 +422,6 @@ func TestInferTaskTypeDasherizedCookName(t *testing.T) {
 	}
 }
 
-func TestInferTaskTypeLegacyColonFormat(t *testing.T) {
-	got := InferTaskType("42:0:execute")
-	if got != "execute" {
-		t.Fatalf("InferTaskType() = %q, want %q", got, "execute")
-	}
-}
-
 func TestLoadSnapshotFromLoopState(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC)

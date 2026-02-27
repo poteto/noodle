@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/poteto/noodle/internal/statusfile"
@@ -24,7 +25,7 @@ func (l *Loop) stampStatus() error {
 	}
 
 	// Skip write if nothing changed.
-	if slicesEqual(l.lastStatus.Active, status.Active) &&
+	if slices.Equal(l.lastStatus.Active, status.Active) &&
 		l.lastStatus.LoopState == status.LoopState &&
 		l.lastStatus.Autonomy == status.Autonomy &&
 		l.lastStatus.MaxCooks == status.MaxCooks {
@@ -40,14 +41,3 @@ func (l *Loop) stampStatus() error {
 	return nil
 }
 
-func slicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
