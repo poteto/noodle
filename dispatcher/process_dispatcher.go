@@ -138,13 +138,24 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, fmt.Errorf("start process: %w", err)
 	}
 
-	// Write prompt to stdin and close. Phase 3 replaces this with
-	// claudeController for Claude; for now all providers use file-redirection
-	// semantics via stdin pipe.
-	go func() {
-		_, _ = io.WriteString(process.Stdin(), composedPrompt)
-		_ = process.Stdin().Close()
-	}()
+	// For Claude, create a controller that owns stdin for live steering.
+	// The prompt is sent as the first user message via stream-json.
+	// For other providers, write the prompt to stdin and close.
+	var controller *claudeController
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	if provider != "codex" {
+		controller = newClaudeController(process.Stdin())
+		// Send the composed prompt as the first user message.
+		if err := controller.SendMessage(ctx, composedPrompt); err != nil {
+			_ = process.Kill()
+			return nil, fmt.Errorf("send initial prompt: %w", err)
+		}
+	} else {
+		go func() {
+			_, _ = io.WriteString(process.Stdin(), composedPrompt)
+			_ = process.Stdin().Close()
+		}()
+	}
 
 	// Drain stderr to file.
 	go drainToFile(process.Stderr(), stderrPath)
@@ -166,6 +177,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		stampedPath:   stampedPath,
 		prompt:        req.Prompt,
 		warnings:      skillBundle.Warnings,
+		controller:    controller,
 	})
 	session.start(ctx)
 	return session, nil
@@ -191,6 +203,10 @@ func (d *ProcessDispatcher) buildCmd(req DispatchRequest, systemPrompt string) (
 
 	default: // claude
 		args := claudeBaseArgs(req, systemPrompt)
+		// Replace -p (pipe mode) with --input-format stream-json for
+		// bidirectional streaming. The prompt is sent as a user message
+		// through the claudeController rather than piped to stdin.
+		args = replaceFlag(args, "-p", "--input-format", "stream-json")
 		args = append(args, extraArgs...)
 		return exec.Command(binary, args...), nil
 	}
@@ -250,6 +266,17 @@ func drainToFile(r io.ReadCloser, path string) {
 	}
 	defer f.Close()
 	_, _ = io.Copy(f, r)
+}
+
+// replaceFlag removes old from args and appends the replacement key-value pair.
+func replaceFlag(args []string, old string, newKey, newVal string) []string {
+	out := make([]string, 0, len(args)+1)
+	for _, a := range args {
+		if a != old {
+			out = append(out, a)
+		}
+	}
+	return append(out, newKey, newVal)
 }
 
 var _ Dispatcher = (*ProcessDispatcher)(nil)

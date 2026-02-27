@@ -40,6 +40,7 @@ type processSession struct {
 	prompt       string
 	promptLogged bool
 	warnings     []string
+	controller   *claudeController // nil for non-steerable sessions
 }
 
 type processSessionConfig struct {
@@ -50,6 +51,7 @@ type processSessionConfig struct {
 	stampedPath   string
 	prompt        string
 	warnings      []string
+	controller    *claudeController // nil for non-steerable sessions
 }
 
 func newProcessSession(cfg processSessionConfig) *processSession {
@@ -61,6 +63,7 @@ func newProcessSession(cfg processSessionConfig) *processSession {
 		stampedPath:   cfg.stampedPath,
 		prompt:        cfg.prompt,
 		warnings:      append([]string(nil), cfg.warnings...),
+		controller:    cfg.controller,
 		status:        "running",
 		done:          make(chan struct{}),
 		events:        make(chan SessionEvent, 32),
@@ -173,7 +176,12 @@ func (s *processSession) Kill() error {
 	return nil
 }
 
-func (s *processSession) Controller() AgentController { return noopController{} }
+func (s *processSession) Controller() AgentController {
+	if s.controller != nil {
+		return s.controller
+	}
+	return noopController{}
+}
 
 // processEventInterceptor captures canonical event lines for live publishing.
 type processEventInterceptor struct {
@@ -199,6 +207,12 @@ func (s *processSession) consumeCanonicalLine(line []byte) {
 	}
 
 	s.writeHeartbeat(ce.Timestamp)
+
+	// Notify the controller of turn-boundary events so it can track state
+	// without consuming stdout.
+	if s.controller != nil {
+		s.controller.NotifyEvent(string(ce.Type))
+	}
 
 	if ce.CostUSD > 0 {
 		s.mu.Lock()
