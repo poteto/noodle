@@ -5,6 +5,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,10 +79,19 @@ func main() {
 	run(t, dir, "git", "add", "main.go")
 	run(t, dir, "git", "commit", "-m", "add main.go")
 
-	// Brain scaffolding.
-	mkdirAll(t, filepath.Join(dir, "brain", "plans"))
+	// Brain scaffolding with a minimal plan so the scheduler triggers.
+	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
 	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n\n- [[plans/1-hello/overview]]\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "1-hello", "overview.md"), `---
+id: 1
+status: ready
+---
+
+# Hello
+
+Create a hello.txt file containing "hello world".
+`)
 
 	// Todos with a trivial item.
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos
@@ -102,31 +112,36 @@ func main() {
 		copyDir(t, src, dst)
 	}
 
-	// Backlog adapter script — a simple shell script that reads brain/todos.md.
+	// Backlog adapter scripts — simple shell scripts for the E2E test.
 	adapterDir := filepath.Join(dir, ".noodle", "adapters")
 	mkdirAll(t, adapterDir)
+	// sync: emit one NDJSON line per open todo.
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), `#!/bin/sh
 set -e
 TODOS="brain/todos.md"
-if [ ! -f "$TODOS" ]; then exit 0; fi
-# Parse todos.md into NDJSON — simplified for E2E.
-awk '
-/^[0-9]+\. \[[ xX]\]/ {
-  id = $1; sub(/\./, "", id)
-  mark = $0; sub(/.*\[/, "", mark); sub(/\].*/, "", mark)
-  title = $0; sub(/^[0-9]+\. \[[ xX]\] /, "", title)
-  sub(/ ~(small|medium|large)/, "", title)
-  status = (mark == " ") ? "open" : "done"
-  printf "{\"id\":\"%s\",\"title\":\"%s\",\"status\":\"%s\",\"tags\":[]}\n", id, title, status
-}' "$TODOS"
+[ -f "$TODOS" ] || exit 0
+# Match "1. [ ] some title ~small" lines and emit NDJSON.
+sed -n 's/^\([0-9]*\)\. \[ \] \(.*\)/\1 \2/p' "$TODOS" | while read -r id rest; do
+  title=$(printf '%s' "$rest" | sed 's/ ~[a-z]*$//' | sed 's/"/\\"/g')
+  printf '{"id":"%s","title":"%s","status":"open","tags":[]}\n' "$id" "$title"
+done
 `)
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), `#!/bin/sh
 echo "done: $1" >&2
 `)
+	writeFile(t, filepath.Join(adapterDir, "backlog-add"), `#!/bin/sh
+echo "add: $@" >&2
+`)
+	writeFile(t, filepath.Join(adapterDir, "backlog-edit"), `#!/bin/sh
+echo "edit: $@" >&2
+`)
 	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
 	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
 
 	// .noodle.toml — codex provider, auto autonomy, max_cooks=1.
+	// Server enabled on a fixed port so Playwright can hit the UI.
 	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
 
 [routing.defaults]
@@ -145,6 +160,8 @@ skill = "todo"
 [adapters.backlog.scripts]
 sync = ".noodle/adapters/backlog-sync"
 done = ".noodle/adapters/backlog-done"
+add = ".noodle/adapters/backlog-add"
+edit = ".noodle/adapters/backlog-edit"
 
 [concurrency]
 max_cooks = 1
@@ -153,7 +170,8 @@ max_cooks = 1
 default = "tmux"
 
 [server]
-enabled = false
+enabled = true
+port = 13737
 `)
 
 	// Runtime directory.
@@ -345,6 +363,56 @@ func chmodExec(t *testing.T, path string) {
 	if err := os.Chmod(path, 0o755); err != nil {
 		t.Fatalf("chmod %s: %v", path, err)
 	}
+}
+
+// runPlaywrightTests installs deps and runs the Playwright UI smoke tests
+// against the running noodle server. Returns an error if any test fails.
+func runPlaywrightTests(t *testing.T, baseURL string) error {
+	t.Helper()
+	uiTestDir := filepath.Join(repoRoot(t), "e2e", "ui")
+
+	// Install deps (including playwright browsers).
+	install := exec.Command("pnpm", "install")
+	install.Dir = uiTestDir
+	if out, err := install.CombinedOutput(); err != nil {
+		return fmt.Errorf("pnpm install: %s: %w", string(out), err)
+	}
+
+	// Ensure chromium is installed for playwright.
+	browsers := exec.Command("npx", "playwright", "install", "chromium")
+	browsers.Dir = uiTestDir
+	if out, err := browsers.CombinedOutput(); err != nil {
+		return fmt.Errorf("playwright install chromium: %s: %w", string(out), err)
+	}
+
+	// Run the tests.
+	cmd := exec.Command("npx", "playwright", "test")
+	cmd.Dir = uiTestDir
+	cmd.Env = append(os.Environ(), "NOODLE_BASE_URL="+baseURL)
+	out, err := cmd.CombinedOutput()
+	t.Logf("playwright output:\n%s", string(out))
+	if err != nil {
+		return fmt.Errorf("playwright tests failed: %w", err)
+	}
+	return nil
+}
+
+// waitForServer polls the server until it responds to /api/snapshot or times out.
+func waitForServer(t *testing.T, baseURL string, timeout time.Duration) error {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(baseURL + "/api/snapshot")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				t.Logf("server ready at %s", baseURL)
+				return nil
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("server at %s not ready within %s", baseURL, timeout)
 }
 
 // copyDir recursively copies src to dst.

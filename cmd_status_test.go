@@ -41,25 +41,15 @@ func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 
-	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", "cook-a"), 0o755); err != nil {
-		t.Fatalf("mkdir cook-a: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions", "cook-b"), 0o755); err != nil {
-		t.Fatalf("mkdir cook-b: %v", err)
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
 	}
 	if err := os.WriteFile(
-		filepath.Join(runtimeDir, "sessions", "cook-a", "meta.json"),
-		[]byte(`{"status":"running","total_cost_usd":1.25,"loop_state":"paused"}`),
+		filepath.Join(runtimeDir, "status.json"),
+		[]byte(`{"active":["order-1"],"loop_state":"draining","max_cooks":4}`),
 		0o644,
 	); err != nil {
-		t.Fatalf("write cook-a meta: %v", err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(runtimeDir, "sessions", "cook-b", "meta.json"),
-		[]byte(`{"status":"exited","total_cost_usd":0.75,"loop_state":"draining"}`),
-		0o644,
-	); err != nil {
-		t.Fatalf("write cook-b meta: %v", err)
+		t.Fatalf("write status: %v", err)
 	}
 	if err := os.WriteFile(
 		filepath.Join(runtimeDir, "orders.json"),
@@ -92,7 +82,7 @@ func TestRunStatusReadsSessionsAndQueue(t *testing.T) {
 	if !strings.Contains(output, "queue=3") {
 		t.Fatalf("expected queue depth, got: %q", output)
 	}
-	if !strings.Contains(output, "cost=$2.00") {
+	if !strings.Contains(output, "cost=$0.00") {
 		t.Fatalf("expected total cost, got: %q", output)
 	}
 	if !strings.Contains(output, "loop=draining") {

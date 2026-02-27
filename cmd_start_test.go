@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/loop"
 )
 
 type fakeStartLoop struct {
@@ -30,6 +31,8 @@ func (f *fakeStartLoop) Run(ctx context.Context) error {
 }
 
 func (f *fakeStartLoop) Shutdown() {}
+
+func (f *fakeStartLoop) State() loop.LoopState { return loop.LoopState{} }
 
 func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	projectDir := t.TempDir()

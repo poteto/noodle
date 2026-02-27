@@ -1,9 +1,11 @@
 import type { Order, Stage, StageStatus } from "~/client";
 import { Badge } from "./Badge";
+import { StageRail } from "./StageRail";
 
 const STAGE_INDICATOR: Record<StageStatus, { symbol: string; class: string }> = {
   completed: { symbol: "\u2713", class: "text-ngreen" },
   active: { symbol: "\u25CF", class: "text-nyellow" },
+  merging: { symbol: "\u25C9", class: "text-nyellow" },
   pending: { symbol: "\u25CB", class: "text-text-3" },
   failed: { symbol: "\u2717", class: "text-nred" },
   cancelled: { symbol: "\u2013", class: "text-text-3" },
@@ -60,7 +62,7 @@ function StagePipeline({ stages, label }: { stages: Stage[]; label?: string }) {
 /** Find the active stage, or the first pending stage if none active. */
 function currentStage(order: Order): Stage | undefined {
   return (
-    order.stages.find((s) => s.status === "active") ??
+    order.stages.find((s) => s.status === "active" || s.status === "merging") ??
     order.stages.find((s) => s.status === "pending")
   );
 }
@@ -74,6 +76,7 @@ export function OrderCard({
   onDragEnd,
   isDragOver,
   isDragging,
+  onSelectSession,
 }: {
   order: Order;
   index?: number;
@@ -83,6 +86,7 @@ export function OrderCard({
   onDragEnd?: () => void;
   isDragOver?: boolean;
   isDragging?: boolean;
+  onSelectSession?: (sessionId: string) => void;
 }) {
   const active = currentStage(order);
   const isSingleStage = order.stages.length <= 1;
@@ -115,29 +119,36 @@ export function OrderCard({
       onDragEnd={onDragEnd}
     >
       <div className={classes}>
-        <div className="flex items-center gap-1.5 mb-2">
-          {active?.task_key && <Badge type={active.task_key} />}
-        </div>
-        <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{order.title || order.id}</div>
-        {order.rationale && isSchedule && (
-          <div className="font-mono text-xs text-text-2 leading-[1.4] mb-2 italic">
-            {order.rationale}
-          </div>
-        )}
-        {!isSingleStage && (
-          <div className="mt-2 mb-1 flex flex-col gap-1">
-            <StagePipeline stages={order.stages} />
-            {isFailing && order.on_failure && order.on_failure.length > 0 && (
-              <StagePipeline stages={order.on_failure} label="recovery" />
+        <div className="flex gap-2">
+          {!isSingleStage && <StageRail stages={order.stages} onSelectSession={onSelectSession} />}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-2">
+              {active?.task_key && <Badge type={active.task_key} />}
+            </div>
+            <div className="font-bold text-[1.0625rem] text-text-0 mb-1">
+              {order.title || order.id}
+            </div>
+            {order.rationale && isSchedule && (
+              <div className="font-mono text-xs text-text-2 leading-[1.4] mb-2 italic">
+                {order.rationale}
+              </div>
             )}
+            {!isSingleStage && (
+              <div className="mt-2 mb-1 flex flex-col gap-1">
+                <StagePipeline stages={order.stages} />
+                {isFailing && order.on_failure && order.on_failure.length > 0 && (
+                  <StagePipeline stages={order.on_failure} label="recovery" />
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
+              {active?.model && (
+                <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">
+                  {active.model}
+                </span>
+              )}
+            </div>
           </div>
-        )}
-        <div className="flex items-center gap-1.5 font-mono text-xs text-text-2 mt-0.5">
-          {active?.model && (
-            <span className="px-1.5 py-px bg-bg-3 text-[0.6875rem] text-text-2 ml-auto">
-              {active.model}
-            </span>
-          )}
         </div>
       </div>
     </div>

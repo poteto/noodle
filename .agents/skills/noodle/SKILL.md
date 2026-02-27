@@ -44,7 +44,9 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `agents.codex.args` | array | [] | Extra CLI arguments for Codex CLI |
 | `agents.codex.path` | string | "" | Custom path to Codex CLI binary |
 | `autonomy` | string | "auto" | How much human oversight the loop requires: auto or approve |
+| `concurrency.max_completion_overflow` | integer | 1024 |  |
 | `concurrency.max_cooks` | integer | 4 | Maximum concurrent cook sessions |
+| `concurrency.merge_backpressure_threshold` | integer | 128 |  |
 | `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
 | `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |

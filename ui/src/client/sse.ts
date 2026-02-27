@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Snapshot } from "./types";
+import { normalizeSnapshot } from "./api";
 
 const SNAPSHOT_KEY = ["snapshot"] as const;
 const SSE_STATUS_KEY = ["sseStatus"] as const;
@@ -29,8 +30,7 @@ export function connectSSE(queryClient: QueryClient): () => void {
 
     eventSource.addEventListener("message", (event) => {
       try {
-        // Same-origin Go API server — earned boundary cast.
-        const snapshot = JSON.parse(event.data) as Snapshot;
+        const snapshot = normalizeSnapshot(JSON.parse(event.data) as Snapshot);
         queryClient.setQueryData(SNAPSHOT_KEY, snapshot);
         setStatus("connected");
       } catch {

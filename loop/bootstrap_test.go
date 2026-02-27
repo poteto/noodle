@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/taskreg"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/skill"
 )
@@ -77,9 +77,9 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -92,10 +92,10 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if len(sp.calls) != 1 {
-		t.Fatalf("expected 1 dispatch call (bootstrap), got %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("expected 1 dispatch call (bootstrap), got %d", len(rt.calls))
 	}
-	req := sp.calls[0]
+	req := rt.calls[0]
 
 	// Bootstrap session name has bootstrap- prefix.
 	if !strings.HasPrefix(req.Name, bootstrapSessionPrefix) {
@@ -110,12 +110,12 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 		t.Fatalf("expected Skill to be empty for bootstrap, got %q", req.Skill)
 	}
 
-	// Bootstrap session is tracked in bootstrapInFlight, not activeByID.
+	// Bootstrap session is tracked in bootstrapInFlight, not activeCooksByOrder.
 	if l.bootstrapInFlight == nil {
 		t.Fatal("expected bootstrapInFlight to be set")
 	}
-	if len(l.activeByID) != 0 {
-		t.Fatalf("bootstrap should not be in activeByID, got %d entries", len(l.activeByID))
+	if len(l.cooks.activeCooksByOrder) != 0 {
+		t.Fatalf("bootstrap should not be in activeCooksByOrder, got %d entries", len(l.cooks.activeCooksByOrder))
 	}
 }
 
@@ -127,9 +127,9 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -142,10 +142,10 @@ func TestBootstrapSessionUsesSystemPromptNotSkill(t *testing.T) {
 		t.Fatalf("cycle: %v", err)
 	}
 
-	if len(sp.calls) != 1 {
-		t.Fatalf("expected 1 dispatch, got %d", len(sp.calls))
+	if len(rt.calls) != 1 {
+		t.Fatalf("expected 1 dispatch, got %d", len(rt.calls))
 	}
-	req := sp.calls[0]
+	req := rt.calls[0]
 
 	if req.SystemPrompt == "" {
 		t.Fatal("SystemPrompt not set on bootstrap dispatch request")
@@ -166,9 +166,9 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -186,9 +186,8 @@ func TestFailedBootstrapIncrements(t *testing.T) {
 	}
 
 	// Simulate bootstrap failure.
-	session := sp.sessions[0]
-	session.status = "failed"
-	close(session.done)
+	session := rt.sessions[0]
+	session.complete("failed")
 
 	// Second cycle: collects failed bootstrap (attempt 1), then the cycle
 	// continues and re-dispatches a new bootstrap (attempt < 3).
@@ -215,9 +214,9 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -239,9 +238,8 @@ func TestBootstrapExhaustedAfterThreeFailures(t *testing.T) {
 		}
 
 		// Simulate failure.
-		session := sp.sessions[len(sp.sessions)-1]
-		session.status = "failed"
-		close(session.done)
+		session := rt.sessions[len(rt.sessions)-1]
+		session.complete("failed")
 
 		// Cycle to collect failure.
 		if err := l.Cycle(context.Background()); err != nil {
@@ -265,9 +263,9 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -287,9 +285,8 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 			}
 			t.Fatalf("expected bootstrap in flight at attempt %d", i)
 		}
-		session := sp.sessions[len(sp.sessions)-1]
-		session.status = "failed"
-		close(session.done)
+		session := rt.sessions[len(rt.sessions)-1]
+		session.complete("failed")
 		if err := l.Cycle(context.Background()); err != nil {
 			t.Fatalf("collect cycle %d: %v", i, err)
 		}
@@ -325,9 +322,9 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 	}
 	skillPath := createBootstrapSkillFixture(t, projectDir)
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -345,9 +342,8 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 	}
 
 	// Simulate successful completion.
-	session := sp.sessions[0]
-	session.status = "completed"
-	close(session.done)
+	session := rt.sessions[0]
+	session.complete("completed")
 
 	// Collect completion — the cycle will also try to re-dispatch schedule
 	// (still missing on disk) which triggers another bootstrap.
@@ -400,9 +396,9 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       bootstrapMise(),
@@ -421,13 +417,13 @@ func TestLoopContinuesWithExhaustedBootstrap(t *testing.T) {
 	// item should be silently skipped. The normal execute item should still
 	// be dispatched (if execute skill exists in registry).
 	normalCalls := 0
-	for _, call := range sp.calls {
+	for _, call := range rt.calls {
 		if !strings.HasPrefix(call.Name, bootstrapSessionPrefix) {
 			normalCalls++
 		}
 	}
 	if normalCalls != 1 {
-		t.Fatalf("expected 1 normal dispatch (execute item), got %d normal out of %d total", normalCalls, len(sp.calls))
+		t.Fatalf("expected 1 normal dispatch (execute item), got %d normal out of %d total", normalCalls, len(rt.calls))
 	}
 }
 
@@ -472,7 +468,7 @@ func TestIsBootstrapSession(t *testing.T) {
 
 func TestSystemPromptFieldOnDispatchRequest(t *testing.T) {
 	// Verify that SystemPrompt field is accepted by DispatchRequest validation.
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:         "bootstrap-test",
 		Prompt:       "test prompt",
 		Provider:     "claude",

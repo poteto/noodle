@@ -1,10 +1,18 @@
 # Todos
 
-<!-- next-id: 71 -->
+<!-- next-id: 74 -->
+
+## Testing & Verification
+
+73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[plans/73-testing-strategy/overview]]
+
+## Structural Cleanup
+
+72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. Pure refactoring, no behavior changes. [[plans/72-go-structural-cleanup/overview]]~~ — done. Unified types with orderx, typed OrderStatus/StageStatus enums, extracted cookIdentity, decomposed Loop into 3 sub-structs, split cook.go into 6 lifecycle files, moved recover/ to internal/, trimmed Runtime interface from 7→3 methods, documented runtime/dispatcher layering decision.
 
 ## Scaling
 
-70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[plans/70-scaling-the-loop-redesign/overview]]
+70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archived_plans/70-scaling-the-loop-redesign/overview]]
 
 ## Noodle Post-Plan 1
 
@@ -52,6 +60,10 @@
 
 62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt. Folded into #49 (phase 1). [[archived_plans/49-work-orders-redesign/overview]]
 63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve. Folded into #49 (phase 5). [[archived_plans/49-work-orders-redesign/overview]]
+
+## Infrastructure
+
+71. [ ] Investigate typesafe server/client protocol — evaluate protobuf, ConnectRPC, or similar for the Go↔TypeScript API boundary. Currently Go structs and TS interfaces are manually mirrored with JSON, and nil slices vs empty arrays cause runtime crashes (see fix e8b4e66). A shared schema would eliminate this class of bug entirely and auto-generate client types.
 
 ## Skill System Gaps
 

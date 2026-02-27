@@ -94,14 +94,15 @@ type Order struct {
 
 // Stage is a unit of work within an order in the snapshot.
 type Stage struct {
-	TaskKey  string                     `json:"task_key,omitempty"`
-	Prompt   string                     `json:"prompt,omitempty"`
-	Skill    string                     `json:"skill,omitempty"`
-	Provider string                     `json:"provider"`
-	Model    string                     `json:"model"`
-	Runtime  string                     `json:"runtime,omitempty"`
-	Status   string                     `json:"status"`
-	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
+	TaskKey   string                     `json:"task_key,omitempty"`
+	Prompt    string                     `json:"prompt,omitempty"`
+	Skill     string                     `json:"skill,omitempty"`
+	Provider  string                     `json:"provider"`
+	Model     string                     `json:"model"`
+	Runtime   string                     `json:"runtime,omitempty"`
+	Status    string                     `json:"status"`
+	Extra     map[string]json.RawMessage `json:"extra,omitempty"`
+	SessionID string                     `json:"session_id,omitempty"`
 }
 
 // EventLine is a single parsed event in a session trace.

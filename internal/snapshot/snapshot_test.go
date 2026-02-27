@@ -4,42 +4,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/loop"
+	"github.com/poteto/noodle/mise"
 )
-
-func TestDeriveHealth(t *testing.T) {
-	cases := []struct {
-		name       string
-		status     string
-		explicit   string
-		contextPct float64
-		idle       int64
-		threshold  int64
-		want       string
-	}{
-		{name: "explicit wins", status: "running", explicit: "red", want: "red"},
-		{name: "failed is red", status: "failed", want: "red"},
-		{name: "stuck is red", status: "stuck", want: "red"},
-		{name: "high context is yellow", status: "running", contextPct: 81, want: "yellow"},
-		{name: "idle over half threshold is yellow", status: "running", idle: 70, threshold: 120, want: "yellow"},
-		{name: "idle over threshold is red", status: "running", idle: 121, threshold: 120, want: "red"},
-		{name: "healthy running is green", status: "running", idle: 10, threshold: 120, want: "green"},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			got := deriveHealth(tc.status, tc.explicit, tc.contextPct, tc.idle, tc.threshold)
-			if got != tc.want {
-				t.Fatalf("deriveHealth() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
 
 func TestMapEventLinesPromptAction(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
@@ -261,125 +233,6 @@ func TestReadQueueEventsUnknownTypeSkipped(t *testing.T) {
 	}
 }
 
-func TestReadOrdersPopulatesSnapshot(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "orders.json")
-	payload := `{
-  "generated_at": "2026-02-26T10:00:00Z",
-  "orders": [
-    {
-      "id": "order-1",
-      "title": "Implement feature X",
-      "plan": ["step 1", "step 2"],
-      "rationale": "needed for release",
-      "stages": [
-        {
-          "task_key": "execute",
-          "prompt": "implement it",
-          "skill": "execute",
-          "provider": "claude",
-          "model": "claude-sonnet-4-6",
-          "runtime": "claude-code",
-          "status": "pending",
-          "extra": {"context": "some-value"}
-        },
-        {
-          "task_key": "verify",
-          "prompt": "verify it",
-          "skill": "verify",
-          "provider": "claude",
-          "model": "claude-sonnet-4-6",
-          "status": "pending"
-        }
-      ],
-      "status": "active",
-      "on_failure": [
-        {
-          "task_key": "review",
-          "prompt": "review failure",
-          "skill": "review",
-          "provider": "claude",
-          "model": "claude-sonnet-4-6",
-          "status": "pending"
-        }
-      ]
-    }
-  ],
-  "action_needed": ["check order-1"]
-}`
-	if err := os.WriteFile(path, []byte(payload), 0o644); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	or, err := readOrders(path)
-	if err != nil {
-		t.Fatalf("readOrders: %v", err)
-	}
-	if len(or.Orders) != 1 {
-		t.Fatalf("order count = %d, want 1", len(or.Orders))
-	}
-
-	order := or.Orders[0]
-	if order.ID != "order-1" {
-		t.Errorf("id = %q", order.ID)
-	}
-	if order.Title != "Implement feature X" {
-		t.Errorf("title = %q", order.Title)
-	}
-	if order.Status != "active" {
-		t.Errorf("status = %q", order.Status)
-	}
-	if order.Rationale != "needed for release" {
-		t.Errorf("rationale = %q", order.Rationale)
-	}
-	if len(order.Plan) != 2 {
-		t.Fatalf("plan count = %d", len(order.Plan))
-	}
-
-	// Stages
-	if len(order.Stages) != 2 {
-		t.Fatalf("stage count = %d, want 2", len(order.Stages))
-	}
-	if order.Stages[0].TaskKey != "execute" {
-		t.Errorf("stage[0] task_key = %q", order.Stages[0].TaskKey)
-	}
-	if order.Stages[0].Runtime != "claude-code" {
-		t.Errorf("stage[0] runtime = %q", order.Stages[0].Runtime)
-	}
-	if order.Stages[0].Status != "pending" {
-		t.Errorf("stage[0] status = %q", order.Stages[0].Status)
-	}
-	if order.Stages[0].Extra == nil {
-		t.Fatal("stage[0] extra is nil")
-	}
-	if string(order.Stages[0].Extra["context"]) != `"some-value"` {
-		t.Errorf("stage[0] extra[context] = %s", order.Stages[0].Extra["context"])
-	}
-
-	// OnFailure
-	if len(order.OnFailure) != 1 {
-		t.Fatalf("on_failure count = %d, want 1", len(order.OnFailure))
-	}
-	if order.OnFailure[0].TaskKey != "review" {
-		t.Errorf("on_failure[0] task_key = %q", order.OnFailure[0].TaskKey)
-	}
-
-	// ActionNeeded
-	if len(or.ActionNeeded) != 1 || or.ActionNeeded[0] != "check order-1" {
-		t.Errorf("action_needed = %v", or.ActionNeeded)
-	}
-}
-
-func TestReadOrdersMissingFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "orders.json")
-	or, err := readOrders(path)
-	if err != nil {
-		t.Fatalf("readOrders: %v", err)
-	}
-	if len(or.Orders) != 0 {
-		t.Fatalf("order count = %d, want 0", len(or.Orders))
-	}
-}
-
 func TestSnapshotSerializationIncludesOrders(t *testing.T) {
 	snap := Snapshot{
 		UpdatedAt: time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC),
@@ -550,5 +403,126 @@ func TestInferTaskTypeLegacyColonFormat(t *testing.T) {
 	got := InferTaskType("42:0:execute")
 	if got != "execute" {
 		t.Fatalf("InferTaskType() = %q, want %q", got, "execute")
+	}
+}
+
+func TestLoadSnapshotFromLoopState(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC)
+
+	state := loop.LoopState{
+		Status: "running",
+		ActiveCooks: []loop.CookSummary{
+			{
+				SessionID:   "cook-a",
+				OrderID:     "order-1",
+				TaskKey:     "execute",
+				Runtime:     "claude-code",
+				Provider:    "claude",
+				Model:       "claude-sonnet-4-6",
+				DisplayName: "Cook Alpha",
+				Status:      "running",
+			},
+		},
+		RecentHistory: []mise.HistoryItem{
+			{
+				SessionID:   "cook-b",
+				Status:      "completed",
+				TaskKey:     "plan",
+				CompletedAt: now.Add(-5 * time.Minute),
+			},
+		},
+		Orders: []loop.Order{
+			{
+				ID:    "order-1",
+				Title: "Test order",
+				Stages: []loop.Stage{
+					{TaskKey: "execute", Status: "active"},
+				},
+				Status: "active",
+			},
+		},
+		ActiveOrderIDs:     []string{"order-1"},
+		ActionNeeded:       []string{"check order-1"},
+		TotalCostUSD:       1.23,
+		MaxCooks:           4,
+		Autonomy:           "auto",
+		PendingReviews:     nil,
+		PendingReviewCount: 0,
+	}
+
+	snap, err := LoadSnapshot(dir, now, state)
+	if err != nil {
+		t.Fatalf("LoadSnapshot: %v", err)
+	}
+
+	if snap.LoopState != "running" {
+		t.Errorf("loop_state = %q, want running", snap.LoopState)
+	}
+	if len(snap.Active) != 1 {
+		t.Fatalf("active count = %d, want 1", len(snap.Active))
+	}
+	if snap.Active[0].ID != "cook-a" {
+		t.Errorf("active[0] id = %q", snap.Active[0].ID)
+	}
+	if snap.Active[0].DisplayName != "Cook Alpha" {
+		t.Errorf("active[0] display_name = %q", snap.Active[0].DisplayName)
+	}
+	if len(snap.Recent) != 1 {
+		t.Fatalf("recent count = %d, want 1", len(snap.Recent))
+	}
+	if snap.Recent[0].ID != "cook-b" {
+		t.Errorf("recent[0] id = %q", snap.Recent[0].ID)
+	}
+	if len(snap.Orders) != 1 {
+		t.Fatalf("order count = %d, want 1", len(snap.Orders))
+	}
+	if snap.Orders[0].Stages[0].SessionID != "cook-a" {
+		t.Errorf("stage session_id = %q, want cook-a", snap.Orders[0].Stages[0].SessionID)
+	}
+	if snap.TotalCostUSD != 1.23 {
+		t.Errorf("total_cost = %f, want 1.23", snap.TotalCostUSD)
+	}
+	if snap.MaxCooks != 4 {
+		t.Errorf("max_cooks = %d, want 4", snap.MaxCooks)
+	}
+	if snap.Autonomy != "auto" {
+		t.Errorf("autonomy = %q, want auto", snap.Autonomy)
+	}
+	if len(snap.ActiveOrderIDs) != 1 || snap.ActiveOrderIDs[0] != "order-1" {
+		t.Errorf("active_order_ids = %v", snap.ActiveOrderIDs)
+	}
+	if len(snap.ActionNeeded) != 1 || snap.ActionNeeded[0] != "check order-1" {
+		t.Errorf("action_needed = %v", snap.ActionNeeded)
+	}
+}
+
+func TestLoadSnapshotNilSlicesMarshalAsEmptyArrays(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC)
+
+	// All slice fields nil — simulates idle loop with no orders/cooks/reviews.
+	state := loop.LoopState{Status: "idle"}
+
+	snap, err := LoadSnapshot(dir, now, state)
+	if err != nil {
+		t.Fatalf("LoadSnapshot: %v", err)
+	}
+
+	data, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	jsonStr := string(data)
+
+	// None of the array fields should be null — they must be [].
+	for _, field := range []string{
+		"sessions", "active", "recent", "orders",
+		"active_order_ids", "action_needed", "feed_events", "pending_reviews",
+	} {
+		needle := `"` + field + `":null`
+		if strings.Contains(jsonStr, needle) {
+			t.Errorf("%s is null in JSON, want []", field)
+		}
 	}
 }

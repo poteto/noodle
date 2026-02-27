@@ -35,6 +35,53 @@ type dispatchCandidate struct {
 	IsOnFailure bool
 }
 
+// activeOrderIDs returns active/failing order IDs that still have work in the
+// selected pipeline (main stages or on-failure stages).
+func activeOrderIDs(orders OrdersFile) []string {
+	ids := make([]string, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+			continue
+		}
+		stages := order.Stages
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+		}
+		for _, stage := range stages {
+			if stage.Status == StageStatusActive || stage.Status == StageStatusMerging || stage.Status == StageStatusPending {
+				ids = append(ids, order.ID)
+				break
+			}
+		}
+	}
+	return ids
+}
+
+// busyTargets returns order IDs currently blocked by an active stage in the
+// selected pipeline (main stages or on-failure stages).
+func busyTargets(orders OrdersFile) map[string]bool {
+	busy := make(map[string]bool)
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+			continue
+		}
+		stages := order.Stages
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+		}
+		for _, stage := range stages {
+			if stage.Status == StageStatusActive || stage.Status == StageStatusMerging {
+				busy[order.ID] = true
+				break
+			}
+			if stage.Status == StageStatusPending {
+				break
+			}
+		}
+	}
+	return busy
+}
+
 // activeStageForOrder returns the index and pointer to the currently active or
 // first pending stage. Returns (-1, nil) if no stage is active/pending.
 func activeStageForOrder(order Order) (int, *Stage) {
@@ -44,7 +91,7 @@ func activeStageForOrder(order Order) (int, *Stage) {
 	}
 	for i := range stages {
 		switch stages[i].Status {
-		case StageStatusActive, StageStatusPending:
+		case StageStatusActive, StageStatusMerging, StageStatusPending:
 			return i, &stages[i]
 		}
 	}
@@ -78,7 +125,7 @@ func advanceOrder(orders OrdersFile, orderID string) (OrdersFile, bool, error) {
 	advanced := false
 	for i := range *stages {
 		switch (*stages)[i].Status {
-		case StageStatusActive, StageStatusPending:
+		case StageStatusActive, StageStatusMerging, StageStatusPending:
 			(*stages)[i].Status = StageStatusCompleted
 			advanced = true
 		}
@@ -159,7 +206,7 @@ func failCurrentAndCancelRest(stages *[]Stage) {
 	for i := range *stages {
 		s := &(*stages)[i]
 		if !foundCurrent {
-			if s.Status == StageStatusActive || s.Status == StageStatusPending {
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging || s.Status == StageStatusPending {
 				s.Status = StageStatusFailed
 				foundCurrent = true
 			}
@@ -243,7 +290,7 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 
 		// Find first pending stage; skip if current stage is active (already dispatched).
 		for i, s := range stages {
-			if s.Status == StageStatusActive {
+			if s.Status == StageStatusActive || s.Status == StageStatusMerging {
 				// Already dispatched — order is busy at stage level.
 				break
 			}
@@ -285,15 +332,11 @@ func cloneOrder(o Order) Order {
 }
 
 func readOrders(path string) (OrdersFile, error) {
-	of, err := orderx.ReadOrders(path)
-	if err != nil {
-		return OrdersFile{}, err
-	}
-	return fromOrdersFileX(of), nil
+	return orderx.ReadOrders(path)
 }
 
 func writeOrdersAtomic(path string, of OrdersFile) error {
-	return orderx.WriteOrdersAtomic(path, toOrdersFileX(of))
+	return orderx.WriteOrdersAtomic(path, of)
 }
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
@@ -354,111 +397,12 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 	return true, nil
 }
 
-func toOrdersFileX(of OrdersFile) orderx.OrdersFile {
-	orders := make([]orderx.Order, 0, len(of.Orders))
-	for _, o := range of.Orders {
-		orders = append(orders, toOrderX(o))
-	}
-	return orderx.OrdersFile{
-		GeneratedAt:  of.GeneratedAt,
-		Orders:       orders,
-		ActionNeeded: of.ActionNeeded,
-	}
-}
-
-func fromOrdersFileX(of orderx.OrdersFile) OrdersFile {
-	orders := make([]Order, 0, len(of.Orders))
-	for _, o := range of.Orders {
-		orders = append(orders, fromOrderX(o))
-	}
-	return OrdersFile{
-		GeneratedAt:  of.GeneratedAt,
-		Orders:       orders,
-		ActionNeeded: of.ActionNeeded,
-	}
-}
-
-func toOrderX(o Order) orderx.Order {
-	return orderx.Order{
-		ID:        o.ID,
-		Title:     o.Title,
-		Plan:      o.Plan,
-		Rationale: o.Rationale,
-		Stages:    toStagesX(o.Stages),
-		Status:    o.Status,
-		OnFailure: toStagesX(o.OnFailure),
-	}
-}
-
-func fromOrderX(o orderx.Order) Order {
-	return Order{
-		ID:        o.ID,
-		Title:     o.Title,
-		Plan:      o.Plan,
-		Rationale: o.Rationale,
-		Stages:    fromStagesX(o.Stages),
-		Status:    o.Status,
-		OnFailure: fromStagesX(o.OnFailure),
-	}
-}
-
-func toStagesX(stages []Stage) []orderx.Stage {
-	if stages == nil {
-		return nil
-	}
-	out := make([]orderx.Stage, 0, len(stages))
-	for _, s := range stages {
-		out = append(out, orderx.Stage{
-			TaskKey:  s.TaskKey,
-			Prompt:   s.Prompt,
-			Skill:    s.Skill,
-			Provider: s.Provider,
-			Model:    s.Model,
-			Runtime:  s.Runtime,
-			Status:   s.Status,
-			Extra:    s.Extra,
-		})
-	}
-	return out
-}
-
-func fromStagesX(stages []orderx.Stage) []Stage {
-	if stages == nil {
-		return nil
-	}
-	out := make([]Stage, 0, len(stages))
-	for _, s := range stages {
-		out = append(out, Stage{
-			TaskKey:  s.TaskKey,
-			Prompt:   s.Prompt,
-			Skill:    s.Skill,
-			Provider: s.Provider,
-			Model:    s.Model,
-			Runtime:  s.Runtime,
-			Status:   s.Status,
-			Extra:    s.Extra,
-		})
-	}
-	return out
-}
-
-// NormalizeAndValidateOrders wraps the orderx function for loop-layer types.
+// NormalizeAndValidateOrders delegates to orderx.
 func NormalizeAndValidateOrders(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
-	updated, changed, err := orderx.NormalizeAndValidateOrders(toOrdersFileX(of), reg, cfg)
-	if err != nil {
-		return OrdersFile{}, false, err
-	}
-	if !changed {
-		return of, false, nil
-	}
-	return fromOrdersFileX(updated), true, nil
+	return orderx.NormalizeAndValidateOrders(of, reg, cfg)
 }
 
-// ApplyOrderRoutingDefaults wraps the orderx function for loop-layer types.
+// ApplyOrderRoutingDefaults delegates to orderx.
 func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool) {
-	updated, changed := orderx.ApplyOrderRoutingDefaults(toOrdersFileX(of), reg, cfg)
-	if !changed {
-		return of, false
-	}
-	return fromOrdersFileX(updated), true
+	return orderx.ApplyOrderRoutingDefaults(of, reg, cfg)
 }

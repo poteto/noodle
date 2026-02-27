@@ -9,7 +9,7 @@
     "vet": "go vet ./...",
     "lint:arch": "sh scripts/lint-arch.sh",
     "check": "pnpm run build && pnpm run test && pnpm run vet && pnpm run lint:arch && pnpm run fixtures:loop && pnpm run fixtures:hash",
-    "reset": "for d in .noodle .noodles; do rm -f \"$d/mise.json\" \"$d/queue.json\" \"$d/ticket.json\" \"$d/tickets.json\"; rm -rf \"$d/sessions\"; done && echo 'runtime state reset'",
+    "reset": "rm -f .noodle/orders.json .noodle/orders-next.json .noodle/mise.json .noodle/failed.json .noodle/pending-retry.json .noodle/pending-review.json .noodle/status.json .noodle/control.ndjson .noodle/control-ack.ndjson .noodle/control.lock .noodle/tickets.json .noodle/queue-events.ndjson && rm -rf .noodle/sessions .noodle/quality && echo 'runtime state reset'",
     "start": "go run . start",
     "status": "go run . status",
     "skills": "go run . skills list",

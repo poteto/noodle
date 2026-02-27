@@ -19,6 +19,7 @@ type startRuntimeLoop interface {
 	Cycle(ctx context.Context) error
 	Run(ctx context.Context) error
 	Shutdown()
+	State() loop.LoopState
 }
 
 var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) startRuntimeLoop {
@@ -70,7 +71,7 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 
 	interactive := isInteractiveTerminal()
 	if shouldStartServer(app.Config.Server, interactive) {
-		go func() { _ = runWebServer(ctx, runtimeDir, app.Config) }()
+		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop) }()
 	}
 	return runtimeLoop.Run(ctx)
 }
@@ -88,7 +89,7 @@ func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 	return interactive
 }
 
-func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config) error {
+func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider) error {
 	port := cfg.Server.Port
 	if port == 0 {
 		port = 3000
@@ -98,10 +99,11 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config) err
 		return err
 	}
 	srv := server.New(server.Options{
-		RuntimeDir: runtimeDir,
-		Addr:       addr,
-		UI:         uiClientFS(),
-		Config:     &cfg,
+		RuntimeDir:        runtimeDir,
+		Addr:              addr,
+		UI:                uiClientFS(),
+		Config:            &cfg,
+		LoopStateProvider: provider,
 	})
 
 	errCh := make(chan error, 1)

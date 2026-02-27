@@ -14,6 +14,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -63,13 +64,13 @@ func TestRegistryErrorResilience(t *testing.T) {
 	registryErr := errors.New("task type discovery failed: network error")
 
 	l := &Loop{
-		projectDir:     projectDir,
-		runtimeDir:     runtimeDir,
-		config:         cfg,
-		registry:       taskreg.NewFromSkills(nil),
-		registryErr:    registryErr,
+		projectDir:  projectDir,
+		runtimeDir:  runtimeDir,
+		config:      cfg,
+		registry:    taskreg.NewFromSkills(nil),
+		registryErr: registryErr,
 		deps: Dependencies{
-			Dispatcher: &fakeDispatcher{},
+			Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:   &fakeWorktree{},
 			Adapter:    &fakeAdapterRunner{},
 			Mise:       &fakeMise{},
@@ -78,14 +79,17 @@ func TestRegistryErrorResilience(t *testing.T) {
 			Now:        time.Now,
 			StatusFile: filepath.Join(runtimeDir, "status.json"),
 		},
-		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		state: StateRunning,
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
 	}
 
 	// First failure: skips cycle, no error.
@@ -205,7 +209,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher:     &fakeDispatcher{},
+			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},
@@ -215,14 +219,17 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
-		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		state: StateRunning,
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
 	}
 
 	brief := mise.Brief{}
@@ -300,7 +307,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		deps: Dependencies{
-			Dispatcher:     &fakeDispatcher{},
+			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
 			Adapter:        &fakeAdapterRunner{},
 			Mise:           &fakeMise{},
@@ -310,14 +317,17 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
-		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		state: StateRunning,
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
 	}
 
 	brief := mise.Brief{}

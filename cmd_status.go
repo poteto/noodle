@@ -8,7 +8,7 @@ import (
 
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/internal/orderx"
-	"github.com/poteto/noodle/internal/sessionmeta"
+	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +63,7 @@ func runStatus(app *App) error {
 }
 
 func readStatusSummary(runtimeDir string) (statusSummary, error) {
-	active, cost, loopState, err := readSessionSummary(filepath.Join(runtimeDir, "sessions"))
+	active, cost, loopState, err := readSessionSummary(runtimeDir)
 	if err != nil {
 		return statusSummary{}, err
 	}
@@ -79,36 +79,17 @@ func readStatusSummary(runtimeDir string) (statusSummary, error) {
 	}, nil
 }
 
-func readSessionSummary(sessionsDir string) (active int, totalCost float64, loopState string, _ error) {
-	metas, err := sessionmeta.ReadAll(filepath.Dir(sessionsDir))
+func readSessionSummary(runtimeDir string) (active int, totalCost float64, loopState string, _ error) {
+	status, err := statusfile.Read(filepath.Join(runtimeDir, "status.json"))
 	if err != nil {
 		return 0, 0, "", err
 	}
-	loopState = "running"
-	for _, meta := range metas {
-		totalCost += meta.TotalCostUSD
-		status := strings.ToLower(strings.TrimSpace(meta.Status))
-		switch status {
-		case "running", "stuck", "spawning":
-			active++
-		}
-		loopState = pickLoopState(loopState, meta.LoopState)
-		loopState = pickLoopState(loopState, status)
+	active = len(status.Active)
+	loopState = normalizeLoopState(status.LoopState)
+	if loopState == "" {
+		loopState = "running"
 	}
-
 	return active, totalCost, loopState, nil
-}
-
-func pickLoopState(current, candidate string) string {
-	current = normalizeLoopState(current)
-	candidate = normalizeLoopState(candidate)
-	if candidate == "" {
-		return current
-	}
-	if loopStateRank(candidate) > loopStateRank(current) {
-		return candidate
-	}
-	return current
 }
 
 func normalizeLoopState(value string) string {
@@ -122,6 +103,18 @@ func normalizeLoopState(value string) string {
 	default:
 		return ""
 	}
+}
+
+func pickLoopState(current, candidate string) string {
+	current = normalizeLoopState(current)
+	candidate = normalizeLoopState(candidate)
+	if candidate == "" {
+		return current
+	}
+	if loopStateRank(candidate) > loopStateRank(current) {
+		return candidate
+	}
+	return current
 }
 
 func loopStateRank(state string) int {

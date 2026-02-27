@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -21,7 +22,7 @@ import (
 
 type integrationEnv struct {
 	loop       *Loop
-	sp         *fakeDispatcher
+	rt         *mockRuntime
 	wt         *fakeWorktree
 	ar         *fakeAdapterRunner
 	ordersPath string
@@ -39,14 +40,9 @@ func (e *integrationEnv) readOrders(t *testing.T) OrdersFile {
 }
 
 func (e *integrationEnv) completeSessions(status string) {
-	for _, s := range e.sp.sessions {
-		if s.status == "running" {
-			s.status = status
-			select {
-			case <-s.done:
-			default:
-				close(s.done)
-			}
+	for _, s := range e.rt.sessions {
+		if s.Status() == "running" {
+			s.complete(status)
 		}
 	}
 }
@@ -75,7 +71,7 @@ func newIntegrationEnv(t *testing.T, orders OrdersFile, opts ...integrationOpt) 
 		t.Fatalf("write orders: %v", err)
 	}
 
-	sp := &fakeDispatcher{}
+	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	if ic.mergeErr != nil {
 		wt.mergeErr = ic.mergeErr
@@ -84,7 +80,7 @@ func newIntegrationEnv(t *testing.T, orders OrdersFile, opts ...integrationOpt) 
 	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
 
 	l := New(projectDir, "noodle", ic.cfg, Dependencies{
-		Dispatcher: sp,
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": rt},
 		Worktree:   wt,
 		Adapter:    ar,
 		Mise:       &fakeMise{brief: briefWithPlans},
@@ -96,7 +92,7 @@ func newIntegrationEnv(t *testing.T, orders OrdersFile, opts ...integrationOpt) 
 
 	return &integrationEnv{
 		loop:       l,
-		sp:         sp,
+		rt:         rt,
 		wt:         wt,
 		ar:         ar,
 		ordersPath: ordersPath,
@@ -133,11 +129,11 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}
-	if len(deps.sp.calls) != 1 {
-		t.Fatalf("cycle 1 spawn calls = %d, want 1", len(deps.sp.calls))
+	if len(deps.rt.calls) != 1 {
+		t.Fatalf("cycle 1 spawn calls = %d, want 1", len(deps.rt.calls))
 	}
-	if !strings.Contains(deps.sp.calls[0].Name, "execute") {
-		t.Fatalf("cycle 1 dispatched wrong stage: %q", deps.sp.calls[0].Name)
+	if !strings.Contains(deps.rt.calls[0].Name, "execute") {
+		t.Fatalf("cycle 1 dispatched wrong stage: %q", deps.rt.calls[0].Name)
 	}
 
 	// Verify stage 0 is now active in orders.json.
@@ -203,7 +199,7 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 
 	// Verify total spawn calls: 3 stages = 3 dispatches.
 	stageDispatches := 0
-	for _, call := range deps.sp.calls {
+	for _, call := range deps.rt.calls {
 		if call.Skill != "schedule" {
 			stageDispatches++
 		}
@@ -247,8 +243,8 @@ func TestIntegrationOnFailurePipeline(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}
-	if len(env.sp.sessions) != 1 {
-		t.Fatalf("cycle 1 sessions = %d", len(env.sp.sessions))
+	if len(env.rt.sessions) != 1 {
+		t.Fatalf("cycle 1 sessions = %d", len(env.rt.sessions))
 	}
 
 	// Stage 0 fails.
@@ -295,7 +291,7 @@ func TestIntegrationOnFailurePipeline(t *testing.T) {
 	}
 
 	// Should be in failed targets (OnFailure completes = original failure stands).
-	if _, ok := l.failedTargets["fail-1"]; !ok {
+	if _, ok := l.cooks.failedTargets["fail-1"]; !ok {
 		t.Fatal("expected fail-1 in failedTargets")
 	}
 	if _, err := os.Stat(filepath.Join(env.runtimeDir, "failed.json")); err != nil {
@@ -340,12 +336,12 @@ func TestIntegrationQualityVerdictRejectsAndTriggersOnFailure(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}
-	if len(env.sp.sessions) != 1 {
-		t.Fatalf("expected 1 session, got %d", len(env.sp.sessions))
+	if len(env.rt.sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(env.rt.sessions))
 	}
 
 	// Write a rejecting quality verdict before session completes.
-	sessionID := env.sp.sessions[0].id
+	sessionID := env.rt.sessions[0].id
 	qualityDir := filepath.Join(env.runtimeDir, "quality")
 	if err := os.MkdirAll(qualityDir, 0o755); err != nil {
 		t.Fatalf("mkdir quality: %v", err)
@@ -400,8 +396,8 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}
-	if len(env.sp.sessions) != 1 {
-		t.Fatalf("expected 1 session, got %d", len(env.sp.sessions))
+	if len(env.rt.sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(env.rt.sessions))
 	}
 
 	// Session completes → cycle 2: merge conflict → parks for pending review.
@@ -410,10 +406,10 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 		t.Fatalf("cycle 2: %v", err)
 	}
 
-	if _, ok := l.pendingReview["conflict-1"]; !ok {
+	if _, ok := l.cooks.pendingReview["conflict-1"]; !ok {
 		t.Fatal("expected conflict-1 in pendingReview")
 	}
-	pending := l.pendingReview["conflict-1"]
+	pending := l.cooks.pendingReview["conflict-1"]
 	if !strings.Contains(pending.reason, "merge conflict") {
 		t.Fatalf("pending reason = %q, want merge conflict", pending.reason)
 	}
@@ -459,8 +455,8 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	}
 
 	// Verify pendingReview was cleared.
-	if len(l.pendingReview) != 0 {
-		t.Fatalf("pendingReview = %d, want 0", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 0 {
+		t.Fatalf("pendingReview = %d, want 0", len(l.cooks.pendingReview))
 	}
 }
 
@@ -502,7 +498,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 		t.Fatalf("cycle 2: %v", err)
 	}
 
-	if _, ok := l.failedTargets["sticky-1"]; !ok {
+	if _, ok := l.cooks.failedTargets["sticky-1"]; !ok {
 		t.Fatal("expected sticky-1 in failedTargets after failure")
 	}
 
@@ -525,7 +521,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 
 	// Cycle 3: consumeOrdersNext promotes the order, but it should be blocked
 	// by failedTargets — not dispatched.
-	spawnCountBefore := len(env.sp.calls)
+	spawnCountBefore := len(env.rt.calls)
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 3: %v", err)
 	}
@@ -545,7 +541,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 
 	// But it should NOT have been dispatched (blocked by failedTargets).
 	dispatched := false
-	for _, call := range env.sp.calls[spawnCountBefore:] {
+	for _, call := range env.rt.calls[spawnCountBefore:] {
 		if strings.Contains(call.Name, "sticky-1") {
 			dispatched = true
 		}
@@ -559,7 +555,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 		t.Fatalf("controlRequeue: %v", err)
 	}
 
-	if _, ok := l.failedTargets["sticky-1"]; ok {
+	if _, ok := l.cooks.failedTargets["sticky-1"]; ok {
 		t.Fatal("sticky-1 should be removed from failedTargets after requeue")
 	}
 
@@ -584,7 +580,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 	}
 
 	dispatched = false
-	for _, call := range env.sp.calls {
+	for _, call := range env.rt.calls {
 		if strings.Contains(call.Name, "sticky-1") {
 			dispatched = true
 		}
@@ -651,12 +647,12 @@ func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 	// Find order statuses.
 	orderStatuses := map[string]string{}
 	for _, o := range snap.Orders {
-		orderStatuses[o.ID] = o.Status
+		orderStatuses[o.ID] = string(o.Status)
 	}
-	if orderStatuses["snap-1"] != OrderStatusActive {
+	if orderStatuses["snap-1"] != string(OrderStatusActive) {
 		t.Fatalf("snap-1 status = %q, want active", orderStatuses["snap-1"])
 	}
-	if orderStatuses["snap-2"] != OrderStatusFailing {
+	if orderStatuses["snap-2"] != string(OrderStatusFailing) {
 		t.Fatalf("snap-2 status = %q, want failing", orderStatuses["snap-2"])
 	}
 

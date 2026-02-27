@@ -2,19 +2,19 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 type State string
@@ -26,76 +26,35 @@ const (
 	StateIdle     State = "idle"
 )
 
-// Stage status constants.
+// Type aliases — orderx is canonical.
+type Stage = orderx.Stage
+type Order = orderx.Order
+type OrdersFile = orderx.OrdersFile
+
+// Re-export orderx status constants for in-package use.
 const (
-	StageStatusPending   = "pending"
-	StageStatusActive    = "active"
-	StageStatusCompleted = "completed"
-	StageStatusFailed    = "failed"
-	StageStatusCancelled = "cancelled"
+	StageStatusPending   = orderx.StageStatusPending
+	StageStatusActive    = orderx.StageStatusActive
+	StageStatusMerging   = orderx.StageStatusMerging
+	StageStatusCompleted = orderx.StageStatusCompleted
+	StageStatusFailed    = orderx.StageStatusFailed
+	StageStatusCancelled = orderx.StageStatusCancelled
 )
 
-// Order status constants.
 const (
-	OrderStatusActive    = "active"
-	OrderStatusCompleted = "completed"
-	OrderStatusFailed    = "failed"
-	OrderStatusFailing   = "failing"
+	OrderStatusActive    = orderx.OrderStatusActive
+	OrderStatusCompleted = orderx.OrderStatusCompleted
+	OrderStatusFailed    = orderx.OrderStatusFailed
+	OrderStatusFailing   = orderx.OrderStatusFailing
 )
 
-// Stage is a unit of work within an order.
-type Stage struct {
-	TaskKey  string                     `json:"task_key,omitempty"`
-	Prompt   string                     `json:"prompt,omitempty"`
-	Skill    string                     `json:"skill,omitempty"`
-	Provider string                     `json:"provider"`
-	Model    string                     `json:"model"`
-	Runtime  string                     `json:"runtime,omitempty"`
-	Status   string                     `json:"status"`
-	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
-}
+type StageResultStatus string
 
-// Order is a pipeline of stages.
-type Order struct {
-	ID        string  `json:"id"`
-	Title     string  `json:"title,omitempty"`
-	Plan      []string `json:"plan,omitempty"`
-	Rationale string  `json:"rationale,omitempty"`
-	Stages    []Stage `json:"stages"`
-	Status    string  `json:"status"`
-	OnFailure []Stage `json:"on_failure,omitempty"`
-}
-
-// OrdersFile is the top-level orders.json structure.
-type OrdersFile struct {
-	GeneratedAt  time.Time `json:"generated_at"`
-	Orders       []Order   `json:"orders"`
-	ActionNeeded []string  `json:"action_needed,omitempty"`
-}
-
-// ValidateOrderStatus returns an error if the order status is not valid.
-func ValidateOrderStatus(status string) error {
-	switch status {
-	case OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing:
-		return nil
-	case "":
-		return fmt.Errorf("order status is required")
-	default:
-		return fmt.Errorf("unknown order status %q", status)
-	}
-}
-
-// ValidateStageStatus returns an error if the stage status is not valid.
-func ValidateStageStatus(status string) error {
-	switch status {
-	case StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled:
-		return nil
-	case "":
-		return fmt.Errorf("stage status is required")
-	default:
-		return fmt.Errorf("unknown stage status %q", status)
-	}
-}
+const (
+	StageResultCompleted StageResultStatus = "completed"
+	StageResultFailed    StageResultStatus = "failed"
+	StageResultCancelled StageResultStatus = "cancelled"
+)
 
 type ControlCommand struct {
 	ID       string    `json:"id"`
@@ -126,26 +85,46 @@ type QualityVerdict struct {
 	Feedback string `json:"feedback,omitempty"`
 }
 
-type activeCook struct {
-	orderID     string
-	stageIndex  int
-	stage       Stage
-	isOnFailure bool
-	orderStatus string
-	plan        []string
-	session     dispatcher.Session
+type StageResult struct {
+	OrderID      string
+	StageIndex   int
+	Attempt      int
+	IsOnFailure  bool
+	Status       StageResultStatus
+	SessionID    string
+	Generation   uint64
+	IsSchedule   bool
+	IsBootstrap  bool
+	WorktreeName string
+	WorktreePath string
+	Error        error
+	CompletedAt  time.Time
+}
+
+// cookIdentity holds the fields shared across all cook handle types.
+type cookIdentity struct {
+	orderID    string
+	stageIndex int
+	stage      Stage
+	plan       []string
+}
+
+type cookHandle struct {
+	cookIdentity
+	isOnFailure  bool
+	orderStatus  orderx.OrderStatus
+	session      loopruntime.SessionHandle
 	worktreeName string
 	worktreePath string
 	attempt      int
+	generation   uint64
+	startedAt    time.Time
 	displayName  string // stable kitchen name, preserved across retries
 }
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.
 type pendingReviewCook struct {
-	orderID      string
-	stageIndex   int
-	stage        Stage
-	plan         []string
+	cookIdentity
 	worktreeName string
 	worktreePath string
 	sessionID    string
@@ -155,18 +134,11 @@ type pendingReviewCook struct {
 // pendingRetryCook is a stage whose retry dispatch failed, waiting for
 // runtime repair before retrying.
 type pendingRetryCook struct {
-	orderID     string
-	stageIndex  int
-	stage       Stage
+	cookIdentity
 	isOnFailure bool
-	orderStatus string
-	plan        []string
+	orderStatus orderx.OrderStatus
 	attempt     int    // the next attempt to use (already incremented)
 	displayName string // stable kitchen name from original spawn
-}
-
-type Dispatcher interface {
-	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
 }
 
 type WorktreeManager interface {
@@ -181,7 +153,7 @@ type AdapterRunner interface {
 }
 
 type MiseBuilder interface {
-	Build(ctx context.Context) (mise.Brief, []string, error)
+	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, error)
 }
 
 type Monitor interface {
@@ -189,12 +161,12 @@ type Monitor interface {
 }
 
 type Dependencies struct {
-	Dispatcher Dispatcher
-	Worktree   WorktreeManager
-	Adapter    AdapterRunner
-	Mise       MiseBuilder
-	Monitor    Monitor
-	Registry   taskreg.Registry
+	Runtimes       map[string]loopruntime.Runtime
+	Worktree       WorktreeManager
+	Adapter        AdapterRunner
+	Mise           MiseBuilder
+	Monitor        Monitor
+	Registry       taskreg.Registry
 	Logger         *slog.Logger
 	Now            func() time.Time
 	OrdersFile     string
@@ -211,22 +183,35 @@ type Loop struct {
 	deps        Dependencies
 	logger      *slog.Logger
 
-	state            State
-	registryStale    atomic.Bool
+	// Components — field-grouping sub-structs.
+	cooks         cookTracker
+	cmds          cmdProcessor
+	completionBuf completionBuffer
+
+	state             State
+	registryStale     atomic.Bool
 	registryFailCount int
 
-	activeByTarget  map[string]*activeCook
-	activeByID      map[string]*activeCook
-	adoptedTargets  map[string]string
-	adoptedSessions []string
-	failedTargets   map[string]string
-	pendingReview   map[string]*pendingReviewCook
-	pendingRetry    map[string]*pendingRetryCook
-	processedIDs    map[string]struct{}
+	watcherWG          sync.WaitGroup
+	watcherCount       atomic.Int64
+	dispatchGeneration atomic.Uint64
 
 	bootstrapAttempts  int
 	bootstrapExhausted bool
-	bootstrapInFlight  *activeCook
+	bootstrapInFlight  *cookHandle
+
+	orders       OrdersFile
+	ordersLoaded bool
+
+	activeSummary  mise.ActiveSummary
+	recentHistory  []mise.HistoryItem
+	mergeQueue     *MergeQueue
+	publishedState atomic.Pointer[LoopState]
 
 	lastStatus statusfile.Status
+
+	// Test hooks — nil in production. These allow tests to simulate crashes
+	// at specific points in the state-persistence pipeline.
+	TestFlushBarrier      func() // called between file writes in flushState()
+	TestControlAckBarrier func() // called between command processing and ack write in processControlCommands()
 }

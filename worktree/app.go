@@ -202,7 +202,7 @@ func (a *App) resolveBranchName(name string) string {
 		return prefixed
 	}
 
-	wtPath := WorktreePath(a.Root, name)
+	wtPath := a.resolveWorktreePath(name)
 	if IsRealWorktree(wtPath) {
 		if branch, err := a.gitOutput("-C", wtPath, "branch", "--show-current"); err == nil {
 			branch = strings.TrimSpace(branch)
@@ -215,35 +215,115 @@ func (a *App) resolveBranchName(name string) string {
 	return name
 }
 
-// managedWorktreeNames returns branch/worktree names managed under .worktrees/
-// as reported by git worktree metadata. Names are normalized with "/" separators
-// so slash-named branches (for example "feature/ui-polish") round-trip safely.
-func (a *App) managedWorktreeNames() ([]string, error) {
+// WorktreeEntry is a non-main worktree discovered from git metadata.
+type WorktreeEntry struct {
+	Name   string // display name (last path component or relative path under .worktrees/)
+	Path   string // absolute on-disk path
+	Branch string // branch name (empty for detached HEAD)
+	Source string // "noodle", "claude", "cursor", or "other"
+}
+
+// allWorktreeEntries returns all non-main worktrees from git metadata,
+// including those under .worktrees/, .claude/worktrees/, and ~/.cursor/worktrees/.
+func (a *App) allWorktreeEntries() ([]WorktreeEntry, error) {
 	out, err := a.gitOutput("worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, err
 	}
 
-	worktreesRoot := canonicalPath(filepath.Join(a.Root, ".worktrees"))
-	seen := make(map[string]struct{})
+	mainRoot := canonicalPath(a.Root)
+	noodleRoot := canonicalPath(filepath.Join(a.Root, ".worktrees"))
+	claudeRoot := canonicalPath(filepath.Join(a.Root, ".claude", "worktrees"))
+
+	home, _ := os.UserHomeDir()
+	repoName := filepath.Base(a.Root)
+	cursorRoot := ""
+	if home != "" {
+		cursorRoot = canonicalPath(filepath.Join(home, ".cursor", "worktrees", repoName))
+	}
+
+	var entries []WorktreeEntry
 	for _, line := range strings.Split(out, "\n") {
 		if !strings.HasPrefix(line, "worktree ") {
 			continue
 		}
 		wtPath := canonicalPath(strings.TrimSpace(strings.TrimPrefix(line, "worktree ")))
-		rel, relErr := filepath.Rel(worktreesRoot, wtPath)
-		if relErr != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		if wtPath == mainRoot {
 			continue
 		}
-		seen[filepath.ToSlash(rel)] = struct{}{}
+
+		entry := WorktreeEntry{Path: wtPath}
+
+		// Classify by location.
+		if rel, err := filepath.Rel(noodleRoot, wtPath); err == nil && !strings.HasPrefix(rel, "..") {
+			entry.Name = filepath.ToSlash(rel)
+			entry.Source = "noodle"
+		} else if rel, err := filepath.Rel(claudeRoot, wtPath); err == nil && !strings.HasPrefix(rel, "..") {
+			entry.Name = filepath.ToSlash(rel)
+			entry.Source = "claude"
+		} else if cursorRoot != "" {
+			if rel, err := filepath.Rel(cursorRoot, wtPath); err == nil && !strings.HasPrefix(rel, "..") {
+				entry.Name = filepath.ToSlash(rel)
+				entry.Source = "cursor"
+			} else {
+				entry.Name = filepath.Base(wtPath)
+				entry.Source = "other"
+			}
+		} else {
+			entry.Name = filepath.Base(wtPath)
+			entry.Source = "other"
+		}
+
+		entries = append(entries, entry)
 	}
 
-	names := make([]string, 0, len(seen))
-	for name := range seen {
-		names = append(names, name)
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Source != entries[j].Source {
+			return entries[i].Source < entries[j].Source
+		}
+		return entries[i].Name < entries[j].Name
+	})
+	return entries, nil
+}
+
+// managedWorktreeNames returns branch/worktree names managed under .worktrees/
+// as reported by git worktree metadata. Names are normalized with "/" separators
+// so slash-named branches (for example "feature/ui-polish") round-trip safely.
+func (a *App) managedWorktreeNames() ([]string, error) {
+	entries, err := a.allWorktreeEntries()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, e := range entries {
+		if e.Source == "noodle" {
+			names = append(names, e.Name)
+		}
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+// resolveWorktreePath returns the on-disk path for a worktree by name.
+// Checks .worktrees/<name> first, then searches all git worktree entries.
+func (a *App) resolveWorktreePath(name string) string {
+	// Fast path: standard noodle worktree.
+	standard := WorktreePath(a.Root, name)
+	if _, err := os.Stat(standard); err == nil {
+		return standard
+	}
+
+	// Search all worktrees for a name match.
+	entries, err := a.allWorktreeEntries()
+	if err != nil {
+		return standard
+	}
+	for _, e := range entries {
+		if e.Name == name {
+			return e.Path
+		}
+	}
+	return standard
 }
 
 func canonicalPath(path string) string {

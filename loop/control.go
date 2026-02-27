@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/filex"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -19,34 +20,54 @@ func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath stri
 		filepath.Join(l.runtimeDir, "control.lock")
 }
 
+func (l *Loop) lastAppliedSeqPath() string {
+	return filepath.Join(l.runtimeDir, "last-applied-seq")
+}
+
 func (l *Loop) hydrateProcessedCommands() error {
 	_, ackPath, _ := l.controlPaths()
 	file, err := os.Open(ackPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("open control ack file: %w", err)
 		}
-		return fmt.Errorf("open control ack file: %w", err)
+	} else {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			var ack ControlAck
+			if err := json.Unmarshal([]byte(line), &ack); err != nil {
+				continue
+			}
+			if strings.TrimSpace(ack.ID) != "" {
+				l.cmds.processedIDs[ack.ID] = struct{}{}
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			file.Close()
+			return fmt.Errorf("scan control ack file: %w", err)
+		}
+		file.Close()
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	// Load last-applied sequence number.
+	seqData, err := os.ReadFile(l.lastAppliedSeqPath())
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("read last-applied-seq: %w", err)
 		}
-		var ack ControlAck
-		if err := json.Unmarshal([]byte(line), &ack); err != nil {
-			continue
-		}
-		if strings.TrimSpace(ack.ID) != "" {
-			l.processedIDs[ack.ID] = struct{}{}
-		}
+		return nil
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("scan control ack file: %w", err)
+	seq, err := strconv.ParseUint(strings.TrimSpace(string(seqData)), 10, 64)
+	if err != nil {
+		// Corrupt file — start from zero.
+		return nil
 	}
+	l.cmds.lastAppliedSeq = seq
+	l.cmds.cmdSeqCounter = seq
 	return nil
 }
 
@@ -96,13 +117,29 @@ func (l *Loop) processControlCommands() error {
 		if cmd.ID == "" {
 			cmd.ID = fmt.Sprintf("cmd-%d", l.deps.Now().UnixNano())
 		}
-		if _, seen := l.processedIDs[cmd.ID]; seen {
+
+		// Assign a monotonic sequence number.
+		l.cmds.cmdSeqCounter++
+		seq := l.cmds.cmdSeqCounter
+
+		// Skip commands already applied (ID-based dedup or sequence-based).
+		if _, seen := l.cmds.processedIDs[cmd.ID]; seen {
 			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
 			continue
 		}
+		if seq <= l.cmds.lastAppliedSeq {
+			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
+			l.cmds.processedIDs[cmd.ID] = struct{}{}
+			continue
+		}
+
 		ack := l.applyControlCommand(cmd)
 		acks = append(acks, ack)
-		l.processedIDs[cmd.ID] = struct{}{}
+		l.cmds.processedIDs[cmd.ID] = struct{}{}
+		l.cmds.lastAppliedSeq = seq
+	}
+	if l.TestControlAckBarrier != nil {
+		l.TestControlAckBarrier()
 	}
 	if len(acks) > 0 {
 		if err := appendAcks(ackPath, acks); err != nil {
@@ -230,7 +267,7 @@ func (l *Loop) controlMerge(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("merge: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -239,7 +276,7 @@ func (l *Loop) controlMerge(orderID string) error {
 	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
 	if hasVerdict && !verdict.Accept {
 		// Quality gate failed — call failStage instead of merging.
-		orders, err := readOrders(l.deps.OrdersFile)
+		orders, err := l.currentOrders()
 		if err != nil {
 			return err
 		}
@@ -248,7 +285,7 @@ func (l *Loop) controlMerge(orderID string) error {
 		if err != nil {
 			return err
 		}
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 		if strings.TrimSpace(pending.worktreeName) != "" {
@@ -259,24 +296,21 @@ func (l *Loop) controlMerge(orderID string) error {
 				return err
 			}
 		}
-		delete(l.pendingReview, orderID)
+		delete(l.cooks.pendingReview, orderID)
 		return l.writePendingReview()
 	}
 
 	// Merge the worktree.
-	cook := &activeCook{
-		orderID:      pending.orderID,
-		stageIndex:   pending.stageIndex,
-		stage:        pending.stage,
+	cook := &cookHandle{
+		cookIdentity: pending.cookIdentity,
 		isOnFailure:  false,
 		orderStatus:  OrderStatusActive,
-		plan:         pending.plan,
 		worktreeName: pending.worktreeName,
 		worktreePath: pending.worktreePath,
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
 	}
 	// Determine actual order status for advanceAndPersist.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return fmt.Errorf("merge: read orders: %w", err)
 	}
@@ -287,13 +321,24 @@ func (l *Loop) controlMerge(orderID string) error {
 			break
 		}
 	}
-	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
+	mergeMode, mergeBranch := l.resolveMergeMode(cook)
+	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
 		return err
 	}
-	if err := l.advanceAndPersist(context.Background(), cook); err != nil {
-		return err
+	if l.mergeQueue == nil {
+		if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
+			return err
+		}
+		if err := l.advanceAndPersist(context.Background(), cook); err != nil {
+			return err
+		}
+	} else {
+		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
+		if err := l.drainMergeResults(context.Background()); err != nil {
+			return err
+		}
 	}
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -302,7 +347,7 @@ func (l *Loop) controlReject(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("reject: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -310,7 +355,7 @@ func (l *Loop) controlReject(orderID string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 	// User rejection skips OnFailure — cancel and remove the order directly.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -319,14 +364,14 @@ func (l *Loop) controlReject(orderID string) error {
 		// Order may already be gone — not fatal.
 		l.logger.Warn("controlReject: cancelOrder", "error", err)
 	} else {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 	}
 	if err := l.markFailed(orderID, "rejected by user"); err != nil {
 		return err
 	}
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -335,7 +380,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if orderID == "" {
 		return fmt.Errorf("request-changes: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -345,7 +390,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	}
 
 	// Call failStage — if OnFailure stages exist, they run; if not, terminal failure.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -358,7 +403,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
 	if terminal {
@@ -372,7 +417,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -398,13 +443,13 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		taskKey = "execute"
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
 	newOrder := Order{
-		ID:    orderID,
-		Title: titleFromPrompt(prompt, 8),
+		ID:     orderID,
+		Title:  titleFromPrompt(prompt, 8),
 		Status: OrderStatusActive,
 		Stages: []Stage{{
 			TaskKey:  taskKey,
@@ -416,7 +461,7 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		}},
 	}
 	orders.Orders = append(orders.Orders, newOrder)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlEditItem(cmd ControlCommand) error {
@@ -424,10 +469,10 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if orderID == "" {
 		return fmt.Errorf("edit-item requires order_id")
 	}
-	if _, active := l.activeByTarget[orderID]; active {
+	if _, active := l.cooks.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -470,11 +515,11 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if !found {
 		return fmt.Errorf("order %q not found", orderID)
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlStopAll() {
-	for _, cook := range l.activeByID {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
 }
@@ -484,7 +529,7 @@ func (l *Loop) controlSkip(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("skip requires order_id")
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -492,7 +537,7 @@ func (l *Loop) controlSkip(orderID string) error {
 	if err != nil {
 		return err
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlRequeue(orderID string) error {
@@ -500,7 +545,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("requeue requires order_id")
 	}
-	if _, ok := l.failedTargets[orderID]; !ok {
+	if _, ok := l.cooks.failedTargets[orderID]; !ok {
 		return fmt.Errorf("order %q not in failed state", orderID)
 	}
 
@@ -508,7 +553,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 	// in both Stages and OnFailure to "pending", set Order.Status to "active".
 	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
 	// on I/O errors.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return fmt.Errorf("requeue: read orders: %w", err)
 	}
@@ -524,11 +569,11 @@ func (l *Loop) controlRequeue(orderID string) error {
 		break
 	}
 	if updated {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 	}
-	delete(l.failedTargets, orderID)
+	delete(l.cooks.failedTargets, orderID)
 	return l.writeFailedTargets()
 }
 
@@ -555,7 +600,7 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		}
 		newIndex = n
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -578,7 +623,7 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		newIndex = len(orders.Orders)
 	}
 	orders.Orders = append(orders.Orders[:newIndex], append([]Order{order}, orders.Orders[newIndex:]...)...)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlStop(name string) error {
@@ -586,20 +631,15 @@ func (l *Loop) controlStop(name string) error {
 	if name == "" {
 		return fmt.Errorf("stop requires name")
 	}
-	for id, cook := range l.activeByID {
+	for orderID, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			_ = cook.session.Kill()
-			targetID := ""
-			for tid, c := range l.activeByTarget {
-				if c == cook {
-					targetID = tid
-					break
-				}
-			}
-			delete(l.activeByID, id)
-			if targetID != "" {
-				delete(l.activeByTarget, targetID)
-			}
+			l.trackCookCompleted(cook, StageResult{
+				SessionID:   cook.session.ID(),
+				Status:      StageResultCancelled,
+				CompletedAt: l.deps.Now(),
+			})
+			delete(l.cooks.activeCooksByOrder, orderID)
 			if cook.worktreeName != "" {
 				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 			}
@@ -607,6 +647,14 @@ func (l *Loop) controlStop(name string) error {
 		}
 	}
 	return fmt.Errorf("session not found")
+}
+
+func (l *Loop) writeLastAppliedSeq() error {
+	if l.cmds.lastAppliedSeq == 0 {
+		return nil
+	}
+	data := []byte(strconv.FormatUint(l.cmds.lastAppliedSeq, 10) + "\n")
+	return filex.WriteFileAtomic(l.lastAppliedSeqPath(), data)
 }
 
 func (l *Loop) controlSetMaxCooks(value string) error {

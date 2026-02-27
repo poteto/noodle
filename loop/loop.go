@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -22,10 +23,10 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
-	if deps.Dispatcher == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
+	if deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
 		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger)
-		if deps.Dispatcher == nil {
-			deps.Dispatcher = defaults.Dispatcher
+		if deps.Runtimes == nil {
+			deps.Runtimes = defaults.Runtimes
 		}
 		if deps.Worktree == nil {
 			deps.Worktree = defaults.Worktree
@@ -68,24 +69,45 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
 	}
 
-	return &Loop{
-		projectDir:            projectDir,
-		runtimeDir:            runtimeDir,
-		config:                cfg,
-		registry:              registry,
-		registryErr:           registryErr,
-		deps:                  deps,
-		logger:                deps.Logger,
-		state:                 StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
-		activeByTarget:        map[string]*activeCook{},
-		activeByID:            map[string]*activeCook{},
-		adoptedTargets:        map[string]string{},
-		adoptedSessions:       []string{},
-		failedTargets:         map[string]string{},
-		pendingReview:         map[string]*pendingReviewCook{},
-		pendingRetry:          map[string]*pendingRetryCook{},
-		processedIDs:          map[string]struct{}{},
+	loop := &Loop{
+		projectDir:  projectDir,
+		runtimeDir:  runtimeDir,
+		config:      cfg,
+		registry:    registry,
+		registryErr: registryErr,
+		deps:        deps,
+		logger:      deps.Logger,
+		state:       StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			adoptedSessions:    []string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
+		completionBuf: completionBuffer{
+			completions:        make(chan StageResult, 1024),
+			completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
+		},
+		activeSummary: mise.ActiveSummary{
+			ByTaskKey: map[string]int{},
+			ByStatus:  map[string]int{},
+			ByRuntime: map[string]int{},
+		},
+		recentHistory: make([]mise.HistoryItem, 0, 20),
 	}
+	loop.mergeQueue = NewMergeQueue(context.Background(), func(ctx context.Context, req MergeRequest) error {
+		if req.Cook == nil {
+			return nil
+		}
+		return loop.mergeCookWorktree(ctx, req.Cook)
+	})
+	loop.publishState()
+	return loop
 }
 
 func (l *Loop) setState(next State) {
@@ -139,13 +161,16 @@ func (l *Loop) rebuildRegistry() {
 
 // Shutdown kills all active agent sessions. Called during process exit.
 func (l *Loop) Shutdown() {
-	for _, cook := range l.activeByID {
+	if l.mergeQueue != nil {
+		l.mergeQueue.Close()
+	}
+	for _, cook := range l.cooks.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
 	// Kill adopted sessions from previous runs that are still alive.
-	for _, sessionID := range l.adoptedSessions {
-		name := tmuxSessionName(sessionID)
-		_ = killTmuxSession(name)
+	for _, sessionID := range l.cooks.adoptedSessions {
+		name := loopruntime.TmuxSessionName(sessionID)
+		_ = loopruntime.KillTmuxSession(name)
 	}
 }
 
@@ -157,6 +182,9 @@ func (l *Loop) Run(ctx context.Context) error {
 		return fmt.Errorf("create runtime directory: %w", err)
 	}
 	if err := l.loadFailedTargets(); err != nil {
+		return err
+	}
+	if err := l.loadOrdersState(); err != nil {
 		return err
 	}
 	if err := l.reconcile(ctx); err != nil {
@@ -201,12 +229,23 @@ func (l *Loop) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			l.shutdownAndDrain()
 			return nil
 		case <-ticker.C:
 			if err := l.Cycle(ctx); err != nil {
 				return err
 			}
-			if l.state == StateDraining && len(l.activeByID) == 0 {
+			mergeSettled := true
+			if l.mergeQueue != nil {
+				mergeSettled = l.mergeQueue.Pending() == 0 && l.mergeQueue.InFlight() == 0
+			}
+			if l.state == StateDraining && l.watcherCount.Load() == 0 && mergeSettled {
+				if err := l.drainCompletions(context.Background()); err != nil {
+					return err
+				}
+				if err := l.drainMergeResults(context.Background()); err != nil {
+					return err
+				}
 				return nil
 			}
 		case ev := <-watcher.Events:
@@ -235,6 +274,9 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if l.registryStale.Load() {
 		l.rebuildRegistry()
 		l.registryStale.Store(false)
+	}
+	if err := l.loadOrdersState(); err != nil {
+		return err
 	}
 
 	// Snapshot capacity before control commands can mutate it.
@@ -268,6 +310,11 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
 		return err
 	}
+	// Flush all in-memory state to disk at cycle end.
+	if err := l.flushState(); err != nil {
+		return err
+	}
+	l.publishState()
 	return l.stampStatus()
 }
 
@@ -280,24 +327,68 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 		fmt.Fprintf(os.Stderr, "skill registry error (attempt %d/3, skipping cycle): %v\n", l.registryFailCount, l.registryErr)
 		return false, nil
 	}
+	if err := l.drainCompletions(ctx); err != nil {
+		return false, err
+	}
+	if err := l.drainMergeResults(ctx); err != nil {
+		return false, err
+	}
 	if err := l.processControlCommands(); err != nil {
-		return false, err
-	}
-	if err := l.collectCompleted(ctx); err != nil {
-		return false, err
-	}
-	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
 		return false, err
 	}
 	if err := l.processPendingRetries(ctx); err != nil {
 		return false, err
 	}
+	if err := l.drainCompletions(ctx); err != nil {
+		return false, err
+	}
+	if err := l.drainMergeResults(ctx); err != nil {
+		return false, err
+	}
 	return true, nil
+}
+
+func (l *Loop) shutdownAndDrain() {
+	l.Shutdown()
+
+	timeout, err := time.ParseDuration(l.config.Concurrency.ShutdownTimeout)
+	if err != nil || timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+
+	done := make(chan struct{})
+	go func() {
+		l.watcherWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All watchers quiesced normally.
+	case <-time.After(timeout):
+		l.logger.Warn("shutdown timeout exceeded, killing leaked sessions",
+			"timeout", timeout,
+			"leaked_watchers", l.watcherCount.Load(),
+		)
+		for orderID, cook := range l.cooks.activeCooksByOrder {
+			_ = cook.session.Kill()
+			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
+		}
+	}
+
+	_ = l.drainCompletions(context.Background())
+}
+
+func maxCompletionOverflow(cfg config.Config) int {
+	if cfg.Concurrency.MaxCompletionOverflow <= 0 {
+		return 1024
+	}
+	return cfg.Concurrency.MaxCompletionOverflow
 }
 
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {
 	l.refreshAdoptedTargets()
-	brief, warnings, err := l.deps.Mise.Build(ctx)
+	brief, warnings, err := l.deps.Mise.Build(ctx, l.snapshotActiveSummary(), l.snapshotRecentHistory())
 	if err != nil {
 		return mise.Brief{}, warnings, false, err
 	}
@@ -317,9 +408,12 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
+		if err := l.loadOrdersState(); err != nil {
+			return OrdersFile{}, false, err
+		}
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return OrdersFile{}, false, err
 	}
@@ -332,7 +426,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 		if normErr != nil {
 			l.auditOrders()
-			orders, err = readOrders(l.deps.OrdersFile)
+			orders, err = l.currentOrders()
 			if err != nil {
 				return OrdersFile{}, false, err
 			}
@@ -344,7 +438,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 	if changed {
 		orders = normalizedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return OrdersFile{}, false, err
 		}
 		l.logger.Info("orders normalized")
@@ -361,7 +455,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 
 	// Simplified filtering (#60): check for non-schedule orders.
-	if len(l.activeByID) == 0 && len(l.adoptedTargets) == 0 {
+	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 {
 		if !hasNonScheduleOrders(orders) {
 			if len(brief.Plans) == 0 {
 				l.setState(StateIdle)
@@ -369,7 +463,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 			}
 			// Bootstrap a schedule order.
 			orders = bootstrapScheduleOrder(l.config)
-			if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			if err := l.writeOrdersState(orders); err != nil {
 				return OrdersFile{}, false, err
 			}
 			l.logger.Info("orders empty, bootstrapping schedule")
@@ -378,34 +472,51 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 
 	if updatedOrders, changed := ApplyOrderRoutingDefaults(orders, l.registry, l.config); changed {
 		orders = updatedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return OrdersFile{}, false, err
 		}
 	}
+	l.setOrdersState(orders)
 	return orders, true, nil
 }
 
 func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {
-	busyTargets := make(map[string]struct{}, len(l.activeByTarget))
-	for targetID := range l.activeByTarget {
-		busyTargets[targetID] = struct{}{}
+	if l.mergeQueue != nil {
+		threshold := l.config.Concurrency.MergeBackpressureThreshold
+		if threshold > 0 && l.mergeQueue.Pending()+l.mergeQueue.InFlight() > threshold {
+			return nil
+		}
 	}
 
-	failedTargets := make(map[string]struct{}, len(l.failedTargets))
-	for targetID := range l.failedTargets {
+	orderBusyTargets := busyTargets(orders)
+	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.pendingRetry)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
+	for targetID, busy := range orderBusyTargets {
+		if busy {
+			busyTargets[targetID] = struct{}{}
+		}
+	}
+
+	failedTargets := make(map[string]struct{}, len(l.cooks.failedTargets))
+	for targetID := range l.cooks.failedTargets {
 		failedTargets[targetID] = struct{}{}
 	}
 
-	adoptedTargets := make(map[string]struct{}, len(l.adoptedTargets))
-	for targetID := range l.adoptedTargets {
+	adoptedTargets := make(map[string]struct{}, len(l.cooks.adoptedTargets))
+	for targetID := range l.cooks.adoptedTargets {
 		adoptedTargets[targetID] = struct{}{}
 	}
 
-	for targetID := range l.pendingReview {
+	for targetID := range l.cooks.pendingReview {
 		busyTargets[targetID] = struct{}{}
 	}
 
-	for targetID := range l.pendingRetry {
+	for targetID := range l.cooks.pendingRetry {
+		busyTargets[targetID] = struct{}{}
+	}
+	for targetID := range l.cooks.activeCooksByOrder {
+		busyTargets[targetID] = struct{}{}
+	}
+	for targetID := range l.cooks.adoptedTargets {
 		busyTargets[targetID] = struct{}{}
 	}
 
@@ -416,7 +527,7 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 	if limit <= 0 {
 		limit = 1
 	}
-	current := len(l.activeByID) + len(l.adoptedTargets)
+	current := len(l.cooks.activeCooksByOrder) + len(l.cooks.adoptedTargets)
 	available := limit - current
 	if available <= 0 {
 		return nil

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/schemadoc"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 const scheduleOrderID = "schedule"
@@ -62,7 +62,11 @@ func scheduleOrder(cfg config.Config, prompt string) Order {
 
 func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resumePrompt string) error {
 	name := scheduleOrderID
-	stage := order.Stages[0]
+	stageIndex, stagePtr := activeStageForOrder(order)
+	if stageIndex < 0 || stagePtr == nil {
+		return fmt.Errorf("schedule order has no active or pending stage")
+	}
+	stage := *stagePtr
 
 	skillName := nonEmpty(stage.Skill, "schedule")
 	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
@@ -71,7 +75,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	}
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:                 name,
 		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
@@ -82,23 +86,31 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
-	if err != nil {
+	if err := l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusActive); err != nil {
 		return err
 	}
-	cook := &activeCook{
-		orderID: order.ID,
-		stage: Stage{
-			TaskKey: scheduleOrderID,
-			Skill:   skillName,
+	session, err := l.dispatchSession(ctx, req)
+	if err != nil {
+		_ = l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusPending)
+		return err
+	}
+	cook := &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID:    order.ID,
+			stageIndex: stageIndex,
+			stage:      stage,
+			plan:       order.Plan,
 		},
+		orderStatus:  order.Status,
 		session:      session,
 		worktreeName: "",
 		worktreePath: l.projectDir,
 		attempt:      attempt,
+		generation:   l.nextDispatchGeneration(),
 	}
-	l.activeByTarget[order.ID] = cook
-	l.activeByID[session.ID()] = cook
+	l.trackCookStarted(cook)
+	l.cooks.activeCooksByOrder[order.ID] = cook
+	l.startSessionWatcher(ctx, cook, false)
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }
@@ -129,7 +141,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	prompt := buildBootstrapPrompt(provider)
 
 	name := bootstrapSessionPrefix + scheduleOrderID
-	req := dispatcher.DispatchRequest{
+	req := loopruntime.DispatchRequest{
 		Name:                 name,
 		Prompt:               "Create a schedule skill for this project. Follow the system prompt instructions exactly.",
 		Provider:             provider,
@@ -139,7 +151,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		AllowPrimaryCheckout: true,
 		Title:                "bootstrapping schedule skill",
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		l.logger.Warn("bootstrap dispatch failed", "error", err, "attempt", l.bootstrapAttempts+1)
 		l.bootstrapAttempts++
@@ -148,16 +160,21 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		}
 		return nil
 	}
-	l.bootstrapInFlight = &activeCook{
-		orderID: order.ID,
-		stage: Stage{
-			TaskKey: scheduleOrderID,
-			Skill:   "bootstrap",
+	l.bootstrapInFlight = &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID: order.ID,
+			stage: Stage{
+				TaskKey: scheduleOrderID,
+				Skill:   "bootstrap",
+			},
 		},
 		session:      session,
 		worktreeName: name,
 		worktreePath: l.projectDir,
+		generation:   l.nextDispatchGeneration(),
 	}
+	l.trackCookStarted(l.bootstrapInFlight)
+	l.startSessionWatcher(ctx, l.bootstrapInFlight, true)
 	return nil
 }
 
@@ -209,7 +226,7 @@ func (l *Loop) rescheduleForChefPrompt(prompt string) error {
 			scheduleOrder(l.config, prompt),
 		},
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func ordersSchemaPrompt() string {

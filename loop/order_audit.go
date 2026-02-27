@@ -58,7 +58,7 @@ func diffRegistryKeys(old, new taskreg.Registry) RegistryDiff {
 // auditOrders checks each order's stages against the current registry.
 // Orders with no resolvable stages are dropped. Emits order_drop events.
 func (l *Loop) auditOrders() {
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func (l *Loop) auditOrders() {
 	}
 
 	orders.Orders = kept
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		fmt.Fprintf(os.Stderr, "order-audit: write orders: %v\n", err)
 		return
 	}

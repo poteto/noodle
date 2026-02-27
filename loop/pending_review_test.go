@@ -9,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func TestParkPendingReviewWritesFile(t *testing.T) {
@@ -23,7 +24,7 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -32,10 +33,9 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	cook := &activeCook{
-		orderID: "42",
-		stage:   Stage{TaskKey: "execute", Skill: "execute"},
-		session: &adoptedSession{id: "sess-42", status: "completed"},
+	cook := &cookHandle{
+		cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute", Skill: "execute"}},
+		session:      &adoptedSession{id: "sess-42", status: "completed"},
 		worktreeName: "42",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42"),
 	}
@@ -90,7 +90,7 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -102,10 +102,10 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	if err := l.reconcile(context.Background()); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
-	if len(l.pendingReview) != 1 {
-		t.Fatalf("pendingReview size = %d, want 1", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 1 {
+		t.Fatalf("pendingReview size = %d, want 1", len(l.cooks.pendingReview))
 	}
-	pending, ok := l.pendingReview["42"]
+	pending, ok := l.cooks.pendingReview["42"]
 	if !ok {
 		t.Fatal("expected item 42 in pending review")
 	}
@@ -132,7 +132,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = 2
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Dispatcher: &fakeDispatcher{},
+		Runtimes:   map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -141,7 +141,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{orderID: "42"}
+	l.cooks.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
 	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxCooks)
 	if len(plan) != 1 || plan[0].OrderID != "43" {

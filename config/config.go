@@ -73,7 +73,10 @@ type MonitorConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	MaxCooks int `toml:"max_cooks"`
+	MaxCooks                   int    `toml:"max_cooks"`
+	MaxCompletionOverflow      int    `toml:"max_completion_overflow"`
+	MergeBackpressureThreshold int    `toml:"merge_backpressure_threshold"`
+	ShutdownTimeout            string `toml:"shutdown_timeout"`
 }
 
 type ProviderConfig struct {
@@ -89,6 +92,7 @@ type AgentsConfig struct {
 // RuntimeConfig controls the default runtime for spawned cook sessions.
 type RuntimeConfig struct {
 	Default string        `toml:"default"` // runtime kind, defaults to tmux
+	Tmux    TmuxConfig    `toml:"tmux"`
 	Sprites SpritesConfig `toml:"sprites"`
 	Cursor  CursorConfig  `toml:"cursor"`
 
@@ -96,17 +100,38 @@ type RuntimeConfig struct {
 	cursorDefined  bool
 }
 
+// MaxConcurrentFor returns the per-runtime concurrency cap for a given runtime name.
+// Returns 0 when unlimited (no per-runtime cap; the global MaxCooks ceiling applies).
+func (c RuntimeConfig) MaxConcurrentFor(name string) int {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "tmux":
+		return c.Tmux.MaxConcurrent
+	case "sprites":
+		return c.Sprites.MaxConcurrent
+	case "cursor":
+		return c.Cursor.MaxConcurrent
+	default:
+		return 0
+	}
+}
+
+type TmuxConfig struct {
+	MaxConcurrent int `toml:"max_concurrent"`
+}
+
 type SpritesConfig struct {
-	TokenEnv    string `toml:"token_env"`
-	BaseURL     string `toml:"base_url"`
-	SpriteName  string `toml:"sprite_name"`
-	GitTokenEnv string `toml:"git_token_env"`
+	TokenEnv      string `toml:"token_env"`
+	BaseURL       string `toml:"base_url"`
+	SpriteName    string `toml:"sprite_name"`
+	GitTokenEnv   string `toml:"git_token_env"`
+	MaxConcurrent int    `toml:"max_concurrent"`
 }
 
 type CursorConfig struct {
-	APIKeyEnv  string `toml:"api_key_env"`
-	BaseURL    string `toml:"base_url"`
-	Repository string `toml:"repository"`
+	APIKeyEnv     string `toml:"api_key_env"`
+	BaseURL       string `toml:"base_url"`
+	Repository    string `toml:"repository"`
+	MaxConcurrent int    `toml:"max_concurrent"`
 }
 
 // PlansConfig controls plan lifecycle behavior.
@@ -200,11 +225,17 @@ func DefaultConfig() Config {
 			PollInterval:   "5s",
 		},
 		Concurrency: ConcurrencyConfig{
-			MaxCooks: 4,
+			MaxCooks:                   4,
+			MaxCompletionOverflow:      1024,
+			MergeBackpressureThreshold: 128,
+			ShutdownTimeout:            "30s",
 		},
 		Agents: AgentsConfig{},
 		Runtime: RuntimeConfig{
 			Default: "tmux",
+			Tmux:    TmuxConfig{MaxConcurrent: 4},
+			Sprites: SpritesConfig{MaxConcurrent: 50},
+			Cursor:  CursorConfig{MaxConcurrent: 10},
 		},
 		Plans: PlansConfig{
 			OnDone: "keep",
@@ -304,11 +335,29 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	if !metadata.IsDefined("concurrency", "max_cooks") {
 		config.Concurrency.MaxCooks = 4
 	}
+	if !metadata.IsDefined("concurrency", "max_completion_overflow") {
+		config.Concurrency.MaxCompletionOverflow = 1024
+	}
+	if !metadata.IsDefined("concurrency", "merge_backpressure_threshold") {
+		config.Concurrency.MergeBackpressureThreshold = 128
+	}
+	if !metadata.IsDefined("concurrency", "shutdown_timeout") {
+		config.Concurrency.ShutdownTimeout = "30s"
+	}
 
 	config.Runtime.spritesDefined = metadata.IsDefined("runtime", "sprites")
 	config.Runtime.cursorDefined = metadata.IsDefined("runtime", "cursor")
 	if !metadata.IsDefined("runtime", "default") {
 		config.Runtime.Default = "tmux"
+	}
+	if !metadata.IsDefined("runtime", "tmux", "max_concurrent") {
+		config.Runtime.Tmux.MaxConcurrent = 4
+	}
+	if !metadata.IsDefined("runtime", "sprites", "max_concurrent") {
+		config.Runtime.Sprites.MaxConcurrent = 50
+	}
+	if !metadata.IsDefined("runtime", "cursor", "max_concurrent") {
+		config.Runtime.Cursor.MaxConcurrent = 10
 	}
 
 	if !metadata.IsDefined("plans", "on_done") {
@@ -391,6 +440,25 @@ func validateParsedValues(config Config) error {
 	}
 	if config.Concurrency.MaxCooks <= 0 {
 		return fmt.Errorf("concurrency.max_cooks: must be greater than 0")
+	}
+	if config.Concurrency.MaxCompletionOverflow <= 0 {
+		return fmt.Errorf("concurrency.max_completion_overflow: must be greater than 0")
+	}
+	if config.Concurrency.MergeBackpressureThreshold <= 0 {
+		return fmt.Errorf("concurrency.merge_backpressure_threshold: must be greater than 0")
+	}
+	if err := validatePositiveDuration("concurrency.shutdown_timeout", config.Concurrency.ShutdownTimeout); err != nil {
+		return err
+	}
+
+	if config.Runtime.Tmux.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.tmux.max_concurrent: must be greater than or equal to 0")
+	}
+	if config.Runtime.Sprites.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.sprites.max_concurrent: must be greater than or equal to 0")
+	}
+	if config.Runtime.Cursor.MaxConcurrent < 0 {
+		return fmt.Errorf("runtime.cursor.max_concurrent: must be greater than or equal to 0")
 	}
 
 	switch config.Plans.OnDone {

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/poteto/noodle/internal/orderx"
 )
 
 func TestStageJSONRoundTrip(t *testing.T) {
@@ -189,7 +191,7 @@ func TestOrdersFileMixedStageStatuses(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 
-	statuses := []string{
+	statuses := []orderx.StageStatus{
 		StageStatusCompleted, StageStatusActive, StageStatusPending,
 		StageStatusFailed, StageStatusCancelled,
 	}
@@ -326,8 +328,8 @@ func TestOrderOnFailureRoundTrip(t *testing.T) {
 func TestStageStatusConstants(t *testing.T) {
 	tests := []struct {
 		name string
-		got  string
-		want string
+		got  orderx.StageStatus
+		want orderx.StageStatus
 	}{
 		{"pending", StageStatusPending, "pending"},
 		{"active", StageStatusActive, "active"},
@@ -345,8 +347,8 @@ func TestStageStatusConstants(t *testing.T) {
 func TestOrderStatusConstants(t *testing.T) {
 	tests := []struct {
 		name string
-		got  string
-		want string
+		got  orderx.OrderStatus
+		want orderx.OrderStatus
 	}{
 		{"active", OrderStatusActive, "active"},
 		{"completed", OrderStatusCompleted, "completed"},
@@ -361,35 +363,35 @@ func TestOrderStatusConstants(t *testing.T) {
 }
 
 func TestValidateOrderStatus(t *testing.T) {
-	valid := []string{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
+	valid := []orderx.OrderStatus{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
 	for _, s := range valid {
-		if err := ValidateOrderStatus(s); err != nil {
+		if err := orderx.ValidateOrderStatus(s); err != nil {
 			t.Errorf("ValidateOrderStatus(%q) = %v, want nil", s, err)
 		}
 	}
 
-	if err := ValidateOrderStatus(""); err == nil {
+	if err := orderx.ValidateOrderStatus(""); err == nil {
 		t.Error("ValidateOrderStatus(\"\") = nil, want error")
 	}
 
-	if err := ValidateOrderStatus("bogus"); err == nil {
+	if err := orderx.ValidateOrderStatus("bogus"); err == nil {
 		t.Error("ValidateOrderStatus(\"bogus\") = nil, want error")
 	}
 }
 
 func TestValidateStageStatus(t *testing.T) {
-	valid := []string{StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled}
+	valid := []orderx.StageStatus{StageStatusPending, StageStatusActive, StageStatusCompleted, StageStatusFailed, StageStatusCancelled}
 	for _, s := range valid {
-		if err := ValidateStageStatus(s); err != nil {
+		if err := orderx.ValidateStageStatus(s); err != nil {
 			t.Errorf("ValidateStageStatus(%q) = %v, want nil", s, err)
 		}
 	}
 
-	if err := ValidateStageStatus(""); err == nil {
+	if err := orderx.ValidateStageStatus(""); err == nil {
 		t.Error("ValidateStageStatus(\"\") = nil, want error")
 	}
 
-	if err := ValidateStageStatus("bogus"); err == nil {
+	if err := orderx.ValidateStageStatus("bogus"); err == nil {
 		t.Error("ValidateStageStatus(\"bogus\") = nil, want error")
 	}
 }

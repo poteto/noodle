@@ -1,4 +1,4 @@
-Back to [[plans/70-scaling-the-loop-redesign/overview]]
+Back to [[archived_plans/70-scaling-the-loop-redesign/overview]]
 
 # Phase 3: Pluggable Runtime interface
 
