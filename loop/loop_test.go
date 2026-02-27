@@ -32,7 +32,15 @@ func (s *fakeSession) Events() <-chan dispatcher.SessionEvent {
 }
 func (s *fakeSession) Done() <-chan struct{} { return s.done }
 func (s *fakeSession) TotalCost() float64    { return 0 }
-func (s *fakeSession) Kill() error           { s.status = "killed"; close(s.done); return nil }
+func (s *fakeSession) Kill() error {
+	s.status = "killed"
+	select {
+	case <-s.done:
+	default:
+		close(s.done)
+	}
+	return nil
+}
 
 type fakeDispatcher struct {
 	calls       []dispatcher.DispatchRequest
@@ -1455,7 +1463,7 @@ func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.Disp
 // Sequence:
 //  1. Cycle 1: item "37" spawns session A
 //  2. Session A fails (Done fires)
-//  3. Cycle 2: collectCompleted picks up A, retryCook→spawnCook fails,
+//  3. Cycle 2: drainCompletions picks up A, retryCook→spawnCook fails,
 //     item lands in pendingRetry. Cycle returns the spawn error.
 //  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
 //     Item is in activeCooksByOrder with attempt > 0.
@@ -1543,11 +1551,11 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	// before collectAdoptedCompletions processes it.
 	installFixtureTmuxStub(t, []string{tmuxSessionName(schedSessID)})
 
-	// Run collectCompleted (which includes collectAdoptedCompletions).
+	// Run completion drain (which includes collectAdoptedCompletions).
 	// The adopted schedule session is "failed", so handleCompletion → retryCook.
 	// Item 29 is still running, so activeCooksByOrder already has 1 entry.
-	if err := l.collectCompleted(context.Background()); err != nil {
-		t.Fatalf("collectCompleted: %v", err)
+	if err := l.drainCompletions(context.Background()); err != nil {
+		t.Fatalf("drainCompletions: %v", err)
 	}
 
 	// The invariant: activeCooksByOrder must never exceed max_cooks.

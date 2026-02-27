@@ -84,6 +84,8 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		pendingReview:         map[string]*pendingReviewCook{},
 		pendingRetry:          map[string]*pendingRetryCook{},
 		processedIDs:          map[string]struct{}{},
+		completions:           make(chan StageResult, 1024),
+		completionOverflow:    make([]StageResult, 0, maxCompletionOverflow(cfg)),
 	}
 }
 
@@ -200,12 +202,16 @@ func (l *Loop) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			l.shutdownAndDrain()
 			return nil
 		case <-ticker.C:
 			if err := l.Cycle(ctx); err != nil {
 				return err
 			}
-			if l.state == StateDraining && len(l.activeCooksByOrder) == 0 {
+			if l.state == StateDraining && l.watcherCount.Load() == 0 {
+				if err := l.drainCompletions(context.Background()); err != nil {
+					return err
+				}
 				return nil
 			}
 		case ev := <-watcher.Events:
@@ -279,10 +285,10 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 		fmt.Fprintf(os.Stderr, "skill registry error (attempt %d/3, skipping cycle): %v\n", l.registryFailCount, l.registryErr)
 		return false, nil
 	}
-	if err := l.processControlCommands(); err != nil {
+	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}
-	if err := l.collectCompleted(ctx); err != nil {
+	if err := l.processControlCommands(); err != nil {
 		return false, err
 	}
 	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
@@ -291,7 +297,23 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.processPendingRetries(ctx); err != nil {
 		return false, err
 	}
+	if err := l.drainCompletions(ctx); err != nil {
+		return false, err
+	}
 	return true, nil
+}
+
+func (l *Loop) shutdownAndDrain() {
+	l.Shutdown()
+	l.watcherWG.Wait()
+	_ = l.drainCompletions(context.Background())
+}
+
+func maxCompletionOverflow(cfg config.Config) int {
+	if cfg.Concurrency.MaxCompletionOverflow <= 0 {
+		return 1024
+	}
+	return cfg.Concurrency.MaxCompletionOverflow
 }
 
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {

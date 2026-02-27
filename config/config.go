@@ -73,7 +73,8 @@ type MonitorConfig struct {
 }
 
 type ConcurrencyConfig struct {
-	MaxCooks int `toml:"max_cooks"`
+	MaxCooks              int `toml:"max_cooks"`
+	MaxCompletionOverflow int `toml:"max_completion_overflow"`
 }
 
 type ProviderConfig struct {
@@ -200,7 +201,8 @@ func DefaultConfig() Config {
 			PollInterval:   "5s",
 		},
 		Concurrency: ConcurrencyConfig{
-			MaxCooks: 4,
+			MaxCooks:              4,
+			MaxCompletionOverflow: 1024,
 		},
 		Agents: AgentsConfig{},
 		Runtime: RuntimeConfig{
@@ -304,6 +306,9 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 	if !metadata.IsDefined("concurrency", "max_cooks") {
 		config.Concurrency.MaxCooks = 4
 	}
+	if !metadata.IsDefined("concurrency", "max_completion_overflow") {
+		config.Concurrency.MaxCompletionOverflow = 1024
+	}
 
 	config.Runtime.spritesDefined = metadata.IsDefined("runtime", "sprites")
 	config.Runtime.cursorDefined = metadata.IsDefined("runtime", "cursor")
@@ -391,6 +396,9 @@ func validateParsedValues(config Config) error {
 	}
 	if config.Concurrency.MaxCooks <= 0 {
 		return fmt.Errorf("concurrency.max_cooks: must be greater than 0")
+	}
+	if config.Concurrency.MaxCompletionOverflow <= 0 {
+		return fmt.Errorf("concurrency.max_completion_overflow: must be greater than 0")
 	}
 
 	switch config.Plans.OnDone {

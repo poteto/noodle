@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/dispatcher"
@@ -137,63 +138,106 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		worktreeName: name,
 		worktreePath: req.WorktreePath,
 		attempt:      opts.attempt,
+		generation:   l.nextDispatchGeneration(),
 		displayName:  displayName,
 	}
 	l.activeCooksByOrder[cand.OrderID] = cook
+	l.startSessionWatcher(ctx, cook, false)
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
 }
 
-func (l *Loop) collectCompleted(ctx context.Context) error {
-	l.collectBootstrapCompletion()
-
-	completed := make([]*cookHandle, 0)
-	for _, cook := range l.activeCooksByOrder {
+func (l *Loop) drainCompletions(ctx context.Context) error {
+	drainedAny := false
+	for {
 		select {
-		case <-cook.session.Done():
-			completed = append(completed, cook)
+		case result := <-l.completions:
+			drainedAny = true
+			if err := l.applyStageResult(ctx, result); err != nil {
+				return err
+			}
 		default:
+			goto drainedChannel
 		}
 	}
-	for _, cook := range completed {
-		delete(l.activeCooksByOrder, cook.orderID)
-		if err := l.handleCompletion(ctx, cook); err != nil {
-			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
-				l.pendingRetry[cook.orderID] = &pendingRetryCook{
-					orderID:     cook.orderID,
-					stageIndex:  cook.stageIndex,
-					stage:       cook.stage,
-					isOnFailure: cook.isOnFailure,
-					orderStatus: cook.orderStatus,
-					plan:        cook.plan,
-					attempt:     cook.attempt + 1,
-					displayName: cook.displayName,
-				}
-				return conflictErr
+
+drainedChannel:
+	if !drainedAny && l.watcherCount.Load() > 0 {
+		waitCtx := ctx
+		if waitCtx == nil {
+			waitCtx = context.Background()
+		}
+		select {
+		case result := <-l.completions:
+			if err := l.applyStageResult(waitCtx, result); err != nil {
+				return err
 			}
+			for {
+				select {
+				case late := <-l.completions:
+					if err := l.applyStageResult(waitCtx, late); err != nil {
+						return err
+					}
+				default:
+					goto lateDrainDone
+				}
+			}
+		case <-time.After(2 * time.Millisecond):
+		case <-waitCtx.Done():
+		}
+	}
+
+lateDrainDone:
+	overflow := l.takeCompletionOverflow()
+	for _, result := range overflow {
+		if err := l.applyStageResult(ctx, result); err != nil {
+			return err
 		}
 	}
 	return l.collectAdoptedCompletions(ctx)
 }
 
-// collectBootstrapCompletion checks if the bootstrap session has finished
-// and handles success/failure. Bootstrap has its own lifecycle — it does
-// not go through handleCompletion or retryCook.
-func (l *Loop) collectBootstrapCompletion() {
+func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
+	if result.IsBootstrap {
+		l.handleBootstrapResult(result)
+		return nil
+	}
+	cook, exists := l.activeCooksByOrder[result.OrderID]
+	if !exists {
+		return nil
+	}
+	if cook.generation != result.Generation {
+		return nil
+	}
+	delete(l.activeCooksByOrder, cook.orderID)
+	if err := l.handleCompletion(ctx, cook); err != nil {
+		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+			l.pendingRetry[cook.orderID] = &pendingRetryCook{
+				orderID:     cook.orderID,
+				stageIndex:  cook.stageIndex,
+				stage:       cook.stage,
+				isOnFailure: cook.isOnFailure,
+				orderStatus: cook.orderStatus,
+				plan:        cook.plan,
+				attempt:     cook.attempt + 1,
+				displayName: cook.displayName,
+			}
+			return conflictErr
+		}
+	}
+	return nil
+}
+
+func (l *Loop) handleBootstrapResult(result StageResult) {
 	if l.bootstrapInFlight == nil {
 		return
 	}
-	select {
-	case <-l.bootstrapInFlight.session.Done():
-	default:
+	if l.bootstrapInFlight.generation != result.Generation {
 		return
 	}
-
-	cook := l.bootstrapInFlight
 	l.bootstrapInFlight = nil
 
-	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
-	if status == "completed" {
+	if result.Status == StageResultCompleted {
 		l.rebuildRegistry()
 		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
 		appendQueueEvent(eventsPath, QueueAuditEvent{
@@ -208,7 +252,96 @@ func (l *Loop) collectBootstrapCompletion() {
 	if l.bootstrapAttempts >= 3 {
 		l.bootstrapExhausted = true
 	}
-	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", status)
+	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", string(result.Status))
+}
+
+func (l *Loop) nextDispatchGeneration() uint64 {
+	return l.dispatchGeneration.Add(1)
+}
+
+func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBootstrap bool) {
+	if cook == nil || cook.session == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	l.watcherWG.Add(1)
+	l.watcherCount.Add(1)
+	go func(sessionID string, handle *cookHandle, watcherCtx context.Context) {
+		defer l.watcherWG.Done()
+		defer l.watcherCount.Add(-1)
+
+		<-handle.session.Done()
+		result := StageResult{
+			OrderID:      handle.orderID,
+			StageIndex:   handle.stageIndex,
+			Attempt:      handle.attempt,
+			IsOnFailure:  handle.isOnFailure,
+			Status:       stageResultStatus(handle.session.Status()),
+			SessionID:    sessionID,
+			Generation:   handle.generation,
+			IsSchedule:   isScheduleStage(handle.stage),
+			IsBootstrap:  isBootstrap,
+			WorktreeName: handle.worktreeName,
+			WorktreePath: handle.worktreePath,
+			CompletedAt:  l.deps.Now(),
+		}
+		l.enqueueCompletion(watcherCtx, result)
+	}(cook.session.ID(), cook, ctx)
+}
+
+func stageResultStatus(raw string) StageResultStatus {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "completed":
+		return StageResultCompleted
+	case "killed", "cancelled", "canceled", "stopped":
+		return StageResultCancelled
+	default:
+		return StageResultFailed
+	}
+}
+
+func (l *Loop) enqueueCompletion(ctx context.Context, result StageResult) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case l.completions <- result:
+		return
+	default:
+	}
+
+	overflowCap := cap(l.completionOverflow)
+	if overflowCap <= 0 {
+		overflowCap = maxCompletionOverflow(l.config)
+	}
+
+	l.completionOverflowMu.Lock()
+	if len(l.completionOverflow) < overflowCap {
+		l.completionOverflow = append(l.completionOverflow, result)
+		l.completionOverflowMu.Unlock()
+		return
+	}
+	l.completionOverflowSaturated++
+	l.completionOverflowMu.Unlock()
+
+	select {
+	case l.completions <- result:
+	case <-ctx.Done():
+	}
+}
+
+func (l *Loop) takeCompletionOverflow() []StageResult {
+	l.completionOverflowMu.Lock()
+	defer l.completionOverflowMu.Unlock()
+	if len(l.completionOverflow) == 0 {
+		return nil
+	}
+	drained := append([]StageResult(nil), l.completionOverflow...)
+	l.completionOverflow = l.completionOverflow[:0]
+	return drained
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {

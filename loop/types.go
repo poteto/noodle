@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -41,6 +42,14 @@ const (
 	OrderStatusCompleted = "completed"
 	OrderStatusFailed    = "failed"
 	OrderStatusFailing   = "failing"
+)
+
+type StageResultStatus string
+
+const (
+	StageResultCompleted StageResultStatus = "completed"
+	StageResultFailed    StageResultStatus = "failed"
+	StageResultCancelled StageResultStatus = "cancelled"
 )
 
 // Stage is a unit of work within an order.
@@ -126,6 +135,22 @@ type QualityVerdict struct {
 	Feedback string `json:"feedback,omitempty"`
 }
 
+type StageResult struct {
+	OrderID       string
+	StageIndex    int
+	Attempt       int
+	IsOnFailure   bool
+	Status        StageResultStatus
+	SessionID     string
+	Generation    uint64
+	IsSchedule    bool
+	IsBootstrap   bool
+	WorktreeName  string
+	WorktreePath  string
+	Error         error
+	CompletedAt   time.Time
+}
+
 type cookHandle struct {
 	orderID     string
 	stageIndex  int
@@ -137,6 +162,7 @@ type cookHandle struct {
 	worktreeName string
 	worktreePath string
 	attempt      int
+	generation   uint64
 	displayName  string // stable kitchen name, preserved across retries
 }
 
@@ -222,6 +248,14 @@ type Loop struct {
 	pendingReview   map[string]*pendingReviewCook
 	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
+
+	completions                 chan StageResult
+	completionOverflow          []StageResult
+	completionOverflowMu        sync.Mutex
+	completionOverflowSaturated uint64
+	watcherWG                   sync.WaitGroup
+	watcherCount                atomic.Int64
+	dispatchGeneration          atomic.Uint64
 
 	bootstrapAttempts  int
 	bootstrapExhausted bool
