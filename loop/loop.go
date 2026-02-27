@@ -183,6 +183,9 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := l.loadFailedTargets(); err != nil {
 		return err
 	}
+	if err := l.loadOrdersState(); err != nil {
+		return err
+	}
 	if err := l.reconcile(ctx); err != nil {
 		return err
 	}
@@ -373,9 +376,12 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
+		if err := l.loadOrdersState(); err != nil {
+			return OrdersFile{}, false, err
+		}
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return OrdersFile{}, false, err
 	}
@@ -388,7 +394,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
 		if normErr != nil {
 			l.auditOrders()
-			orders, err = readOrders(l.deps.OrdersFile)
+			orders, err = l.currentOrders()
 			if err != nil {
 				return OrdersFile{}, false, err
 			}
@@ -400,7 +406,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 	if changed {
 		orders = normalizedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return OrdersFile{}, false, err
 		}
 		l.logger.Info("orders normalized")
@@ -425,7 +431,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 			}
 			// Bootstrap a schedule order.
 			orders = bootstrapScheduleOrder(l.config)
-			if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+			if err := l.writeOrdersState(orders); err != nil {
 				return OrdersFile{}, false, err
 			}
 			l.logger.Info("orders empty, bootstrapping schedule")
@@ -434,10 +440,11 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 
 	if updatedOrders, changed := ApplyOrderRoutingDefaults(orders, l.registry, l.config); changed {
 		orders = updatedOrders
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return OrdersFile{}, false, err
 		}
 	}
+	l.setOrdersState(orders)
 	return orders, true, nil
 }
 

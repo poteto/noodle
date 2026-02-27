@@ -263,5 +263,8 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
+	orders       OrdersFile
+	ordersLoaded bool
+
 	lastStatus statusfile.Status
 }

@@ -168,7 +168,7 @@ func (l *Loop) reconcilePendingReview() error {
 	if len(l.pendingReview) == 0 {
 		return nil
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return nil // no orders file yet — nothing to reconcile
 	}

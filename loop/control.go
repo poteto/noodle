@@ -239,7 +239,7 @@ func (l *Loop) controlMerge(orderID string) error {
 	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
 	if hasVerdict && !verdict.Accept {
 		// Quality gate failed — call failStage instead of merging.
-		orders, err := readOrders(l.deps.OrdersFile)
+		orders, err := l.currentOrders()
 		if err != nil {
 			return err
 		}
@@ -248,7 +248,7 @@ func (l *Loop) controlMerge(orderID string) error {
 		if err != nil {
 			return err
 		}
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 		if strings.TrimSpace(pending.worktreeName) != "" {
@@ -276,7 +276,7 @@ func (l *Loop) controlMerge(orderID string) error {
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
 	}
 	// Determine actual order status for advanceAndPersist.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return fmt.Errorf("merge: read orders: %w", err)
 	}
@@ -310,7 +310,7 @@ func (l *Loop) controlReject(orderID string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 	// User rejection skips OnFailure — cancel and remove the order directly.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -319,7 +319,7 @@ func (l *Loop) controlReject(orderID string) error {
 		// Order may already be gone — not fatal.
 		l.logger.Warn("controlReject: cancelOrder", "error", err)
 	} else {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 	}
@@ -345,7 +345,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	}
 
 	// Call failStage — if OnFailure stages exist, they run; if not, terminal failure.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -358,7 +358,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
 	if terminal {
@@ -398,13 +398,13 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		taskKey = "execute"
 	}
 
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
 	newOrder := Order{
-		ID:    orderID,
-		Title: titleFromPrompt(prompt, 8),
+		ID:     orderID,
+		Title:  titleFromPrompt(prompt, 8),
 		Status: OrderStatusActive,
 		Stages: []Stage{{
 			TaskKey:  taskKey,
@@ -416,7 +416,7 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		}},
 	}
 	orders.Orders = append(orders.Orders, newOrder)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlEditItem(cmd ControlCommand) error {
@@ -427,7 +427,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if _, active := l.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -470,7 +470,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if !found {
 		return fmt.Errorf("order %q not found", orderID)
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlStopAll() {
@@ -484,7 +484,7 @@ func (l *Loop) controlSkip(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("skip requires order_id")
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -492,7 +492,7 @@ func (l *Loop) controlSkip(orderID string) error {
 	if err != nil {
 		return err
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlRequeue(orderID string) error {
@@ -508,7 +508,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 	// in both Stages and OnFailure to "pending", set Order.Status to "active".
 	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
 	// on I/O errors.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return fmt.Errorf("requeue: read orders: %w", err)
 	}
@@ -524,7 +524,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 		break
 	}
 	if updated {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
 	}
@@ -555,7 +555,7 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		}
 		newIndex = n
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -578,7 +578,7 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		newIndex = len(orders.Orders)
 	}
 	orders.Orders = append(orders.Orders[:newIndex], append([]Order{order}, orders.Orders[newIndex:]...)...)
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func (l *Loop) controlStop(name string) error {

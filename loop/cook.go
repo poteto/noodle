@@ -440,7 +440,7 @@ func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
 
 // advanceAndPersist advances the order stage and persists the result.
 func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	if err != nil {
 		return err
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
 	if removed {
@@ -468,7 +468,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 
 // failAndPersist calls failStage and persists the result.
 func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -476,7 +476,7 @@ func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
 	if terminal {
@@ -660,7 +660,7 @@ func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
 
 func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*cookHandle, bool, error) {
 	// Try orders-based lookup first.
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return nil, false, err
 	}
@@ -838,7 +838,7 @@ func (l *Loop) removeOrder(id string) error {
 	if id == "" {
 		return fmt.Errorf("remove requires order ID")
 	}
-	orders, err := readOrders(l.deps.OrdersFile)
+	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
@@ -850,7 +850,7 @@ func (l *Loop) removeOrder(id string) error {
 		filtered = append(filtered, order)
 	}
 	orders.Orders = filtered
-	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
 	l.logger.Info("order removed", "order", id)
@@ -913,24 +913,7 @@ func (l *Loop) steer(target string, prompt string) error {
 }
 
 func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status string) error {
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		return err
-	}
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
-			continue
-		}
-		stages := &orders.Orders[i].Stages
-		if isOnFailure {
-			stages = &orders.Orders[i].OnFailure
-		}
-		if stageIndex < len(*stages) {
-			(*stages)[stageIndex].Status = status
-		}
-		break
-	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.ensureOrderStageStatus(orderID, stageIndex, isOnFailure, status)
 }
 
 // buildSteerResumeContext reads a session's event log and extracts a progress

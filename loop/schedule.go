@@ -220,7 +220,7 @@ func (l *Loop) rescheduleForChefPrompt(prompt string) error {
 			scheduleOrder(l.config, prompt),
 		},
 	}
-	return writeOrdersAtomic(l.deps.OrdersFile, orders)
+	return l.writeOrdersState(orders)
 }
 
 func ordersSchemaPrompt() string {
