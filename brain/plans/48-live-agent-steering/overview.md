@@ -12,6 +12,14 @@ Back to [[plans/index]]
 
 Noodle's steer mechanism kills the agent process and respawns it with a resume prompt. This loses the agent's full conversation context (thinking, file reads, mental model) and wastes tokens re-establishing state. Both Claude Code and Codex now support live communication channels that allow interrupt + redirect without killing the process.
 
+## Builds on Plan 66 (Event Trigger System)
+
+Plan 66 adds a lifecycle event bus and surfaces events in the mise brief so the schedule agent can react to completions, failures, merges, etc. Today, the schedule agent spawns fresh each cycle — so event reactions have one-cycle latency.
+
+With bidirectional pipes, the schedule agent can stay alive after its initial scheduling run. When the loop writes a new `mise.json` (with fresh `recent_events`), it pushes a new prompt to the warm schedule agent instead of killing and respawning. This makes event reactions instant — the schedule agent is always listening.
+
+This is not a hard dependency — plan 66 works without 48. But 48 turns reactive scheduling from "next cycle" into "immediately", which is the difference between a polling system and a responsive one.
+
 ## Scope
 
 **In scope:**

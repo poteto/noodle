@@ -17,15 +17,15 @@
 ## Bootstrap Skill Fixes
 
 20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.
-29. [ ] Backlog-only scheduling with context passthrough — add `extra_prompt` field on `orderx.Stage` for scheduler→cook context, then simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. [[plans/29-queue-item-context-passthrough/overview]]
+29. [ ] Backlog-only scheduling — simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. Context passthrough (extra_prompt) addressed by #66 events. [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Loop Observability & DX
 
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
-34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command. [[plans/34-failed-target-reset-runtime/overview]]
-48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
-50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
+34. [x] ~~Watch `failed.json` for changes~~ — mostly subsumed by #66 (event system). `stage.failed` events surface in mise brief; `requeue` control command already exists. UI retry identity fix is residual scope if needed.
+48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. Builds on #66: keeps the schedule agent alive between cycles so event reactions are instant instead of next-cycle. [[plans/48-live-agent-steering/overview]]
+50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable. Reduced priority: #66 events enable reactive scheduling, but a manual button is still useful for DX.
 
 ## Remote Dispatchers
 
@@ -44,7 +44,7 @@
 
 ## Skill System Gaps
 
-66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan.
+66. [ ] Event/trigger system — loop emits lifecycle events (stage completed/failed, merge, quality verdict, order lifecycle) to an event bus with NDJSON persistence. Events surface in mise brief as `recent_events`. The schedule agent reads events and decides how to react — no mechanical trigger dispatch in Go, no trigger frontmatter. Agents are the orchestrator. Subsumes #34. [[plans/66-event-trigger-system/overview]]
 
 ## Done
 
