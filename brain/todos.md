@@ -44,7 +44,7 @@
 
 ## Skill System Gaps
 
-66. [ ] Event/trigger system — loop emits lifecycle events (stage completed/failed, merge, quality verdict, order lifecycle) to an event bus with NDJSON persistence. Events surface in mise brief as `recent_events`. The schedule agent reads events and decides how to react — no mechanical trigger dispatch in Go, no trigger frontmatter. Agents are the orchestrator. Subsumes #34. [[archived_plans/66-event-trigger-system/overview]]
+66. [x] Event/trigger system — loop emits lifecycle events (stage completed/failed, merge, quality verdict, order lifecycle) to an event bus with NDJSON persistence. Events surface in mise brief as `recent_events`. The schedule agent reads events and decides how to react — no mechanical trigger dispatch in Go, no trigger frontmatter. Agents are the orchestrator. Subsumes #34. [[archived_plans/66-event-trigger-system/overview]]
 
 ## Done
 
