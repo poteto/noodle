@@ -53,6 +53,7 @@ func NewRootCmd() *cobra.Command {
 		newDispatchCmd(&app),
 		newMiseCmd(&app),
 		newPlanCmd(&app),
+		newEventCmd(&app),
 	)
 
 	return root

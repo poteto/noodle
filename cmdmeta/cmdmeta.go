@@ -69,6 +69,11 @@ func Commands() []Command {
 			{Name: "env", Type: "[]string", Desc: "Extra env vars (KEY=VALUE)"},
 		}},
 		{Name: "mise", Short: "Build and print the current mise brief"},
+		{Name: "event", Short: "Manage loop events", Subcommands: []Command{
+			{Name: "emit", Short: "Emit an external event", Flags: []Flag{
+				{Name: "payload", Type: "string", Desc: "Event payload as JSON"},
+			}},
+		}},
 	}
 }
 
