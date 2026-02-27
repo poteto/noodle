@@ -42,19 +42,50 @@ Use a worktree when working on a branch. Work directly on the current branch for
 **Delegation heuristics:**
 - **Self-execute**: Single change, or changes with tight coupling (shared types, sequential dependencies).
 - **Sub-agents**: 2+ independent changes that touch different files. Front-load context for each sub-agent: the scope, relevant existing code, and applicable domain skill name.
-- **Parallel phases**: Use Teams (Claude) or subagents (Codex) to run independent plan phases concurrently. Study the dependency graph — phases with no shared inputs can overlap. The main agent can work a phase itself while workers handle others. Use judgment; sequential is fine when phases are tightly coupled.
+- **Team execution**: 2+ parallelizable phases in a plan. See workflow below.
+
+Sequential is fine when phases are tightly coupled. Study the dependency graph — phases with no shared inputs can overlap.
+
+#### Team Execution
+
+For plans with parallelizable phases, the lead orchestrates from its own worktree:
+
+1. **Lead worktree**: Use current worktree if already in one, otherwise `noodle worktree create plan-<N>-lead`
+2. **Team**: `TeamCreate` — all tasks go through this team's task list
+3. **Per-teammate worktrees**: `noodle worktree create plan-<N>-phase-<M>` — one per teammate
+4. **Spawn teammates**: `Task` with `mode: "bypassPermissions"`, `team_name`, worktree path, scope, and domain skill name. Front-load context to avoid rediscovery.
+5. **Teammates commit** on their own branches inside their worktrees
+6. **Merge teammates into lead** (not main):
+   ```bash
+   git -C .worktrees/plan-<N>-lead merge <teammate-branch>
+   noodle worktree cleanup plan-<N>-phase-<M>
+   ```
+7. **Verify integrated result** in lead worktree (see Verify section below)
+8. **Merge lead to main**: `noodle worktree merge plan-<N>-lead`
+
+Foundational phases that later phases depend on: execute first, commit in lead worktree, then create teammate worktrees from that point.
 
 ### 4. Verify
 
-Every change must pass before committing:
+Every change must pass before committing. If verification fails, fix and re-verify. Do not commit failing code.
 
-- `go test ./...` — all tests pass
-- `go vet ./...` — no issues
+**Unit & static analysis** — after each change:
+- `go test ./...` (or scoped to changed packages)
+- `go vet ./...`
 - `sh scripts/lint-arch.sh` — if present
+
+**E2E smoke tests** — after integrating changes, especially before merging to main:
+- `pnpm test:smoke` — end-to-end suite, catches integration regressions
+- In a worktree: `noodle worktree exec <name> pnpm test:smoke`
+
+**Fixture tests** — when changes affect loop behavior or runtime state:
+- `pnpm fixtures:loop` — verify runtime dumps match expectations
+- `pnpm fixtures:hash` — verify source hashes are current
+- If fixtures need updating: `pnpm fixtures:loop:record` then `pnpm fixtures:hash:sync`
+
+**Scope check:**
 - `git diff --stat` — matches expected scope
 - Scope checklist items — all addressed (plan phase checklist, todo acceptance criteria, or ad-hoc requirements)
-
-If verification fails, fix and re-verify. Do not commit failing code.
 
 ### 5. Commit
 
