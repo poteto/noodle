@@ -9,6 +9,7 @@
     "lint": "oxlint src",
     "fmt": "oxfmt --write src",
     "fmt:check": "oxfmt --check src",
+    "generate:types": "go generate ../internal/snapshot/...",
     "verify": "concurrently --group --names tsc,lint,fmt \"pnpm typecheck\" \"pnpm lint\" \"pnpm fmt:check\""
   },
   "dependencies": {

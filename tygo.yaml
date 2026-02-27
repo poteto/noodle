@@ -1,0 +1,22 @@
+packages:
+  - path: github.com/poteto/noodle/internal/snapshot
+    output_path: ui/src/client/generated-types.ts
+    indent: "  "
+    frontmatter: |
+      import type { PendingReviewItem } from "./generated-loop-types";
+      export type { PendingReviewItem } from "./generated-loop-types";
+    type_mappings:
+      time.Time: string
+      json.RawMessage: unknown
+      loop.PendingReviewItem: PendingReviewItem
+    exclude_files:
+      - snapshot.go
+
+  - path: github.com/poteto/noodle/loop
+    output_path: ui/src/client/generated-loop-types.ts
+    indent: "  "
+    type_mappings:
+      time.Time: string
+      json.RawMessage: unknown
+    include_files:
+      - pending_review.go
