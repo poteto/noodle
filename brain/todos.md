@@ -6,10 +6,6 @@
 
 73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archived_plans/73-testing-strategy/overview]]
 
-## Structural Cleanup
-
-72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. Pure refactoring, no behavior changes. [[plans/72-go-structural-cleanup/overview]]~~ — done. Unified types with orderx, typed OrderStatus/StageStatus enums, extracted cookIdentity, decomposed Loop into 3 sub-structs, split cook.go into 6 lifecycle files, moved recover/ to internal/, trimmed Runtime interface from 7→3 methods, documented runtime/dispatcher layering decision.
-
 ## Scaling
 
 70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archived_plans/70-scaling-the-loop-redesign/overview]]
@@ -21,17 +17,15 @@
 ## Bootstrap Skill Fixes
 
 20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.
-29. [ ] Backlog-only scheduling with context passthrough — add `extra_prompt` field for scheduler→cook context, then simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. [[plans/29-queue-item-context-passthrough/overview]]
+29. [ ] Backlog-only scheduling with context passthrough — add `extra_prompt` field on `orderx.Stage` for scheduler→cook context, then simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Loop Observability & DX
 
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
 34. [ ] Watch `failed.json` for changes (or add control command to reset) — failed targets are loaded at startup and cached in memory. Clearing the file while the loop runs has no effect. Either watch the file with fsnotify or expose a `clear-failed` control command. [[plans/34-failed-target-reset-runtime/overview]]
-47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag. Web UI is the only interface now. bubbletea-tui skill already deleted. `tui/` still has 26 Go files on disk and Charm v2 deps remain in `go.mod`. [[archived_plans/47-delete-go-tui/overview]]~~ — done. Deleted 26 files (~4500 lines), removed 9 Charm deps from go.mod, removed `--headless` flag, simplified `cmd_start.go` to always-headless with web server auto-start.
 48. [ ] Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. [[plans/48-live-agent-steering/overview]]
 50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable.
-49. [ ] Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. Subsumes subtract/resilience items (#59-65): bootstrap as skill, domain_skill frontmatter, sync degradation, mise.json simplification, merge conflicts → pending review, quality verdict integration. Phase 1 subtracts hardcoded Go logic, phases 2-4 build order types/I/O/lifecycle, phase 5 migrates the loop core (integrating domain_skill wiring, merge conflicts, quality verdicts), phases 6-7 migrate control commands and schedule contract (integrating mise.json simplification), phases 8-9 update snapshot/API and web UI, phase 10 cleans up. [[archived_plans/49-work-orders-redesign/overview]]
 
 ## Remote Dispatchers
 
@@ -41,7 +35,7 @@
 
 51. [ ] Feed timeline — render `snapshot.feed_events` as a chronological activity stream. Cross-agent visibility: session starts, completions, failures, merges, brain writes. Data already exists server-side, just needs a UI component.
 52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed). [[archived_plans/52-diff-viewer-for-reviews/overview]]
-53. [ ] Work order pipeline view — once #49 lands, render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
+53. [ ] Work order pipeline view — render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
 54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
 55. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
 
@@ -50,30 +44,23 @@
 67. [x] ~~Manual mode~~ — superseded by #68 (unified involvement levels).
 68. [ ] Unified involvement levels — replace `autonomy` and `schedule.run` with a single `mode` field that sets sensible defaults for scheduling, dispatch, and merge gating. Three levels: `auto` (Noodle runs the kitchen, respect per-skill `permissions.merge`), `supervised` (auto-schedule, auto-dispatch, human approves all merges), `manual` (user drives scheduling and dispatch, human approves all merges). Per-skill `permissions.merge` still works as a fine-grained override. Subsumes current `autonomy` (auto/approve) and `schedule.run` (after-each/after-n/manual) into one dial.
 
-## Subtract Go Logic
-
-59. [ ] Bootstrap as embedded skill — move the ~60 line bootstrap prompt from `loop/builtin_bootstrap.go:9-72` into an embedded skill file. Loop dispatches the skill, prompt evolves without recompiling. Includes fixing silent bootstrap exhaustion (`builtin_bootstrap.go:109-115`) — skill can emit diagnostics with actionable next steps instead of the loop silently giving up. Folded into #49 (phase 1). [[archived_plans/49-work-orders-redesign/overview]]
-60. [ ] Simplify queue filtering in loop — folded into #49 (phase 5). The orders migration simplifies `prepareOrdersForCycle` instead of porting the nested conditionals. [[archived_plans/49-work-orders-redesign/overview]]
-61. [ ] Simplify mise.json building — `mise/builder.go:162-193` pre-filters which plans are "schedulable" and `schedule.go:148-165` builds a prompt listing available task types. Include all plans in mise.json, add task types as a structured field. Let the schedule skill decide what's actionable instead of Go pre-processing. Folded into #49 (phase 7). [[archived_plans/49-work-orders-redesign/overview]]
-
-## Resilience
-
-62. [ ] Missing sync script → graceful degradation — `loop/loop.go:378-382` crashes the cycle if a backlog adapter script is misconfigured. Should degrade to empty backlog with a warning, not halt. Folded into #49 (phase 1). [[archived_plans/49-work-orders-redesign/overview]]
-63. [ ] Merge conflicts → pending review — `cook.go:302-317` immediately marks merge conflicts as permanent failures. Should park in pending review with "merge conflict" reason so the human can resolve. Folded into #49 (phase 5). [[archived_plans/49-work-orders-redesign/overview]]
-
-## Infrastructure
-
-71. [ ] Investigate typesafe server/client protocol — evaluate protobuf, ConnectRPC, or similar for the Go↔TypeScript API boundary. Currently Go structs and TS interfaces are manually mirrored with JSON, and nil slices vs empty arrays cause runtime crashes (see fix e8b4e66). A shared schema would eliminate this class of bug entirely and auto-generate client types.
-
 ## Skill System Gaps
 
-<!-- Planning order: #49 first (foundational data model, folds #59-65 into its design), #52 in parallel (independent UX win), #66 after #49 lands (needs orders/stages to trigger into). -->
+66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan.
 
-64. [ ] `domain_skill` frontmatter field — hardcoded `if taskType.Key == "execute"` in `cook.go:102-106` injects the backlog adapter skill. Add `noodle.domain_skill` to frontmatter so any task type can declare domain context needs. Removes special-case Go logic. Folded into #49 (phase 1 type, phase 5 wiring). [[archived_plans/49-work-orders-redesign/overview]]
-65. [ ] Quality verdict → merge integration — folded into #49 (phase 5). Loop reads `.noodle/quality/<session-id>.json` verdicts in the merge decision path. `accept=false` triggers failStage/OnFailure routing. [[archived_plans/49-work-orders-redesign/overview]]
-66. [ ] Event/trigger system — skills can only run when the schedule skill queues them. No way to react to events (merge completed, quality verdict written, file changed, timer fired, cron). Unifies lifecycle hooks, external event integration, and schedule-on-completion into one primitive: skills declare triggers in frontmatter (`noodle.triggers: ["worktree.merged", "session.completed"]`), loop emits events and dispatches matching skills. Enables deploy-after-merge, notify-on-failure, reactive scheduling, periodic meditate, PR review workflows. Needs its own plan; depends on #49.
 ## Done
 
+49. [x] ~~Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. Subsumes #59-65. [[archived_plans/49-work-orders-redesign/overview]]~~ — done. Order/Stage types in `internal/orderx/`, loop fully migrated, old `queuex` package removed.
+72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. [[plans/72-go-structural-cleanup/overview]]~~ — done.
+59. [x] ~~Bootstrap as embedded skill — folded into #49.~~ — done via #49.
+60. [x] ~~Simplify queue filtering in loop — folded into #49.~~ — done.
+61. [x] ~~Simplify mise.json building — folded into #49.~~ — done.
+62. [x] ~~Missing sync script → graceful degradation — folded into #49.~~ — done. `mise/builder.go` returns warning instead of crashing.
+63. [x] ~~Merge conflicts → pending review — folded into #49.~~ — done. `cook_merge.go` parks conflicts for review.
+64. [x] ~~`domain_skill` frontmatter field — folded into #49.~~ — done. `DomainSkill` field in `skill/frontmatter.go`.
+65. [x] ~~Quality verdict → merge integration — folded into #49.~~ — done. `cook_completion.go` reads quality verdicts.
+71. [x] ~~Investigate typesafe server/client protocol~~ — subsumed by #73.
+47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag. [[archived_plans/47-delete-go-tui/overview]]~~ — done.
 46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
 1. [x] Noodle open-source architecture: redesign Noodle for OSS adoption — kitchen brigade naming (Chef/Sous Chef/Taster/Cook/Mise), skills as the only extension point, LLM-powered prioritization replacing deterministic scoring, adapter pattern for backlog/plans, aggressive Go code deletion, bootstrap skill. [[archived_plans/01-noodle-extensible-skill-layering/overview]]
 2. [x] ~~Investigate automated post-reflect/meditate learning step~~ — superseded by the schedule agent, which already does LLM-powered learning and queue scheduling based on session history and measured evidence.

@@ -19,17 +19,17 @@ The fix: add an `extra_prompt` field for context passthrough (phases 1-4), then 
 ## Scope
 
 **In (phases 1-4 — context passthrough):**
-- New `ExtraPrompt string` field on QueueItem
+- New `ExtraPrompt string` field on `orderx.Stage` (or use existing `Stage.Extra` map)
 - Inject `Scheduling context:` section in `buildCookPrompt()`
 - Soft size guardrail: truncate to ~1000 chars
 - Update schedule skill and schema docs
 - Tests
 
 **In (phases 5-7 — backlog-only scheduling):**
-- Remove native plan reader from mise builder (`plan.ReadAll()`, `schedulablePlanIDs()`, `needs_scheduling`) — atomic with skill rewrite
+- Remove native plan reader from mise builder (`plan.ReadAll()`) — atomic with skill rewrite
 - Backlog adapter protocol gains optional `plan` path field on items (new field, not migration)
 - Schedule skill reads plan files from backlog items and injects phase context via `extra_prompt`
-- Update loop idle gate, queue validator, bootstrap scheduler instructions, schemadoc
+- Update loop idle gate, bootstrap scheduler instructions, schemadoc
 - First-run bootstrap: no adapter → prompt user to create one with context about their work source
 - Delete plans-sync from adapter; `plan` package stays (used by `noodle plan` CLI)
 
@@ -44,13 +44,22 @@ The fix: add an `extra_prompt` field for context passthrough (phases 1-4), then 
 
 - `extra_prompt` is free-form string, not structured. The scheduler writes natural language.
 - `buildCookPrompt()` must not emit blank lines when `extra_prompt` is empty.
-- Truncation happens at queue read/normalize time.
+- Truncation happens at order read/normalize time.
 - Phases 1-4 ship independently — they add value even without the backlog overhaul.
 - Phases 5-7 are sequential. Phase 5 is internally atomic (plan reader removal + skill rewrite ship together). Phase 6 (bootstrap) should ship soon after — without it, first-run projects with no adapter can idle with no path forward.
-- The loop idle gate (`loop/loop.go`) currently idles when `plans` and `needs_scheduling` are empty. After removal, it must idle on empty backlog instead.
-- Queue validation (`internal/queuex/queue.go`) enforces execute-ID membership against `schedulablePlanIDs` — this must be migrated.
-- Bootstrap scheduler instructions (`loop/builtin_bootstrap.go`) hardcode `needs_scheduling` — must be updated.
+- The loop idle gate (`loop/loop.go`) currently idles when `plans` are empty. After removal, it must idle on empty backlog instead.
+- Bootstrap scheduler instructions (`loop/builtin_bootstrap.go`) reference plan concepts — must be updated.
 - The backlog adapter is the *only* integration point after this. A user who uses Linear writes a Linear adapter. A user who uses markdown writes a markdown adapter. Noodle core doesn't know or care.
+
+## Architecture note (post-Plan 49)
+
+The original plan was written against the flat `QueueItem` model. Plan 49 (work orders redesign) landed and replaced it with `Order` + `Stage` pipelines in `internal/orderx/`. Key differences:
+- `internal/queuex/` → `internal/orderx/` (package renamed/replaced)
+- `QueueItem` → `Order` (pipeline) containing `Stage` (unit of work)
+- `Stage.Extra map[string]json.RawMessage` already exists for extension data
+- `needs_scheduling` and `schedulablePlanIDs()` were never implemented / already removed
+- No separate `loop.QueueItem` type — loop uses `type Stage = orderx.Stage` alias
+- Schedule skill writes `orders-next.json` (not `queue-next.json`)
 
 ## Applicable skills
 

@@ -12,19 +12,17 @@ This phase combines the concerns of the old phases 5, 6, and 7 into a single ato
 
 **`mise/builder.go`:**
 - Remove the `plan.ReadAll()` call and all plan-related logic
-- Remove `schedulablePlanIDs()` function
-- Remove `plans` and `needs_scheduling` fields from the mise output
-- Remove `PlanSummary` type and conversion logic
+- Remove `PlanSummary` type and conversion logic (e.g. `toPlanSummaries`)
+- Remove `plans` field from the mise output
 - The builder now just calls `adapter.SyncBacklog()` + gathers session state, tickets, resources, routing, task types
 
 **`mise/types.go` (`mise.Brief`):**
-- Remove `Plans` and `NeedsScheduling` fields
+- Remove `Plans` field
 - Update all dependents: `loop/loop.go`, `dispatcher/preamble.go`, `mise/builder_test.go`, `loop/loop_test.go`, `loop/fixture_test.go`, `loop/bootstrap_test.go`, `loop/queue_audit_test.go`
-- Update all loop test fixtures that construct `mise.Brief` with `Plans:` (there are many — grep for `Plans: []mise.PlanSummary`)
+- Update all loop test fixtures that construct `mise.Brief` with `Plans:` (grep for `Plans: []mise.PlanSummary`)
 
 **`mise.json` schema:**
 - Remove `plans[]` array
-- Remove `needs_scheduling[]` array
 
 **`adapter/types.go`:**
 - Add `Plan string` field to `BacklogItem` — optional, omitempty
@@ -38,18 +36,11 @@ This phase combines the concerns of the old phases 5, 6, and 7 into a single ato
 - Remove plan-related FieldDocs from the mise target
 - Add `backlog[].plan` FieldDoc entry (schemadoc enforces full leaf coverage — missing docs will fail validation)
 
-**`internal/queuex/queue.go` (`NormalizeAndValidate`):**
-- Remove `schedulablePlanIDs []int` parameter and related validation
-- An item is schedulable if it's in the backlog and open — full stop
-
-**`loop/queue.go`:**
-- Remove cross-referencing of backlog IDs with plan IDs
-
 **`loop/loop.go` (idle gate + plan watcher):**
-- Currently idles when `plans` and `needs_scheduling` are empty, even if backlog items exist
+- Currently idles when `plans` are empty, even if backlog items exist
 - Update idle condition to idle on empty backlog instead
-- Remove the `brain/plans` directory watcher (`loop.go:186-191`) — the loop no longer needs to trigger cycles on plan file changes
-- Remove the plan-change event handler (`loop.go:213-219`) that transitions from idle to running on plan file edits
+- Remove the `brain/plans` directory watcher — the loop no longer needs to trigger cycles on plan file changes
+- Remove the plan-change event handler that transitions from idle to running on plan file edits
 
 **`loop/builtin_bootstrap.go`:**
 - Update bootstrap scheduler instructions that hardcode `needs_scheduling`

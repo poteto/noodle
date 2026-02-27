@@ -10,22 +10,27 @@ Update `buildCookPrompt()` to inject the extra_prompt content into the cook's pr
 
 ### Update `buildCookPrompt()` in `loop/util.go`
 
-After the `Rationale` block and before the `resumePrompt` block, add a conditional section:
+Current signature: `buildCookPrompt(orderID string, stage Stage, plan []string, title string, rationale string, resumePrompt string) string`
 
-If `strings.TrimSpace(item.ExtraPrompt)` is non-empty, append `"Scheduling context: " + strings.TrimSpace(item.ExtraPrompt)` to the parts slice.
+Add `extraPrompt string` parameter (or read `stage.ExtraPrompt` directly since Stage now has the field).
+
+After the `rationale` block and before the `resumePrompt` block, add a conditional section:
+
+If `strings.TrimSpace(extraPrompt)` is non-empty, append `"Scheduling context: " + strings.TrimSpace(extraPrompt)` to the parts slice.
 
 The resulting prompt order becomes:
 1. Header (plan or backlog item)
-2. `item.Prompt` (task description)
-3. `"Context: " + item.Rationale` (scheduling rationale)
-4. `"Scheduling context: " + item.ExtraPrompt` (supplemental instructions) — conditional
-5. `resumePrompt` (resume context) — conditional
+2. Skill reference — conditional
+3. `stage.Prompt` (task description)
+4. `"Context: " + rationale` (scheduling rationale)
+5. `"Scheduling context: " + extraPrompt` (supplemental instructions) — conditional
+6. `resumePrompt` (resume context) — conditional
 
 This ordering puts scheduling context after rationale but before resume context, so the cook sees "what to do" then "how to do it" then "what happened last time."
 
 ## Data structures
 
-No new types. Reads `ExtraPrompt` from the existing `QueueItem` struct added in phase 1.
+No new types. Reads `ExtraPrompt` from the `orderx.Stage` struct added in phase 1.
 
 ## Routing
 

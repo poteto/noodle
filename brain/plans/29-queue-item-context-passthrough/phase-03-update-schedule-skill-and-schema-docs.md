@@ -10,12 +10,13 @@ Document the `extra_prompt` field so the schedule agent knows it exists and how 
 
 ### Update `.agents/skills/schedule/SKILL.md`
 
-Add guidance in the **Output** section (or a new subsection near it) explaining the `extra_prompt` field:
+Add guidance in the **Output** section (or a new subsection near it) explaining the `extra_prompt` field on stages:
 
 - Purpose: supplemental instructions about *how* to do the task, distinct from `prompt` (what to do) and `rationale` (why it's scheduled)
 - Use cases: relay failure context from `recent_history`, flag dependencies, suggest approach constraints
 - Keep it concise (~1000 chars max, silently truncated if exceeded)
 - Leave empty when there's nothing extra to say — don't fill it for the sake of filling it
+- Field lives on each stage in `orders-next.json`, not at the order level
 
 ## Data structures
 
