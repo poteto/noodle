@@ -82,23 +82,55 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	// Persist active status BEFORE spawning — crash safety.
+	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
 	}
-	cook := &activeCook{
+	for i := range orders.Orders {
+		if orders.Orders[i].ID != order.ID {
+			continue
+		}
+		if len(orders.Orders[i].Stages) > 0 {
+			orders.Orders[i].Stages[0].Status = StageStatusActive
+		}
+		break
+	}
+	if err := writeOrdersAtomic(l.deps.OrdersFile, orders); err != nil {
+		return err
+	}
+
+	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	if err != nil {
+		// Revert stage status to pending on dispatch failure.
+		if revert, readErr := readOrders(l.deps.OrdersFile); readErr == nil {
+			for i := range revert.Orders {
+				if revert.Orders[i].ID != order.ID {
+					continue
+				}
+				if len(revert.Orders[i].Stages) > 0 {
+					revert.Orders[i].Stages[0].Status = StageStatusPending
+				}
+				_ = writeOrdersAtomic(l.deps.OrdersFile, revert)
+				break
+			}
+		}
+		return err
+	}
+	sess := session
+	cook := &cookHandle{
 		orderID: order.ID,
 		stage: Stage{
 			TaskKey: scheduleOrderID,
 			Skill:   skillName,
 		},
-		session:      session,
+		session:      sess,
+		done:         sess.Done(),
 		worktreeName: "",
 		worktreePath: l.projectDir,
 		attempt:      attempt,
 	}
-	l.activeByTarget[order.ID] = cook
-	l.activeByID[session.ID()] = cook
+	l.activeCooksByOrder[order.ID] = cook
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }
@@ -148,13 +180,14 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		}
 		return nil
 	}
-	l.bootstrapInFlight = &activeCook{
+	l.bootstrapInFlight = &cookHandle{
 		orderID: order.ID,
 		stage: Stage{
 			TaskKey: scheduleOrderID,
 			Skill:   "bootstrap",
 		},
 		session:      session,
+		done:         session.Done(),
 		worktreeName: name,
 		worktreePath: l.projectDir,
 	}

@@ -42,7 +42,7 @@ func (l *Loop) atMaxConcurrency() bool {
 	if maxCooks <= 0 {
 		maxCooks = 1
 	}
-	return len(l.activeByID)+len(l.adoptedTargets) >= maxCooks
+	return len(l.activeCooksByOrder)+len(l.adoptedTargets) >= maxCooks
 }
 
 func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Order, opts spawnOptions) error {
@@ -66,7 +66,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	}
 
 	// Guard: only one cook may use a worktree at a time.
-	for _, active := range l.activeByID {
+	for _, active := range l.activeCooksByOrder {
 		if active.worktreeName == name {
 			return fmt.Errorf("worktree %s already in use by session %s", name, active.session.ID())
 		}
@@ -161,7 +161,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		displayName = stringx.KitchenName(session.ID())
 	}
 
-	cook := &activeCook{
+	cook := &cookHandle{
 		orderID:      cand.OrderID,
 		stageIndex:   cand.StageIndex,
 		stage:        stage,
@@ -169,13 +169,13 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		orderStatus:  order.Status,
 		plan:         order.Plan,
 		session:      session,
+		done:         session.Done(),
 		worktreeName: name,
 		worktreePath: req.WorktreePath,
 		attempt:      opts.attempt,
 		displayName:  displayName,
 	}
-	l.activeByTarget[cand.OrderID] = cook
-	l.activeByID[session.ID()] = cook
+	l.activeCooksByOrder[cand.OrderID] = cook
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
 }
@@ -183,17 +183,16 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 func (l *Loop) collectCompleted(ctx context.Context) error {
 	l.collectBootstrapCompletion()
 
-	completed := make([]*activeCook, 0)
-	for _, cook := range l.activeByID {
+	completed := make([]*cookHandle, 0)
+	for _, cook := range l.activeCooksByOrder {
 		select {
-		case <-cook.session.Done():
+		case <-cook.done:
 			completed = append(completed, cook)
 		default:
 		}
 	}
 	for _, cook := range completed {
-		delete(l.activeByID, cook.session.ID())
-		delete(l.activeByTarget, cook.orderID)
+		delete(l.activeCooksByOrder, cook.orderID)
 		if err := l.handleCompletion(ctx, cook); err != nil {
 			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 				l.pendingRetry[cook.orderID] = &pendingRetryCook{
@@ -221,7 +220,7 @@ func (l *Loop) collectBootstrapCompletion() {
 		return
 	}
 	select {
-	case <-l.bootstrapInFlight.session.Done():
+	case <-l.bootstrapInFlight.done:
 	default:
 		return
 	}
@@ -248,7 +247,7 @@ func (l *Loop) collectBootstrapCompletion() {
 	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", status)
 }
 
-func (l *Loop) handleCompletion(ctx context.Context, cook *activeCook) error {
+func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
 	success := status == "completed"
 	if success {
@@ -307,7 +306,7 @@ func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
 }
 
 // advanceAndPersist advances the order stage and persists the result.
-func (l *Loop) advanceAndPersist(ctx context.Context, cook *activeCook) error {
+func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
@@ -335,7 +334,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *activeCook) error {
 }
 
 // failAndPersist calls failStage and persists the result.
-func (l *Loop) failAndPersist(cook *activeCook, reason string) error {
+func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		return err
@@ -360,7 +359,7 @@ func (l *Loop) failAndPersist(cook *activeCook, reason string) error {
 }
 
 // mergeCookWorktree merges the cook's worktree to main.
-func (l *Loop) mergeCookWorktree(ctx context.Context, cook *activeCook) error {
+func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 	syncResult, hasSyncResult, err := l.readSessionSyncResult(cook.session.ID())
 	if err != nil {
 		return err
@@ -450,7 +449,7 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 	return nil
 }
 
-func (l *Loop) handleMergeConflict(cook *activeCook, err error) error {
+func (l *Loop) handleMergeConflict(cook *cookHandle, err error) error {
 	var conflictErr *worktree.MergeConflictError
 	if !errors.As(err, &conflictErr) {
 		return err
@@ -527,7 +526,7 @@ func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
 	return strings.ToLower(strings.TrimSpace(payload.Status)), true, nil
 }
 
-func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*activeCook, bool, error) {
+func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*cookHandle, bool, error) {
 	// Try orders-based lookup first.
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
@@ -543,17 +542,19 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 		}
 		name := cookBaseName(order.ID, idx, stg.TaskKey)
 		worktreePath := l.worktreePath(name)
-		return &activeCook{
-			orderID:     order.ID,
-			stageIndex:  idx,
-			stage:       *stg,
-			isOnFailure: order.Status == OrderStatusFailing,
-			orderStatus: order.Status,
-			plan:        order.Plan,
-			session: &adoptedSession{
-				id:     sessionID,
-				status: status,
-			},
+		sess := &adoptedSession{
+			id:     sessionID,
+			status: status,
+		}
+		return &cookHandle{
+			orderID:      order.ID,
+			stageIndex:   idx,
+			stage:        *stg,
+			isOnFailure:  order.Status == OrderStatusFailing,
+			orderStatus:  order.Status,
+			plan:         order.Plan,
+			session:      sess,
+			done:         sess.Done(),
 			worktreeName: name,
 			worktreePath: worktreePath,
 			attempt:      recover.RecoveryChainLength(name),
@@ -625,7 +626,7 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 	return nil
 }
 
-func (l *Loop) retryCook(ctx context.Context, cook *activeCook, reason string) error {
+func (l *Loop) retryCook(ctx context.Context, cook *cookHandle, reason string) error {
 	nextAttempt := cook.attempt + 1
 	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
 	if err != nil {
@@ -732,7 +733,7 @@ func (l *Loop) killCook(name string) error {
 	if name == "" {
 		return fmt.Errorf("kill requires name")
 	}
-	for _, cook := range l.activeByID {
+	for _, cook := range l.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			return cook.session.Kill()
 		}
@@ -748,7 +749,7 @@ func (l *Loop) steer(target string, prompt string) error {
 	if strings.EqualFold(target, ScheduleTaskKey()) {
 		return l.rescheduleForChefPrompt(prompt)
 	}
-	for _, cook := range l.activeByID {
+	for _, cook := range l.activeCooksByOrder {
 		if cook.worktreeName != target && cook.session.ID() != target {
 			continue
 		}
@@ -761,8 +762,7 @@ func (l *Loop) steer(target string, prompt string) error {
 		if err := cook.session.Kill(); err != nil {
 			return err
 		}
-		delete(l.activeByID, cook.session.ID())
-		delete(l.activeByTarget, cook.orderID)
+		delete(l.activeCooksByOrder, cook.orderID)
 		cand := dispatchCandidate{
 			OrderID:     cook.orderID,
 			StageIndex:  cook.stageIndex,

@@ -32,10 +32,12 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	cook := &activeCook{
-		orderID: "42",
-		stage:   Stage{TaskKey: "execute", Skill: "execute"},
-		session: &adoptedSession{id: "sess-42", status: "completed"},
+	sess := &adoptedSession{id: "sess-42", status: "completed"}
+	cook := &cookHandle{
+		orderID:      "42",
+		stage:        Stage{TaskKey: "execute", Skill: "execute"},
+		session:      sess,
+		done:         sess.Done(),
 		worktreeName: "42",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "42"),
 	}

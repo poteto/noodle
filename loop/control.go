@@ -264,7 +264,8 @@ func (l *Loop) controlMerge(orderID string) error {
 	}
 
 	// Merge the worktree.
-	cook := &activeCook{
+	sess := &adoptedSession{id: pending.sessionID, status: "completed"}
+	cook := &cookHandle{
 		orderID:      pending.orderID,
 		stageIndex:   pending.stageIndex,
 		stage:        pending.stage,
@@ -273,7 +274,8 @@ func (l *Loop) controlMerge(orderID string) error {
 		plan:         pending.plan,
 		worktreeName: pending.worktreeName,
 		worktreePath: pending.worktreePath,
-		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
+		session:      sess,
+		done:         sess.Done(),
 	}
 	// Determine actual order status for advanceAndPersist.
 	orders, err := readOrders(l.deps.OrdersFile)
@@ -424,7 +426,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if orderID == "" {
 		return fmt.Errorf("edit-item requires order_id")
 	}
-	if _, active := l.activeByTarget[orderID]; active {
+	if _, active := l.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
 	orders, err := readOrders(l.deps.OrdersFile)
@@ -474,7 +476,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 }
 
 func (l *Loop) controlStopAll() {
-	for _, cook := range l.activeByID {
+	for _, cook := range l.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
 }
@@ -586,20 +588,10 @@ func (l *Loop) controlStop(name string) error {
 	if name == "" {
 		return fmt.Errorf("stop requires name")
 	}
-	for id, cook := range l.activeByID {
+	for orderID, cook := range l.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			_ = cook.session.Kill()
-			targetID := ""
-			for tid, c := range l.activeByTarget {
-				if c == cook {
-					targetID = tid
-					break
-				}
-			}
-			delete(l.activeByID, id)
-			if targetID != "" {
-				delete(l.activeByTarget, targetID)
-			}
+			delete(l.activeCooksByOrder, orderID)
 			if cook.worktreeName != "" {
 				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 			}

@@ -79,13 +79,12 @@ func TestRegistryErrorResilience(t *testing.T) {
 			StatusFile: filepath.Join(runtimeDir, "status.json"),
 		},
 		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		activeCooksByOrder: map[string]*cookHandle{},
+		adoptedTargets:     map[string]string{},
+		failedTargets:      map[string]string{},
+		pendingReview:      map[string]*pendingReviewCook{},
+		pendingRetry:       map[string]*pendingRetryCook{},
+		processedIDs:       map[string]struct{}{},
 	}
 
 	// First failure: skips cycle, no error.
@@ -215,14 +214,13 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
-		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		state:              StateRunning,
+		activeCooksByOrder: map[string]*cookHandle{},
+		adoptedTargets:     map[string]string{},
+		failedTargets:      map[string]string{},
+		pendingReview:      map[string]*pendingReviewCook{},
+		pendingRetry:       map[string]*pendingRetryCook{},
+		processedIDs:       map[string]struct{}{},
 	}
 
 	brief := mise.Brief{}
@@ -310,14 +308,13 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 			OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
 			StatusFile:     filepath.Join(runtimeDir, "status.json"),
 		},
-		state:          StateRunning,
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
-		processedIDs:   map[string]struct{}{},
+		state:              StateRunning,
+		activeCooksByOrder: map[string]*cookHandle{},
+		adoptedTargets:     map[string]string{},
+		failedTargets:      map[string]string{},
+		pendingReview:      map[string]*pendingReviewCook{},
+		pendingRetry:       map[string]*pendingRetryCook{},
+		processedIDs:       map[string]struct{}{},
 	}
 
 	brief := mise.Brief{}
