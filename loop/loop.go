@@ -166,12 +166,6 @@ func (l *Loop) Shutdown() {
 		name := loopruntime.TmuxSessionName(sessionID)
 		_ = loopruntime.KillTmuxSession(name)
 	}
-	for _, runtime := range l.deps.Runtimes {
-		if runtime == nil {
-			continue
-		}
-		_ = runtime.Close()
-	}
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -180,9 +174,6 @@ func (l *Loop) Run(ctx context.Context) error {
 	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
-	}
-	if err := l.startRuntimes(ctx); err != nil {
-		return err
 	}
 	if err := l.loadFailedTargets(); err != nil {
 		return err
@@ -369,16 +360,10 @@ func (l *Loop) shutdownAndDrain() {
 	case <-done:
 		// All watchers quiesced normally.
 	case <-time.After(timeout):
-		l.logger.Warn("shutdown timeout exceeded, force-closing runtimes",
+		l.logger.Warn("shutdown timeout exceeded, killing leaked sessions",
 			"timeout", timeout,
 			"leaked_watchers", l.watcherCount.Load(),
 		)
-		for _, runtime := range l.deps.Runtimes {
-			if runtime == nil {
-				continue
-			}
-			_ = runtime.Close()
-		}
 		for orderID, cook := range l.activeCooksByOrder {
 			_ = cook.session.Kill()
 			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
@@ -393,18 +378,6 @@ func maxCompletionOverflow(cfg config.Config) int {
 		return 1024
 	}
 	return cfg.Concurrency.MaxCompletionOverflow
-}
-
-func (l *Loop) startRuntimes(ctx context.Context) error {
-	for name, runtime := range l.deps.Runtimes {
-		if runtime == nil {
-			continue
-		}
-		if err := runtime.Start(ctx); err != nil {
-			return fmt.Errorf("start runtime %s: %w", name, err)
-		}
-	}
-	return nil
 }
 
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {

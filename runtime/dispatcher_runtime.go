@@ -38,8 +38,6 @@ func (r *DispatcherRuntime) SetMaxConcurrent(n int) {
 	r.mu.Unlock()
 }
 
-func (r *DispatcherRuntime) Start(context.Context) error { return nil }
-
 func (r *DispatcherRuntime) Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error) {
 	if r == nil || r.dispatcher == nil {
 		return nil, fmt.Errorf("runtime dispatcher not configured")
@@ -84,5 +82,3 @@ func (r *DispatcherRuntime) Kill(handle SessionHandle) error {
 func (r *DispatcherRuntime) Recover(context.Context) ([]RecoveredSession, error) {
 	return nil, nil
 }
-
-func (r *DispatcherRuntime) Close() error { return nil }

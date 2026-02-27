@@ -39,11 +39,9 @@ type RecoveredSession struct {
 
 // Runtime dispatches, observes, and recovers sessions for one platform.
 type Runtime interface {
-	Start(ctx context.Context) error
 	Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error)
 	Kill(handle SessionHandle) error
 	Recover(ctx context.Context) ([]RecoveredSession, error)
-	Close() error
 }
 
 type dispatcherSessionHandle struct {

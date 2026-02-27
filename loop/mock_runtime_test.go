@@ -25,8 +25,6 @@ func newMockRuntime() *mockRuntime {
 	return &mockRuntime{}
 }
 
-func (m *mockRuntime) Start(context.Context) error { return nil }
-
 func (m *mockRuntime) Dispatch(_ context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -62,8 +60,6 @@ func (m *mockRuntime) Recover(_ context.Context) ([]loopruntime.RecoveredSession
 	}
 	return m.recovered, nil
 }
-
-func (m *mockRuntime) Close() error { return nil }
 
 // mockSession implements runtime.SessionHandle for tests.
 type mockSession struct {
