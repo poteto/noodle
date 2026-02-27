@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/filex"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -19,34 +20,54 @@ func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath stri
 		filepath.Join(l.runtimeDir, "control.lock")
 }
 
+func (l *Loop) lastAppliedSeqPath() string {
+	return filepath.Join(l.runtimeDir, "last-applied-seq")
+}
+
 func (l *Loop) hydrateProcessedCommands() error {
 	_, ackPath, _ := l.controlPaths()
 	file, err := os.Open(ackPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("open control ack file: %w", err)
 		}
-		return fmt.Errorf("open control ack file: %w", err)
+	} else {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			var ack ControlAck
+			if err := json.Unmarshal([]byte(line), &ack); err != nil {
+				continue
+			}
+			if strings.TrimSpace(ack.ID) != "" {
+				l.processedIDs[ack.ID] = struct{}{}
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			file.Close()
+			return fmt.Errorf("scan control ack file: %w", err)
+		}
+		file.Close()
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	// Load last-applied sequence number.
+	seqData, err := os.ReadFile(l.lastAppliedSeqPath())
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("read last-applied-seq: %w", err)
 		}
-		var ack ControlAck
-		if err := json.Unmarshal([]byte(line), &ack); err != nil {
-			continue
-		}
-		if strings.TrimSpace(ack.ID) != "" {
-			l.processedIDs[ack.ID] = struct{}{}
-		}
+		return nil
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("scan control ack file: %w", err)
+	seq, err := strconv.ParseUint(strings.TrimSpace(string(seqData)), 10, 64)
+	if err != nil {
+		// Corrupt file — start from zero.
+		return nil
 	}
+	l.lastAppliedSeq = seq
+	l.cmdSeqCounter = seq
 	return nil
 }
 
@@ -96,13 +117,26 @@ func (l *Loop) processControlCommands() error {
 		if cmd.ID == "" {
 			cmd.ID = fmt.Sprintf("cmd-%d", l.deps.Now().UnixNano())
 		}
+
+		// Assign a monotonic sequence number.
+		l.cmdSeqCounter++
+		seq := l.cmdSeqCounter
+
+		// Skip commands already applied (ID-based dedup or sequence-based).
 		if _, seen := l.processedIDs[cmd.ID]; seen {
 			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
 			continue
 		}
+		if seq <= l.lastAppliedSeq {
+			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
+			l.processedIDs[cmd.ID] = struct{}{}
+			continue
+		}
+
 		ack := l.applyControlCommand(cmd)
 		acks = append(acks, ack)
 		l.processedIDs[cmd.ID] = struct{}{}
+		l.lastAppliedSeq = seq
 	}
 	if len(acks) > 0 {
 		if err := appendAcks(ackPath, acks); err != nil {
@@ -287,7 +321,8 @@ func (l *Loop) controlMerge(orderID string) error {
 			break
 		}
 	}
-	if err := l.persistOrderStageStatus(orderID, pending.stageIndex, cook.isOnFailure, StageStatusMerging); err != nil {
+	mergeMode, mergeBranch := l.resolveMergeMode(cook)
+	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
 		return err
 	}
 	if l.mergeQueue == nil {
@@ -612,6 +647,14 @@ func (l *Loop) controlStop(name string) error {
 		}
 	}
 	return fmt.Errorf("session not found")
+}
+
+func (l *Loop) writeLastAppliedSeq() error {
+	if l.lastAppliedSeq == 0 {
+		return nil
+	}
+	data := []byte(strconv.FormatUint(l.lastAppliedSeq, 10) + "\n")
+	return filex.WriteFileAtomic(l.lastAppliedSeqPath(), data)
 }
 
 func (l *Loop) controlSetMaxCooks(value string) error {

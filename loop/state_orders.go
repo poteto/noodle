@@ -92,5 +92,8 @@ func (l *Loop) flushState() error {
 	if err := l.writePendingRetry(); err != nil {
 		return fmt.Errorf("flush pending retry: %w", err)
 	}
+	if err := l.writeLastAppliedSeq(); err != nil {
+		return fmt.Errorf("flush last-applied-seq: %w", err)
+	}
 	return nil
 }

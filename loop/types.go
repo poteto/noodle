@@ -265,6 +265,9 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
+	cmdSeqCounter  uint64 // monotonic counter for incoming control commands
+	lastAppliedSeq uint64 // highest sequence number applied; persisted to disk
+
 	orders       OrdersFile
 	ordersLoaded bool
 

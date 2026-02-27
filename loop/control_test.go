@@ -762,6 +762,243 @@ func TestControlOrderIDFieldDecodedCorrectly(t *testing.T) {
 	}
 }
 
+// --- Monotonic sequence tests ---
+
+func TestCommandSequenceAssignment(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// Write two control commands.
+	controlPath := filepath.Join(runtimeDir, "control.ndjson")
+	cmd1, _ := json.Marshal(ControlCommand{ID: "c1", Action: "pause"})
+	cmd2, _ := json.Marshal(ControlCommand{ID: "c2", Action: "resume"})
+	if err := os.WriteFile(controlPath, append(append(cmd1, '\n'), append(cmd2, '\n')...), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("processControlCommands: %v", err)
+	}
+
+	// Both commands should be processed; lastAppliedSeq should be 2.
+	if l.lastAppliedSeq != 2 {
+		t.Fatalf("lastAppliedSeq = %d, want 2", l.lastAppliedSeq)
+	}
+	if l.cmdSeqCounter != 2 {
+		t.Fatalf("cmdSeqCounter = %d, want 2", l.cmdSeqCounter)
+	}
+	if _, ok := l.processedIDs["c1"]; !ok {
+		t.Fatal("c1 should be in processedIDs")
+	}
+	if _, ok := l.processedIDs["c2"]; !ok {
+		t.Fatal("c2 should be in processedIDs")
+	}
+}
+
+func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// Process a command so lastAppliedSeq is nonzero.
+	controlPath := filepath.Join(runtimeDir, "control.ndjson")
+	cmd, _ := json.Marshal(ControlCommand{ID: "c1", Action: "pause"})
+	if err := os.WriteFile(controlPath, append(cmd, '\n'), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("processControlCommands: %v", err)
+	}
+	if l.lastAppliedSeq != 1 {
+		t.Fatalf("lastAppliedSeq = %d, want 1", l.lastAppliedSeq)
+	}
+
+	// Persist via writeLastAppliedSeq.
+	if err := l.writeLastAppliedSeq(); err != nil {
+		t.Fatalf("writeLastAppliedSeq: %v", err)
+	}
+
+	// Create a new loop and hydrate — should recover the sequence.
+	l2 := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+	if err := l2.hydrateProcessedCommands(); err != nil {
+		t.Fatalf("hydrateProcessedCommands: %v", err)
+	}
+	if l2.lastAppliedSeq != 1 {
+		t.Fatalf("restored lastAppliedSeq = %d, want 1", l2.lastAppliedSeq)
+	}
+	if l2.cmdSeqCounter != 1 {
+		t.Fatalf("restored cmdSeqCounter = %d, want 1", l2.cmdSeqCounter)
+	}
+}
+
+func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// Simulate a restored sequence — commands with seq <= 5 were already applied.
+	l.lastAppliedSeq = 5
+	l.cmdSeqCounter = 5
+
+	// Write a command that would get seq=6 (should be applied).
+	controlPath := filepath.Join(runtimeDir, "control.ndjson")
+	cmd, _ := json.Marshal(ControlCommand{ID: "new-cmd", Action: "pause"})
+	if err := os.WriteFile(controlPath, append(cmd, '\n'), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("processControlCommands: %v", err)
+	}
+
+	// Should be applied, moving lastAppliedSeq to 6.
+	if l.lastAppliedSeq != 6 {
+		t.Fatalf("lastAppliedSeq = %d, want 6", l.lastAppliedSeq)
+	}
+	if l.state != StatePaused {
+		t.Fatalf("state = %q, want paused", l.state)
+	}
+}
+
+func TestCommandSequenceIdempotentReplay(t *testing.T) {
+	// Simulate crash window: orders.json updated but last-applied-seq not yet written.
+	// On restart, the same commands may be re-ingested. The ID-based dedup catches them
+	// even if the sequence counter starts from a stale value.
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// First pass: process an enqueue command.
+	controlPath := filepath.Join(runtimeDir, "control.ndjson")
+	cmd, _ := json.Marshal(ControlCommand{ID: "enq-1", Action: "enqueue", OrderID: "order-1", Prompt: "test"})
+	if err := os.WriteFile(controlPath, append(cmd, '\n'), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("first processControlCommands: %v", err)
+	}
+	orders, _ := l.currentOrders()
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders after first pass = %d, want 1", len(orders.Orders))
+	}
+
+	// Re-inject the same command (simulates incomplete truncate on crash).
+	if err := os.WriteFile(controlPath, append(cmd, '\n'), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("second processControlCommands: %v", err)
+	}
+	orders, _ = l.currentOrders()
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders after replay = %d, want 1 (idempotent)", len(orders.Orders))
+	}
+}
+
+func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: &fakeDispatcher{},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	// Process a command.
+	controlPath := filepath.Join(runtimeDir, "control.ndjson")
+	cmd, _ := json.Marshal(ControlCommand{ID: "c1", Action: "resume"})
+	if err := os.WriteFile(controlPath, append(cmd, '\n'), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("processControlCommands: %v", err)
+	}
+
+	// Flush state.
+	if err := l.flushState(); err != nil {
+		t.Fatalf("flushState: %v", err)
+	}
+
+	// Verify the file was written.
+	data, err := os.ReadFile(filepath.Join(runtimeDir, "last-applied-seq"))
+	if err != nil {
+		t.Fatalf("read last-applied-seq: %v", err)
+	}
+	if strings.TrimSpace(string(data)) != "1" {
+		t.Fatalf("last-applied-seq file = %q, want '1'", strings.TrimSpace(string(data)))
+	}
+}
+
 func TestFailedTargetStickiness(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
