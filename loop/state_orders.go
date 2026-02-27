@@ -1,6 +1,8 @@
 package loop
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (l *Loop) loadOrdersState() error {
 	orders, err := readOrders(l.deps.OrdersFile)
@@ -69,4 +71,26 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, isOnFailur
 		}
 		return nil
 	})
+}
+
+// flushState writes all in-memory state files atomically in a fixed order.
+// Orders file is written first (source of truth). Failed targets are
+// independently durable (not derivable from orders). Each file uses
+// write-to-temp + rename for atomic replacement.
+func (l *Loop) flushState() error {
+	if l.ordersLoaded {
+		if err := writeOrdersAtomic(l.deps.OrdersFile, l.orders); err != nil {
+			return fmt.Errorf("flush orders: %w", err)
+		}
+	}
+	if err := l.writePendingReview(); err != nil {
+		return fmt.Errorf("flush pending review: %w", err)
+	}
+	if err := l.writeFailedTargets(); err != nil {
+		return fmt.Errorf("flush failed targets: %w", err)
+	}
+	if err := l.writePendingRetry(); err != nil {
+		return fmt.Errorf("flush pending retry: %w", err)
+	}
+	return nil
 }

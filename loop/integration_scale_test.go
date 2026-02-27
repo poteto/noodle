@@ -34,6 +34,7 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Concurrency.MaxCooks = orderCount
 	cfg.Concurrency.MergeBackpressureThreshold = orderCount * 2
+	cfg.Runtime.Tmux.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Dispatcher: sp,
@@ -76,4 +77,48 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 		t.Fatalf("read orders: %v", err)
 	}
 	t.Fatalf("orders remaining after burst completion: %d", len(current.Orders))
+}
+
+func TestScaleLoopStateSnapshotIncludesActiveSummary(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	orders := OrdersFile{Orders: []Order{
+		testOrder("snap-1", "execute", "execute", "claude", "claude-opus-4-6"),
+		testOrder("snap-2", "execute", "execute", "claude", "claude-opus-4-6"),
+	}}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	sp := &fakeDispatcher{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Dispatcher: sp,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	state := l.State()
+	if state.Status != string(StateRunning) {
+		t.Fatalf("state status = %q, want %q", state.Status, StateRunning)
+	}
+	if len(state.ActiveCooks) != 2 {
+		t.Fatalf("active cooks = %d, want 2", len(state.ActiveCooks))
+	}
+	if state.ActiveSummary.Total != 2 {
+		t.Fatalf("active summary total = %d, want 2", state.ActiveSummary.Total)
+	}
 }
