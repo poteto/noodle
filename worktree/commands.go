@@ -75,9 +75,13 @@ func (a *App) Exec(name string, args []string) error {
 	return nil
 }
 
-// Merge rebases the worktree branch onto the integration branch, merges, and cleans up.
-func (a *App) Merge(name string) error {
+// Merge rebases the worktree branch onto a target branch, merges, and cleans up.
+// When into is non-empty it overrides the integration branch for this merge.
+func (a *App) Merge(name, into string) error {
 	base := a.integrationBranch()
+	if into != "" {
+		base = into
+	}
 	wtPath := WorktreePath(a.Root, name)
 	mergeBranch := a.resolveBranchName(name)
 	if err := a.acquireMergeLock(); err != nil {

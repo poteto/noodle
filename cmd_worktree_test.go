@@ -55,6 +55,58 @@ func TestWorktreeCleanupWithForce(t *testing.T) {
 	}
 }
 
+func TestWorktreeMergeIntoFlag(t *testing.T) {
+	originalFactory := newWorktreeCommandApp
+	t.Cleanup(func() {
+		newWorktreeCommandApp = originalFactory
+	})
+
+	fake := &fakeWorktreeCommandApp{}
+	newWorktreeCommandApp = func() (worktreeCommandApp, error) {
+		return fake, nil
+	}
+
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"merge", "--into", "feature-branch", "my-wt"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree merge --into: %v", err)
+	}
+	if fake.mergeName != "my-wt" {
+		t.Fatalf("merge name = %q, want %q", fake.mergeName, "my-wt")
+	}
+	if fake.mergeInto != "feature-branch" {
+		t.Fatalf("merge into = %q, want %q", fake.mergeInto, "feature-branch")
+	}
+}
+
+func TestWorktreeMergeDefaultInto(t *testing.T) {
+	originalFactory := newWorktreeCommandApp
+	t.Cleanup(func() {
+		newWorktreeCommandApp = originalFactory
+	})
+
+	fake := &fakeWorktreeCommandApp{}
+	newWorktreeCommandApp = func() (worktreeCommandApp, error) {
+		return fake, nil
+	}
+
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"merge", "my-wt"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree merge: %v", err)
+	}
+	if fake.mergeName != "my-wt" {
+		t.Fatalf("merge name = %q, want %q", fake.mergeName, "my-wt")
+	}
+	if fake.mergeInto != "" {
+		t.Fatalf("merge into = %q, want empty", fake.mergeInto)
+	}
+}
+
 func TestWorktreeHookBypassesAppFactory(t *testing.T) {
 	originalFactory := newWorktreeCommandApp
 	originalHook := runWorktreeHook
@@ -95,6 +147,7 @@ type fakeWorktreeCommandApp struct {
 	execName     string
 	execArgs     []string
 	mergeName    string
+	mergeInto    string
 	cleanupName  string
 	cleanupForce bool
 	listCalled   bool
@@ -112,8 +165,9 @@ func (f *fakeWorktreeCommandApp) Exec(name string, args []string) error {
 	return nil
 }
 
-func (f *fakeWorktreeCommandApp) Merge(name string) error {
+func (f *fakeWorktreeCommandApp) Merge(name, into string) error {
 	f.mergeName = name
+	f.mergeInto = into
 	return nil
 }
 

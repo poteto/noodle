@@ -25,7 +25,7 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 			return fmt.Errorf("merge remote branch %s: %w", syncResult.Branch, err)
 		}
 	} else {
-		if err := l.deps.Worktree.Merge(cook.worktreeName); err != nil {
+		if err := l.deps.Worktree.Merge(cook.worktreeName, ""); err != nil {
 			return fmt.Errorf("merge %s: %w", cook.worktreeName, err)
 		}
 	}

@@ -39,7 +39,7 @@ func (f *fakeWorktree) Create(name string) error {
 	}
 	return f.createErr
 }
-func (f *fakeWorktree) Merge(name string) error {
+func (f *fakeWorktree) Merge(name, into string) error {
 	f.merged = append(f.merged, name)
 	return f.mergeErr
 }

@@ -13,7 +13,7 @@ import (
 type worktreeCommandApp interface {
 	Create(name string) error
 	Exec(name string, args []string) error
-	Merge(name string) error
+	Merge(name, into string) error
 	Cleanup(name string, force bool) error
 	List() error
 	Prune() error
@@ -90,7 +90,8 @@ func newWorktreeExecCmd() *cobra.Command {
 }
 
 func newWorktreeMergeCmd() *cobra.Command {
-	return &cobra.Command{
+	var into string
+	cmd := &cobra.Command{
 		Use:   "merge <name>",
 		Short: cmdmeta.Short("worktree", "merge"),
 		Args:  exactTrimmedArgs(1),
@@ -99,9 +100,11 @@ func newWorktreeMergeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return wApp.Merge(strings.TrimSpace(args[0]))
+			return wApp.Merge(strings.TrimSpace(args[0]), strings.TrimSpace(into))
 		},
 	}
+	cmd.Flags().StringVar(&into, "into", "", "Target branch to merge into (default: integration branch)")
+	return cmd
 }
 
 func newWorktreeCleanupCmd() *cobra.Command {

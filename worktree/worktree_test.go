@@ -424,7 +424,7 @@ func TestMerge(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "add new-file.txt")
 
 	// Merge back
-	if err := app.Merge("test-merge"); err != nil {
+	if err := app.Merge("test-merge", ""); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -547,7 +547,7 @@ func TestMergeLockAcquiredAndReleased(t *testing.T) {
 	runGitIn(t, wtPath, "add", "new-file.txt")
 	runGitIn(t, wtPath, "commit", "-m", "add new-file.txt")
 
-	if err := app.Merge("lock-happy-path"); err != nil {
+	if err := app.Merge("lock-happy-path", ""); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -579,7 +579,7 @@ func TestMergeLockReleasedOnFailure(t *testing.T) {
 	runGitIn(t, dir, "add", "README.md")
 	runGitIn(t, dir, "commit", "-m", "main update")
 
-	err := app.Merge("lock-failure")
+	err := app.Merge("lock-failure", "")
 	if err == nil {
 		t.Fatal("expected merge to fail due to rebase conflict")
 	}
@@ -631,7 +631,7 @@ func TestStaleLockCleanedUp(t *testing.T) {
 
 	writeFile(t, app.mergeLockPath(), "99999\n0")
 
-	if err := app.Merge("stale-lock"); err != nil {
+	if err := app.Merge("stale-lock", ""); err != nil {
 		t.Fatalf("expected merge to succeed after stale lock cleanup: %v", err)
 	}
 
@@ -658,7 +658,7 @@ func TestActiveLockBlocksMerge(t *testing.T) {
 
 	writeFile(t, app.mergeLockPath(), fmt.Sprintf("%d\n%d", os.Getpid(), time.Now().Unix()))
 
-	err := app.Merge("active-lock")
+	err := app.Merge("active-lock", "")
 	if err == nil {
 		t.Fatal("expected merge to fail when active lock exists")
 	}
@@ -686,7 +686,7 @@ func TestMergeLockCorruptContent(t *testing.T) {
 	// Write garbage to the lock file
 	writeFile(t, app.mergeLockPath(), "not-a-pid\ngarbage-timestamp")
 
-	if err := app.Merge("corrupt-lock"); err != nil {
+	if err := app.Merge("corrupt-lock", ""); err != nil {
 		t.Fatalf("expected merge to succeed after corrupt lock cleanup: %v", err)
 	}
 
@@ -707,7 +707,7 @@ func TestMergeLockReleasedOnNoCommits(t *testing.T) {
 	}
 
 	// Merge with no commits (no-op path)
-	if err := app.Merge("no-commits-lock"); err != nil {
+	if err := app.Merge("no-commits-lock", ""); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -739,7 +739,7 @@ func TestMergeLockWaitsForRelease(t *testing.T) {
 	mergeStarted := make(chan struct{})
 	go func() {
 		close(mergeStarted)
-		mergeDone <- app.Merge("wait-lock")
+		mergeDone <- app.Merge("wait-lock", "")
 	}()
 
 	<-mergeStarted
@@ -788,7 +788,7 @@ func TestMergeLockEmptyFile(t *testing.T) {
 	// Write an empty lock file (0 bytes)
 	writeFile(t, app.mergeLockPath(), "")
 
-	if err := app.Merge("empty-lock"); err != nil {
+	if err := app.Merge("empty-lock", ""); err != nil {
 		t.Fatalf("expected merge to succeed after empty lock cleanup: %v", err)
 	}
 
@@ -816,7 +816,7 @@ func TestMergeLockZeroPID(t *testing.T) {
 	// Write a lock file with PID 0 (invalid)
 	writeFile(t, app.mergeLockPath(), "0\n0")
 
-	if err := app.Merge("zero-pid"); err != nil {
+	if err := app.Merge("zero-pid", ""); err != nil {
 		t.Fatalf("expected merge to succeed after zero-PID lock cleanup: %v", err)
 	}
 
@@ -844,7 +844,7 @@ func TestMergeLockNegativePID(t *testing.T) {
 	// Write a lock file with negative PID
 	writeFile(t, app.mergeLockPath(), "-1\n0")
 
-	if err := app.Merge("neg-pid"); err != nil {
+	if err := app.Merge("neg-pid", ""); err != nil {
 		t.Fatalf("expected merge to succeed after negative-PID lock cleanup: %v", err)
 	}
 
@@ -897,7 +897,7 @@ func TestMergeNoCommits(t *testing.T) {
 	}
 
 	// Merge with no commits should succeed (no-op)
-	if err := app.Merge("empty-branch"); err != nil {
+	if err := app.Merge("empty-branch", ""); err != nil {
 		t.Fatalf("Merge with no commits should succeed: %v", err)
 	}
 
@@ -915,7 +915,7 @@ func TestMergeNonExistent(t *testing.T) {
 	dir := setupTestRepo(t)
 	app := &App{Root: dir}
 
-	err := app.Merge("ghost")
+	err := app.Merge("ghost", "")
 	if err == nil {
 		t.Error("expected error for non-existent worktree")
 	}
@@ -1126,7 +1126,7 @@ func TestMergeWithDirtyWorktree(t *testing.T) {
 	runGitIn(t, wtPath, "add", "noise.txt")
 
 	// Merge should handle the dirty worktree via stash
-	if err := app.Merge("dirty-merge"); err != nil {
+	if err := app.Merge("dirty-merge", ""); err != nil {
 		t.Fatalf("Merge with dirty worktree failed: %v", err)
 	}
 
@@ -1210,7 +1210,7 @@ func TestMergeUsesIntegrationBranch(t *testing.T) {
 	runGitIn(t, wtPath, "add", "develop-feat.txt")
 	runGitIn(t, wtPath, "commit", "-m", "add feature on develop")
 
-	if err := app.Merge("feat-on-develop"); err != nil {
+	if err := app.Merge("feat-on-develop", ""); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -1272,12 +1272,80 @@ func TestMergeRejectsWrongBranch(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err := app.Merge("wrong-branch")
+	err := app.Merge("wrong-branch", "")
 	if err == nil {
 		t.Fatal("expected error when not on integration branch")
 	}
 	if !strings.Contains(err.Error(), "not on develop branch") {
 		t.Errorf("error should mention 'not on develop branch', got: %s", err)
+	}
+}
+
+func TestMergeIntoTargetBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	app := &App{Root: dir, Quiet: true}
+
+	// Create a "lead-work" branch to act as the target, and check it out.
+	runGitIn(t, dir, "checkout", "-b", "lead-work")
+
+	// Create a worktree (sub-agent work) off of lead-work.
+	if err := app.Create("sub-work"); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Commit in the sub-work worktree.
+	wtPath := WorktreePath(dir, "sub-work")
+	writeFile(t, filepath.Join(wtPath, "sub-feature.txt"), "sub-agent work")
+	runGitIn(t, wtPath, "add", "sub-feature.txt")
+	runGitIn(t, wtPath, "commit", "-m", "add sub-feature")
+
+	// Merge sub-work into lead-work (not main).
+	if err := app.Merge("sub-work", "lead-work"); err != nil {
+		t.Fatalf("Merge --into lead-work failed: %v", err)
+	}
+
+	// File should exist on lead-work.
+	if !fileExists(filepath.Join(dir, "sub-feature.txt")) {
+		t.Error("merged file not found on lead-work branch")
+	}
+
+	// Should still be on lead-work.
+	branch := gitOutputIn(t, dir, "branch", "--show-current")
+	if strings.TrimSpace(branch) != "lead-work" {
+		t.Errorf("expected to be on lead-work, got %q", branch)
+	}
+
+	// Worktree should be cleaned up.
+	if fileExists(wtPath) {
+		t.Error("worktree directory still exists after merge")
+	}
+}
+
+func TestMergeIntoRejectsWrongCurrentBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+	app := &App{Root: dir, Quiet: true}
+
+	// Stay on main, but try to merge --into a different branch.
+	runGitIn(t, dir, "checkout", "-b", "lead-work")
+	runGitIn(t, dir, "checkout", "main")
+
+	if err := app.Create("sub-work-2"); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Try to merge into lead-work while on main — should fail.
+	err := app.Merge("sub-work-2", "lead-work")
+	if err == nil {
+		t.Fatal("expected error when not on target branch")
+	}
+	if !strings.Contains(err.Error(), "not on lead-work branch") {
+		t.Errorf("error should mention 'not on lead-work branch', got: %s", err)
 	}
 }
 

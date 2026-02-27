@@ -37,7 +37,9 @@ func Commands() []Command {
 		{Name: "worktree", Short: "Manage linked git worktrees", Subcommands: []Command{
 			{Name: "create", Short: "Create a new linked worktree"},
 			{Name: "exec", Short: "Run command inside worktree (CWD-safe)"},
-			{Name: "merge", Short: "Merge a worktree branch back to main"},
+			{Name: "merge", Short: "Merge a worktree branch into a target branch", Flags: []Flag{
+				{Name: "into", Type: "string", Desc: "Target branch to merge into (default: integration branch)"},
+			}},
 			{Name: "cleanup", Short: "Remove a worktree without merging", Flags: []Flag{
 				{Name: "force", Type: "bool", Desc: "Remove even when unmerged commits exist"},
 			}},

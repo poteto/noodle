@@ -144,7 +144,7 @@ type pendingRetryCook struct {
 
 type WorktreeManager interface {
 	Create(name string) error
-	Merge(name string) error
+	Merge(name, into string) error
 	MergeRemoteBranch(branch string) error
 	Cleanup(name string, force bool) error
 }
