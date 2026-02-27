@@ -32,7 +32,7 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	cook := &activeCook{
+	cook := &cookHandle{
 		orderID: "42",
 		stage:   Stage{TaskKey: "execute", Skill: "execute"},
 		session: &adoptedSession{id: "sess-42", status: "completed"},

@@ -110,12 +110,12 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 		t.Fatalf("expected Skill to be empty for bootstrap, got %q", req.Skill)
 	}
 
-	// Bootstrap session is tracked in bootstrapInFlight, not activeByID.
+	// Bootstrap session is tracked in bootstrapInFlight, not activeCooksByOrder.
 	if l.bootstrapInFlight == nil {
 		t.Fatal("expected bootstrapInFlight to be set")
 	}
-	if len(l.activeByID) != 0 {
-		t.Fatalf("bootstrap should not be in activeByID, got %d entries", len(l.activeByID))
+	if len(l.activeCooksByOrder) != 0 {
+		t.Fatalf("bootstrap should not be in activeCooksByOrder, got %d entries", len(l.activeCooksByOrder))
 	}
 }
 

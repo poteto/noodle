@@ -1,8 +1,12 @@
 package loop
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/poteto/noodle/config"
 )
@@ -131,5 +135,53 @@ func TestScheduleOrderWithChefGuidance(t *testing.T) {
 	order := scheduleOrder(cfg, "focus on auth refactor")
 	if order.Rationale != "Chef steer: focus on auth refactor" {
 		t.Fatalf("rationale = %q, want Chef steer prefix", order.Rationale)
+	}
+}
+
+func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+
+	cfg := config.DefaultConfig()
+	order := scheduleOrder(cfg, "")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{order}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	sp := &fakeDispatcher{}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Dispatcher: sp,
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.spawnSchedule(context.Background(), order, 0, ""); err != nil {
+		t.Fatalf("spawnSchedule: %v", err)
+	}
+	if len(sp.calls) != 1 {
+		t.Fatalf("dispatch calls = %d, want 1", len(sp.calls))
+	}
+	if _, ok := l.activeCooksByOrder[scheduleOrderID]; !ok {
+		t.Fatal("expected schedule order in activeCooksByOrder")
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) != 1 || len(updated.Orders[0].Stages) != 1 {
+		t.Fatalf("unexpected orders shape: %+v", updated.Orders)
+	}
+	if updated.Orders[0].Stages[0].Status != StageStatusActive {
+		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusActive)
 	}
 }

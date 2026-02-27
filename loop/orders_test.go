@@ -853,6 +853,81 @@ func TestDispatchableStages(t *testing.T) {
 	})
 }
 
+func TestActiveOrderIDs(t *testing.T) {
+	of := OrdersFile{
+		Orders: []Order{
+			makeOrder("active-pending", OrderStatusActive, []Stage{
+				makeStage(StageStatusPending),
+			}, nil),
+			makeOrder("active-active", OrderStatusActive, []Stage{
+				makeStage(StageStatusActive),
+			}, nil),
+			makeOrder("failing-pending", OrderStatusFailing, []Stage{
+				makeStage(StageStatusFailed),
+			}, []Stage{
+				makeStage(StageStatusPending),
+			}),
+			makeOrder("done", OrderStatusCompleted, []Stage{
+				makeStage(StageStatusCompleted),
+			}, nil),
+			makeOrder("failing-empty", OrderStatusFailing, []Stage{
+				makeStage(StageStatusFailed),
+			}, []Stage{}),
+		},
+	}
+
+	got := ActiveOrderIDs(of)
+	want := []string{"active-pending", "active-active", "failing-pending"}
+	if len(got) != len(want) {
+		t.Fatalf("ActiveOrderIDs len = %d, want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ActiveOrderIDs[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestBusyTargets(t *testing.T) {
+	of := OrdersFile{
+		Orders: []Order{
+			makeOrder("busy-main", OrderStatusActive, []Stage{
+				makeStage(StageStatusCompleted),
+				makeStage(StageStatusActive),
+				makeStage(StageStatusPending),
+			}, nil),
+			makeOrder("not-busy-main", OrderStatusActive, []Stage{
+				makeStage(StageStatusCompleted),
+				makeStage(StageStatusPending),
+			}, nil),
+			makeOrder("busy-failing", OrderStatusFailing, []Stage{
+				makeStage(StageStatusFailed),
+			}, []Stage{
+				makeStage(StageStatusActive),
+			}),
+			makeOrder("not-busy-failing", OrderStatusFailing, []Stage{
+				makeStage(StageStatusFailed),
+			}, []Stage{
+				makeStage(StageStatusPending),
+			}),
+		},
+	}
+
+	busy := BusyTargets(of)
+	if !busy["busy-main"] {
+		t.Fatal("expected busy-main to be busy")
+	}
+	if !busy["busy-failing"] {
+		t.Fatal("expected busy-failing to be busy")
+	}
+	if busy["not-busy-main"] {
+		t.Fatal("did not expect not-busy-main to be busy")
+	}
+	if busy["not-busy-failing"] {
+		t.Fatal("did not expect not-busy-failing to be busy")
+	}
+}
+
 // Test value semantics — mutations should not affect original.
 func TestLifecycleValueSemantics(t *testing.T) {
 	original := OrdersFile{

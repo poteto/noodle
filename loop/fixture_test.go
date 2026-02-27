@@ -243,7 +243,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 		if sessionID == "" || targetID == "" {
 			continue
 		}
-		cook := &activeCook{
+		cook := &cookHandle{
 			orderID: targetID,
 			session: &fakeSession{
 				id:     sessionID,
@@ -251,8 +251,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 				done:   make(chan struct{}),
 			},
 		}
-		l.activeByID[sessionID] = cook
-		l.activeByTarget[targetID] = cook
+		l.activeCooksByOrder[targetID] = cook
 	}
 }
 

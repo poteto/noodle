@@ -806,8 +806,7 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 		projectDir:     projectDir,
 		runtimeDir:     runtimeDir,
 		registryErr:    errors.New("task type discovery failed: bad frontmatter"),
-		activeByTarget: map[string]*activeCook{},
-		activeByID:     map[string]*activeCook{},
+		activeCooksByOrder: map[string]*cookHandle{},
 		adoptedTargets: map[string]string{},
 		failedTargets:  map[string]string{},
 		processedIDs:   map[string]struct{}{},
@@ -1098,7 +1097,7 @@ func TestMergeCookWorktreeUsesRemoteBranchSyncResult(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	cook := &activeCook{
+	cook := &cookHandle{
 		orderID:      "42",
 		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		session:      &fakeSession{id: sessionID, status: "completed", done: make(chan struct{})},
@@ -1133,7 +1132,7 @@ func TestMergeCookWorktreeFallsBackToLocalMerge(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	cook := &activeCook{
+	cook := &cookHandle{
 		orderID:      "42",
 		stage:        Stage{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-sonnet-4-6"},
 		session:      &fakeSession{id: "", status: "completed", done: make(chan struct{})},
@@ -1459,7 +1458,7 @@ func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.Disp
 //  3. Cycle 2: collectCompleted picks up A, retryCook→spawnCook fails,
 //     item lands in pendingRetry. Cycle returns the spawn error.
 //  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
-//     Item is in activeByTarget with attempt > 0.
+//     Item is in activeCooksByOrder with attempt > 0.
 //
 // TestRetryCookRespectsMaxCooks verifies that retryCook defers to pendingRetry
 // when the loop is already at max concurrency. Without this check, two adopted
@@ -1504,7 +1503,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 
 	// Simulate: item 29 was spawned in a previous cycle and is still running.
 	item29Session := &fakeSession{id: "29-sess", status: "running", done: make(chan struct{})}
-	item29Cook := &activeCook{
+	item29Cook := &cookHandle{
 		orderID: "29",
 		stage: Stage{
 			TaskKey:  "execute",
@@ -1517,8 +1516,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		worktreeName: "29",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
 	}
-	l.activeByID["29-sess"] = item29Cook
-	l.activeByTarget["29"] = item29Cook
+	l.activeCooksByOrder["29"] = item29Cook
 
 	// Simulate: an adopted schedule session from a previous loop instance
 	// has just completed with error.
@@ -1547,15 +1545,15 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 
 	// Run collectCompleted (which includes collectAdoptedCompletions).
 	// The adopted schedule session is "failed", so handleCompletion → retryCook.
-	// Item 29 is still running, so activeByID already has 1 entry.
+	// Item 29 is still running, so activeCooksByOrder already has 1 entry.
 	if err := l.collectCompleted(context.Background()); err != nil {
 		t.Fatalf("collectCompleted: %v", err)
 	}
 
-	// The invariant: activeByID must never exceed max_cooks.
-	if len(l.activeByID) > cfg.Concurrency.MaxCooks {
-		t.Fatalf("BUG: activeByID has %d entries (max_cooks=%d) — retryCook exceeded concurrency limit",
-			len(l.activeByID), cfg.Concurrency.MaxCooks)
+	// The invariant: activeCooksByOrder must never exceed max_cooks.
+	if len(l.activeCooksByOrder) > cfg.Concurrency.MaxCooks {
+		t.Fatalf("BUG: activeCooksByOrder has %d entries (max_cooks=%d) — retryCook exceeded concurrency limit",
+			len(l.activeCooksByOrder), cfg.Concurrency.MaxCooks)
 	}
 
 	// The schedule retry should have been deferred to pendingRetry.
@@ -1606,8 +1604,8 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	if len(sp.sessions) != 1 {
 		t.Fatalf("expected 1 session after cycle 1, got %d", len(sp.sessions))
 	}
-	if _, ok := l.activeByTarget["37"]; !ok {
-		t.Fatal("expected item 37 in activeByTarget after cycle 1")
+	if _, ok := l.activeCooksByOrder["37"]; !ok {
+		t.Fatal("expected item 37 in activeCooksByOrder after cycle 1")
 	}
 
 	// Simulate: session A fails
@@ -1635,9 +1633,9 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 		t.Fatalf("cycle 3: %v", err)
 	}
 
-	cook37, ok := l.activeByTarget["37"]
+	cook37, ok := l.activeCooksByOrder["37"]
 	if !ok {
-		t.Fatal("expected item 37 in activeByTarget after cycle 3 (pending retry should have fired)")
+		t.Fatal("expected item 37 in activeCooksByOrder after cycle 3 (pending retry should have fired)")
 	}
 	if cook37.attempt == 0 {
 		t.Errorf(
