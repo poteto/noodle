@@ -133,12 +133,12 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Active:             active,
 		Recent:             recent,
 		Orders:             orders,
-		ActiveOrderIDs:     append([]string(nil), state.ActiveOrderIDs...),
-		ActionNeeded:       append([]string(nil), state.ActionNeeded...),
+		ActiveOrderIDs:     nonNilStrings(state.ActiveOrderIDs),
+		ActionNeeded:       nonNilStrings(state.ActionNeeded),
 		EventsBySession:    map[string][]EventLine{},
-		FeedEvents:         feedEvents,
+		FeedEvents:         nonNilFeedEvents(feedEvents),
 		TotalCostUSD:       state.TotalCostUSD,
-		PendingReviews:     append([]loop.PendingReviewItem(nil), state.PendingReviews...),
+		PendingReviews:     nonNilReviews(state.PendingReviews),
 		PendingReviewCount: state.PendingReviewCount,
 		Autonomy:           state.Autonomy,
 		MaxCooks:           state.MaxCooks,
@@ -455,6 +455,29 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 		})
 	}
 	return events
+}
+
+// nonNil helpers ensure slices marshal to [] instead of null in JSON.
+
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return append([]string(nil), s...)
+}
+
+func nonNilFeedEvents(s []FeedEvent) []FeedEvent {
+	if s == nil {
+		return []FeedEvent{}
+	}
+	return s
+}
+
+func nonNilReviews(s []loop.PendingReviewItem) []loop.PendingReviewItem {
+	if s == nil {
+		return []loop.PendingReviewItem{}
+	}
+	return append([]loop.PendingReviewItem(nil), s...)
 }
 
 // InferTaskType extracts a task type from session/worktree naming conventions.

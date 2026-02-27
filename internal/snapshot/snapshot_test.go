@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -493,5 +494,35 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 	}
 	if len(snap.ActionNeeded) != 1 || snap.ActionNeeded[0] != "check order-1" {
 		t.Errorf("action_needed = %v", snap.ActionNeeded)
+	}
+}
+
+func TestLoadSnapshotNilSlicesMarshalAsEmptyArrays(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC)
+
+	// All slice fields nil — simulates idle loop with no orders/cooks/reviews.
+	state := loop.LoopState{Status: "idle"}
+
+	snap, err := LoadSnapshot(dir, now, state)
+	if err != nil {
+		t.Fatalf("LoadSnapshot: %v", err)
+	}
+
+	data, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	jsonStr := string(data)
+
+	// None of the array fields should be null — they must be [].
+	for _, field := range []string{
+		"sessions", "active", "recent", "orders",
+		"active_order_ids", "action_needed", "feed_events", "pending_reviews",
+	} {
+		needle := `"` + field + `":null`
+		if strings.Contains(jsonStr, needle) {
+			t.Errorf("%s is null in JSON, want []", field)
+		}
 	}
 }

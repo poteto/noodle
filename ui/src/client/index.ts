@@ -19,7 +19,7 @@ export type {
   Health,
 } from "./types";
 export { deriveKanbanColumns } from "./types";
-export { fetchSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
+export { fetchSnapshot, normalizeSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
 export { connectSSE, SNAPSHOT_KEY } from "./sse";
 export type { SSEStatus } from "./sse";
 export {

@@ -14,12 +14,38 @@ async function jsonBody<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Go nil slices marshal to null. Normalize at the boundary so downstream
+// code never sees null where it expects [].
+export function normalizeSnapshot(raw: Snapshot): Snapshot {
+  return {
+    ...raw,
+    sessions: raw.sessions ?? [],
+    active: raw.active ?? [],
+    recent: raw.recent ?? [],
+    orders: (raw.orders ?? []).map(normalizeOrder),
+    active_order_ids: raw.active_order_ids ?? [],
+    action_needed: raw.action_needed ?? [],
+    events_by_session: raw.events_by_session ?? {},
+    feed_events: raw.feed_events ?? [],
+    pending_reviews: raw.pending_reviews ?? [],
+  };
+}
+
+function normalizeOrder(order: Snapshot["orders"][number]): Snapshot["orders"][number] {
+  return {
+    ...order,
+    stages: order.stages ?? [],
+    on_failure: order.on_failure ?? [],
+    plan: order.plan ?? [],
+  };
+}
+
 export async function fetchSnapshot(): Promise<Snapshot> {
   const res = await fetch("/api/snapshot");
   if (!res.ok) {
     throw new Error(`fetchSnapshot: ${res.status}`);
   }
-  return jsonBody<Snapshot>(res);
+  return normalizeSnapshot(await jsonBody<Snapshot>(res));
 }
 
 export async function fetchSessionEvents(sessionId: string, after?: string): Promise<EventLine[]> {
