@@ -20,18 +20,16 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "provider": "claude",
       "model": "claude-sonnet-4-6",
       "total_cost_usd": 0,
-      "duration_seconds": 0,
-      "last_activity": "2026-02-27T11:55:00Z",
+      "duration_seconds": 9223372036,
+      "last_activity": "2026-02-27T12:00:00Z",
       "current_action": "",
-      "health": "green",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
-      "idle_seconds": 10,
-      "stuck_threshold_seconds": 120,
+      "idle_seconds": 0,
+      "stuck_threshold_seconds": 0,
       "loop_state": "",
-      "worktree_name": "order-1-0-execute",
-      "task_key": "execute",
-      "title": "Implement feature A"
+      "task_key": "execute"
     },
     {
       "id": "cook-b",
@@ -41,18 +39,16 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "provider": "claude",
       "model": "claude-sonnet-4-6",
       "total_cost_usd": 0,
-      "duration_seconds": 0,
-      "last_activity": "2026-02-27T11:50:00Z",
+      "duration_seconds": 9223372036,
+      "last_activity": "2026-02-27T12:00:00Z",
       "current_action": "",
-      "health": "green",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
-      "idle_seconds": 5,
-      "stuck_threshold_seconds": 120,
+      "idle_seconds": 0,
+      "stuck_threshold_seconds": 0,
       "loop_state": "",
-      "worktree_name": "order-2-1-review",
-      "task_key": "review",
-      "title": "Review feature B"
+      "task_key": "review"
     }
   ],
   "active": [
@@ -64,18 +60,16 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "provider": "claude",
       "model": "claude-sonnet-4-6",
       "total_cost_usd": 0,
-      "duration_seconds": 0,
-      "last_activity": "2026-02-27T11:55:00Z",
+      "duration_seconds": 9223372036,
+      "last_activity": "2026-02-27T12:00:00Z",
       "current_action": "",
-      "health": "green",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
-      "idle_seconds": 10,
-      "stuck_threshold_seconds": 120,
+      "idle_seconds": 0,
+      "stuck_threshold_seconds": 0,
       "loop_state": "",
-      "worktree_name": "order-1-0-execute",
-      "task_key": "execute",
-      "title": "Implement feature A"
+      "task_key": "execute"
     },
     {
       "id": "cook-b",
@@ -85,18 +79,16 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "provider": "claude",
       "model": "claude-sonnet-4-6",
       "total_cost_usd": 0,
-      "duration_seconds": 0,
-      "last_activity": "2026-02-27T11:50:00Z",
+      "duration_seconds": 9223372036,
+      "last_activity": "2026-02-27T12:00:00Z",
       "current_action": "",
-      "health": "green",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
-      "idle_seconds": 5,
-      "stuck_threshold_seconds": 120,
+      "idle_seconds": 0,
+      "stuck_threshold_seconds": 0,
       "loop_state": "",
-      "worktree_name": "order-2-1-review",
-      "task_key": "review",
-      "title": "Review feature B"
+      "task_key": "review"
     }
   ],
   "recent": [],
@@ -110,7 +102,8 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
           "skill": "execute",
           "provider": "claude",
           "model": "claude-sonnet-4-6",
-          "status": "active"
+          "status": "active",
+          "session_id": "cook-a"
         }
       ],
       "status": "active"
@@ -131,7 +124,8 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
           "skill": "review",
           "provider": "claude",
           "model": "claude-sonnet-4-6",
-          "status": "active"
+          "status": "active",
+          "session_id": "cook-b"
         }
       ],
       "status": "active",
@@ -150,16 +144,13 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
     "order-1",
     "order-2"
   ],
-  "action_needed": null,
-  "events_by_session": {
-    "cook-a": [],
-    "cook-b": []
-  },
+  "action_needed": [],
+  "events_by_session": {},
   "feed_events": [],
   "total_cost_usd": 0,
   "pending_reviews": [],
   "pending_review_count": 0,
-  "autonomy": "auto",
+  "autonomy": "",
   "max_cooks": 3
 }
 ```

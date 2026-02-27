@@ -15,8 +15,8 @@ source_hash: 136774ec9c4669f340b3f99e18a334c181b312c6b7606536a27692064ad8b9cc
   "active": [],
   "recent": [],
   "orders": [],
-  "active_order_ids": null,
-  "action_needed": null,
+  "active_order_ids": [],
+  "action_needed": [],
   "events_by_session": {},
   "feed_events": [
     {
@@ -59,7 +59,7 @@ source_hash: 136774ec9c4669f340b3f99e18a334c181b312c6b7606536a27692064ad8b9cc
   "total_cost_usd": 0,
   "pending_reviews": [],
   "pending_review_count": 0,
-  "autonomy": "auto",
+  "autonomy": "",
   "max_cooks": 0
 }
 ```

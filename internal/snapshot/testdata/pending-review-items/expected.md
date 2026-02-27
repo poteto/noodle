@@ -30,8 +30,8 @@ source_hash: 69c3bb28e886b0cc81e576f083086e4f9ebfe0912e160555ae0d00c326719850
       "status": "active"
     }
   ],
-  "active_order_ids": null,
-  "action_needed": null,
+  "active_order_ids": [],
+  "action_needed": [],
   "events_by_session": {},
   "feed_events": [],
   "total_cost_usd": 0,
@@ -47,7 +47,7 @@ source_hash: 69c3bb28e886b0cc81e576f083086e4f9ebfe0912e160555ae0d00c326719850
     }
   ],
   "pending_review_count": 1,
-  "autonomy": "auto",
+  "autonomy": "",
   "max_cooks": 0
 }
 ```

@@ -14,16 +14,16 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
   "sessions": [
     {
       "id": "cook-done",
-      "display_name": "golden-cumin",
+      "display_name": "cook-done",
       "status": "completed",
       "runtime": "",
-      "provider": "claude",
-      "model": "claude-sonnet-4-6",
-      "total_cost_usd": 0.05,
-      "duration_seconds": 300,
+      "provider": "",
+      "model": "",
+      "total_cost_usd": 0,
+      "duration_seconds": 0,
       "last_activity": "2026-02-27T11:45:00Z",
       "current_action": "",
-      "health": "yellow",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
@@ -35,16 +35,16 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
   "recent": [
     {
       "id": "cook-done",
-      "display_name": "golden-cumin",
+      "display_name": "cook-done",
       "status": "completed",
       "runtime": "",
-      "provider": "claude",
-      "model": "claude-sonnet-4-6",
-      "total_cost_usd": 0.05,
-      "duration_seconds": 300,
+      "provider": "",
+      "model": "",
+      "total_cost_usd": 0,
+      "duration_seconds": 0,
       "last_activity": "2026-02-27T11:45:00Z",
       "current_action": "",
-      "health": "yellow",
+      "health": "",
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
@@ -53,16 +53,14 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
     }
   ],
   "orders": [],
-  "active_order_ids": null,
-  "action_needed": null,
-  "events_by_session": {
-    "cook-done": []
-  },
+  "active_order_ids": [],
+  "action_needed": [],
+  "events_by_session": {},
   "feed_events": [],
-  "total_cost_usd": 0.05,
+  "total_cost_usd": 0,
   "pending_reviews": [],
   "pending_review_count": 0,
-  "autonomy": "auto",
+  "autonomy": "",
   "max_cooks": 0
 }
 ```
