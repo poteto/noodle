@@ -225,6 +225,7 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 				attempt:     cook.attempt + 1,
 				displayName: cook.displayName,
 			}
+			_ = l.writePendingRetry()
 			return conflictErr
 		}
 	}
@@ -764,6 +765,9 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 			continue
 		}
 	}
+	// Persist after processing — captures both removals (dispatched) and
+	// re-additions (still deferred or bumped attempt).
+	_ = l.writePendingRetry()
 	return nil
 }
 
@@ -797,6 +801,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *cookHandle, reason string) e
 			attempt:     nextAttempt,
 			displayName: cook.displayName,
 		}
+		_ = l.writePendingRetry()
 		l.logger.Info("retry deferred: at max concurrency", "order", cook.orderID, "attempt", nextAttempt)
 		return nil
 	}

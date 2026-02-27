@@ -82,6 +82,16 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		tickets := monitor.NewEventTicketMaterializer(l.runtimeDir)
 		_ = tickets.Materialize(ctx, l.adoptedSessions)
 	}
+
+	// Load pending retries AFTER reconcile builds the live-session index
+	// (adoptedTargets). This ensures we don't retry orders that already
+	// have a recovered session handling them.
+	if err := l.loadPendingRetry(); err != nil {
+		return err
+	}
+	if err := l.reconcilePendingRetry(); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -29,6 +29,7 @@ func (l *Loop) drainMergeResults(ctx context.Context) error {
 						attempt:     cook.attempt + 1,
 						displayName: cook.displayName,
 					}
+					_ = l.writePendingRetry()
 					return conflictErr
 				}
 				continue
