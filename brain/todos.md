@@ -34,8 +34,6 @@
 ## Web UI
 
 51. [ ] Feed timeline — render `snapshot.feed_events` as a chronological activity stream. Cross-agent visibility: session starts, completions, failures, merges, brain writes. Data already exists server-side, just needs a UI component.
-52. [ ] Diff viewer for reviews — show `git diff` output in the Review column so you can see what the agent changed before merging. `PendingReviewItem` already has `worktree_path`. Server needs a new endpoint to return the diff; UI renders with syntax highlighting (starry-night already installed). [[archived_plans/52-diff-viewer-for-reviews/overview]]
-53. [ ] Work order pipeline view — render Order + Stage pipelines on agent cards. Show stage progression (execute → quality → reflect) with indicators for current/completed/pending stages. Single-stage orders (meditate, debate) look the same as today.
 54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
 55. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
 
@@ -50,6 +48,8 @@
 
 ## Done
 
+52. [x] ~~Diff viewer for reviews. [[archived_plans/52-diff-viewer-for-reviews/overview]]~~ — done. `DiffViewer.tsx`, `ReviewPanel.tsx`, `GET /api/reviews/{id}/diff`.
+53. [x] ~~Work order pipeline view~~ — done. `OrderCard.tsx` with `StagePipeline`, `StageIndicator`, `StageRail`.
 49. [x] ~~Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. Subsumes #59-65. [[archived_plans/49-work-orders-redesign/overview]]~~ — done. Order/Stage types in `internal/orderx/`, loop fully migrated, old `queuex` package removed.
 72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. [[plans/72-go-structural-cleanup/overview]]~~ — done.
 59. [x] ~~Bootstrap as embedded skill — folded into #49.~~ — done via #49.
