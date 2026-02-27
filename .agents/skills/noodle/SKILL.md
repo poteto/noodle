@@ -60,13 +60,13 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `runtime.cursor.base_url` | string | "" |  |
 | `runtime.cursor.max_concurrent` | integer | 10 |  |
 | `runtime.cursor.repository` | string | "" |  |
-| `runtime.default` | string | "tmux" | Default runtime command template for spawning cooks |
+| `runtime.default` | string | "process" | Default runtime command template for spawning cooks |
+| `runtime.process.max_concurrent` | integer | 4 |  |
 | `runtime.sprites.base_url` | string | "" |  |
 | `runtime.sprites.git_token_env` | string | "" |  |
 | `runtime.sprites.max_concurrent` | integer | 50 |  |
 | `runtime.sprites.sprite_name` | string | "" |  |
 | `runtime.sprites.token_env` | string | "" |  |
-| `runtime.tmux.max_concurrent` | integer | 4 |  |
 | `schedule.model` | string | "claude-sonnet" | Model used for scheduling sessions |
 | `schedule.run` | string | "after-each" | When to run scheduling: after-each, after-n, or manual |
 | `server.enabled` | ptr | <nil> |  |
@@ -102,7 +102,7 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 | `noodle worktree` | Manage linked git worktrees |
 | `noodle worktree create` | Create a new linked worktree |
 | `noodle worktree exec` | Run command inside worktree (CWD-safe) |
-| `noodle worktree merge` | Merge a worktree branch back to main |
+| `noodle worktree merge` | Merge a worktree branch into a target branch |
 | `noodle worktree cleanup` | Remove a worktree without merging |
 | `noodle worktree list` | List all worktrees with merge status |
 | `noodle worktree prune` | Remove merged and patch-equivalent worktrees |
@@ -114,13 +114,18 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 | `noodle plan phase-add` | Add a phase to a plan |
 | `noodle plan list` | List all plans |
 | `noodle stamp` | Stamp NDJSON logs and emit canonical sidecar events |
-| `noodle dispatch` | Dispatch a cook session in tmux |
+| `noodle dispatch` | Dispatch a cook session as a child process |
 | `noodle mise` | Build and print the current mise brief |
+| `noodle event` | Manage loop events |
+| `noodle event emit` | Emit an external event |
 
 ### Flags
 
 `noodle start`:
 - `--once` (bool): Run one scheduling cycle and exit
+
+`noodle worktree merge`:
+- `--into` (string): Target branch to merge into (default: integration branch)
 
 `noodle worktree cleanup`:
 - `--force` (bool): Remove even when unmerged commits exist
@@ -141,6 +146,9 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 - `--budget-cap` (float64): Budget cap
 - `--env` ([]string): Extra env vars (KEY=VALUE)
 
+`noodle event emit`:
+- `--payload` (string): Event payload as JSON
+
 
 ## Skill Management
 
@@ -150,8 +158,7 @@ Skills live in `.agents/skills/` by default. Paths in `skills.paths` are searche
 
 Run `noodle debug` to dump the full runtime state. Common issues:
 
-1. **"tmux is not available on PATH"** — Install tmux.
-2. **"fatal config diagnostics prevent start"** — Run `noodle debug`, fix fields in `.noodle.toml`.
+1. **"fatal config diagnostics prevent start"** — Run `noodle debug`, fix fields in `.noodle.toml`.
 3. **Missing adapter scripts** — Create scripts or update paths in config.
 4. **Stale worktrees** — `noodle worktree list`, then `noodle worktree prune`.
 
