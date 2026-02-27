@@ -30,6 +30,24 @@ func hasNonScheduleOrders(orders OrdersFile) bool {
 	return false
 }
 
+func hasScheduleOrder(orders OrdersFile) bool {
+	for _, order := range orders.Orders {
+		if isScheduleOrder(order) {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *Loop) hasActiveScheduleCook() bool {
+	for _, cook := range l.cooks.activeCooksByOrder {
+		if isScheduleStage(cook.stage) {
+			return true
+		}
+	}
+	return false
+}
+
 func bootstrapScheduleOrder(cfg config.Config) OrdersFile {
 	return OrdersFile{
 		Orders: []Order{

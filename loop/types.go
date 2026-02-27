@@ -154,7 +154,7 @@ type AdapterRunner interface {
 }
 
 type MiseBuilder interface {
-	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, error)
+	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, bool, error)
 }
 
 type Monitor interface {

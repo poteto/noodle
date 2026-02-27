@@ -1,6 +1,7 @@
 package mise
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -37,7 +38,7 @@ func NewBuilder(projectDir string, cfg config.Config) *Builder {
 	}
 }
 
-func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, error) {
+func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, bool, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
 	plans := make([]PlanSummary, 0)
@@ -52,7 +53,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 				if isMissingSyncScriptError(err) {
 					warnings = append(warnings, "backlog sync script missing; returning empty backlog")
 				} else {
-					return Brief{}, warnings, err
+					return Brief{}, warnings, false, err
 				}
 			} else {
 				backlog = filterActiveBacklog(items)
@@ -72,7 +73,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 
 	tickets, err := b.readTickets()
 	if err != nil {
-		return Brief{}, warnings, err
+		return Brief{}, warnings, false, err
 	}
 
 	if activeSummary.ByTaskKey == nil {
@@ -109,6 +110,8 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 		routing.Tags[tag] = RoutingPolicy{Provider: policy.Provider, Model: policy.Model}
 	}
 
+	recentEvents := readRecentEvents(b.runtimeDir)
+
 	brief := Brief{
 		GeneratedAt:   b.now().UTC(),
 		Backlog:       backlog,
@@ -117,6 +120,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 		Tickets:       tickets,
 		Resources:     resources,
 		RecentHistory: recentHistory,
+		RecentEvents:  recentEvents,
 		Routing:       routing,
 		TaskTypes:     b.TaskTypes,
 		Warnings:      warnings,
@@ -127,15 +131,16 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 	cmp.GeneratedAt = time.Time{}
 	content, err := json.Marshal(cmp)
 	if err != nil {
-		return Brief{}, warnings, fmt.Errorf("encode mise json for comparison: %w", err)
+		return Brief{}, warnings, false, fmt.Errorf("encode mise json for comparison: %w", err)
 	}
-	if !bytes.Equal(content, b.lastContent) {
+	changed := !bytes.Equal(content, b.lastContent)
+	if changed {
 		if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
-			return Brief{}, warnings, err
+			return Brief{}, warnings, false, err
 		}
 		b.lastContent = content
 	}
-	return brief, warnings, nil
+	return brief, warnings, changed, nil
 }
 
 func filterActiveBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {
@@ -191,6 +196,136 @@ func (b *Builder) readTickets() ([]event.Ticket, error) {
 		return []event.Ticket{}, nil
 	}
 	return tickets, nil
+}
+
+const maxRecentEvents = 50
+
+// readRecentEvents reads loop-events.ndjson and returns events after the last
+// schedule.completed watermark. Returns an empty slice on any error.
+func readRecentEvents(runtimeDir string) []RecentEvent {
+	path := filepath.Join(runtimeDir, "loop-events.ndjson")
+	f, err := os.Open(path)
+	if err != nil {
+		return []RecentEvent{}
+	}
+	defer f.Close()
+
+	// Minimal struct for unmarshalling NDJSON lines — no import cycle.
+	type ndjsonLine struct {
+		Seq     uint64          `json:"seq"`
+		Type    string          `json:"type"`
+		At      time.Time       `json:"at"`
+		Payload json.RawMessage `json:"payload,omitempty"`
+	}
+
+	var lines []ndjsonLine
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		raw := strings.TrimSpace(scanner.Text())
+		if raw == "" {
+			continue
+		}
+		var line ndjsonLine
+		if err := json.Unmarshal([]byte(raw), &line); err != nil {
+			continue
+		}
+		lines = append(lines, line)
+	}
+
+	// Find watermark: seq of the last schedule.completed event.
+	var watermark uint64
+	for _, line := range lines {
+		if line.Type == "schedule.completed" && line.Seq > watermark {
+			watermark = line.Seq
+		}
+	}
+
+	// Collect events after watermark.
+	var result []RecentEvent
+	for _, line := range lines {
+		if line.Seq <= watermark {
+			continue
+		}
+		result = append(result, RecentEvent{
+			Type:    line.Type,
+			Seq:     line.Seq,
+			At:      line.At,
+			Summary: eventSummary(line.Type, line.Payload),
+		})
+	}
+
+	// Cap at most recent.
+	if len(result) > maxRecentEvents {
+		result = result[len(result)-maxRecentEvents:]
+	}
+	return result
+}
+
+// eventSummary derives a human-readable summary from the event type and payload.
+func eventSummary(eventType string, payload json.RawMessage) string {
+	var fields map[string]json.RawMessage
+	if len(payload) > 0 {
+		_ = json.Unmarshal(payload, &fields)
+	}
+
+	getString := func(key string) string {
+		raw, ok := fields[key]
+		if !ok {
+			return ""
+		}
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return ""
+		}
+		return s
+	}
+
+	orderID := getString("order_id")
+	reason := getString("reason")
+
+	switch eventType {
+	case "stage.completed":
+		taskKey := getString("task_key")
+		if taskKey != "" {
+			return taskKey + " stage completed for " + orderID
+		}
+		return "stage completed for " + orderID
+	case "stage.failed":
+		if reason != "" {
+			return "stage failed for " + orderID + ": " + reason
+		}
+		return "stage failed for " + orderID
+	case "order.completed":
+		return "order " + orderID + " completed"
+	case "order.failed":
+		if reason != "" {
+			return "order " + orderID + " failed: " + reason
+		}
+		return "order " + orderID + " failed"
+	case "order.dropped":
+		return "order " + orderID + " dropped"
+	case "order.requeued":
+		return "order " + orderID + " requeued"
+	case "worktree.merged":
+		return "worktree merged for " + orderID
+	case "merge.conflict":
+		return "merge conflict for " + orderID
+	case "quality.written":
+		return "quality verdict for " + orderID
+	case "registry.rebuilt":
+		return "skill registry rebuilt"
+	case "sync.degraded":
+		if reason != "" {
+			return "sync degraded: " + reason
+		}
+		return "sync degraded"
+	case "bootstrap.completed":
+		return "bootstrap completed"
+	case "bootstrap.exhausted":
+		return "bootstrap exhausted"
+	default:
+		return eventType
+	}
 }
 
 func isMissingSyncScriptError(err error) bool {

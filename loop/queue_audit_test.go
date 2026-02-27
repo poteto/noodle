@@ -200,7 +200,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 	}
 
 	brief := mise.Brief{}
-	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
+	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil, false)
 	if err != nil {
 		t.Fatalf("prepareOrdersForCycle: %v", err)
 	}
@@ -299,7 +299,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 	}
 
 	brief := mise.Brief{}
-	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil)
+	result, shouldContinue, err := l.prepareOrdersForCycle(brief, nil, false)
 	if err != nil {
 		t.Fatalf("prepareOrdersForCycle: %v", err)
 	}

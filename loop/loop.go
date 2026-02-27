@@ -290,7 +290,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	brief, warnings, running, err := l.buildCycleBrief(ctx)
+	brief, warnings, running, miseChanged, err := l.buildCycleBrief(ctx)
 	if err != nil {
 		return err
 	}
@@ -298,7 +298,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return l.stampStatus()
 	}
 
-	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings)
+	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings, miseChanged)
 	if err != nil {
 		return err
 	}
@@ -386,22 +386,22 @@ func maxCompletionOverflow(cfg config.Config) int {
 	return cfg.Concurrency.MaxCompletionOverflow
 }
 
-func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {
+func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, bool, error) {
 	l.refreshAdoptedTargets()
-	brief, warnings, err := l.deps.Mise.Build(ctx, l.snapshotActiveSummary(), l.snapshotRecentHistory())
+	brief, warnings, miseChanged, err := l.deps.Mise.Build(ctx, l.snapshotActiveSummary(), l.snapshotRecentHistory())
 	if err != nil {
-		return mise.Brief{}, warnings, false, err
+		return mise.Brief{}, warnings, false, false, err
 	}
 	if l.state != StateRunning && l.state != StateIdle {
-		return brief, warnings, false, nil
+		return brief, warnings, false, miseChanged, nil
 	}
 	if l.state == StateIdle {
 		l.setState(StateRunning)
 	}
-	return brief, warnings, true, nil
+	return brief, warnings, true, miseChanged, nil
 }
 
-func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (OrdersFile, bool, error) {
+func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
 	// Consume orders-next.json if the schedule session wrote one.
 	promoted, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
@@ -465,6 +465,19 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 				return OrdersFile{}, false, err
 			}
 			l.logger.Info("orders empty, bootstrapping schedule")
+		}
+	}
+
+	// Spawn schedule on mise.json change: if content changed and no schedule
+	// cook is already active, inject a schedule order so the schedule agent
+	// can react to new events mid-cycle.
+	if miseChanged && !l.hasActiveScheduleCook() {
+		if !hasScheduleOrder(orders) {
+			orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
+			if err := l.writeOrdersState(orders); err != nil {
+				return OrdersFile{}, false, err
+			}
+			l.logger.Info("mise changed, injecting schedule order")
 		}
 	}
 

@@ -66,6 +66,15 @@ type TaskTypeSummary struct {
 	Schedule string `json:"schedule"`
 }
 
+// RecentEvent is a lifecycle event emitted by the loop, surfaced in the brief
+// so the schedule agent can react to state changes.
+type RecentEvent struct {
+	Type    string    `json:"type"`
+	Seq     uint64    `json:"seq"`
+	At      time.Time `json:"at"`
+	Summary string    `json:"summary"`
+}
+
 type Brief struct {
 	GeneratedAt   time.Time             `json:"generated_at"`
 	Backlog       []adapter.BacklogItem `json:"backlog"`
@@ -74,6 +83,7 @@ type Brief struct {
 	Tickets       []event.Ticket        `json:"tickets"`
 	Resources     ResourceSnapshot      `json:"resources"`
 	RecentHistory []HistoryItem         `json:"recent_history"`
+	RecentEvents  []RecentEvent         `json:"recent_events"`
 	Routing       RoutingSnapshot       `json:"routing"`
 	TaskTypes     []TaskTypeSummary     `json:"task_types,omitempty"`
 	Warnings      []string              `json:"warnings,omitempty"`
