@@ -1,7 +1,7 @@
 ---
 id: 73
 created: 2026-02-26
-status: ready
+status: done
 ---
 
 # Testing Strategy
