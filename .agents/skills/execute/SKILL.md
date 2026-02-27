@@ -37,7 +37,25 @@ If the scope is already a single change, skip decomposition.
 
 ### 3. Implement
 
-Use a worktree when working on a branch. Work directly on the current branch for small, low-risk changes.
+#### Worktree First — Non-Negotiable
+
+**Create a linked worktree before writing any code.** Multiple sessions run concurrently — editing files on main causes merge conflicts and lost work.
+
+```bash
+noodle worktree create <descriptive-name>
+```
+
+Then use absolute paths or `noodle worktree exec <name> <cmd>` for all operations. **Never `cd` into a worktree** — if it gets removed while the shell is inside, the session dies permanently.
+
+Commit inside the worktree. When done, merge back:
+
+```bash
+noodle worktree merge <name>
+```
+
+Skip the worktree only when the user is interactively driving a single-agent session and explicitly chooses to work on main.
+
+#### Delegation
 
 **Delegation heuristics:**
 - **Self-execute**: Single change, or changes with tight coupling (shared types, sequential dependencies).
