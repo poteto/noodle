@@ -274,6 +274,33 @@ func TestTerminalStatusWithResultEventIsCompleted(t *testing.T) {
 	}
 }
 
+func TestTerminalStatusWithErrorThenCompleteIsCompleted(t *testing.T) {
+	dir := t.TempDir()
+	canonicalPath := filepath.Join(dir, "canonical.ndjson")
+	lines := strings.Join([]string{
+		`{"type":"error","message":"command failed: ls -la hello.txt","timestamp":"2026-02-23T01:00:00Z"}`,
+		`{"type":"complete","message":"turn completed","timestamp":"2026-02-23T01:00:05Z"}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(canonicalPath, []byte(lines), 0o644); err != nil {
+		t.Fatalf("write canonical: %v", err)
+	}
+
+	session := newTmuxSession(
+		"session-a",
+		"noodle-session-a",
+		".",
+		nil,
+		canonicalPath,
+		"",
+		nil,
+		nil,
+		nil,
+	)
+	if got := session.terminalStatus(); got != "completed" {
+		t.Fatalf("terminal status = %q, want completed (error should not override completion)", got)
+	}
+}
+
 func TestTmuxSessionEmitsDroppedEventSummary(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	writer, err := event.NewEventWriter(runtimeDir, "session-a")

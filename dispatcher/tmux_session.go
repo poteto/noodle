@@ -148,11 +148,12 @@ func (s *tmuxSession) terminalStatus() string {
 	if err != nil {
 		return "failed"
 	}
+	// A session is "completed" if it has any completion/result events,
+	// regardless of intermediate command failures (which are normal during
+	// agent execution — the agent retries or works around them).
 	completed := false
 	for _, event := range events {
 		switch event.Type {
-		case parse.EventError:
-			return "failed"
 		case parse.EventComplete, parse.EventResult:
 			completed = true
 		}
