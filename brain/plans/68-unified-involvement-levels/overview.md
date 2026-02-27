@@ -50,6 +50,7 @@ Neither field controls dispatch. The user has no way to say "I want to drive eve
 - **No backward compatibility**: `autonomy` and `schedule.run` are deleted. Users update `.noodle.toml` to use `mode`. No migration, no deprecation warnings, no dual paths.
 - **`permissions.merge` unchanged**: Per-skill merge permission continues to work. In `auto` mode, skills with `permissions.merge: false` skip merge entirely. In `supervised`/`manual`, everything parks for review regardless.
 - **Dispatch gating includes retries**: Manual mode suppresses `planCycleSpawns()` AND retry paths (`processPendingRetries`, `retryCook`).
+- **Old config fields silently ignored**: TOML parser drops unrecognized keys. Users with old `autonomy`/`[schedule]` in `.noodle.toml` won't get errors — the fields are just ignored and `mode` defaults to `auto`. This is acceptable; no migration shim needed.
 
 ## Alternatives Considered
 
@@ -57,7 +58,7 @@ Neither field controls dispatch. The user has no way to say "I want to drive eve
 2. **Four modes (auto/supervised/manual/off)**: Rejected — "off" is just not running noodle.
 3. **Mode as an object with per-behavior overrides**: Rejected — over-engineering. Per-skill `permissions.merge` covers fine-grained needs.
 
-## All Consumers (must be updated atomically in phase 2)
+## All Consumers (must be updated atomically in phase 1)
 
 | File | Usage |
 |------|-------|
@@ -70,12 +71,14 @@ Neither field controls dispatch. The user has no way to say "I want to drive eve
 | `internal/schemadoc/specs.go` | `"autonomy"` field doc |
 | `internal/snapshot/types.go` | `Snapshot.Autonomy` field |
 | `internal/snapshot/snapshot.go` | maps state → snapshot |
+| `internal/snapshot/fixture_test.go` | `state.Autonomy` in test fixtures |
+| `internal/snapshot/testdata/*/expected.md` | golden files containing `"autonomy"` |
 | `server/server.go` | `handleConfig()` response, `validActions` |
 | `startup/firstrun.go` | scaffolded `.noodle.toml` template |
-| `generate/skill_noodle.go` | generated docs table |
+| `generate/skill_noodle.go` | generated docs table — `"autonomy"` and `"schedule.run"` rows |
 | `scripts/sandbox.sh` | example config |
-| **Tests**: `config_test.go`, `loop_test.go`, `log_test.go`, `control_test.go`, `snapshot_test.go`, `integration_test.go`, `firstrun_test.go`, `smoke_test.go`, `helpers_test.go`, `skill_noodle_test.go` | |
-| **UI**: `generated-types.ts`, `types.ts`, `api.ts`, `api.test.ts`, `types.test.ts`, `test-utils.ts`, `Board.tsx`, `Board.test.tsx` | |
+| **Tests**: `config_test.go`, `loop_test.go`, `log_test.go`, `control_test.go`, `snapshot_test.go`, `integration_test.go`, `firstrun_test.go`, `smoke_test.go`, `helpers_test.go`, `skill_noodle_test.go`, `fixture_test.go` | |
+| **UI**: `generated-types.ts` (auto-generated — regenerate, don't hand-edit), `types.ts`, `api.ts`, `api.test.ts`, `types.test.ts`, `test-utils.ts`, `Board.tsx`, `Board.test.tsx`, `TaskEditor.test.tsx` | |
 
 ## Applicable Skills
 
@@ -87,11 +90,10 @@ Neither field controls dispatch. The user has no way to say "I want to drive eve
 
 ## Phases
 
-1. [[plans/68-unified-involvement-levels/phase-01-define-mode-type]]
-2. [[plans/68-unified-involvement-levels/phase-02-delete-old-fields-swap-all-consumers]]
-3. [[plans/68-unified-involvement-levels/phase-03-dispatch-and-schedule-gating]]
-4. [[plans/68-unified-involvement-levels/phase-04-mise-and-skills]]
-5. [[plans/68-unified-involvement-levels/phase-05-web-ui]]
+1. [[plans/68-unified-involvement-levels/phase-01-atomic-swap]]
+2. [[plans/68-unified-involvement-levels/phase-02-dispatch-and-schedule-gating]]
+3. [[plans/68-unified-involvement-levels/phase-03-mise-and-skills]]
+4. [[plans/68-unified-involvement-levels/phase-04-web-ui]]
 
 ## Verification
 
