@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/poteto/noodle/dispatcher"
 )
 
 // tmuxRuntime adds tmux-specific session recovery to the base DispatcherRuntime.
@@ -90,7 +92,8 @@ func (s *recoveredSessionHandle) ID() string          { return s.id }
 func (s *recoveredSessionHandle) Status() string      { return s.status }
 func (s *recoveredSessionHandle) TotalCost() float64  { return 0 }
 func (s *recoveredSessionHandle) Kill() error         { return nil }
-func (s *recoveredSessionHandle) VerdictPath() string { return "" }
+func (s *recoveredSessionHandle) VerdictPath() string       { return "" }
+func (s *recoveredSessionHandle) Controller() AgentController { return dispatcher.NoopController() }
 
 func (s *recoveredSessionHandle) Done() <-chan struct{} {
 	ch := make(chan struct{})

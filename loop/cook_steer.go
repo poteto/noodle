@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/poteto/noodle/event"
 )
@@ -23,6 +25,14 @@ func (l *Loop) killCook(name string) error {
 	return fmt.Errorf("session not found")
 }
 
+// steerMu serializes concurrent steers to the same session.
+var steerMu sync.Map // session ID → *sync.Mutex
+
+func sessionSteerMutex(sessionID string) *sync.Mutex {
+	val, _ := steerMu.LoadOrStore(sessionID, &sync.Mutex{})
+	return val.(*sync.Mutex)
+}
+
 func (l *Loop) steer(target string, prompt string) error {
 	target = strings.TrimSpace(target)
 	if target == "" {
@@ -35,39 +45,97 @@ func (l *Loop) steer(target string, prompt string) error {
 		if cook.worktreeName != target && cook.session.ID() != target {
 			continue
 		}
-		resumeCtx := buildSteerResumeContext(l.runtimeDir, cook.session.ID())
-		steerPrompt := strings.TrimSpace(prompt)
-		if resumeCtx != "" {
-			steerPrompt = "Resume context: " + resumeCtx + "\n\nChef steering: " + steerPrompt
+
+		controller := cook.session.Controller()
+		if controller.Steerable() {
+			// Live steering — interrupt + redirect without killing the session.
+			// Run async so the control loop isn't blocked.
+			sessionID := cook.session.ID()
+			steerPrompt := strings.TrimSpace(prompt)
+			go l.steerLive(sessionID, controller, steerPrompt)
+			return nil
 		}
 
-		if err := cook.session.Kill(); err != nil {
-			return err
-		}
-		l.trackCookCompleted(cook, StageResult{
-			SessionID:   cook.session.ID(),
-			Status:      StageResultCancelled,
-			CompletedAt: l.deps.Now(),
-		})
-		delete(l.cooks.activeCooksByOrder, cook.orderID)
-		cand := dispatchCandidate{
-			OrderID:     cook.orderID,
-			StageIndex:  cook.stageIndex,
-			Stage:       cook.stage,
-			IsOnFailure: cook.isOnFailure,
-		}
-		order := Order{
-			ID:     cook.orderID,
-			Status: cook.orderStatus,
-			Plan:   cook.plan,
-		}
-		return l.spawnCook(context.Background(), cand, order, spawnOptions{
-			attempt:     cook.attempt,
-			resume:      steerPrompt,
-			displayName: cook.displayName,
-		})
+		// Not steerable — fall back to kill + respawn with resume context.
+		return l.steerRespawn(cook, prompt)
 	}
 	return errors.New("session not found")
+}
+
+// steerLive interrupts a steerable session and sends a new prompt.
+// Runs in a goroutine. Falls back to kill+respawn if interrupt fails.
+func (l *Loop) steerLive(sessionID string, controller interface {
+	Interrupt(ctx context.Context) error
+	SendMessage(ctx context.Context, prompt string) error
+}, prompt string) {
+	mu := sessionSteerMutex(sessionID)
+	mu.Lock()
+	defer mu.Unlock()
+	defer steerMu.Delete(sessionID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := controller.Interrupt(ctx); err != nil {
+		l.logger.Warn("steer interrupt failed, falling back to respawn",
+			"session", sessionID, "error", err)
+		l.steerFallbackRespawn(sessionID, prompt)
+		return
+	}
+
+	if err := controller.SendMessage(ctx, prompt); err != nil {
+		l.logger.Warn("steer send failed after interrupt",
+			"session", sessionID, "error", err)
+		return
+	}
+
+	l.logger.Info("steered session", "session", sessionID)
+}
+
+// steerFallbackRespawn is called from a goroutine when live interrupt fails.
+// It performs the same kill+respawn as steerRespawn but must look up the cook
+// again since it runs asynchronously.
+func (l *Loop) steerFallbackRespawn(sessionID string, prompt string) {
+	// The loop state is not protected by a mutex — steer fallback cannot
+	// safely mutate cook maps from a goroutine. Log the failure so the
+	// operator can manually re-steer or kill+enqueue.
+	l.logger.Warn("steer fallback: live interrupt failed, session may need manual re-steer",
+		"session", sessionID)
+}
+
+// steerRespawn is the original kill+respawn steer path for non-steerable sessions.
+func (l *Loop) steerRespawn(cook *cookHandle, prompt string) error {
+	resumeCtx := buildSteerResumeContext(l.runtimeDir, cook.session.ID())
+	steerPrompt := strings.TrimSpace(prompt)
+	if resumeCtx != "" {
+		steerPrompt = "Resume context: " + resumeCtx + "\n\nChef steering: " + steerPrompt
+	}
+
+	if err := cook.session.Kill(); err != nil {
+		return err
+	}
+	l.trackCookCompleted(cook, StageResult{
+		SessionID:   cook.session.ID(),
+		Status:      StageResultCancelled,
+		CompletedAt: l.deps.Now(),
+	})
+	delete(l.cooks.activeCooksByOrder, cook.orderID)
+	cand := dispatchCandidate{
+		OrderID:     cook.orderID,
+		StageIndex:  cook.stageIndex,
+		Stage:       cook.stage,
+		IsOnFailure: cook.isOnFailure,
+	}
+	order := Order{
+		ID:     cook.orderID,
+		Status: cook.orderStatus,
+		Plan:   cook.plan,
+	}
+	return l.spawnCook(context.Background(), cand, order, spawnOptions{
+		attempt:     cook.attempt,
+		resume:      steerPrompt,
+		displayName: cook.displayName,
+	})
 }
 
 // buildSteerResumeContext reads a session's event log and extracts a progress

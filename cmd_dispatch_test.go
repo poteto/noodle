@@ -126,4 +126,5 @@ func (s fakeSession) Status() string                          { return "running"
 func (s fakeSession) Events() <-chan dispatcher.SessionEvent { return make(chan dispatcher.SessionEvent) }
 func (s fakeSession) Done() <-chan struct{}                   { return make(chan struct{}) }
 func (s fakeSession) TotalCost() float64                      { return 0 }
-func (s fakeSession) Kill() error                             { return nil }
+func (s fakeSession) Kill() error                              { return nil }
+func (s fakeSession) Controller() dispatcher.AgentController   { return dispatcher.NoopController() }

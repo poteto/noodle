@@ -73,7 +73,8 @@ func (s *mockSession) ID() string            { return s.id }
 func (s *mockSession) Status() string        { return s.status }
 func (s *mockSession) Done() <-chan struct{} { return s.done }
 func (s *mockSession) TotalCost() float64    { return s.cost }
-func (s *mockSession) VerdictPath() string   { return "" }
+func (s *mockSession) VerdictPath() string                     { return "" }
+func (s *mockSession) Controller() loopruntime.AgentController { return loopruntime.NoopController() }
 
 func (s *mockSession) Kill() error {
 	s.status = "killed"

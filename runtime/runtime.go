@@ -10,6 +10,12 @@ import (
 // DispatchRequest is shared with the existing dispatcher boundary.
 type DispatchRequest = dispatcher.DispatchRequest
 
+// AgentController aliases dispatcher.AgentController so loop/ doesn't import dispatcher.
+type AgentController = dispatcher.AgentController
+
+// NoopController returns a controller that rejects all steering attempts.
+var NoopController = dispatcher.NoopController
+
 // SyncResult aliases dispatcher.SyncResult so loop/ doesn't import dispatcher.
 type SyncResult = dispatcher.SyncResult
 
@@ -27,6 +33,7 @@ type SessionHandle interface {
 	TotalCost() float64
 	Kill() error
 	VerdictPath() string
+	Controller() AgentController
 }
 
 // RecoveredSession is discovered from a runtime during startup recovery.
@@ -56,4 +63,7 @@ func (s dispatcherSessionHandle) TotalCost() float64    { return s.session.Total
 func (s dispatcherSessionHandle) Kill() error           { return s.session.Kill() }
 func (s dispatcherSessionHandle) VerdictPath() string {
 	return filepath.Join(s.runtimeDir, "quality", s.session.ID()+".json")
+}
+func (s dispatcherSessionHandle) Controller() AgentController {
+	return s.session.Controller()
 }

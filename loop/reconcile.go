@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
@@ -307,7 +308,8 @@ func (s *adoptedSession) ID() string          { return s.id }
 func (s *adoptedSession) Status() string      { return s.status }
 func (s *adoptedSession) TotalCost() float64  { return 0 }
 func (s *adoptedSession) Kill() error         { return nil }
-func (s *adoptedSession) VerdictPath() string { return "" }
+func (s *adoptedSession) VerdictPath() string                     { return "" }
+func (s *adoptedSession) Controller() loopruntime.AgentController { return loopruntime.NoopController() }
 
 func (s *adoptedSession) Done() <-chan struct{} {
 	ch := make(chan struct{})

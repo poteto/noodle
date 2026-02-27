@@ -25,6 +25,9 @@ type AgentController interface {
 	Steerable() bool
 }
 
+// NoopController returns an AgentController that rejects all steering attempts.
+func NoopController() AgentController { return noopController{} }
+
 // noopController is the default controller for sessions that don't support
 // live steering (sprites, adopted sessions, legacy).
 type noopController struct{}
