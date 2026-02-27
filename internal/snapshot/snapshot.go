@@ -11,68 +11,52 @@ import (
 	"strings"
 	"time"
 
-	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/internal/orderx"
-	"github.com/poteto/noodle/internal/sessionmeta"
-	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 )
 
-const defaultStuckThreshold = int64(120)
+// LoadSnapshot builds a Snapshot from in-memory LoopState. Session data comes
+// from the loop's active cook tracking and recent history — no directory
+// scanning or bulk event reading.
+func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snapshot, error) {
+	sessions := make([]Session, 0, len(state.ActiveCooks)+len(state.RecentHistory))
+	active := make([]Session, 0, len(state.ActiveCooks))
+	recent := make([]Session, 0, len(state.RecentHistory))
 
-// LoadSnapshot reads runtime state from disk and assembles a Snapshot.
-func LoadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
-	sessions, err := readSessions(runtimeDir)
-	if err != nil {
-		return Snapshot{}, err
-	}
-	or, err := readOrders(filepath.Join(runtimeDir, "orders.json"))
-	if err != nil {
-		return Snapshot{}, err
-	}
-	sr, err := readStatus(filepath.Join(runtimeDir, "status.json"))
-	if err != nil {
-		return Snapshot{}, err
-	}
-
-	eventsBySession := make(map[string][]EventLine, len(sessions))
-	reader := event.NewEventReader(runtimeDir)
-	for i := range sessions {
-		events, err := reader.ReadSession(sessions[i].ID, event.EventFilter{})
-		if err != nil {
-			return Snapshot{}, err
+	for _, cook := range state.ActiveCooks {
+		status := strings.ToLower(strings.TrimSpace(cook.Status))
+		if status == "" {
+			status = "running"
 		}
-		lines := mapEventLines(events)
-		eventsBySession[sessions[i].ID] = lines
-		if sessions[i].CurrentAction == "" && len(lines) > 0 {
-			sessions[i].CurrentAction = lines[len(lines)-1].Body
+		session := Session{
+			ID:           cook.SessionID,
+			DisplayName:  cook.DisplayName,
+			Status:       status,
+			Runtime:      cook.Runtime,
+			Provider:     cook.Provider,
+			Model:        cook.Model,
+			LastActivity: now.UTC(),
+			TaskKey:      cook.TaskKey,
 		}
+		sessions = append(sessions, session)
+		active = append(active, session)
 	}
 
-	active := make([]Session, 0, len(sessions))
-	recent := make([]Session, 0, len(sessions))
-	totalCost := 0.0
-	loopState := normalizeLoopState(sr.LoopState)
-	if loopState == "" {
-		loopState = "running"
-	}
-	for _, session := range sessions {
-		totalCost += session.TotalCostUSD
-		loopState = pickLoopState(loopState, session.LoopState)
-		if IsActiveStatus(session.Status) {
-			active = append(active, session)
-		} else {
-			recent = append(recent, session)
+	for _, item := range state.RecentHistory {
+		session := Session{
+			ID:           item.SessionID,
+			DisplayName:  item.SessionID,
+			Status:       strings.ToLower(strings.TrimSpace(item.Status)),
+			LastActivity: item.CompletedAt,
+			TaskKey:      item.TaskKey,
 		}
+		sessions = append(sessions, session)
+		recent = append(recent, session)
 	}
 
 	sort.SliceStable(active, func(i, j int) bool {
-		if active[i].LastActivity.Equal(active[j].LastActivity) {
-			return active[i].ID < active[j].ID
-		}
-		return active[i].LastActivity.After(active[j].LastActivity)
+		return active[i].ID < active[j].ID
 	})
 	sort.SliceStable(recent, func(i, j int) bool {
 		if recent[i].LastActivity.Equal(recent[j].LastActivity) {
@@ -81,187 +65,97 @@ func LoadSnapshot(runtimeDir string, now time.Time) (Snapshot, error) {
 		return recent[i].LastActivity.After(recent[j].LastActivity)
 	})
 
-	feedEvents := buildFeedEvents(sessions, eventsBySession)
-	steerEvents := readSteerEvents(filepath.Join(runtimeDir, "control.ndjson"))
-	feedEvents = append(feedEvents, steerEvents...)
+	// Build a lookup from order ID to active cook session ID.
+	cookSessionByOrder := make(map[string]string, len(state.ActiveCooks))
+	for _, cook := range state.ActiveCooks {
+		cookSessionByOrder[cook.OrderID] = cook.SessionID
+	}
+
+	orders := make([]Order, 0, len(state.Orders))
+	for _, order := range state.Orders {
+		activeSessionID := cookSessionByOrder[order.ID]
+		stages := make([]Stage, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			s := Stage{
+				TaskKey:  stage.TaskKey,
+				Prompt:   stage.Prompt,
+				Skill:    stage.Skill,
+				Provider: stage.Provider,
+				Model:    stage.Model,
+				Runtime:  stage.Runtime,
+				Status:   stage.Status,
+				Extra:    stage.Extra,
+			}
+			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+				s.SessionID = activeSessionID
+			}
+			stages = append(stages, s)
+		}
+		onFailure := make([]Stage, 0, len(order.OnFailure))
+		for _, stage := range order.OnFailure {
+			s := Stage{
+				TaskKey:  stage.TaskKey,
+				Prompt:   stage.Prompt,
+				Skill:    stage.Skill,
+				Provider: stage.Provider,
+				Model:    stage.Model,
+				Runtime:  stage.Runtime,
+				Status:   stage.Status,
+				Extra:    stage.Extra,
+			}
+			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+				s.SessionID = activeSessionID
+			}
+			onFailure = append(onFailure, s)
+		}
+		orders = append(orders, Order{
+			ID:        order.ID,
+			Title:     order.Title,
+			Plan:      append([]string(nil), order.Plan...),
+			Rationale: order.Rationale,
+			Stages:    stages,
+			Status:    order.Status,
+			OnFailure: onFailure,
+		})
+	}
+
+	feedEvents := readSteerEvents(filepath.Join(runtimeDir, "control.ndjson"))
 	queueEvents := readQueueEvents(runtimeDir)
 	feedEvents = append(feedEvents, queueEvents...)
 	sort.SliceStable(feedEvents, func(i, j int) bool {
 		return feedEvents[i].At.Before(feedEvents[j].At)
 	})
-	const maxFeedEvents = 500
-	if len(feedEvents) > maxFeedEvents {
-		feedEvents = feedEvents[len(feedEvents)-maxFeedEvents:]
-	}
-
-	pendingReviews, err := loop.ReadPendingReview(runtimeDir)
-	if err != nil {
-		return Snapshot{}, err
-	}
-	pendingCount := len(pendingReviews)
-
-	autonomy := sr.Autonomy
-	if autonomy == "" {
-		autonomy = config.AutonomyAuto
-	}
 
 	return Snapshot{
 		UpdatedAt:          now.UTC(),
-		LoopState:          loopState,
+		LoopState:          normalizeLoopState(state.Status),
 		Sessions:           sessions,
 		Active:             active,
 		Recent:             recent,
-		Orders:             or.Orders,
-		ActiveOrderIDs:     sr.Active,
-		ActionNeeded:       or.ActionNeeded,
-		EventsBySession:    eventsBySession,
+		Orders:             orders,
+		ActiveOrderIDs:     append([]string(nil), state.ActiveOrderIDs...),
+		ActionNeeded:       append([]string(nil), state.ActionNeeded...),
+		EventsBySession:    map[string][]EventLine{},
 		FeedEvents:         feedEvents,
-		TotalCostUSD:       totalCost,
-		PendingReviews:     pendingReviews,
-		PendingReviewCount: pendingCount,
-		Autonomy:           autonomy,
-		MaxCooks:           sr.MaxCooks,
+		TotalCostUSD:       state.TotalCostUSD,
+		PendingReviews:     append([]loop.PendingReviewItem(nil), state.PendingReviews...),
+		PendingReviewCount: state.PendingReviewCount,
+		Autonomy:           state.Autonomy,
+		MaxCooks:           state.MaxCooks,
 	}, nil
 }
 
-func readSessions(runtimeDir string) ([]Session, error) {
-	metas, err := sessionmeta.ReadAll(runtimeDir)
+// ReadSessionEvents reads canonical events for a single session on demand.
+func ReadSessionEvents(runtimeDir, sessionID string) ([]EventLine, error) {
+	reader := event.NewEventReader(runtimeDir)
+	events, err := reader.ReadSession(sessionID, event.EventFilter{})
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []EventLine{}, nil
+		}
 		return nil, err
 	}
-
-	sessions := make([]Session, 0, len(metas))
-	for _, meta := range metas {
-		sessionID := strings.TrimSpace(meta.SessionID)
-		status := strings.ToLower(strings.TrimSpace(meta.Status))
-		health := deriveHealth(
-			status,
-			meta.Health,
-			meta.ContextWindowUsagePct,
-			meta.IdleSeconds,
-			meta.StuckThresholdSeconds,
-		)
-
-		spawnInfo := readSpawnInfo(runtimeDir, sessionID)
-		displayName := spawnInfo.displayName
-		if displayName == "" {
-			displayName = stringx.KitchenName(sessionID)
-		}
-		retryCount := spawnInfo.retryCount
-		if retryCount == 0 {
-			retryCount = meta.RetryCount
-		}
-
-		sessions = append(sessions, Session{
-			ID:                    sessionID,
-			DisplayName:           displayName,
-			Status:                stringx.NonEmpty(status, "running"),
-			Runtime:               strings.TrimSpace(meta.Runtime),
-			Provider:              strings.TrimSpace(meta.Provider),
-			Model:                 strings.TrimSpace(meta.Model),
-			TotalCostUSD:          meta.TotalCostUSD,
-			DurationSeconds:       meta.DurationSeconds,
-			LastActivity:          meta.LastActivity,
-			CurrentAction:         strings.TrimSpace(meta.CurrentAction),
-			Health:                health,
-			ContextWindowUsagePct: meta.ContextWindowUsagePct,
-			RetryCount:            retryCount,
-			IdleSeconds:           meta.IdleSeconds,
-			StuckThresholdSeconds: meta.StuckThresholdSeconds,
-			LoopState:             strings.TrimSpace(meta.LoopState),
-			DispatchWarning:       spawnInfo.dispatchWarning,
-			WorktreeName:          spawnInfo.worktreeName,
-			TaskKey:               InferTaskType(stringx.NonEmpty(spawnInfo.worktreeName, sessionID)),
-			Title:                 spawnInfo.title,
-		})
-	}
-
-	sort.SliceStable(sessions, func(i, j int) bool {
-		if sessions[i].LastActivity.Equal(sessions[j].LastActivity) {
-			return sessions[i].ID < sessions[j].ID
-		}
-		return sessions[i].LastActivity.After(sessions[j].LastActivity)
-	})
-	return sessions, nil
-}
-
-type ordersResult struct {
-	Orders       []Order
-	ActionNeeded []string
-}
-
-func readOrders(path string) (ordersResult, error) {
-	of, err := orderx.ReadOrders(path)
-	if err != nil {
-		return ordersResult{}, err
-	}
-
-	orders := make([]Order, 0, len(of.Orders))
-	for _, o := range of.Orders {
-		stages := make([]Stage, 0, len(o.Stages))
-		for _, s := range o.Stages {
-			stages = append(stages, Stage{
-				TaskKey:  s.TaskKey,
-				Prompt:   s.Prompt,
-				Skill:    s.Skill,
-				Provider: s.Provider,
-				Model:    s.Model,
-				Runtime:  s.Runtime,
-				Status:   s.Status,
-				Extra:    s.Extra,
-			})
-		}
-		onFailure := make([]Stage, 0, len(o.OnFailure))
-		for _, s := range o.OnFailure {
-			onFailure = append(onFailure, Stage{
-				TaskKey:  s.TaskKey,
-				Prompt:   s.Prompt,
-				Skill:    s.Skill,
-				Provider: s.Provider,
-				Model:    s.Model,
-				Runtime:  s.Runtime,
-				Status:   s.Status,
-				Extra:    s.Extra,
-			})
-		}
-		order := Order{
-			ID:        o.ID,
-			Title:     o.Title,
-			Plan:      o.Plan,
-			Rationale: o.Rationale,
-			Stages:    stages,
-			Status:    o.Status,
-		}
-		if len(onFailure) > 0 {
-			order.OnFailure = onFailure
-		}
-		orders = append(orders, order)
-	}
-
-	return ordersResult{
-		Orders:       orders,
-		ActionNeeded: of.ActionNeeded,
-	}, nil
-}
-
-type statusResult struct {
-	Active    []string
-	Autonomy  string
-	LoopState string
-	MaxCooks  int
-}
-
-func readStatus(path string) (statusResult, error) {
-	status, err := statusfile.Read(path)
-	if err != nil {
-		return statusResult{}, err
-	}
-	return statusResult{
-		Active:    status.Active,
-		Autonomy:  status.Autonomy,
-		LoopState: status.LoopState,
-		MaxCooks:  status.MaxCooks,
-	}, nil
+	return mapEventLines(events), nil
 }
 
 func mapEventLines(events []event.Event) []EventLine {
@@ -438,47 +332,6 @@ func shortInt(v int) string {
 	return fmt.Sprintf("%d", v)
 }
 
-func deriveHealth(status, explicit string, contextUsage float64, idleSeconds, stuckThresholdSeconds int64) string {
-	explicit = strings.ToLower(strings.TrimSpace(explicit))
-	if explicit == HealthGreen || explicit == HealthYellow || explicit == HealthRed {
-		return explicit
-	}
-
-	status = strings.ToLower(strings.TrimSpace(status))
-	if status == "failed" || status == "stuck" {
-		return HealthRed
-	}
-	if status == "exited" || status == "killed" || status == "completed" {
-		return HealthYellow
-	}
-
-	if stuckThresholdSeconds <= 0 {
-		stuckThresholdSeconds = defaultStuckThreshold
-	}
-	if idleSeconds > stuckThresholdSeconds {
-		return HealthRed
-	}
-	if contextUsage >= 80 {
-		return HealthYellow
-	}
-	if idleSeconds > stuckThresholdSeconds/2 {
-		return HealthYellow
-	}
-	return HealthGreen
-}
-
-func pickLoopState(current, candidate string) string {
-	current = normalizeLoopState(current)
-	candidate = normalizeLoopState(candidate)
-	if candidate == "" {
-		return current
-	}
-	if loopStateRank(candidate) > loopStateRank(current) {
-		return candidate
-	}
-	return current
-}
-
 func normalizeLoopState(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "idle":
@@ -492,55 +345,6 @@ func normalizeLoopState(value string) string {
 	default:
 		return ""
 	}
-}
-
-func loopStateRank(state string) int {
-	switch state {
-	case LoopStateDraining:
-		return 3
-	case LoopStatePaused:
-		return 2
-	case LoopStateRunning:
-		return 1
-	case LoopStateIdle:
-		return 0
-	default:
-		return -1
-	}
-}
-
-// IsActiveStatus returns true for statuses that indicate the session is active.
-func IsActiveStatus(status string) bool {
-	switch strings.ToLower(strings.TrimSpace(status)) {
-	case "running", "spawning", "stuck":
-		return true
-	default:
-		return false
-	}
-}
-
-func buildFeedEvents(sessions []Session, eventsBySession map[string][]EventLine) []FeedEvent {
-	feed := make([]FeedEvent, 0, 64)
-	for _, session := range sessions {
-		lines, ok := eventsBySession[session.ID]
-		if !ok {
-			continue
-		}
-		agentName := stringx.KitchenName(session.ID)
-		taskType := InferTaskType(session.ID)
-		for _, line := range lines {
-			feed = append(feed, FeedEvent{
-				SessionID: session.ID,
-				AgentName: agentName,
-				TaskType:  taskType,
-				At:        line.At,
-				Label:     line.Label,
-				Body:      line.Body,
-				Category:  string(line.Category),
-			})
-		}
-	}
-	return feed
 }
 
 func readSteerEvents(controlPath string) []FeedEvent {
@@ -651,64 +455,6 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 		})
 	}
 	return events
-}
-
-type spawnInfo struct {
-	dispatchWarning string
-	worktreeName    string
-	displayName     string
-	title           string
-	retryCount      int
-}
-
-// readSpawnInfo reads all display-relevant fields from a session's spawn.json in one pass.
-func readSpawnInfo(runtimeDir, sessionID string) spawnInfo {
-	path := filepath.Join(runtimeDir, "sessions", sessionID, "spawn.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return spawnInfo{}
-	}
-	var payload struct {
-		DispatchWarning string `json:"dispatch_warning"`
-		WorktreePath    string `json:"worktree_path"`
-		DisplayName     string `json:"display_name"`
-		Title           string `json:"title"`
-		RetryCount      int    `json:"retry_count"`
-	}
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return spawnInfo{}
-	}
-
-	wtName := ""
-	wtPath := strings.TrimSpace(payload.WorktreePath)
-	if wtPath != "" {
-		if !strings.Contains(wtPath, ".worktrees"+string(filepath.Separator)) {
-			wtName = readGitBranch(wtPath)
-		} else {
-			wtName = filepath.Base(wtPath)
-		}
-	}
-
-	return spawnInfo{
-		dispatchWarning: strings.TrimSpace(payload.DispatchWarning),
-		worktreeName:    wtName,
-		displayName:     strings.TrimSpace(payload.DisplayName),
-		title:           strings.TrimSpace(payload.Title),
-		retryCount:      payload.RetryCount,
-	}
-}
-
-// readGitBranch reads the current branch from a git checkout directory.
-func readGitBranch(dir string) string {
-	head, err := os.ReadFile(filepath.Join(dir, ".git", "HEAD"))
-	if err != nil {
-		return filepath.Base(dir)
-	}
-	ref := strings.TrimSpace(string(head))
-	if strings.HasPrefix(ref, "ref: refs/heads/") {
-		return strings.TrimPrefix(ref, "ref: refs/heads/")
-	}
-	return filepath.Base(dir)
 }
 
 // InferTaskType extracts a task type from session/worktree naming conventions.

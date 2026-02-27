@@ -131,15 +131,10 @@ func (h *sseHub) watchAndBroadcast(ctx context.Context, runtimeDir string, now f
 // loadAndBroadcast loads a snapshot, diffs against the last hash, and
 // broadcasts if changed.
 func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provider LoopStateProvider) {
-	var (
-		snap snapshot.Snapshot
-		err  error
-	)
 	if provider == nil {
-		snap, err = snapshot.LoadSnapshot(runtimeDir, now())
-	} else {
-		snap, err = snapshot.LoadSnapshotFromLoopState(runtimeDir, now(), provider.State())
+		return
 	}
+	snap, err := snapshot.LoadSnapshot(runtimeDir, now(), provider.State())
 	if err != nil {
 		return
 	}

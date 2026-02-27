@@ -197,10 +197,7 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) loadSnapshot() (snapshot.Snapshot, error) {
-	if s.provider == nil {
-		return snapshot.LoadSnapshot(s.runtimeDir, s.now())
-	}
-	return snapshot.LoadSnapshotFromLoopState(s.runtimeDir, s.now(), s.provider.State())
+	return snapshot.LoadSnapshot(s.runtimeDir, s.now(), s.provider.State())
 }
 
 // controlRequest is the JSON body for POST /api/control.

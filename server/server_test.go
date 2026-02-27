@@ -19,25 +19,22 @@ import (
 	"github.com/poteto/noodle/loop"
 )
 
+type staticProvider struct {
+	state loop.LoopState
+}
+
+func (p *staticProvider) State() loop.LoopState { return p.state }
+
 func testServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dir := t.TempDir()
-	// Create minimal runtime files so LoadSnapshot doesn't fail.
-	if err := os.MkdirAll(filepath.Join(dir, "sessions"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "orders.json"), []byte(`{"orders":[]}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "status.json"), []byte(`{}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
 
 	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
 	s := New(Options{
-		RuntimeDir: dir,
-		Addr:       "127.0.0.1:0",
-		Now:        func() time.Time { return fixed },
+		RuntimeDir:        dir,
+		Addr:              "127.0.0.1:0",
+		Now:               func() time.Time { return fixed },
+		LoopStateProvider: &staticProvider{state: loop.LoopState{Status: "running"}},
 	})
 	return s, dir
 }
@@ -341,13 +338,10 @@ func TestSSEHubDiffGating(t *testing.T) {
 	hub := newSSEHub()
 	dir := t.TempDir()
 
-	// Create minimal runtime files.
-	os.MkdirAll(filepath.Join(dir, "sessions"), 0o755)
-	os.WriteFile(filepath.Join(dir, "orders.json"), []byte(`{"orders":[]}`), 0o644)
-	os.WriteFile(filepath.Join(dir, "status.json"), []byte(`{}`), 0o644)
-
 	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
 	now := func() time.Time { return fixed }
+
+	provider := &staticProvider{state: loop.LoopState{Status: "running"}}
 
 	client := &sseClient{
 		ch:     make(chan []byte, 16),
@@ -356,7 +350,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	hub.addClient(client)
 
 	// First load should broadcast.
-	hub.loadAndBroadcast(dir, now, nil)
+	hub.loadAndBroadcast(dir, now, provider)
 	select {
 	case msg := <-client.ch:
 		if !strings.Contains(string(msg), "data: ") {
@@ -367,7 +361,7 @@ func TestSSEHubDiffGating(t *testing.T) {
 	}
 
 	// Second load with same data should NOT broadcast (diff gating).
-	hub.loadAndBroadcast(dir, now, nil)
+	hub.loadAndBroadcast(dir, now, provider)
 	select {
 	case msg := <-client.ch:
 		t.Fatalf("expected no broadcast on unchanged data, got %s", msg)
