@@ -1,4 +1,4 @@
-Back to [[plans/73-testing-strategy/overview]]
+Back to [[archived_plans/73-testing-strategy/overview]]
 
 # Phase 4: Expand Go Fixture Coverage
 

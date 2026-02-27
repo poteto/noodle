@@ -19,3 +19,4 @@
 - [x] [[archived_plans/52-diff-viewer-for-reviews/overview]]
 - [x] [[archived_plans/49-work-orders-redesign/overview]]
 - [x] [[archived_plans/70-scaling-the-loop-redesign/overview]]
+- [x] [[archived_plans/73-testing-strategy/overview]]

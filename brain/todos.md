@@ -4,7 +4,7 @@
 
 ## Testing & Verification
 
-73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[plans/73-testing-strategy/overview]]
+73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archived_plans/73-testing-strategy/overview]]
 
 ## Structural Cleanup
 

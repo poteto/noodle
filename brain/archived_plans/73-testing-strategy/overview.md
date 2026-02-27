@@ -67,11 +67,11 @@ Considered Playwright tests against a mock Go server. Rejected — the mock serv
 
 Phases 2-3 depend on phase 1 (generated types). Phase 4 is independent and can run in parallel with 1-3.
 
-1. [[plans/73-testing-strategy/phase-01-typesafe-api-boundary]] — Generate TS types from Go structs, delete hand-maintained types
-2. [[plans/73-testing-strategy/phase-02-ui-unit-test-infrastructure]] — Install Vitest + Testing Library, configure, write first tests (depends on phase 1)
-3. [[plans/73-testing-strategy/phase-03-ui-component-tests]] — Test critical component logic (Board, cards, data layer, SSE)
-4. [[plans/73-testing-strategy/phase-04-expand-go-fixture-coverage]] — New fixtures for snapshot builder and loop edge cases
-5. [[plans/73-testing-strategy/phase-05-e2e-agent-smoke-test]] — Real Codex agent smoke test with milestone polling
+1. [[archived_plans/73-testing-strategy/phase-01-typesafe-api-boundary]] — Generate TS types from Go structs, delete hand-maintained types
+2. [[archived_plans/73-testing-strategy/phase-02-ui-unit-test-infrastructure]] — Install Vitest + Testing Library, configure, write first tests (depends on phase 1)
+3. [[archived_plans/73-testing-strategy/phase-03-ui-component-tests]] — Test critical component logic (Board, cards, data layer, SSE)
+4. [[archived_plans/73-testing-strategy/phase-04-expand-go-fixture-coverage]] — New fixtures for snapshot builder and loop edge cases
+5. [[archived_plans/73-testing-strategy/phase-05-e2e-agent-smoke-test]] — Real Codex agent smoke test with milestone polling
 
 ## Verification
 
