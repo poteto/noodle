@@ -1,0 +1,255 @@
+package dispatcher
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/skill"
+	wt "github.com/poteto/noodle/worktree"
+)
+
+// ProcessDispatcherConfig configures a process dispatcher.
+type ProcessDispatcherConfig struct {
+	ProjectDir      string
+	RuntimeDir      string
+	NoodleBin       string
+	SkillResolver   skill.Resolver
+	ProviderConfigs ProviderConfigs
+	RuntimeDefault  string // command template from config, empty = built-in
+	RuntimeKind     string // runtime kind this dispatcher instance services
+}
+
+// ProcessDispatcher dispatches provider sessions as direct child processes
+// with bidirectional pipes. Replaces TmuxDispatcher.
+type ProcessDispatcher struct {
+	projectDir      string
+	runtimeDir      string
+	noodleBin       string
+	skillResolver   skill.Resolver
+	providerConfigs ProviderConfigs
+	runtimeDefault  string
+	runtimeKind     string
+}
+
+func NewProcessDispatcher(config ProcessDispatcherConfig) *ProcessDispatcher {
+	return &ProcessDispatcher{
+		projectDir:      strings.TrimSpace(config.ProjectDir),
+		runtimeDir:      strings.TrimSpace(config.RuntimeDir),
+		noodleBin:       strings.TrimSpace(config.NoodleBin),
+		skillResolver:   config.SkillResolver,
+		providerConfigs: config.ProviderConfigs,
+		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
+		runtimeKind:     normalizeRuntime(config.RuntimeKind),
+	}
+}
+
+func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (Session, error) {
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+	reqRuntime := strings.TrimSpace(req.Runtime)
+	if reqRuntime == "" {
+		reqRuntime = d.runtimeKind
+	} else {
+		reqRuntime = normalizeRuntime(reqRuntime)
+	}
+	if reqRuntime != d.runtimeKind {
+		return nil, fmt.Errorf("runtime %q not configured", reqRuntime)
+	}
+	req.Runtime = reqRuntime
+
+	if req.AllowPrimaryCheckout {
+		req.WorktreePath = strings.TrimSpace(req.WorktreePath)
+		if req.WorktreePath == "" {
+			req.WorktreePath = d.projectDir
+		}
+		if strings.TrimSpace(req.WorktreePath) == "" {
+			return nil, fmt.Errorf("project directory not set")
+		}
+	} else {
+		validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
+		if err != nil {
+			return nil, fmt.Errorf("worktree enforcement: %w", err)
+		}
+		req.WorktreePath = validWorktree
+	}
+
+	if d.runtimeDir == "" {
+		return nil, fmt.Errorf("runtime directory not set")
+	}
+
+	sessionID, err := generateSessionID(req.Name)
+	if err != nil {
+		return nil, fmt.Errorf("generate session ID: %w", err)
+	}
+	sessionDir, promptPath, stampedPath, canonicalPath, stderrPath := sessionPaths(d.runtimeDir, sessionID)
+
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create session directory: %w", err)
+	}
+	eventWriter, err := event.NewEventWriter(d.runtimeDir, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("create event writer: %w", err)
+	}
+
+	var skillBundle loadedSkill
+	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
+		skillBundle = loadedSkill{SystemPrompt: sp}
+	} else if req.DomainSkill != "" {
+		skillBundle, err = loadExecuteBundle(d.skillResolver, req.Provider, req.Skill, req.DomainSkill)
+	} else {
+		skillBundle, err = loadSkillBundle(d.skillResolver, req.Provider, req.Skill)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	preamble := buildSessionPreamble()
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
+
+	// prompt.txt: user-facing prompt (shown in TUI, debugging).
+	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
+		return nil, fmt.Errorf("write prompt file: %w", err)
+	}
+
+	// input.txt: written as debug artifact even when prompt goes over stdin.
+	if composedPrompt != req.Prompt {
+		debugPath := inputPath(sessionDir)
+		if err := os.WriteFile(debugPath, []byte(composedPrompt), 0o644); err != nil {
+			return nil, fmt.Errorf("write input file: %w", err)
+		}
+	}
+
+	cmd, err := d.buildCmd(req, systemPrompt)
+	if err != nil {
+		return nil, fmt.Errorf("build command: %w", err)
+	}
+	cmd.Dir = req.WorktreePath
+	cmd.Env = buildDispatchEnv(req)
+
+	process, err := StartProcess(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("start process: %w", err)
+	}
+
+	// Write prompt to stdin and close. Phase 3 replaces this with
+	// claudeController for Claude; for now all providers use file-redirection
+	// semantics via stdin pipe.
+	go func() {
+		_, _ = io.WriteString(process.Stdin(), composedPrompt)
+		_ = process.Stdin().Close()
+	}()
+
+	// Drain stderr to file.
+	go drainToFile(process.Stderr(), stderrPath)
+
+	if err := WriteProcessMetadata(sessionDir, sessionID, process.PID(), nowUTC()); err != nil {
+		_ = process.Kill()
+		return nil, fmt.Errorf("write process metadata: %w", err)
+	}
+	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
+		_ = process.Kill()
+		return nil, fmt.Errorf("write spawn metadata: %w", err)
+	}
+
+	session := newProcessSession(processSessionConfig{
+		id:            sessionID,
+		process:       process,
+		eventWriter:   eventWriter,
+		canonicalPath: canonicalPath,
+		stampedPath:   stampedPath,
+		prompt:        req.Prompt,
+		warnings:      skillBundle.Warnings,
+	})
+	session.start(ctx)
+	return session, nil
+}
+
+// buildCmd constructs an exec.Cmd for the provider. The stamp processor runs
+// in-process via processSession.processStream, so no shell pipeline is needed.
+func (d *ProcessDispatcher) buildCmd(req DispatchRequest, systemPrompt string) (*exec.Cmd, error) {
+	runtimeCmd := strings.TrimSpace(d.runtimeDefault)
+	if runtimeCmd != "" {
+		return d.buildCustomRuntimeCmd(req, runtimeCmd)
+	}
+
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	binary := d.resolveAgentBinary(provider)
+	extraArgs := d.resolveExtraArgs(provider)
+
+	switch provider {
+	case "codex":
+		args := codexBaseArgs(req)
+		args = append(args, extraArgs...)
+		return exec.Command(binary, args...), nil
+
+	default: // claude
+		args := claudeBaseArgs(req, systemPrompt)
+		args = append(args, extraArgs...)
+		return exec.Command(binary, args...), nil
+	}
+}
+
+// buildCustomRuntimeCmd handles user-provided runtime command templates.
+func (d *ProcessDispatcher) buildCustomRuntimeCmd(req DispatchRequest, runtimeCmd string) (*exec.Cmd, error) {
+	vars := map[string]string{
+		"repo":   req.WorktreePath,
+		"prompt": filepath.Join(d.runtimeDir, "sessions", req.Name, "input.txt"),
+		"skill":  req.Skill,
+		"brief":  filepath.Join(d.runtimeDir, "mise.json"),
+	}
+	resolved := resolveTemplateVars(runtimeCmd, vars)
+	return exec.Command("sh", "-c", resolved), nil
+}
+
+func (d *ProcessDispatcher) resolveAgentBinary(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "codex":
+		if path := strings.TrimSpace(d.providerConfigs.Codex.Path); path != "" {
+			candidate := filepath.Join(expandHomePath(path), "codex")
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+		return "codex"
+	default:
+		if path := strings.TrimSpace(d.providerConfigs.Claude.Path); path != "" {
+			candidate := filepath.Join(expandHomePath(path), "claude")
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+		return "claude"
+	}
+}
+
+func (d *ProcessDispatcher) resolveExtraArgs(provider string) []string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "codex":
+		return d.providerConfigs.Codex.Args
+	default:
+		return d.providerConfigs.Claude.Args
+	}
+}
+
+// drainToFile reads from r and writes to the named file.
+func drainToFile(r io.ReadCloser, path string) {
+	if r == nil || strings.TrimSpace(path) == "" {
+		return
+	}
+	defer r.Close()
+	f, err := os.Create(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = io.Copy(f, r)
+}
+
+var _ Dispatcher = (*ProcessDispatcher)(nil)
