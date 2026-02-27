@@ -35,6 +35,53 @@ type dispatchCandidate struct {
 	IsOnFailure bool
 }
 
+// ActiveOrderIDs returns active/failing order IDs that still have work in the
+// selected pipeline (main stages or on-failure stages).
+func ActiveOrderIDs(orders OrdersFile) []string {
+	ids := make([]string, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+			continue
+		}
+		stages := order.Stages
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+		}
+		for _, stage := range stages {
+			if stage.Status == StageStatusActive || stage.Status == StageStatusPending {
+				ids = append(ids, order.ID)
+				break
+			}
+		}
+	}
+	return ids
+}
+
+// BusyTargets returns order IDs currently blocked by an active stage in the
+// selected pipeline (main stages or on-failure stages).
+func BusyTargets(orders OrdersFile) map[string]bool {
+	busy := make(map[string]bool)
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+			continue
+		}
+		stages := order.Stages
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+		}
+		for _, stage := range stages {
+			if stage.Status == StageStatusActive {
+				busy[order.ID] = true
+				break
+			}
+			if stage.Status == StageStatusPending {
+				break
+			}
+		}
+	}
+	return busy
+}
+
 // activeStageForOrder returns the index and pointer to the currently active or
 // first pending stage. Returns (-1, nil) if no stage is active/pending.
 func activeStageForOrder(order Order) (int, *Stage) {

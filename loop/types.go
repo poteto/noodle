@@ -126,7 +126,7 @@ type QualityVerdict struct {
 	Feedback string `json:"feedback,omitempty"`
 }
 
-type activeCook struct {
+type cookHandle struct {
 	orderID     string
 	stageIndex  int
 	stage       Stage
@@ -215,8 +215,7 @@ type Loop struct {
 	registryStale    atomic.Bool
 	registryFailCount int
 
-	activeByTarget  map[string]*activeCook
-	activeByID      map[string]*activeCook
+	activeCooksByOrder map[string]*cookHandle
 	adoptedTargets  map[string]string
 	adoptedSessions []string
 	failedTargets   map[string]string
@@ -226,7 +225,7 @@ type Loop struct {
 
 	bootstrapAttempts  int
 	bootstrapExhausted bool
-	bootstrapInFlight  *activeCook
+	bootstrapInFlight  *cookHandle
 
 	lastStatus statusfile.Status
 }

@@ -62,7 +62,11 @@ func scheduleOrder(cfg config.Config, prompt string) Order {
 
 func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resumePrompt string) error {
 	name := scheduleOrderID
-	stage := order.Stages[0]
+	stageIndex, stagePtr := activeStageForOrder(order)
+	if stageIndex < 0 || stagePtr == nil {
+		return fmt.Errorf("schedule order has no active or pending stage")
+	}
+	stage := *stagePtr
 
 	skillName := nonEmpty(stage.Skill, "schedule")
 	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
@@ -82,23 +86,26 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
-	if err != nil {
+	if err := l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusActive); err != nil {
 		return err
 	}
-	cook := &activeCook{
-		orderID: order.ID,
-		stage: Stage{
-			TaskKey: scheduleOrderID,
-			Skill:   skillName,
-		},
+	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	if err != nil {
+		_ = l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusPending)
+		return err
+	}
+	cook := &cookHandle{
+		orderID:     order.ID,
+		stageIndex:  stageIndex,
+		stage:       stage,
+		orderStatus: order.Status,
+		plan:        order.Plan,
 		session:      session,
 		worktreeName: "",
 		worktreePath: l.projectDir,
 		attempt:      attempt,
 	}
-	l.activeByTarget[order.ID] = cook
-	l.activeByID[session.ID()] = cook
+	l.activeCooksByOrder[order.ID] = cook
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }
@@ -148,7 +155,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		}
 		return nil
 	}
-	l.bootstrapInFlight = &activeCook{
+	l.bootstrapInFlight = &cookHandle{
 		orderID: order.ID,
 		stage: Stage{
 			TaskKey: scheduleOrderID,

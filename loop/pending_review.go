@@ -74,7 +74,7 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 	return payload.Items, nil
 }
 
-func (l *Loop) parkPendingReview(cook *activeCook, reason string) error {
+func (l *Loop) parkPendingReview(cook *cookHandle, reason string) error {
 	l.pendingReview[cook.orderID] = &pendingReviewCook{
 		orderID:      cook.orderID,
 		stageIndex:   cook.stageIndex,
