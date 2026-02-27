@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	nrt "github.com/poteto/noodle/runtime"
 )
 
 type State string
@@ -157,7 +158,7 @@ type cookHandle struct {
 	isOnFailure  bool
 	orderStatus  string
 	plan         []string
-	session      dispatcher.Session
+	session      nrt.SessionHandle
 	done         <-chan struct{}
 	generation   uint64
 	worktreeName string
@@ -191,8 +192,19 @@ type pendingRetryCook struct {
 	displayName string // stable kitchen name from original spawn
 }
 
+// Dispatcher dispatches sessions. Satisfied by runtime.RuntimeMap.
 type Dispatcher interface {
-	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error)
+	Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (nrt.SessionHandle, error)
+}
+
+// legacyDispatcherAdapter wraps a dispatcher.Dispatcher to satisfy the
+// Dispatcher interface by converting Session → SessionHandle.
+type legacyDispatcherAdapter struct {
+	inner dispatcher.Dispatcher
+}
+
+func (a *legacyDispatcherAdapter) Dispatch(ctx context.Context, req dispatcher.DispatchRequest) (nrt.SessionHandle, error) {
+	return a.inner.Dispatch(ctx, req)
 }
 
 type WorktreeManager interface {

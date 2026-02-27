@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	nrt "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -40,7 +41,7 @@ type fakeDispatcher struct {
 	dispatchErr error
 }
 
-func (f *fakeDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
+func (f *fakeDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (nrt.SessionHandle, error) {
 	f.calls = append(f.calls, req)
 	if f.dispatchErr != nil {
 		return nil, f.dispatchErr
@@ -1442,7 +1443,7 @@ type selectiveErrDispatcher struct {
 	failAt   map[int]error // call index → error
 }
 
-func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (dispatcher.Session, error) {
+func (d *selectiveErrDispatcher) Dispatch(_ context.Context, req dispatcher.DispatchRequest) (nrt.SessionHandle, error) {
 	index := len(d.calls)
 	d.calls = append(d.calls, req)
 	if err, ok := d.failAt[index]; ok {

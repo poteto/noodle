@@ -11,6 +11,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	nrt "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/worktree"
 )
@@ -41,10 +42,8 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 			},
 		},
 	})
-	factory := dispatcher.NewDispatcherFactory()
-	if err := factory.Register("tmux", local); err != nil {
-		panic(err)
-	}
+	runtimes := nrt.NewRuntimeMap()
+	runtimes.Register("tmux", nrt.NewTmuxRuntime(local))
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)
 		if spriteName == "" {
@@ -59,9 +58,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				Token:         cfg.Runtime.Sprites.Token(),
 				GitToken:      cfg.Runtime.Sprites.GitToken(),
 			})
-			if err := factory.Register("sprites", sd); err != nil {
-				panic(err)
-			}
+			runtimes.Register("sprites", nrt.NewSpritesRuntime(sd))
 		}
 	}
 
@@ -75,7 +72,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		wt = noOpWorktree{}
 	}
 	return Dependencies{
-		Dispatcher: factory,
+		Dispatcher: runtimes,
 		Worktree:   wt,
 		Adapter:    adapter.NewRunner(projectDir, cfg),
 		Mise:       mise.NewBuilder(projectDir, cfg),
