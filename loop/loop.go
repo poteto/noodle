@@ -100,6 +100,12 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		processedIDs:       map[string]struct{}{},
 		completions:        make(chan StageResult, 1024),
 		completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
+		activeSummary: mise.ActiveSummary{
+			ByTaskKey: map[string]int{},
+			ByStatus:  map[string]int{},
+			ByRuntime: map[string]int{},
+		},
+		recentHistory: make([]mise.HistoryItem, 0, 20),
 	}
 }
 
@@ -356,7 +362,7 @@ func (l *Loop) startRuntimes(ctx context.Context) error {
 
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {
 	l.refreshAdoptedTargets()
-	brief, warnings, err := l.deps.Mise.Build(ctx)
+	brief, warnings, err := l.deps.Mise.Build(ctx, l.snapshotActiveSummary(), l.snapshotRecentHistory())
 	if err != nil {
 		return mise.Brief{}, warnings, false, err
 	}

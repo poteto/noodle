@@ -15,26 +15,8 @@ import (
 
 func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	projectDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle", "sessions", "cook-a"), 0o755); err != nil {
-		t.Fatalf("mkdir runtime sessions: %v", err)
-	}
-
-	meta := map[string]any{
-		"session_id":               "cook-a",
-		"status":                   "running",
-		"provider":                 "claude",
-		"model":                    "claude-sonnet-4-6",
-		"total_cost_usd":           0.22,
-		"duration_seconds":         80,
-		"updated_at":               "2026-02-22T16:00:00Z",
-		"current_action":           "write tests",
-		"last_activity":            "2026-02-22T16:00:00Z",
-		"idle_seconds":             0,
-		"context_window_usage_pct": 4.0,
-	}
-	metaBytes, _ := json.Marshal(meta)
-	if err := os.WriteFile(filepath.Join(projectDir, ".noodle", "sessions", "cook-a", "meta.json"), metaBytes, 0o644); err != nil {
-		t.Fatalf("write session meta: %v", err)
+	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle"), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
 	}
 
 	tickets := []event.Ticket{{
@@ -79,7 +61,19 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	builder := NewBuilder(projectDir, cfg)
 	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 1, 0, 0, time.UTC) }
 
-	brief, warnings, err := builder.Build(context.Background())
+	brief, warnings, err := builder.Build(context.Background(), ActiveSummary{
+		Total:     1,
+		ByTaskKey: map[string]int{"execute": 1},
+		ByStatus:  map[string]int{"active": 1},
+		ByRuntime: map[string]int{"tmux": 1},
+	}, []HistoryItem{{
+		SessionID:   "cook-a",
+		OrderID:     "42",
+		TaskKey:     "execute",
+		Status:      "completed",
+		DurationS:   80,
+		CompletedAt: time.Date(2026, 2, 22, 16, 0, 0, 0, time.UTC),
+	}})
 	if err != nil {
 		t.Fatalf("build mise: %v", err)
 	}
@@ -116,8 +110,8 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	if brief.Plans[0].Phases[0].Status != "active" {
 		t.Fatalf("phase status = %q, want %q", brief.Plans[0].Phases[0].Status, "active")
 	}
-	if len(brief.ActiveCooks) != 1 {
-		t.Fatalf("active cooks = %d", len(brief.ActiveCooks))
+	if brief.ActiveSummary.Total != 1 {
+		t.Fatalf("active summary total = %d", brief.ActiveSummary.Total)
 	}
 	if len(brief.Tickets) != 1 {
 		t.Fatalf("tickets count = %d", len(brief.Tickets))
@@ -167,7 +161,7 @@ func TestAllPlansAppearRegardlessOfBacklogStatus(t *testing.T) {
 	builder := NewBuilder(projectDir, cfg)
 	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 1, 0, 0, time.UTC) }
 
-	brief, _, err := builder.Build(context.Background())
+	brief, _, err := builder.Build(context.Background(), ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -200,7 +194,7 @@ func TestBuilderMissingSyncScriptWarnsAndContinues(t *testing.T) {
 	}
 
 	builder := NewBuilder(projectDir, cfg)
-	brief, warnings, err := builder.Build(context.Background())
+	brief, warnings, err := builder.Build(context.Background(), ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build mise: %v", err)
 	}

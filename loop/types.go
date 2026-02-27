@@ -164,6 +164,7 @@ type cookHandle struct {
 	worktreePath string
 	attempt      int
 	generation   uint64
+	startedAt    time.Time
 	displayName  string // stable kitchen name, preserved across retries
 }
 
@@ -208,7 +209,7 @@ type AdapterRunner interface {
 }
 
 type MiseBuilder interface {
-	Build(ctx context.Context) (mise.Brief, []string, error)
+	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, error)
 }
 
 type Monitor interface {
@@ -265,6 +266,9 @@ type Loop struct {
 
 	orders       OrdersFile
 	ordersLoaded bool
+
+	activeSummary mise.ActiveSummary
+	recentHistory []mise.HistoryItem
 
 	lastStatus statusfile.Status
 }

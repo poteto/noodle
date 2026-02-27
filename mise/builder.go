@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/internal/sessionmeta"
 	"github.com/poteto/noodle/plan"
 )
 
@@ -37,7 +35,7 @@ func NewBuilder(projectDir string, cfg config.Config) *Builder {
 	}
 }
 
-func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
+func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
 	plans := make([]PlanSummary, 0)
@@ -70,18 +68,27 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		plans = toPlanSummaries(nativePlans)
 	}
 
-	activeCooks, recentHistory, err := b.readSessionState()
-	if err != nil {
-		return Brief{}, warnings, err
-	}
 	tickets, err := b.readTickets()
 	if err != nil {
 		return Brief{}, warnings, err
 	}
 
+	if activeSummary.ByTaskKey == nil {
+		activeSummary.ByTaskKey = map[string]int{}
+	}
+	if activeSummary.ByStatus == nil {
+		activeSummary.ByStatus = map[string]int{}
+	}
+	if activeSummary.ByRuntime == nil {
+		activeSummary.ByRuntime = map[string]int{}
+	}
+	if recentHistory == nil {
+		recentHistory = []HistoryItem{}
+	}
+
 	resources := ResourceSnapshot{
 		MaxCooks: b.config.Concurrency.MaxCooks,
-		Active:   len(activeCooks),
+		Active:   activeSummary.Total,
 	}
 	resources.Available = resources.MaxCooks - resources.Active
 	if resources.Available < 0 {
@@ -104,7 +111,7 @@ func (b *Builder) Build(ctx context.Context) (Brief, []string, error) {
 		GeneratedAt:   b.now().UTC(),
 		Backlog:       backlog,
 		Plans:         plans,
-		ActiveCooks:   activeCooks,
+		ActiveSummary: activeSummary,
 		Tickets:       tickets,
 		Resources:     resources,
 		RecentHistory: recentHistory,
@@ -153,74 +160,6 @@ func toPlanSummaries(plans []plan.Plan) []PlanSummary {
 		})
 	}
 	return summaries
-}
-
-
-func (b *Builder) readSessionState() ([]ActiveCook, []HistoryItem, error) {
-	metas, err := sessionmeta.ReadAll(b.runtimeDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(metas) == 0 {
-		return nil, nil, nil
-	}
-
-	active := make([]ActiveCook, 0, len(metas))
-	history := make([]struct {
-		item      HistoryItem
-		updatedAt time.Time
-	}, 0, len(metas))
-
-	for _, meta := range metas {
-		cookID := strings.TrimSpace(meta.SessionID)
-		if cookID == "" {
-			continue
-		}
-		status := strings.ToLower(strings.TrimSpace(meta.Status))
-		switch status {
-		case "running", "stuck", "spawning":
-			active = append(active, ActiveCook{
-				ID:        cookID,
-				Provider:  strings.TrimSpace(meta.Provider),
-				Model:     strings.TrimSpace(meta.Model),
-				Status:    status,
-				Cost:      meta.TotalCostUSD,
-				DurationS: meta.DurationSeconds,
-			})
-		case "exited", "failed", "completed":
-			history = append(history, struct {
-				item      HistoryItem
-				updatedAt time.Time
-			}{
-				item: HistoryItem{
-					CookID:    cookID,
-					Outcome:   status,
-					Cost:      meta.TotalCostUSD,
-					DurationS: meta.DurationSeconds,
-				},
-				updatedAt: meta.UpdatedAt,
-			})
-		}
-	}
-
-	sort.SliceStable(active, func(i, j int) bool {
-		return active[i].ID < active[j].ID
-	})
-	sort.SliceStable(history, func(i, j int) bool {
-		if history[i].updatedAt.Equal(history[j].updatedAt) {
-			return history[i].item.CookID < history[j].item.CookID
-		}
-		return history[i].updatedAt.After(history[j].updatedAt)
-	})
-
-	recent := make([]HistoryItem, 0, len(history))
-	for _, item := range history {
-		recent = append(recent, item.item)
-		if len(recent) >= 20 {
-			break
-		}
-	}
-	return active, recent, nil
 }
 
 func (b *Builder) readTickets() ([]event.Ticket, error) {

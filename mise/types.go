@@ -26,14 +26,11 @@ type PhaseSummary struct {
 	Status   string `json:"status"`
 }
 
-type ActiveCook struct {
-	ID        string  `json:"id"`
-	Target    string  `json:"target,omitempty"`
-	Provider  string  `json:"provider,omitempty"`
-	Model     string  `json:"model,omitempty"`
-	Status    string  `json:"status"`
-	Cost      float64 `json:"cost"`
-	DurationS int64   `json:"duration_s"`
+type ActiveSummary struct {
+	Total     int            `json:"total"`
+	ByTaskKey map[string]int `json:"by_task_key,omitempty"`
+	ByStatus  map[string]int `json:"by_status,omitempty"`
+	ByRuntime map[string]int `json:"by_runtime,omitempty"`
 }
 
 type ResourceSnapshot struct {
@@ -43,11 +40,12 @@ type ResourceSnapshot struct {
 }
 
 type HistoryItem struct {
-	Target    string  `json:"target,omitempty"`
-	CookID    string  `json:"cook_id"`
-	Outcome   string  `json:"outcome"`
-	Cost      float64 `json:"cost"`
-	DurationS int64   `json:"duration_s"`
+	SessionID   string    `json:"session_id"`
+	OrderID     string    `json:"order_id,omitempty"`
+	TaskKey     string    `json:"task_key,omitempty"`
+	Status      string    `json:"status"`
+	DurationS   int64     `json:"duration_s"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 type RoutingSnapshot struct {
@@ -72,7 +70,7 @@ type Brief struct {
 	GeneratedAt   time.Time             `json:"generated_at"`
 	Backlog       []adapter.BacklogItem `json:"backlog"`
 	Plans         []PlanSummary         `json:"plans"`
-	ActiveCooks   []ActiveCook          `json:"active_cooks"`
+	ActiveSummary ActiveSummary         `json:"active_summary"`
 	Tickets       []event.Ticket        `json:"tickets"`
 	Resources     ResourceSnapshot      `json:"resources"`
 	RecentHistory []HistoryItem         `json:"recent_history"`

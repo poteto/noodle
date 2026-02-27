@@ -142,6 +142,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		generation:   l.nextDispatchGeneration(),
 		displayName:  displayName,
 	}
+	l.trackCookStarted(cook)
 	l.activeCooksByOrder[cand.OrderID] = cook
 	l.startSessionWatcher(ctx, cook, false)
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
@@ -210,6 +211,7 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 	if cook.generation != result.Generation {
 		return nil
 	}
+	l.trackCookCompleted(cook, result)
 	delete(l.activeCooksByOrder, cook.orderID)
 	if err := l.handleCompletion(ctx, cook); err != nil {
 		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
@@ -236,6 +238,8 @@ func (l *Loop) handleBootstrapResult(result StageResult) {
 	if l.bootstrapInFlight.generation != result.Generation {
 		return
 	}
+	cook := l.bootstrapInFlight
+	l.trackCookCompleted(cook, result)
 	l.bootstrapInFlight = nil
 
 	if result.Status == StageResultCompleted {
@@ -891,6 +895,11 @@ func (l *Loop) steer(target string, prompt string) error {
 		if err := cook.session.Kill(); err != nil {
 			return err
 		}
+		l.trackCookCompleted(cook, StageResult{
+			SessionID:   cook.session.ID(),
+			Status:      StageResultCancelled,
+			CompletedAt: l.deps.Now(),
+		})
 		delete(l.activeCooksByOrder, cook.orderID)
 		cand := dispatchCandidate{
 			OrderID:     cook.orderID,

@@ -589,6 +589,11 @@ func (l *Loop) controlStop(name string) error {
 	for orderID, cook := range l.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			_ = cook.session.Kill()
+			l.trackCookCompleted(cook, StageResult{
+				SessionID:   cook.session.ID(),
+				Status:      StageResultCancelled,
+				CompletedAt: l.deps.Now(),
+			})
 			delete(l.activeCooksByOrder, orderID)
 			if cook.worktreeName != "" {
 				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
