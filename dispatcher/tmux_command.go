@@ -59,10 +59,9 @@ func claudeBaseArgs(req DispatchRequest, systemPrompt string) []string {
 // Callers prepend the binary path and append site-specific extras.
 func codexBaseArgs(req DispatchRequest) []string {
 	args := []string{
-		"--ask-for-approval", "never",
 		"exec",
+		"--dangerously-bypass-approvals-and-sandbox",
 		"--skip-git-repo-check",
-		"--sandbox", "workspace-write",
 		"--json",
 	}
 	if strings.TrimSpace(req.Model) != "" {
