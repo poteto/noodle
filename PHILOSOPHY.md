@@ -40,7 +40,7 @@ The dial moves based on trust, not capability. A mature project with good tests 
 
 ## Everything is a file
 
-`.noodle/queue.json` is the work queue. `.noodle/mise.json` is the gathered project state. Session logs are NDJSON. Control commands are NDJSON. Verdicts are files. Config is TOML.
+`.noodle/orders.json` is the work orders. `.noodle/mise.json` is the gathered project state. Session logs are NDJSON. Control commands are NDJSON. Verdicts are files. Config is TOML.
 
 No databases. No hidden state. No proprietary formats. All of Noodle's runtime state is a file you can `cat`, `git diff`, or `jq`. When something breaks, you read the files and see what happened.
 
@@ -50,6 +50,6 @@ Composition falls out of this for free. Agents pass state by writing files. The 
 
 There are no plugins, no hooks API, no configuration DSL. A skill is a `SKILL.md` file, markdown that teaches an agent how to do something. Users extend Noodle by writing skills.
 
-They compose naturally. A scheduling skill reads the mise and writes the queue. An execution skill picks up a task and does the work. Swap any of them with your own version. The contract between skills is just files on disk.
+They compose naturally. A scheduling skill reads the mise and writes orders. An execution skill picks up a task and does the work. Swap any of them with your own version. The contract between skills is just files on disk.
 
 This keeps Noodle small. The Go binary handles mechanics: spawning sessions, monitoring health, gathering state. Judgment and domain knowledge live in skills. The binary doesn't know your project. The skills do.

@@ -37,7 +37,7 @@
 - [[codebase/control-api-snake-camel-compat]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
-- [[codebase/runtime-routing-owned-by-queue]]
+- [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/unix-process-liveness-eperm]]

@@ -29,7 +29,7 @@ For agents setting up Noodle in a project, see [INSTALL.md](INSTALL.md).
 ## How It Works
 
 - Chef: human direction and intervention
-- Schedule: schedules queue from mise data
+- Schedule: schedules orders from mise data
 - Cook: executes backlog work
 - Quality: reviews completed work
 
@@ -90,7 +90,7 @@ Script templates are project-defined in `.noodle.toml`.
 | `noodle skills list` | List resolved skills with precedence |
 | `noodle worktree <subcommand>` | Worktree operations (`create`, `merge`, `cleanup`, `list`, `prune`, `hook`) |
 | `noodle plan <subcommand>` | Plan management (`create`, `done`, `phase-add`, `list`) |
-| `noodle schema [target]` | Print generated runtime schema docs (`list`, `mise`, `queue`) |
+| `noodle schema [target]` | Print generated runtime schema docs (`list`, `mise`, `orders`, `status`) |
 | `noodle mise` | Build and print current mise brief (internal) |
 | `noodle dispatch` | Dispatch a cook session in tmux (internal) |
 | `noodle stamp` | Stamp NDJSON logs (internal) |

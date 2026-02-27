@@ -25,7 +25,7 @@ noodle --help
 
 Noodle is an AI coding framework. Agents do the work, humans steer. The only extension point is skills, markdown files that teach agents how to do things. No plugins, no hooks API, no config DSL.
 
-All state lives in plain files. `.noodle/queue.json` is the work queue. `.noodle/mise.json` is gathered project state. Session logs, control commands, verdicts. All just files on disk. `cat` them, `jq` them, `git diff` them. Nothing is hidden.
+All state lives in plain files. `.noodle/orders.json` is the work orders. `.noodle/mise.json` is gathered project state. Session logs, control commands, verdicts. All just files on disk. `cat` them, `jq` them, `git diff` them. Nothing is hidden.
 
 It follows a kitchen brigade. You're the Chef. Strategy and review. A scheduling agent reads the project state and decides what to cook next. Cooks do the work in isolated worktrees. A quality gate checks their output. The loop: gather state, schedule, cook, review, merge.
 
