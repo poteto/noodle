@@ -39,7 +39,9 @@ If the scope is already a single change, skip decomposition.
 
 #### Worktree First — Non-Negotiable
 
-**Create a linked worktree before writing any code.** Multiple sessions run concurrently — editing files on main causes merge conflicts and lost work.
+**Work inside a linked worktree — never edit files on main.** Multiple sessions run concurrently; editing main causes merge conflicts and lost work.
+
+Check first: if the CWD is already inside `.worktrees/`, you're in one — use it. Otherwise, create one:
 
 ```bash
 noodle worktree create <descriptive-name>
