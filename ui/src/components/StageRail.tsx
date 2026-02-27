@@ -23,9 +23,7 @@ export function StageRail({
   }
 
   const compressed = stages.length > MAX_VISIBLE;
-  const visible = compressed
-    ? [...stages.slice(0, 3), null, ...stages.slice(-3)]
-    : stages;
+  const visible = compressed ? [...stages.slice(0, 3), null, ...stages.slice(-3)] : stages;
 
   return (
     <div className="flex flex-col items-center gap-0.5 w-4 shrink-0 py-1">

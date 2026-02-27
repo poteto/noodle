@@ -120,14 +120,14 @@ export function OrderCard({
     >
       <div className={classes}>
         <div className="flex gap-2">
-          {!isSingleStage && (
-            <StageRail stages={order.stages} onSelectSession={onSelectSession} />
-          )}
+          {!isSingleStage && <StageRail stages={order.stages} onSelectSession={onSelectSession} />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-2">
               {active?.task_key && <Badge type={active.task_key} />}
             </div>
-            <div className="font-bold text-[1.0625rem] text-text-0 mb-1">{order.title || order.id}</div>
+            <div className="font-bold text-[1.0625rem] text-text-0 mb-1">
+              {order.title || order.id}
+            </div>
             {order.rationale && isSchedule && (
               <div className="font-mono text-xs text-text-2 leading-[1.4] mb-2 italic">
                 {order.rationale}
