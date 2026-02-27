@@ -60,15 +60,16 @@ git -C <project-root>/.worktrees/<name> commit -m "message"
 
 File reads/edits use absolute paths directly — no `exec` needed.
 
-### Merge back to main
+### Merge
 
 ```bash
 noodle worktree merge <name>
+noodle worktree merge <name> --into <branch>
 ```
 
-Single command does: CWD safety check -> stash worktree noise -> rebase onto integration branch -> merge -> remove worktree -> delete branch -> prune -> reinstall deps. Refuses to run if CWD is inside the worktree or if root checkout is not on the integration branch.
+Single command does: CWD safety check -> stash worktree noise -> rebase onto target branch -> merge -> remove worktree -> delete branch -> prune -> reinstall deps. Refuses to run if CWD is inside the worktree or if root checkout is not on the target branch.
 
-By default, integration branch is auto-detected from `origin/HEAD` (falls back to `main` if detection fails).
+By default, the target is the integration branch, auto-detected from `origin/HEAD` (falls back to `main` if detection fails). Use `--into` to merge into any branch — the root checkout must be on that branch when you run the command.
 
 If there are no commits to merge, it exits early and leaves the worktree/branch in place so you can decide whether to continue work or run cleanup.
 
@@ -114,6 +115,14 @@ The Bash tool maintains a persistent shell — `cd` in one call persists to ALL 
 2. Spawn each with `mode: "acceptEdits"` — worktrees are isolated scratch space
 3. Each teammate commits on its own branch
 4. Lead merges each: `noodle worktree merge phase-1`
+
+**Sub-agent hierarchies**: A lead agent working in its own worktree (branch `lead-work`) can spawn sub-agents with their own worktrees. Sub-agents merge back into the lead's branch, not main:
+
+```bash
+# Root checkout must be on the target branch
+git checkout lead-work
+noodle worktree merge sub-work --into lead-work
+```
 
 **Foundational changes**: If Phase 1 is a foundation later phases need, do it on main first, commit, then create parallel worktrees. Branches start from the commit they were created at.
 
