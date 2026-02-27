@@ -177,8 +177,8 @@ func (l *Loop) Shutdown() {
 	}
 	// Kill adopted sessions from previous runs that are still alive.
 	for _, sessionID := range l.adoptedSessions {
-		name := tmuxSessionName(sessionID)
-		_ = killTmuxSession(name)
+		name := loopruntime.TmuxSessionName(sessionID)
+		_ = loopruntime.KillTmuxSession(name)
 	}
 	for _, runtime := range l.deps.Runtimes {
 		if runtime == nil {

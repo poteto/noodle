@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -853,7 +854,7 @@ func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write prompt: %v", err)
 	}
-	target := readSessionTarget(path)
+	target := loopruntime.ReadSessionTarget(path)
 	if target != "plan/phase_02-ticket.7" {
 		t.Fatalf("target = %q", target)
 	}
@@ -865,7 +866,7 @@ func TestReadSessionTargetDetectsSchedulePrompt(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write prompt: %v", err)
 	}
-	target := readSessionTarget(path)
+	target := loopruntime.ReadSessionTarget(path)
 	if target != ScheduleTaskKey() {
 		t.Fatalf("target = %q", target)
 	}
@@ -873,7 +874,7 @@ func TestReadSessionTargetDetectsSchedulePrompt(t *testing.T) {
 
 func TestTmuxSessionNameMatchesSanitizedLength(t *testing.T) {
 	sessionID := strings.Repeat("A", 80) + "-with spaces"
-	name := tmuxSessionName(sessionID)
+	name := loopruntime.TmuxSessionName(sessionID)
 	if !strings.HasPrefix(name, "noodle-") {
 		t.Fatalf("unexpected prefix: %q", name)
 	}
@@ -1538,7 +1539,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		[]byte(`{"status":"failed"}`), 0o644); err != nil {
 		t.Fatalf("write adopted meta: %v", err)
 	}
-	// Write a prompt that matches schedulePromptRegexp so readSessionTarget
+	// Write a prompt that matches the schedule prompt pattern so ReadSessionTarget
 	// returns "schedule".
 	if err := os.WriteFile(filepath.Join(schedSessionDir, "prompt.txt"),
 		[]byte("Use Skill(schedule) to refresh the queue from .noodle/mise.json.\n"), 0o644); err != nil {
@@ -1550,7 +1551,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 
 	// Install tmux stub so refreshAdoptedTargets doesn't drop the session
 	// before collectAdoptedCompletions processes it.
-	installFixtureTmuxStub(t, []string{tmuxSessionName(schedSessID)})
+	installFixtureTmuxStub(t, []string{loopruntime.TmuxSessionName(schedSessID)})
 
 	// Run completion drain (which includes collectAdoptedCompletions).
 	// The adopted schedule session is "failed", so handleCompletion → retryCook.

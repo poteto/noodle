@@ -20,6 +20,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 type loopFixtureSetup struct {
@@ -269,7 +270,7 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 		}
 		l.adoptedTargets[targetID] = sessionID
 		l.adoptedSessions = append(l.adoptedSessions, sessionID)
-		sessionNames = append(sessionNames, tmuxSessionName(sessionID))
+		sessionNames = append(sessionNames, loopruntime.TmuxSessionName(sessionID))
 
 		sessionDir := filepath.Join(l.runtimeDir, "sessions", sessionID)
 		if err := os.MkdirAll(sessionDir, 0o755); err != nil {
