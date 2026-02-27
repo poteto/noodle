@@ -303,6 +303,15 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 		if err := os.WriteFile(filepath.Join(sessionDir, "meta.json"), []byte(`{"status":"running"}`), 0o644); err != nil {
 			t.Fatalf("write adopted session meta %s: %v", sessionDir, err)
 		}
+		// Write process.json so PID-based liveness check in refreshAdoptedTargets works.
+		procMeta, _ := json.Marshal(map[string]any{
+			"pid":        os.Getpid(),
+			"session_id": sessionID,
+			"started_at": time.Now().UTC().Format(time.RFC3339),
+		})
+		if err := os.WriteFile(filepath.Join(sessionDir, "process.json"), procMeta, 0o644); err != nil {
+			t.Fatalf("write adopted session process.json %s: %v", sessionDir, err)
+		}
 	}
 	if len(sessionNames) == 0 {
 		return

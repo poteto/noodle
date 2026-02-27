@@ -14,7 +14,7 @@ import (
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
-	loopruntime "github.com/poteto/noodle/runtime"
+	"github.com/poteto/noodle/monitor"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -169,8 +169,7 @@ func (l *Loop) Shutdown() {
 	}
 	// Kill adopted sessions from previous runs that are still alive.
 	for _, sessionID := range l.cooks.adoptedSessions {
-		name := loopruntime.TmuxSessionName(sessionID)
-		_ = loopruntime.KillTmuxSession(name)
+		monitor.KillSessionByPID(l.runtimeDir, sessionID)
 	}
 }
 

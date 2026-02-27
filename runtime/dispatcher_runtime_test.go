@@ -22,6 +22,7 @@ func (s *fakeSession) Done() <-chan struct{}                     { return s.done
 func (s *fakeSession) TotalCost() float64                       { return 0 }
 func (s *fakeSession) Kill() error                              { close(s.done); return nil }
 func (s *fakeSession) Events() <-chan dispatcher.SessionEvent   { return nil }
+func (s *fakeSession) Controller() dispatcher.AgentController   { return nil }
 
 type fakeDispatcher struct {
 	nextID  int

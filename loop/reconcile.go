@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/monitor"
-	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
@@ -276,10 +275,6 @@ func (l *Loop) refreshAdoptedTargets() {
 	if len(l.cooks.adoptedTargets) == 0 {
 		return
 	}
-	alive := map[string]struct{}{}
-	for _, name := range loopruntime.ListTmuxSessions() {
-		alive[name] = struct{}{}
-	}
 	nextTargets := make(map[string]string, len(l.cooks.adoptedTargets))
 	nextSessions := make([]string, 0, len(l.cooks.adoptedTargets))
 	for target, sessionID := range l.cooks.adoptedTargets {
@@ -291,7 +286,7 @@ func (l *Loop) refreshAdoptedTargets() {
 		if !strings.Contains(string(data), `"status":"running"`) {
 			continue
 		}
-		if _, ok := alive[loopruntime.TmuxSessionName(sessionID)]; !ok {
+		if !monitor.SessionPIDAlive(l.runtimeDir, sessionID) {
 			continue
 		}
 		nextTargets[target] = sessionID
