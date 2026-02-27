@@ -1,5 +1,6 @@
 {
   "private": true,
+  "workspaces": ["ui", "e2e/ui"],
   "scripts": {
     "setup": "pnpm install",
     "build": "pnpm --filter noodle-ui build && go build -o ./bin/noodle .",
