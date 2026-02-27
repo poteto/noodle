@@ -4,7 +4,7 @@ Back to [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Goal
 
-Document the `extra_prompt` field so the schedule agent knows it exists and how to use it. The schemadoc FieldDoc entry was already added in phase 1 to keep `noodle schema queue` valid from the start.
+Document the `extra_prompt` field so the schedule agent knows it exists and how to use it. The schemadoc FieldDoc entry was already added in phase 1 to keep `noodle schema orders` valid from the start.
 
 ## Changes
 
@@ -33,9 +33,9 @@ No new types. Updates documentation for the existing `ExtraPrompt` field.
 ### Static
 ```bash
 go test ./... && go vet ./...
-noodle schema queue
+noodle schema orders
 ```
 
 ### Runtime
-- Run `noodle schema queue`, verify `extra_prompt` appears in the output with its description
-- Run the schedule agent, verify it can produce `extra_prompt` in `queue-next.json` (manual or integration test)
+- Run `noodle schema orders`, verify `extra_prompt` appears in the output with its description
+- Run the schedule agent, verify it can produce `extra_prompt` in `orders-next.json` (manual or integration test)
