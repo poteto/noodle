@@ -68,6 +68,22 @@ func (l *Loop) writePendingRetry() error {
 	return filex.WriteFileAtomic(pendingRetryFilePath(l.runtimeDir), append(data, '\n'))
 }
 
+func readPendingRetryFile(runtimeDir string) ([]PendingRetryItem, error) {
+	path := pendingRetryFilePath(runtimeDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var payload pendingRetryFile
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, nil // corrupt file — return empty
+	}
+	return payload.Items, nil
+}
+
 func (l *Loop) loadPendingRetry() error {
 	path := pendingRetryFilePath(l.runtimeDir)
 	data, err := os.ReadFile(path)
