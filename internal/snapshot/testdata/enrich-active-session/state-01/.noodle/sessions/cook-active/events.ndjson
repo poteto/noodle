@@ -1,0 +1,4 @@
+{"type":"action","payload":{"tool":"Read","summary":"Reading main.go"},"timestamp":"2026-02-27T11:50:00Z","session_id":"cook-active"}
+{"type":"action","payload":{"tool":"Edit","summary":"Editing handler.go"},"timestamp":"2026-02-27T11:52:00Z","session_id":"cook-active"}
+{"type":"cost","payload":{"cost_usd":0.05,"tokens_in":1000,"tokens_out":500},"timestamp":"2026-02-27T11:54:00Z","session_id":"cook-active"}
+{"type":"action","payload":{"tool":"Bash","summary":"go test ./..."},"timestamp":"2026-02-27T11:56:00Z","session_id":"cook-active"}

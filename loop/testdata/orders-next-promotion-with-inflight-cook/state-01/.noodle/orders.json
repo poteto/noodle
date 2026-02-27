@@ -1,0 +1,10 @@
+{
+  "orders": [
+    {
+      "id": "order-existing",
+      "title": "Already running",
+      "stages": [{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],
+      "status": "active"
+    }
+  ]
+}

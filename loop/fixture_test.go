@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -20,16 +19,21 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
+	"github.com/poteto/noodle/worktree"
 )
 
 type loopFixtureSetup struct {
 	DispatcherError          string                     `json:"dispatcher_error"`
 	WorktreeCreateError      string                     `json:"worktree_create_error"`
 	WorktreeCreateErrorNames []string                   `json:"worktree_create_error_names"`
+	WorktreeMergeError       string                     `json:"worktree_merge_error"`
 	FailedTargets            map[string]string          `json:"failed_targets"`
 	ActiveSessions           []loopFixtureActiveSession `json:"active_sessions"`
 	AdoptedTargets           []loopFixtureAdoptedTarget `json:"adopted_targets"`
 	RecoveryMaxRetries       *int                       `json:"recovery_max_retries"`
+	BootstrapAttempts        int                        `json:"bootstrap_attempts"`
+	BootstrapExhausted       bool                       `json:"bootstrap_exhausted"`
+	PendingRetry             []loopFixturePendingRetry  `json:"pending_retry"`
 }
 
 type loopFixtureActiveSession struct {
@@ -40,6 +44,16 @@ type loopFixtureActiveSession struct {
 type loopFixtureAdoptedTarget struct {
 	ID        string `json:"id"`
 	SessionID string `json:"session_id"`
+}
+
+type loopFixturePendingRetry struct {
+	OrderID     string `json:"order_id"`
+	StageIndex  int    `json:"stage_index"`
+	Stage       Stage  `json:"stage"`
+	IsOnFailure bool   `json:"is_on_failure"`
+	OrderStatus string `json:"order_status"`
+	Attempt     int    `json:"attempt"`
+	DisplayName string `json:"display_name"`
 }
 
 type loopFixtureMiseRun struct {
@@ -170,6 +184,16 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 			applyFixtureActiveSessions(l, setup.ActiveSessions)
 			applyFixtureAdoptedTargets(t, l, setup.AdoptedTargets)
+			applyFixtureBootstrap(l, setup)
+			applyFixturePendingRetry(l, setup.PendingRetry)
+			if msg := strings.TrimSpace(setup.WorktreeMergeError); msg != "" {
+				if strings.HasPrefix(msg, "merge_conflict:") {
+					branch := strings.TrimSpace(strings.TrimPrefix(msg, "merge_conflict:"))
+					wt.mergeErr = &worktree.MergeConflictError{Branch: branch, Err: errors.New("conflict")}
+				} else {
+					wt.mergeErr = errors.New(msg)
+				}
+			}
 
 			observed := loopFixtureRuntimeDump{
 				States: make(map[string]loopFixtureStateDump, len(fixtureCase.States)),
@@ -375,20 +399,7 @@ func cloneConfig(in config.Config) config.Config {
 
 func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runtimeDir string) {
 	t.Helper()
-	for _, relPath := range state.FileOrder {
-		normalized := filepath.ToSlash(strings.TrimSpace(relPath))
-		if !strings.HasPrefix(normalized, ".noodle/") {
-			continue
-		}
-		destRel := strings.TrimPrefix(normalized, ".noodle/")
-		destination := filepath.Join(runtimeDir, filepath.FromSlash(destRel))
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			t.Fatalf("mkdir snapshot parent %s: %v", destination, err)
-		}
-		if err := os.WriteFile(destination, state.MustReadFile(t, relPath), 0o644); err != nil {
-			t.Fatalf("write runtime snapshot file %s: %v", destination, err)
-		}
-	}
+	fixturedir.ApplyRuntimeSnapshot(t, state, runtimeDir)
 }
 
 func assertRuntimeDumpCoverage(t *testing.T, fixtureCase fixturedir.FixtureCase, expected loopFixtureRuntimeDump) {
@@ -435,62 +446,32 @@ func mustJSON(value any) string {
 }
 
 func writeRuntimeDumpSection(expectedPath string, dump loopFixtureRuntimeDump) error {
-	content, err := os.ReadFile(expectedPath)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", expectedPath, err)
-	}
-	frontmatter, body, err := splitExpectedMarkdown(string(content))
-	if err != nil {
-		return err
-	}
-	runtimeJSON := mustJSON(dump)
-	expectedErrorJSON, hasExpectedError := extractJSONSection(body, "Expected Error")
-
-	var out strings.Builder
-	out.WriteString(strings.TrimRight(frontmatter, "\n"))
-	out.WriteString("\n\n## Runtime Dump\n\n```json\n")
-	out.WriteString(runtimeJSON)
-	out.WriteString("\n```\n")
-	if hasExpectedError {
-		out.WriteString("\n## Expected Error\n\n```json\n")
-		out.WriteString(strings.TrimSpace(expectedErrorJSON))
-		out.WriteString("\n```\n")
-	}
-	return os.WriteFile(expectedPath, []byte(fixturedir.NormalizeFixtureMarkdown(out.String())), 0o644)
+	return fixturedir.WriteSectionToExpected(expectedPath, "Runtime Dump", dump)
 }
 
-func splitExpectedMarkdown(content string) (string, string, error) {
-	content = fixturedir.NormalizeFixtureMarkdown(content)
-	lines := strings.Split(content, "\n")
-	if len(lines) < 3 || strings.TrimSpace(lines[0]) != "---" {
-		return "", "", fmt.Errorf("expected.md must start with frontmatter delimited by ---")
+func applyFixtureBootstrap(l *Loop, setup loopFixtureSetup) {
+	if setup.BootstrapAttempts > 0 {
+		l.bootstrapAttempts = setup.BootstrapAttempts
 	}
-	closingIndex := -1
-	for index := 1; index < len(lines); index++ {
-		if strings.TrimSpace(lines[index]) == "---" {
-			closingIndex = index
-			break
+	if setup.BootstrapExhausted {
+		l.bootstrapExhausted = true
+	}
+}
+
+func applyFixturePendingRetry(l *Loop, retries []loopFixturePendingRetry) {
+	for _, r := range retries {
+		orderID := strings.TrimSpace(r.OrderID)
+		if orderID == "" {
+			continue
+		}
+		l.pendingRetry[orderID] = &pendingRetryCook{
+			orderID:     orderID,
+			stageIndex:  r.StageIndex,
+			stage:       r.Stage,
+			isOnFailure: r.IsOnFailure,
+			orderStatus: r.OrderStatus,
+			attempt:     r.Attempt,
+			displayName: r.DisplayName,
 		}
 	}
-	if closingIndex < 0 {
-		return "", "", fmt.Errorf("expected.md frontmatter is missing closing --- delimiter")
-	}
-	frontmatter := strings.Join(lines[:closingIndex+1], "\n")
-	body := strings.Join(lines[closingIndex+1:], "\n")
-	return frontmatter, body, nil
-}
-
-func extractJSONSection(body string, heading string) (string, bool) {
-	heading = regexp.QuoteMeta(strings.TrimSpace(heading))
-	if heading == "" {
-		return "", false
-	}
-	pattern := regexp.MustCompile(
-		`(?ms)^##\s+` + heading + `\s*\n\s*` + "```json" + `\s*\n(.*?)\n` + "```" + `\s*`,
-	)
-	matches := pattern.FindStringSubmatch(body)
-	if len(matches) != 2 {
-		return "", false
-	}
-	return strings.TrimSpace(matches[1]), true
 }

@@ -1,0 +1,9 @@
+{
+  "orders": [
+    {"id":"order-1","title":"Active 1","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"order-2","title":"Active 2","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"order-3","title":"Active 3","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"order-4","title":"Active 4","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],"status":"active"},
+    {"id":"order-waiting","title":"Waiting","stages":[{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"pending"}],"status":"active"}
+  ]
+}

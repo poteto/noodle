@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-02-27T11:00:00Z",
+  "orders": [
+    {
+      "id": "order-1",
+      "title": "Implement feature A",
+      "stages": [
+        {"task_key":"execute","skill":"execute","provider":"claude","model":"claude-sonnet-4-6","status":"active"}
+      ],
+      "status": "active"
+    },
+    {
+      "id": "order-2",
+      "title": "Review feature B",
+      "stages": [
+        {"task_key":"execute","skill":"execute","provider":"claude","model":"claude-sonnet-4-6","status":"completed"},
+        {"task_key":"review","skill":"review","provider":"claude","model":"claude-sonnet-4-6","status":"active"}
+      ],
+      "status": "active",
+      "on_failure": [
+        {"task_key":"oops","skill":"oops","provider":"claude","model":"claude-sonnet-4-6","status":"pending"}
+      ]
+    }
+  ]
+}
