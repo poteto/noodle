@@ -1,6 +1,14 @@
 # Todos
 
-<!-- next-id: 72 -->
+<!-- next-id: 74 -->
+
+## Testing & Verification
+
+73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, Playwright browser E2E, expanded Go fixture coverage, E2E agent smoke test with Codex. [[plans/73-testing-strategy/overview]]
+
+## Structural Cleanup
+
+72. [ ] Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. Pure refactoring, no behavior changes. [[plans/72-go-structural-cleanup/overview]]
 
 ## Scaling
 
