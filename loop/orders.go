@@ -332,15 +332,11 @@ func cloneOrder(o Order) Order {
 }
 
 func readOrders(path string) (OrdersFile, error) {
-	of, err := orderx.ReadOrders(path)
-	if err != nil {
-		return OrdersFile{}, err
-	}
-	return fromOrdersFileX(of), nil
+	return orderx.ReadOrders(path)
 }
 
 func writeOrdersAtomic(path string, of OrdersFile) error {
-	return orderx.WriteOrdersAtomic(path, toOrdersFileX(of))
+	return orderx.WriteOrdersAtomic(path, of)
 }
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
@@ -401,111 +397,12 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 	return true, nil
 }
 
-func toOrdersFileX(of OrdersFile) orderx.OrdersFile {
-	orders := make([]orderx.Order, 0, len(of.Orders))
-	for _, o := range of.Orders {
-		orders = append(orders, toOrderX(o))
-	}
-	return orderx.OrdersFile{
-		GeneratedAt:  of.GeneratedAt,
-		Orders:       orders,
-		ActionNeeded: of.ActionNeeded,
-	}
-}
-
-func fromOrdersFileX(of orderx.OrdersFile) OrdersFile {
-	orders := make([]Order, 0, len(of.Orders))
-	for _, o := range of.Orders {
-		orders = append(orders, fromOrderX(o))
-	}
-	return OrdersFile{
-		GeneratedAt:  of.GeneratedAt,
-		Orders:       orders,
-		ActionNeeded: of.ActionNeeded,
-	}
-}
-
-func toOrderX(o Order) orderx.Order {
-	return orderx.Order{
-		ID:        o.ID,
-		Title:     o.Title,
-		Plan:      o.Plan,
-		Rationale: o.Rationale,
-		Stages:    toStagesX(o.Stages),
-		Status:    o.Status,
-		OnFailure: toStagesX(o.OnFailure),
-	}
-}
-
-func fromOrderX(o orderx.Order) Order {
-	return Order{
-		ID:        o.ID,
-		Title:     o.Title,
-		Plan:      o.Plan,
-		Rationale: o.Rationale,
-		Stages:    fromStagesX(o.Stages),
-		Status:    o.Status,
-		OnFailure: fromStagesX(o.OnFailure),
-	}
-}
-
-func toStagesX(stages []Stage) []orderx.Stage {
-	if stages == nil {
-		return nil
-	}
-	out := make([]orderx.Stage, 0, len(stages))
-	for _, s := range stages {
-		out = append(out, orderx.Stage{
-			TaskKey:  s.TaskKey,
-			Prompt:   s.Prompt,
-			Skill:    s.Skill,
-			Provider: s.Provider,
-			Model:    s.Model,
-			Runtime:  s.Runtime,
-			Status:   s.Status,
-			Extra:    s.Extra,
-		})
-	}
-	return out
-}
-
-func fromStagesX(stages []orderx.Stage) []Stage {
-	if stages == nil {
-		return nil
-	}
-	out := make([]Stage, 0, len(stages))
-	for _, s := range stages {
-		out = append(out, Stage{
-			TaskKey:  s.TaskKey,
-			Prompt:   s.Prompt,
-			Skill:    s.Skill,
-			Provider: s.Provider,
-			Model:    s.Model,
-			Runtime:  s.Runtime,
-			Status:   s.Status,
-			Extra:    s.Extra,
-		})
-	}
-	return out
-}
-
-// NormalizeAndValidateOrders wraps the orderx function for loop-layer types.
+// NormalizeAndValidateOrders delegates to orderx.
 func NormalizeAndValidateOrders(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool, error) {
-	updated, changed, err := orderx.NormalizeAndValidateOrders(toOrdersFileX(of), reg, cfg)
-	if err != nil {
-		return OrdersFile{}, false, err
-	}
-	if !changed {
-		return of, false, nil
-	}
-	return fromOrdersFileX(updated), true, nil
+	return orderx.NormalizeAndValidateOrders(of, reg, cfg)
 }
 
-// ApplyOrderRoutingDefaults wraps the orderx function for loop-layer types.
+// ApplyOrderRoutingDefaults delegates to orderx.
 func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool) {
-	updated, changed := orderx.ApplyOrderRoutingDefaults(toOrdersFileX(of), reg, cfg)
-	if !changed {
-		return of, false
-	}
-	return fromOrdersFileX(updated), true
+	return orderx.ApplyOrderRoutingDefaults(of, reg, cfg)
 }

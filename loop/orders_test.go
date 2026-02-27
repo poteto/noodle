@@ -953,7 +953,7 @@ func TestLifecycleValueSemantics(t *testing.T) {
 	}
 }
 
-func TestOrdersFileConversionRoundTrip(t *testing.T) {
+func TestOrdersFileCloneRoundTrip(t *testing.T) {
 	original := OrdersFile{
 		GeneratedAt: time.Now().Truncate(time.Second),
 		Orders: []Order{
@@ -991,7 +991,7 @@ func TestOrdersFileConversionRoundTrip(t *testing.T) {
 		ActionNeeded: []string{"check"},
 	}
 
-	roundTrip := fromOrdersFileX(toOrdersFileX(original))
+	roundTrip := cloneOrdersFile(original)
 	if len(roundTrip.Orders) != 1 {
 		t.Fatalf("Orders len = %d", len(roundTrip.Orders))
 	}
@@ -1010,7 +1010,7 @@ func TestOrdersFileConversionRoundTrip(t *testing.T) {
 		t.Errorf("stage fields mismatch")
 	}
 	if string(s.Extra["key"]) != `"value"` {
-		t.Errorf("Extra lost in conversion round-trip")
+		t.Errorf("Extra lost in clone round-trip")
 	}
 	if len(o.OnFailure) != 1 || o.OnFailure[0].Prompt != "rollback" {
 		t.Errorf("OnFailure mismatch")

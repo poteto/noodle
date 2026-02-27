@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 )
@@ -90,7 +91,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 				Status:   stage.Status,
 				Extra:    stage.Extra,
 			}
-			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
 				s.SessionID = activeSessionID
 			}
 			stages = append(stages, s)
@@ -107,7 +108,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 				Status:   stage.Status,
 				Extra:    stage.Extra,
 			}
-			if (stage.Status == loop.StageStatusActive || stage.Status == loop.StageStatusMerging) && activeSessionID != "" {
+			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
 				s.SessionID = activeSessionID
 			}
 			onFailure = append(onFailure, s)
