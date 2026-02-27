@@ -79,10 +79,19 @@ func main() {
 	run(t, dir, "git", "add", "main.go")
 	run(t, dir, "git", "commit", "-m", "add main.go")
 
-	// Brain scaffolding.
-	mkdirAll(t, filepath.Join(dir, "brain", "plans"))
+	// Brain scaffolding with a minimal plan so the scheduler triggers.
+	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
 	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n\n- [[plans/1-hello/overview]]\n")
+	writeFile(t, filepath.Join(dir, "brain", "plans", "1-hello", "overview.md"), `---
+id: 1
+status: ready
+---
+
+# Hello
+
+Create a hello.txt file containing "hello world".
+`)
 
 	// Todos with a trivial item.
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos
@@ -103,29 +112,33 @@ func main() {
 		copyDir(t, src, dst)
 	}
 
-	// Backlog adapter script — a simple shell script that reads brain/todos.md.
+	// Backlog adapter scripts — simple shell scripts for the E2E test.
 	adapterDir := filepath.Join(dir, ".noodle", "adapters")
 	mkdirAll(t, adapterDir)
+	// sync: emit one NDJSON line per open todo.
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), `#!/bin/sh
 set -e
 TODOS="brain/todos.md"
-if [ ! -f "$TODOS" ]; then exit 0; fi
-# Parse todos.md into NDJSON — simplified for E2E.
-awk '
-/^[0-9]+\. \[[ xX]\]/ {
-  id = $1; sub(/\./, "", id)
-  mark = $0; sub(/.*\[/, "", mark); sub(/\].*/, "", mark)
-  title = $0; sub(/^[0-9]+\. \[[ xX]\] /, "", title)
-  sub(/ ~(small|medium|large)/, "", title)
-  status = (mark == " ") ? "open" : "done"
-  printf "{\"id\":\"%s\",\"title\":\"%s\",\"status\":\"%s\",\"tags\":[]}\n", id, title, status
-}' "$TODOS"
+[ -f "$TODOS" ] || exit 0
+# Match "1. [ ] some title ~small" lines and emit NDJSON.
+sed -n 's/^\([0-9]*\)\. \[ \] \(.*\)/\1 \2/p' "$TODOS" | while read -r id rest; do
+  title=$(printf '%s' "$rest" | sed 's/ ~[a-z]*$//' | sed 's/"/\\"/g')
+  printf '{"id":"%s","title":"%s","status":"open","tags":[]}\n' "$id" "$title"
+done
 `)
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), `#!/bin/sh
 echo "done: $1" >&2
 `)
+	writeFile(t, filepath.Join(adapterDir, "backlog-add"), `#!/bin/sh
+echo "add: $@" >&2
+`)
+	writeFile(t, filepath.Join(adapterDir, "backlog-edit"), `#!/bin/sh
+echo "edit: $@" >&2
+`)
 	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
 	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
 
 	// .noodle.toml — codex provider, auto autonomy, max_cooks=1.
 	// Server enabled on a fixed port so Playwright can hit the UI.
@@ -147,6 +160,8 @@ skill = "todo"
 [adapters.backlog.scripts]
 sync = ".noodle/adapters/backlog-sync"
 done = ".noodle/adapters/backlog-done"
+add = ".noodle/adapters/backlog-add"
+edit = ".noodle/adapters/backlog-edit"
 
 [concurrency]
 max_cooks = 1

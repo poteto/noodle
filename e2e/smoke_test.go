@@ -38,9 +38,7 @@ func preflight(t *testing.T) {
 		}
 	}
 
-	if os.Getenv("CODEX_API_KEY") == "" && os.Getenv("OPENAI_API_KEY") == "" {
-		t.Skip("skipping: neither CODEX_API_KEY nor OPENAI_API_KEY set")
-	}
+	// Codex CLI handles its own authentication — no env var check needed.
 }
 
 func TestSmokeAgentLoop(t *testing.T) {
