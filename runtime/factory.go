@@ -72,6 +72,15 @@ func (m *RuntimeMap) CloseAll() {
 	}
 }
 
+// HealthChannels returns the health channel for each registered runtime.
+func (m *RuntimeMap) HealthChannels() []<-chan HealthEvent {
+	channels := make([]<-chan HealthEvent, 0, len(m.runtimes))
+	for _, rt := range m.runtimes {
+		channels = append(channels, rt.Health())
+	}
+	return channels
+}
+
 // RecoverAll calls Recover on each runtime and collects results.
 func (m *RuntimeMap) RecoverAll(ctx context.Context) ([]RecoveredSession, error) {
 	var all []RecoveredSession

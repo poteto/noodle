@@ -9,10 +9,14 @@ import (
 // SpritesRuntime wraps the existing SpritesDispatcher behind the Runtime interface.
 type SpritesRuntime struct {
 	dispatcher dispatcher.Dispatcher
+	health     chan HealthEvent
 }
 
 func NewSpritesRuntime(d dispatcher.Dispatcher) *SpritesRuntime {
-	return &SpritesRuntime{dispatcher: d}
+	return &SpritesRuntime{
+		dispatcher: d,
+		health:     make(chan HealthEvent, 256),
+	}
 }
 
 func (r *SpritesRuntime) Start(_ context.Context) error { return nil }
@@ -28,6 +32,8 @@ func (r *SpritesRuntime) Kill(handle SessionHandle) error {
 func (r *SpritesRuntime) Recover(_ context.Context) ([]RecoveredSession, error) {
 	return nil, nil
 }
+
+func (r *SpritesRuntime) Health() <-chan HealthEvent { return r.health }
 
 func (r *SpritesRuntime) Close() error { return nil }
 

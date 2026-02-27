@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
+	nrt "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -78,6 +79,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		logger:                deps.Logger,
 		state:                 StateRunning,
 		activeCooksByOrder:    map[string]*cookHandle{},
+		sessionHealth:         map[string]nrt.HealthEvent{},
 		completions:           make(chan StageResult, 1024),
 		adoptedTargets:        map[string]string{},
 		adoptedSessions:       []string{},
@@ -309,6 +311,7 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}
+	l.drainHealthEvents()
 	if _, err := l.deps.Monitor.RunOnce(ctx); err != nil {
 		return false, err
 	}

@@ -263,6 +263,7 @@ type Loop struct {
 	pendingRetry    map[string]*pendingRetryCook
 	processedIDs    map[string]struct{}
 
+	sessionHealth  map[string]nrt.HealthEvent
 	completions    chan StageResult
 	completionsMu  sync.Mutex
 	completionOver []StageResult

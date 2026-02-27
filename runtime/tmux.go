@@ -9,10 +9,14 @@ import (
 // TmuxRuntime wraps the existing TmuxDispatcher behind the Runtime interface.
 type TmuxRuntime struct {
 	dispatcher dispatcher.Dispatcher
+	health     chan HealthEvent
 }
 
 func NewTmuxRuntime(d dispatcher.Dispatcher) *TmuxRuntime {
-	return &TmuxRuntime{dispatcher: d}
+	return &TmuxRuntime{
+		dispatcher: d,
+		health:     make(chan HealthEvent, 256),
+	}
 }
 
 func (r *TmuxRuntime) Start(_ context.Context) error { return nil }
@@ -28,6 +32,8 @@ func (r *TmuxRuntime) Kill(handle SessionHandle) error {
 func (r *TmuxRuntime) Recover(_ context.Context) ([]RecoveredSession, error) {
 	return nil, nil
 }
+
+func (r *TmuxRuntime) Health() <-chan HealthEvent { return r.health }
 
 func (r *TmuxRuntime) Close() error { return nil }
 

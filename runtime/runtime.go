@@ -40,6 +40,11 @@ type Runtime interface {
 	// Recover discovers pre-existing sessions from a previous loop run.
 	Recover(ctx context.Context) ([]RecoveredSession, error)
 
+	// Health returns a channel of health events from the runtime's
+	// observation layer. The runtime pushes events when session health
+	// state changes (stuck, dead, idle, healthy).
+	Health() <-chan HealthEvent
+
 	// Close stops background goroutines and cleans up.
 	Close() error
 }
