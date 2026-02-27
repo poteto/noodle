@@ -57,9 +57,9 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 	for _, order := range ordersFile.Orders {
 		ordersCopy = append(ordersCopy, cloneOrder(order))
 	}
-	activeCooks := make([]CookSummary, 0, len(l.activeCooksByOrder))
+	activeCooks := make([]CookSummary, 0, len(l.cooks.activeCooksByOrder))
 	totalCost := 0.0
-	for _, cook := range l.activeCooksByOrder {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook == nil || cook.session == nil {
 			continue
 		}
@@ -82,8 +82,8 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		return activeCooks[i].SessionID < activeCooks[j].SessionID
 	})
 
-	pendingReviews := make([]PendingReviewItem, 0, len(l.pendingReview))
-	for _, pending := range l.pendingReview {
+	pendingReviews := make([]PendingReviewItem, 0, len(l.cooks.pendingReview))
+	for _, pending := range l.cooks.pendingReview {
 		if pending == nil {
 			continue
 		}

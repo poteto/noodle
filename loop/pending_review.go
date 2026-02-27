@@ -75,7 +75,7 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 }
 
 func (l *Loop) parkPendingReview(cook *cookHandle, reason string) error {
-	l.pendingReview[cook.orderID] = &pendingReviewCook{
+	l.cooks.pendingReview[cook.orderID] = &pendingReviewCook{
 		cookIdentity: cook.cookIdentity,
 		worktreeName: cook.worktreeName,
 		worktreePath: cook.worktreePath,
@@ -86,8 +86,8 @@ func (l *Loop) parkPendingReview(cook *cookHandle, reason string) error {
 }
 
 func (l *Loop) writePendingReview() error {
-	items := make([]PendingReviewItem, 0, len(l.pendingReview))
-	for _, pending := range l.pendingReview {
+	items := make([]PendingReviewItem, 0, len(l.cooks.pendingReview))
+	for _, pending := range l.cooks.pendingReview {
 		if pending == nil {
 			l.logger.Warn("nil entry in pendingReview map")
 			continue
@@ -156,7 +156,7 @@ func (l *Loop) loadPendingReview() error {
 			reason:       strings.TrimSpace(item.Reason),
 		}
 	}
-	l.pendingReview = next
+	l.cooks.pendingReview = next
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (l *Loop) loadPendingReview() error {
 // exists in orders.json. This covers the crash window between advancing
 // orders.json and updating pending-review.json.
 func (l *Loop) reconcilePendingReview() error {
-	if len(l.pendingReview) == 0 {
+	if len(l.cooks.pendingReview) == 0 {
 		return nil
 	}
 	orders, err := l.currentOrders()
@@ -176,10 +176,10 @@ func (l *Loop) reconcilePendingReview() error {
 		orderIDs[o.ID] = struct{}{}
 	}
 	pruned := false
-	for id := range l.pendingReview {
+	for id := range l.cooks.pendingReview {
 		if _, ok := orderIDs[id]; !ok {
 			l.logger.Warn("pruning stale pending review", "order", id)
-			delete(l.pendingReview, id)
+			delete(l.cooks.pendingReview, id)
 			pruned = true
 		}
 	}

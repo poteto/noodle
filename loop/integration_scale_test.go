@@ -226,13 +226,13 @@ func TestMockRuntimeRecoverBuildsAdoptedIndex(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	if sid, ok := l.adoptedTargets["order-1"]; !ok {
+	if sid, ok := l.cooks.adoptedTargets["order-1"]; !ok {
 		t.Fatal("expected order-1 in adoptedTargets")
 	} else if sid != "sess-1" {
 		t.Fatalf("adoptedTargets[order-1] = %q, want sess-1", sid)
 	}
-	if len(l.adoptedSessions) != 1 {
-		t.Fatalf("adoptedSessions = %d, want 1", len(l.adoptedSessions))
+	if len(l.cooks.adoptedSessions) != 1 {
+		t.Fatalf("adoptedSessions = %d, want 1", len(l.cooks.adoptedSessions))
 	}
 }
 

@@ -183,32 +183,22 @@ type Loop struct {
 	deps        Dependencies
 	logger      *slog.Logger
 
+	// Components — field-grouping sub-structs.
+	cooks         cookTracker
+	cmds          cmdProcessor
+	completionBuf completionBuffer
+
 	state             State
 	registryStale     atomic.Bool
 	registryFailCount int
 
-	activeCooksByOrder map[string]*cookHandle
-	adoptedTargets     map[string]string
-	adoptedSessions    []string
-	failedTargets      map[string]string
-	pendingReview      map[string]*pendingReviewCook
-	pendingRetry       map[string]*pendingRetryCook
-	processedIDs       map[string]struct{}
-
-	completions                 chan StageResult
-	completionOverflow          []StageResult
-	completionOverflowMu        sync.Mutex
-	completionOverflowSaturated uint64
-	watcherWG                   sync.WaitGroup
-	watcherCount                atomic.Int64
-	dispatchGeneration          atomic.Uint64
+	watcherWG          sync.WaitGroup
+	watcherCount       atomic.Int64
+	dispatchGeneration atomic.Uint64
 
 	bootstrapAttempts  int
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
-
-	cmdSeqCounter  uint64 // monotonic counter for incoming control commands
-	lastAppliedSeq uint64 // highest sequence number applied; persisted to disk
 
 	orders       OrdersFile
 	ordersLoaded bool

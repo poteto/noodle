@@ -43,7 +43,7 @@ func (l *Loop) hydrateProcessedCommands() error {
 				continue
 			}
 			if strings.TrimSpace(ack.ID) != "" {
-				l.processedIDs[ack.ID] = struct{}{}
+				l.cmds.processedIDs[ack.ID] = struct{}{}
 			}
 		}
 		if err := scanner.Err(); err != nil {
@@ -66,8 +66,8 @@ func (l *Loop) hydrateProcessedCommands() error {
 		// Corrupt file — start from zero.
 		return nil
 	}
-	l.lastAppliedSeq = seq
-	l.cmdSeqCounter = seq
+	l.cmds.lastAppliedSeq = seq
+	l.cmds.cmdSeqCounter = seq
 	return nil
 }
 
@@ -119,24 +119,24 @@ func (l *Loop) processControlCommands() error {
 		}
 
 		// Assign a monotonic sequence number.
-		l.cmdSeqCounter++
-		seq := l.cmdSeqCounter
+		l.cmds.cmdSeqCounter++
+		seq := l.cmds.cmdSeqCounter
 
 		// Skip commands already applied (ID-based dedup or sequence-based).
-		if _, seen := l.processedIDs[cmd.ID]; seen {
+		if _, seen := l.cmds.processedIDs[cmd.ID]; seen {
 			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
 			continue
 		}
-		if seq <= l.lastAppliedSeq {
+		if seq <= l.cmds.lastAppliedSeq {
 			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
-			l.processedIDs[cmd.ID] = struct{}{}
+			l.cmds.processedIDs[cmd.ID] = struct{}{}
 			continue
 		}
 
 		ack := l.applyControlCommand(cmd)
 		acks = append(acks, ack)
-		l.processedIDs[cmd.ID] = struct{}{}
-		l.lastAppliedSeq = seq
+		l.cmds.processedIDs[cmd.ID] = struct{}{}
+		l.cmds.lastAppliedSeq = seq
 	}
 	if l.TestControlAckBarrier != nil {
 		l.TestControlAckBarrier()
@@ -267,7 +267,7 @@ func (l *Loop) controlMerge(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("merge: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -296,7 +296,7 @@ func (l *Loop) controlMerge(orderID string) error {
 				return err
 			}
 		}
-		delete(l.pendingReview, orderID)
+		delete(l.cooks.pendingReview, orderID)
 		return l.writePendingReview()
 	}
 
@@ -338,7 +338,7 @@ func (l *Loop) controlMerge(orderID string) error {
 			return err
 		}
 	}
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -347,7 +347,7 @@ func (l *Loop) controlReject(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("reject: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -371,7 +371,7 @@ func (l *Loop) controlReject(orderID string) error {
 	if err := l.markFailed(orderID, "rejected by user"); err != nil {
 		return err
 	}
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -380,7 +380,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if orderID == "" {
 		return fmt.Errorf("request-changes: order ID empty")
 	}
-	pending, ok := l.pendingReview[orderID]
+	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
@@ -417,7 +417,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 
-	delete(l.pendingReview, orderID)
+	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
 
@@ -469,7 +469,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if orderID == "" {
 		return fmt.Errorf("edit-item requires order_id")
 	}
-	if _, active := l.activeCooksByOrder[orderID]; active {
+	if _, active := l.cooks.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
 	orders, err := l.currentOrders()
@@ -519,7 +519,7 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 }
 
 func (l *Loop) controlStopAll() {
-	for _, cook := range l.activeCooksByOrder {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
 }
@@ -545,7 +545,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("requeue requires order_id")
 	}
-	if _, ok := l.failedTargets[orderID]; !ok {
+	if _, ok := l.cooks.failedTargets[orderID]; !ok {
 		return fmt.Errorf("order %q not in failed state", orderID)
 	}
 
@@ -573,7 +573,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 			return err
 		}
 	}
-	delete(l.failedTargets, orderID)
+	delete(l.cooks.failedTargets, orderID)
 	return l.writeFailedTargets()
 }
 
@@ -631,7 +631,7 @@ func (l *Loop) controlStop(name string) error {
 	if name == "" {
 		return fmt.Errorf("stop requires name")
 	}
-	for orderID, cook := range l.activeCooksByOrder {
+	for orderID, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			_ = cook.session.Kill()
 			l.trackCookCompleted(cook, StageResult{
@@ -639,7 +639,7 @@ func (l *Loop) controlStop(name string) error {
 				Status:      StageResultCancelled,
 				CompletedAt: l.deps.Now(),
 			})
-			delete(l.activeCooksByOrder, orderID)
+			delete(l.cooks.activeCooksByOrder, orderID)
 			if cook.worktreeName != "" {
 				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 			}
@@ -650,10 +650,10 @@ func (l *Loop) controlStop(name string) error {
 }
 
 func (l *Loop) writeLastAppliedSeq() error {
-	if l.lastAppliedSeq == 0 {
+	if l.cmds.lastAppliedSeq == 0 {
 		return nil
 	}
-	data := []byte(strconv.FormatUint(l.lastAppliedSeq, 10) + "\n")
+	data := []byte(strconv.FormatUint(l.cmds.lastAppliedSeq, 10) + "\n")
 	return filex.WriteFileAtomic(l.lastAppliedSeqPath(), data)
 }
 

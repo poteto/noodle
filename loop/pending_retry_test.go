@@ -32,7 +32,7 @@ func TestWritePendingRetryPersistsFile(t *testing.T) {
 		Now:        time.Now,
 	})
 
-	l.pendingRetry["42"] = &pendingRetryCook{
+	l.cooks.pendingRetry["42"] = &pendingRetryCook{
 		cookIdentity: cookIdentity{
 			orderID:    "42",
 			stageIndex: 0,
@@ -108,10 +108,10 @@ func TestLoadPendingRetryHydratesState(t *testing.T) {
 	if err := l.loadPendingRetry(); err != nil {
 		t.Fatalf("loadPendingRetry: %v", err)
 	}
-	if len(l.pendingRetry) != 1 {
-		t.Fatalf("pendingRetry size = %d, want 1", len(l.pendingRetry))
+	if len(l.cooks.pendingRetry) != 1 {
+		t.Fatalf("pendingRetry size = %d, want 1", len(l.cooks.pendingRetry))
 	}
-	p, ok := l.pendingRetry["42"]
+	p, ok := l.cooks.pendingRetry["42"]
 	if !ok {
 		t.Fatal("expected item 42 in pendingRetry")
 	}
@@ -152,17 +152,17 @@ func TestReconcilePendingRetryPrunesRemovedOrders(t *testing.T) {
 		OrdersFile: ordersPath,
 	})
 
-	l.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
-	l.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.cooks.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.cooks.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
 
 	if err := l.reconcilePendingRetry(); err != nil {
 		t.Fatalf("reconcilePendingRetry: %v", err)
 	}
 
-	if _, ok := l.pendingRetry["42"]; ok {
+	if _, ok := l.cooks.pendingRetry["42"]; ok {
 		t.Fatal("expected item 42 to be pruned (order removed)")
 	}
-	if _, ok := l.pendingRetry["43"]; !ok {
+	if _, ok := l.cooks.pendingRetry["43"]; !ok {
 		t.Fatal("expected item 43 to be kept (order still exists)")
 	}
 }
@@ -194,18 +194,18 @@ func TestReconcilePendingRetryPrunesAdoptedSessions(t *testing.T) {
 	})
 
 	// Simulate that order "42" was recovered with a live session.
-	l.adoptedTargets["42"] = "sess-42"
-	l.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
-	l.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.cooks.adoptedTargets["42"] = "sess-42"
+	l.cooks.pendingRetry["42"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "42", stage: Stage{TaskKey: "execute"}}, attempt: 1}
+	l.cooks.pendingRetry["43"] = &pendingRetryCook{cookIdentity: cookIdentity{orderID: "43", stage: Stage{TaskKey: "execute"}}, attempt: 1}
 
 	if err := l.reconcilePendingRetry(); err != nil {
 		t.Fatalf("reconcilePendingRetry: %v", err)
 	}
 
-	if _, ok := l.pendingRetry["42"]; ok {
+	if _, ok := l.cooks.pendingRetry["42"]; ok {
 		t.Fatal("expected item 42 to be pruned (adopted session)")
 	}
-	if _, ok := l.pendingRetry["43"]; !ok {
+	if _, ok := l.cooks.pendingRetry["43"]; !ok {
 		t.Fatal("expected item 43 to be kept (no adopted session)")
 	}
 }
@@ -265,11 +265,11 @@ func TestLoadPendingRetryReconcileDuringStartup(t *testing.T) {
 	}
 
 	// No adopted sessions, so retry should survive.
-	if _, ok := l.pendingRetry["42"]; !ok {
+	if _, ok := l.cooks.pendingRetry["42"]; !ok {
 		t.Fatal("expected item 42 in pendingRetry after startup reconcile")
 	}
-	if l.pendingRetry["42"].attempt != 2 {
-		t.Fatalf("attempt = %d, want 2", l.pendingRetry["42"].attempt)
+	if l.cooks.pendingRetry["42"].attempt != 2 {
+		t.Fatalf("attempt = %d, want 2", l.cooks.pendingRetry["42"].attempt)
 	}
 }
 
@@ -297,7 +297,7 @@ func TestLoadPendingRetryCorruptFileStartsFresh(t *testing.T) {
 	if err := l.loadPendingRetry(); err != nil {
 		t.Fatalf("loadPendingRetry should not error on corrupt file: %v", err)
 	}
-	if len(l.pendingRetry) != 0 {
-		t.Fatalf("pendingRetry size = %d, want 0 (fresh start)", len(l.pendingRetry))
+	if len(l.cooks.pendingRetry) != 0 {
+		t.Fatalf("pendingRetry size = %d, want 0 (fresh start)", len(l.cooks.pendingRetry))
 	}
 }

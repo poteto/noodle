@@ -637,7 +637,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 			t.Fatalf("expected no respawn for failed item 42, calls = %#v", rt.calls)
 		}
 	}
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected target to be marked failed")
 	}
 	if _, err := os.Stat(filepath.Join(runtimeDir, "failed.json")); err != nil {
@@ -771,15 +771,19 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 
 	// Create a loop with a registry error (simulates discovery failure)
 	l := &Loop{
-		projectDir:         projectDir,
-		runtimeDir:         runtimeDir,
-		registryErr:        errors.New("task type discovery failed: bad frontmatter"),
-		activeCooksByOrder: map[string]*cookHandle{},
-		adoptedTargets:     map[string]string{},
-		failedTargets:      map[string]string{},
-		processedIDs:       map[string]struct{}{},
-		pendingReview:      map[string]*pendingReviewCook{},
-		pendingRetry:       map[string]*pendingRetryCook{},
+		projectDir:  projectDir,
+		runtimeDir:  runtimeDir,
+		registryErr: errors.New("task type discovery failed: bad frontmatter"),
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
 		deps: Dependencies{
 			Mise:       &fakeMise{brief: mise.Brief{}},
 			Monitor:    fakeMonitor{},
@@ -873,7 +877,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 	})
-	l.adoptedTargets = map[string]string{"legacy-1": "stale-session"}
+	l.cooks.adoptedTargets = map[string]string{"legacy-1": "stale-session"}
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -881,8 +885,8 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	if len(rt.calls) != 1 {
 		t.Fatalf("spawn calls = %d", len(rt.calls))
 	}
-	if len(l.adoptedTargets) != 0 {
-		t.Fatalf("expected stale adopted target to be removed, got %#v", l.adoptedTargets)
+	if len(l.cooks.adoptedTargets) != 0 {
+		t.Fatalf("expected stale adopted target to be removed, got %#v", l.cooks.adoptedTargets)
 	}
 }
 
@@ -1011,8 +1015,8 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
 	})
-	l.adoptedTargets = map[string]string{"42": sessionID}
-	l.adoptedSessions = []string{sessionID}
+	l.cooks.adoptedTargets = map[string]string{"42": sessionID}
+	l.cooks.adoptedSessions = []string{sessionID}
 
 	if err := l.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle: %v", err)
@@ -1023,8 +1027,8 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	if len(ar.doneCalls) != 1 || ar.doneCalls[0] != "42" {
 		t.Fatalf("unexpected done calls: %#v", ar.doneCalls)
 	}
-	if len(l.adoptedTargets) != 0 {
-		t.Fatalf("expected adopted targets to be cleared, got %#v", l.adoptedTargets)
+	if len(l.cooks.adoptedTargets) != 0 {
+		t.Fatalf("expected adopted targets to be cleared, got %#v", l.cooks.adoptedTargets)
 	}
 	// Verify the order was removed from orders.json after completion.
 	updatedOrders, err := readOrders(l.deps.OrdersFile)
@@ -1167,10 +1171,10 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 		t.Fatalf("completion cycle: %v", err)
 	}
 	// Merge conflicts now park for pending review instead of marking failed.
-	if _, ok := l.pendingReview["42"]; !ok {
+	if _, ok := l.cooks.pendingReview["42"]; !ok {
 		t.Fatal("expected target to be parked for pending review after merge conflict")
 	}
-	pending := l.pendingReview["42"]
+	pending := l.cooks.pendingReview["42"]
 	if !strings.Contains(pending.reason, "merge conflict") {
 		t.Fatalf("pending review reason = %q, want 'merge conflict'", pending.reason)
 	}
@@ -1219,8 +1223,8 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	if len(wt.merged) != 1 {
 		t.Fatalf("worktree merges = %d, want 1 (auto-merge)", len(wt.merged))
 	}
-	if len(l.pendingReview) != 0 {
-		t.Fatalf("pendingReview should be empty, got %d item(s)", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 0 {
+		t.Fatalf("pendingReview should be empty, got %d item(s)", len(l.cooks.pendingReview))
 	}
 }
 
@@ -1268,8 +1272,8 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 		t.Fatalf("worktree merges = %d, want 0 (task disallows merge)", len(wt.merged))
 	}
 	// In auto mode, non-mergeable stages advance without parking.
-	if len(l.pendingReview) != 0 {
-		t.Fatalf("pendingReview = %d, want 0 (auto mode advances non-mergeable stages)", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 0 {
+		t.Fatalf("pendingReview = %d, want 0 (auto mode advances non-mergeable stages)", len(l.cooks.pendingReview))
 	}
 	// Verify the order was removed from orders.json after completion.
 	updatedOrders, err := readOrders(ordersPath)
@@ -1325,8 +1329,8 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 	if len(wt.merged) != 0 {
 		t.Fatalf("worktree merges = %d, want 0 (approve mode overrides)", len(wt.merged))
 	}
-	if len(l.pendingReview) != 1 {
-		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 1 {
+		t.Fatalf("pendingReview = %d, want 1", len(l.cooks.pendingReview))
 	}
 	items, err := ReadPendingReview(runtimeDir)
 	if err != nil {
@@ -1379,8 +1383,8 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 	if len(wt.merged) != 0 {
 		t.Fatalf("worktree merges = %d, want 0 (both canMerge=false and approve mode)", len(wt.merged))
 	}
-	if len(l.pendingReview) != 1 {
-		t.Fatalf("pendingReview = %d, want 1", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 1 {
+		t.Fatalf("pendingReview = %d, want 1", len(l.cooks.pendingReview))
 	}
 	items, err := ReadPendingReview(runtimeDir)
 	if err != nil {
@@ -1461,7 +1465,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		worktreeName: "29",
 		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
 	}
-	l.activeCooksByOrder["29"] = item29Cook
+	l.cooks.activeCooksByOrder["29"] = item29Cook
 
 	// Simulate: an adopted schedule session from a previous loop instance
 	// has just completed with error.
@@ -1481,8 +1485,8 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		t.Fatalf("write adopted prompt: %v", err)
 	}
 
-	l.adoptedTargets["schedule"] = schedSessID
-	l.adoptedSessions = append(l.adoptedSessions, schedSessID)
+	l.cooks.adoptedTargets["schedule"] = schedSessID
+	l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, schedSessID)
 
 	// Install tmux stub so refreshAdoptedTargets doesn't drop the session
 	// before collectAdoptedCompletions processes it.
@@ -1496,13 +1500,13 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 	}
 
 	// The invariant: activeCooksByOrder must never exceed max_cooks.
-	if len(l.activeCooksByOrder) > cfg.Concurrency.MaxCooks {
+	if len(l.cooks.activeCooksByOrder) > cfg.Concurrency.MaxCooks {
 		t.Fatalf("BUG: activeCooksByOrder has %d entries (max_cooks=%d) — retryCook exceeded concurrency limit",
-			len(l.activeCooksByOrder), cfg.Concurrency.MaxCooks)
+			len(l.cooks.activeCooksByOrder), cfg.Concurrency.MaxCooks)
 	}
 
 	// The schedule retry should have been deferred to pendingRetry.
-	if _, ok := l.pendingRetry["schedule"]; !ok {
+	if _, ok := l.cooks.pendingRetry["schedule"]; !ok {
 		t.Fatal("expected schedule retry to be deferred to pendingRetry")
 	}
 }
@@ -1559,7 +1563,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	if len(rt.sessions) != 1 {
 		t.Fatalf("expected 1 session after cycle 1, got %d", len(rt.sessions))
 	}
-	if _, ok := l.activeCooksByOrder["37"]; !ok {
+	if _, ok := l.cooks.activeCooksByOrder["37"]; !ok {
 		t.Fatal("expected item 37 in activeCooksByOrder after cycle 1")
 	}
 
@@ -1578,7 +1582,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected cycle 2 to return error from failed retry dispatch")
 	}
-	if _, ok := l.pendingRetry["37"]; !ok {
+	if _, ok := l.cooks.pendingRetry["37"]; !ok {
 		t.Fatal("expected item 37 in pendingRetry after failed retry dispatch")
 	}
 
@@ -1587,7 +1591,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 		t.Fatalf("cycle 3: %v", err)
 	}
 
-	cook37, ok := l.activeCooksByOrder["37"]
+	cook37, ok := l.cooks.activeCooksByOrder["37"]
 	if !ok {
 		t.Fatal("expected item 37 in activeCooksByOrder after cycle 3 (pending retry should have fired)")
 	}
@@ -1796,7 +1800,7 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 	})
 
 	// Simulate adopted session for this order.
-	l.adoptedTargets = map[string]string{"adopted-1": "sess-adopted"}
+	l.cooks.adoptedTargets = map[string]string{"adopted-1": "sess-adopted"}
 
 	if err := l.reconcileMergingStages(); err != nil {
 		t.Fatalf("reconcileMergingStages: %v", err)

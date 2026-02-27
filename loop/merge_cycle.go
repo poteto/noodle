@@ -19,7 +19,7 @@ func (l *Loop) drainMergeResults(ctx context.Context) error {
 			}
 			if result.Err != nil {
 				if conflictErr := l.handleMergeConflict(cook, result.Err); conflictErr != nil {
-					l.pendingRetry[cook.orderID] = &pendingRetryCook{
+					l.cooks.pendingRetry[cook.orderID] = &pendingRetryCook{
 						cookIdentity: cook.cookIdentity,
 						isOnFailure:  cook.isOnFailure,
 						orderStatus:  cook.orderStatus,

@@ -27,15 +27,15 @@ func (l *Loop) loadFailedTargets() error {
 	if err := json.Unmarshal(data, &failed); err != nil {
 		return fmt.Errorf("parse failed targets: %w", err)
 	}
-	if l.failedTargets == nil {
-		l.failedTargets = map[string]string{}
+	if l.cooks.failedTargets == nil {
+		l.cooks.failedTargets = map[string]string{}
 	}
 	for id, reason := range failed {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
 		}
-		l.failedTargets[id] = strings.TrimSpace(reason)
+		l.cooks.failedTargets[id] = strings.TrimSpace(reason)
 	}
 	return nil
 }
@@ -45,16 +45,16 @@ func (l *Loop) markFailed(id string, reason string) error {
 	if id == "" {
 		return nil
 	}
-	if l.failedTargets == nil {
-		l.failedTargets = map[string]string{}
+	if l.cooks.failedTargets == nil {
+		l.cooks.failedTargets = map[string]string{}
 	}
-	l.failedTargets[id] = strings.TrimSpace(reason)
+	l.cooks.failedTargets[id] = strings.TrimSpace(reason)
 	return l.writeFailedTargets()
 }
 
 func (l *Loop) writeFailedTargets() error {
 	path := l.failedPath()
-	data, err := json.MarshalIndent(l.failedTargets, "", "  ")
+	data, err := json.MarshalIndent(l.cooks.failedTargets, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode failed targets: %w", err)
 	}

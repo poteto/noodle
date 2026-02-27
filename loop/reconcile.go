@@ -26,8 +26,8 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		return err
 	}
 
-	l.adoptedTargets = map[string]string{}
-	l.adoptedSessions = l.adoptedSessions[:0]
+	l.cooks.adoptedTargets = map[string]string{}
+	l.cooks.adoptedSessions = l.cooks.adoptedSessions[:0]
 
 	// Recover sessions from all registered runtimes.
 	for _, rt := range l.deps.Runtimes {
@@ -38,15 +38,15 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		}
 		for _, rs := range recovered {
 			if rs.OrderID != "" {
-				l.adoptedTargets[rs.OrderID] = rs.SessionHandle.ID()
+				l.cooks.adoptedTargets[rs.OrderID] = rs.SessionHandle.ID()
 			}
-			l.adoptedSessions = append(l.adoptedSessions, rs.SessionHandle.ID())
+			l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, rs.SessionHandle.ID())
 		}
 	}
 
-	if len(l.adoptedSessions) > 0 {
+	if len(l.cooks.adoptedSessions) > 0 {
 		tickets := monitor.NewEventTicketMaterializer(l.runtimeDir)
-		_ = tickets.Materialize(ctx, l.adoptedSessions)
+		_ = tickets.Materialize(ctx, l.cooks.adoptedSessions)
 	}
 
 	// Recover stages stuck in "merging" status from a previous crash.
@@ -132,7 +132,7 @@ func (l *Loop) reconcileMergingStages() error {
 		}
 
 		// Check if a live session was adopted for this order.
-		if _, adopted := l.adoptedTargets[ms.order.ID]; adopted {
+		if _, adopted := l.cooks.adoptedTargets[ms.order.ID]; adopted {
 			l.logger.Info("merging stage has live session, resetting to active", "order", ms.order.ID, "stage", ms.stageIdx)
 			if err := l.persistOrderStageStatus(ms.order.ID, ms.stageIdx, ms.isOnFailure, StageStatusActive); err != nil {
 				return err
@@ -264,16 +264,16 @@ func branchExists(projectDir string, branch string) bool {
 }
 
 func (l *Loop) refreshAdoptedTargets() {
-	if len(l.adoptedTargets) == 0 {
+	if len(l.cooks.adoptedTargets) == 0 {
 		return
 	}
 	alive := map[string]struct{}{}
 	for _, name := range loopruntime.ListTmuxSessions() {
 		alive[name] = struct{}{}
 	}
-	nextTargets := make(map[string]string, len(l.adoptedTargets))
-	nextSessions := make([]string, 0, len(l.adoptedTargets))
-	for target, sessionID := range l.adoptedTargets {
+	nextTargets := make(map[string]string, len(l.cooks.adoptedTargets))
+	nextSessions := make([]string, 0, len(l.cooks.adoptedTargets))
+	for target, sessionID := range l.cooks.adoptedTargets {
 		metaPath := filepath.Join(l.runtimeDir, "sessions", sessionID, "meta.json")
 		data, err := os.ReadFile(metaPath)
 		if err != nil {
@@ -288,8 +288,8 @@ func (l *Loop) refreshAdoptedTargets() {
 		nextTargets[target] = sessionID
 		nextSessions = append(nextSessions, sessionID)
 	}
-	l.adoptedTargets = nextTargets
-	l.adoptedSessions = nextSessions
+	l.cooks.adoptedTargets = nextTargets
+	l.cooks.adoptedSessions = nextSessions
 }
 
 // adoptedSession is a minimal SessionHandle for crash-recovery merge scenarios

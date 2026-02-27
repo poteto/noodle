@@ -291,7 +291,7 @@ func TestIntegrationOnFailurePipeline(t *testing.T) {
 	}
 
 	// Should be in failed targets (OnFailure completes = original failure stands).
-	if _, ok := l.failedTargets["fail-1"]; !ok {
+	if _, ok := l.cooks.failedTargets["fail-1"]; !ok {
 		t.Fatal("expected fail-1 in failedTargets")
 	}
 	if _, err := os.Stat(filepath.Join(env.runtimeDir, "failed.json")); err != nil {
@@ -406,10 +406,10 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 		t.Fatalf("cycle 2: %v", err)
 	}
 
-	if _, ok := l.pendingReview["conflict-1"]; !ok {
+	if _, ok := l.cooks.pendingReview["conflict-1"]; !ok {
 		t.Fatal("expected conflict-1 in pendingReview")
 	}
-	pending := l.pendingReview["conflict-1"]
+	pending := l.cooks.pendingReview["conflict-1"]
 	if !strings.Contains(pending.reason, "merge conflict") {
 		t.Fatalf("pending reason = %q, want merge conflict", pending.reason)
 	}
@@ -455,8 +455,8 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	}
 
 	// Verify pendingReview was cleared.
-	if len(l.pendingReview) != 0 {
-		t.Fatalf("pendingReview = %d, want 0", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 0 {
+		t.Fatalf("pendingReview = %d, want 0", len(l.cooks.pendingReview))
 	}
 }
 
@@ -498,7 +498,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 		t.Fatalf("cycle 2: %v", err)
 	}
 
-	if _, ok := l.failedTargets["sticky-1"]; !ok {
+	if _, ok := l.cooks.failedTargets["sticky-1"]; !ok {
 		t.Fatal("expected sticky-1 in failedTargets after failure")
 	}
 
@@ -555,7 +555,7 @@ func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
 		t.Fatalf("controlRequeue: %v", err)
 	}
 
-	if _, ok := l.failedTargets["sticky-1"]; ok {
+	if _, ok := l.cooks.failedTargets["sticky-1"]; ok {
 		t.Fatal("sticky-1 should be removed from failedTargets after requeue")
 	}
 

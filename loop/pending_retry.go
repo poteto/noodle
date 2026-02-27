@@ -37,8 +37,8 @@ func pendingRetryFilePath(runtimeDir string) string {
 }
 
 func (l *Loop) writePendingRetry() error {
-	items := make([]PendingRetryItem, 0, len(l.pendingRetry))
-	for _, p := range l.pendingRetry {
+	items := make([]PendingRetryItem, 0, len(l.cooks.pendingRetry))
+	for _, p := range l.cooks.pendingRetry {
 		if p == nil {
 			continue
 		}
@@ -124,14 +124,14 @@ func (l *Loop) loadPendingRetry() error {
 			displayName: item.DisplayName,
 		}
 	}
-	l.pendingRetry = next
+	l.cooks.pendingRetry = next
 	return nil
 }
 
 // reconcilePendingRetry removes pending retry entries whose order no longer
 // exists in orders.json or that have a live session (already recovered).
 func (l *Loop) reconcilePendingRetry() error {
-	if len(l.pendingRetry) == 0 {
+	if len(l.cooks.pendingRetry) == 0 {
 		return nil
 	}
 	orders, err := l.currentOrders()
@@ -145,17 +145,17 @@ func (l *Loop) reconcilePendingRetry() error {
 	// Remove retries for orders that no longer exist or are already active
 	// (recovered session is handling them).
 	pruned := false
-	for id := range l.pendingRetry {
+	for id := range l.cooks.pendingRetry {
 		if _, ok := orderIDs[id]; !ok {
 			l.logger.Warn("pruning stale pending retry", "order", id)
-			delete(l.pendingRetry, id)
+			delete(l.cooks.pendingRetry, id)
 			pruned = true
 			continue
 		}
 		// If an adopted session is already handling this order, don't retry.
-		if _, adopted := l.adoptedTargets[id]; adopted {
+		if _, adopted := l.cooks.adoptedTargets[id]; adopted {
 			l.logger.Info("pending retry superseded by recovered session", "order", id)
-			delete(l.pendingRetry, id)
+			delete(l.cooks.pendingRetry, id)
 			pruned = true
 		}
 	}

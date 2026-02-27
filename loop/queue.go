@@ -10,8 +10,8 @@ import (
 // so the TUI can derive cooking status and display the current autonomy mode.
 // Skips the write when nothing changed, avoiding fs-watcher feedback loops.
 func (l *Loop) stampStatus() error {
-	active := make([]string, 0, len(l.activeCooksByOrder))
-	for targetID := range l.activeCooksByOrder {
+	active := make([]string, 0, len(l.cooks.activeCooksByOrder))
+	for targetID := range l.cooks.activeCooksByOrder {
 		active = append(active, targetID)
 	}
 	sort.Strings(active)

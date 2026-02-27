@@ -44,7 +44,7 @@ func (l *Loop) atMaxConcurrency() bool {
 	if maxCooks <= 0 {
 		maxCooks = 1
 	}
-	return len(l.activeCooksByOrder)+len(l.adoptedTargets) >= maxCooks
+	return len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets) >= maxCooks
 }
 
 func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Order, opts spawnOptions) error {
@@ -68,7 +68,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	}
 
 	// Guard: only one cook may use a worktree at a time.
-	for _, active := range l.activeCooksByOrder {
+	for _, active := range l.cooks.activeCooksByOrder {
 		if active.worktreeName == name {
 			return fmt.Errorf("worktree %s already in use by session %s", name, active.session.ID())
 		}
@@ -145,7 +145,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		displayName:  displayName,
 	}
 	l.trackCookStarted(cook)
-	l.activeCooksByOrder[cand.OrderID] = cook
+	l.cooks.activeCooksByOrder[cand.OrderID] = cook
 	l.startSessionWatcher(ctx, cook, false)
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
@@ -155,7 +155,7 @@ func (l *Loop) drainCompletions(ctx context.Context) error {
 	drainedAny := false
 	for {
 		select {
-		case result := <-l.completions:
+		case result := <-l.completionBuf.completions:
 			drainedAny = true
 			if err := l.applyStageResult(ctx, result); err != nil {
 				return err
@@ -172,13 +172,13 @@ drainedChannel:
 			waitCtx = context.Background()
 		}
 		select {
-		case result := <-l.completions:
+		case result := <-l.completionBuf.completions:
 			if err := l.applyStageResult(waitCtx, result); err != nil {
 				return err
 			}
 			for {
 				select {
-				case late := <-l.completions:
+				case late := <-l.completionBuf.completions:
 					if err := l.applyStageResult(waitCtx, late); err != nil {
 						return err
 					}
@@ -206,7 +206,7 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 		l.handleBootstrapResult(result)
 		return nil
 	}
-	cook, exists := l.activeCooksByOrder[result.OrderID]
+	cook, exists := l.cooks.activeCooksByOrder[result.OrderID]
 	if !exists {
 		return nil
 	}
@@ -214,10 +214,10 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 		return nil
 	}
 	l.trackCookCompleted(cook, result)
-	delete(l.activeCooksByOrder, cook.orderID)
+	delete(l.cooks.activeCooksByOrder, cook.orderID)
 	if err := l.handleCompletion(ctx, cook); err != nil {
 		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
-			l.pendingRetry[cook.orderID] = &pendingRetryCook{
+			l.cooks.pendingRetry[cook.orderID] = &pendingRetryCook{
 				cookIdentity: cook.cookIdentity,
 				isOnFailure:  cook.isOnFailure,
 				orderStatus:  cook.orderStatus,
@@ -313,39 +313,39 @@ func (l *Loop) enqueueCompletion(ctx context.Context, result StageResult) {
 		ctx = context.Background()
 	}
 	select {
-	case l.completions <- result:
+	case l.completionBuf.completions <- result:
 		return
 	default:
 	}
 
-	overflowCap := cap(l.completionOverflow)
+	overflowCap := cap(l.completionBuf.completionOverflow)
 	if overflowCap <= 0 {
 		overflowCap = maxCompletionOverflow(l.config)
 	}
 
-	l.completionOverflowMu.Lock()
-	if len(l.completionOverflow) < overflowCap {
-		l.completionOverflow = append(l.completionOverflow, result)
-		l.completionOverflowMu.Unlock()
+	l.completionBuf.completionOverflowMu.Lock()
+	if len(l.completionBuf.completionOverflow) < overflowCap {
+		l.completionBuf.completionOverflow = append(l.completionBuf.completionOverflow, result)
+		l.completionBuf.completionOverflowMu.Unlock()
 		return
 	}
-	l.completionOverflowSaturated++
-	l.completionOverflowMu.Unlock()
+	l.completionBuf.completionOverflowSaturated++
+	l.completionBuf.completionOverflowMu.Unlock()
 
 	select {
-	case l.completions <- result:
+	case l.completionBuf.completions <- result:
 	case <-ctx.Done():
 	}
 }
 
 func (l *Loop) takeCompletionOverflow() []StageResult {
-	l.completionOverflowMu.Lock()
-	defer l.completionOverflowMu.Unlock()
-	if len(l.completionOverflow) == 0 {
+	l.completionBuf.completionOverflowMu.Lock()
+	defer l.completionBuf.completionOverflowMu.Unlock()
+	if len(l.completionBuf.completionOverflow) == 0 {
 		return nil
 	}
-	drained := append([]StageResult(nil), l.completionOverflow...)
-	l.completionOverflow = l.completionOverflow[:0]
+	drained := append([]StageResult(nil), l.completionBuf.completionOverflow...)
+	l.completionBuf.completionOverflow = l.completionBuf.completionOverflow[:0]
 	return drained
 }
 
@@ -611,7 +611,7 @@ func (l *Loop) readSessionSyncResult(sessionID string) (loopruntime.SyncResult, 
 }
 
 func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
-	for targetID, sessionID := range l.adoptedTargets {
+	for targetID, sessionID := range l.cooks.adoptedTargets {
 		status, ok, err := l.readSessionStatus(sessionID)
 		if err != nil {
 			return err
@@ -759,26 +759,26 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 }
 
 func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
-	delete(l.adoptedTargets, targetID)
-	filtered := l.adoptedSessions[:0]
-	for _, id := range l.adoptedSessions {
+	delete(l.cooks.adoptedTargets, targetID)
+	filtered := l.cooks.adoptedSessions[:0]
+	for _, id := range l.cooks.adoptedSessions {
 		if id == sessionID {
 			continue
 		}
 		filtered = append(filtered, id)
 	}
-	l.adoptedSessions = filtered
+	l.cooks.adoptedSessions = filtered
 }
 
 func (l *Loop) processPendingRetries(ctx context.Context) error {
-	if len(l.pendingRetry) == 0 {
+	if len(l.cooks.pendingRetry) == 0 {
 		return nil
 	}
-	pending := l.pendingRetry
-	l.pendingRetry = map[string]*pendingRetryCook{}
+	pending := l.cooks.pendingRetry
+	l.cooks.pendingRetry = map[string]*pendingRetryCook{}
 	for _, p := range pending {
 		if l.atMaxConcurrency() {
-			l.pendingRetry[p.orderID] = p
+			l.cooks.pendingRetry[p.orderID] = p
 			continue
 		}
 		cand := dispatchCandidate{
@@ -803,7 +803,7 @@ func (l *Loop) processPendingRetries(ctx context.Context) error {
 				}
 				continue
 			}
-			l.pendingRetry[p.orderID] = &pendingRetryCook{
+			l.cooks.pendingRetry[p.orderID] = &pendingRetryCook{
 				cookIdentity: p.cookIdentity,
 				isOnFailure:  p.isOnFailure,
 				orderStatus:  p.orderStatus,
@@ -839,7 +839,7 @@ func (l *Loop) retryCook(ctx context.Context, cook *cookHandle, reason string) e
 	l.logger.Info("cook retrying", "order", cook.orderID, "session", cook.session.ID(), "attempt", nextAttempt, "reason", resolvedReason)
 
 	if l.atMaxConcurrency() {
-		l.pendingRetry[cook.orderID] = &pendingRetryCook{
+		l.cooks.pendingRetry[cook.orderID] = &pendingRetryCook{
 			cookIdentity: cook.cookIdentity,
 			isOnFailure:  cook.isOnFailure,
 			orderStatus:  cook.orderStatus,
@@ -924,7 +924,7 @@ func (l *Loop) killCook(name string) error {
 	if name == "" {
 		return fmt.Errorf("kill requires name")
 	}
-	for _, cook := range l.activeCooksByOrder {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
 			return cook.session.Kill()
 		}
@@ -940,7 +940,7 @@ func (l *Loop) steer(target string, prompt string) error {
 	if strings.EqualFold(target, ScheduleTaskKey()) {
 		return l.rescheduleForChefPrompt(prompt)
 	}
-	for _, cook := range l.activeCooksByOrder {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName != target && cook.session.ID() != target {
 			continue
 		}
@@ -958,7 +958,7 @@ func (l *Loop) steer(target string, prompt string) error {
 			Status:      StageResultCancelled,
 			CompletedAt: l.deps.Now(),
 		})
-		delete(l.activeCooksByOrder, cook.orderID)
+		delete(l.cooks.activeCooksByOrder, cook.orderID)
 		cand := dispatchCandidate{
 			OrderID:     cook.orderID,
 			StageIndex:  cook.stageIndex,

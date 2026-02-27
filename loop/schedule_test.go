@@ -171,7 +171,7 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 	if len(rt.calls) != 1 {
 		t.Fatalf("dispatch calls = %d, want 1", len(rt.calls))
 	}
-	if _, ok := l.activeCooksByOrder[scheduleOrderID]; !ok {
+	if _, ok := l.cooks.activeCooksByOrder[scheduleOrderID]; !ok {
 		t.Fatal("expected schedule order in activeCooksByOrder")
 	}
 

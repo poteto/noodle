@@ -34,7 +34,7 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, rt *mockRuntime) *Loop {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{
 			orderID:    "42",
 			stageIndex: 0,
@@ -57,7 +57,7 @@ func TestControlMergeKeepsPendingOnMergeFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected merge error")
 	}
-	if _, ok := l.pendingReview["42"]; !ok {
+	if _, ok := l.cooks.pendingReview["42"]; !ok {
 		t.Fatal("pending review item should remain when merge fails")
 	}
 }
@@ -68,7 +68,7 @@ func TestControlMergeRemovesPendingAfterSuccess(t *testing.T) {
 	if err := l.controlMerge("42"); err != nil {
 		t.Fatalf("controlMerge: %v", err)
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after successful merge")
 	}
 	items, err := ReadPendingReview(filepath.Join(l.projectDir, ".noodle"))
@@ -86,10 +86,10 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 	if err := l.controlReject("42"); err != nil {
 		t.Fatalf("controlReject: %v", err)
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after successful reject")
 	}
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected rejected item to be tracked as failed")
 	}
 }
@@ -102,11 +102,11 @@ func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
 	if err := l.controlRequestChanges("42", "Add missing tests"); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after request-changes")
 	}
 	// No OnFailure stages → terminal → markFailed.
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed (no OnFailure stages)")
 	}
 	// Order should be removed from orders.json.
@@ -143,7 +143,7 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 	}
@@ -151,11 +151,11 @@ func TestControlRequestChangesWithOnFailure(t *testing.T) {
 	if err := l.controlRequestChanges("42", "fix tests"); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review should be removed")
 	}
 	// OnFailure exists → not terminal → markFailed NOT called.
-	if _, ok := l.failedTargets["42"]; ok {
+	if _, ok := l.cooks.failedTargets["42"]; ok {
 		t.Fatal("order should not be in failedTargets (OnFailure exists)")
 	}
 	// Order should still be in orders.json with status "failing".
@@ -184,7 +184,7 @@ func TestControlRequestChangesAllowsEmptyFeedback(t *testing.T) {
 		t.Fatalf("controlRequestChanges: %v", err)
 	}
 	// With empty feedback, order should still be terminally failed (no OnFailure).
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed")
 	}
 }
@@ -214,7 +214,7 @@ func TestControlRejectKeepsPendingOnFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected reject to fail when runtime dir is unwritable")
 	}
-	if _, ok := l.pendingReview["42"]; !ok {
+	if _, ok := l.cooks.pendingReview["42"]; !ok {
 		t.Fatal("pending review item should remain when reject fails")
 	}
 }
@@ -448,7 +448,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 	}
@@ -457,7 +457,7 @@ func TestControlRejectSkipsOnFailure(t *testing.T) {
 		t.Fatalf("controlReject: %v", err)
 	}
 	// User rejection is terminal — skips OnFailure. Order removed, failure marked.
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be in failed targets after reject")
 	}
 	orders, err := readOrders(ordersPath)
@@ -497,7 +497,7 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.failedTargets = map[string]string{"42": "test failure"}
+	l.cooks.failedTargets = map[string]string{"42": "test failure"}
 	if err := l.writeFailedTargets(); err != nil {
 		t.Fatalf("write failed targets: %v", err)
 	}
@@ -507,7 +507,7 @@ func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
 	}
 
 	// Failed target should be removed.
-	if _, ok := l.failedTargets["42"]; ok {
+	if _, ok := l.cooks.failedTargets["42"]; ok {
 		t.Fatal("order 42 should not be in failed targets after requeue")
 	}
 
@@ -556,7 +556,7 @@ func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.failedTargets = map[string]string{"42": "failed"}
+	l.cooks.failedTargets = map[string]string{"42": "failed"}
 	if err := l.writeFailedTargets(); err != nil {
 		t.Fatalf("write failed targets: %v", err)
 	}
@@ -592,7 +592,7 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.failedTargets = map[string]string{"42": "failed"}
+	l.cooks.failedTargets = map[string]string{"42": "failed"}
 	if err := l.writeFailedTargets(); err != nil {
 		t.Fatalf("write failed targets: %v", err)
 	}
@@ -601,7 +601,7 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 	if err := l.controlRequeue("42"); err != nil {
 		t.Fatalf("controlRequeue: %v", err)
 	}
-	if _, ok := l.failedTargets["42"]; ok {
+	if _, ok := l.cooks.failedTargets["42"]; ok {
 		t.Fatal("failure marker should be removed even if order is gone")
 	}
 }
@@ -637,7 +637,7 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
@@ -648,10 +648,10 @@ func TestControlMergeChecksQualityVerdictReject(t *testing.T) {
 		t.Fatalf("controlMerge: %v", err)
 	}
 	// No OnFailure → terminal → markFailed.
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed (quality rejected)")
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review should be removed after quality rejection")
 	}
 }
@@ -663,10 +663,10 @@ func TestControlMergeNoVerdictProceeds(t *testing.T) {
 	if err := l.controlMerge("42"); err != nil {
 		t.Fatalf("controlMerge: %v", err)
 	}
-	if _, ok := l.pendingReview["42"]; ok {
+	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review should be removed after successful merge")
 	}
-	if _, ok := l.failedTargets["42"]; ok {
+	if _, ok := l.cooks.failedTargets["42"]; ok {
 		t.Fatal("order should not be failed when no verdict file exists")
 	}
 }
@@ -693,7 +693,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
 		worktreeName: "42-0-execute",
 		sessionID:    "sess-42",
@@ -733,7 +733,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{
+	l.cooks.pendingReview["42"] = &pendingReviewCook{
 		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "debugging"}},
 		worktreeName: "42-0-debugging",
 		sessionID:    "sess-42",
@@ -743,7 +743,7 @@ func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
 		t.Fatalf("controlMerge: %v", err)
 	}
 	// Final OnFailure stage of failing order → markFailed (not adapter "done").
-	if _, ok := l.failedTargets["42"]; !ok {
+	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed after final OnFailure stage")
 	}
 }
@@ -793,16 +793,16 @@ func TestCommandSequenceAssignment(t *testing.T) {
 	}
 
 	// Both commands should be processed; lastAppliedSeq should be 2.
-	if l.lastAppliedSeq != 2 {
-		t.Fatalf("lastAppliedSeq = %d, want 2", l.lastAppliedSeq)
+	if l.cmds.lastAppliedSeq != 2 {
+		t.Fatalf("lastAppliedSeq = %d, want 2", l.cmds.lastAppliedSeq)
 	}
-	if l.cmdSeqCounter != 2 {
-		t.Fatalf("cmdSeqCounter = %d, want 2", l.cmdSeqCounter)
+	if l.cmds.cmdSeqCounter != 2 {
+		t.Fatalf("cmdSeqCounter = %d, want 2", l.cmds.cmdSeqCounter)
 	}
-	if _, ok := l.processedIDs["c1"]; !ok {
+	if _, ok := l.cmds.processedIDs["c1"]; !ok {
 		t.Fatal("c1 should be in processedIDs")
 	}
-	if _, ok := l.processedIDs["c2"]; !ok {
+	if _, ok := l.cmds.processedIDs["c2"]; !ok {
 		t.Fatal("c2 should be in processedIDs")
 	}
 }
@@ -834,8 +834,8 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 	if err := l.processControlCommands(); err != nil {
 		t.Fatalf("processControlCommands: %v", err)
 	}
-	if l.lastAppliedSeq != 1 {
-		t.Fatalf("lastAppliedSeq = %d, want 1", l.lastAppliedSeq)
+	if l.cmds.lastAppliedSeq != 1 {
+		t.Fatalf("lastAppliedSeq = %d, want 1", l.cmds.lastAppliedSeq)
 	}
 
 	// Persist via writeLastAppliedSeq.
@@ -857,11 +857,11 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 	if err := l2.hydrateProcessedCommands(); err != nil {
 		t.Fatalf("hydrateProcessedCommands: %v", err)
 	}
-	if l2.lastAppliedSeq != 1 {
-		t.Fatalf("restored lastAppliedSeq = %d, want 1", l2.lastAppliedSeq)
+	if l2.cmds.lastAppliedSeq != 1 {
+		t.Fatalf("restored lastAppliedSeq = %d, want 1", l2.cmds.lastAppliedSeq)
 	}
-	if l2.cmdSeqCounter != 1 {
-		t.Fatalf("restored cmdSeqCounter = %d, want 1", l2.cmdSeqCounter)
+	if l2.cmds.cmdSeqCounter != 1 {
+		t.Fatalf("restored cmdSeqCounter = %d, want 1", l2.cmds.cmdSeqCounter)
 	}
 }
 
@@ -884,8 +884,8 @@ func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
 	})
 
 	// Simulate a restored sequence — commands with seq <= 5 were already applied.
-	l.lastAppliedSeq = 5
-	l.cmdSeqCounter = 5
+	l.cmds.lastAppliedSeq = 5
+	l.cmds.cmdSeqCounter = 5
 
 	// Write a command that would get seq=6 (should be applied).
 	controlPath := filepath.Join(runtimeDir, "control.ndjson")
@@ -898,8 +898,8 @@ func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
 	}
 
 	// Should be applied, moving lastAppliedSeq to 6.
-	if l.lastAppliedSeq != 6 {
-		t.Fatalf("lastAppliedSeq = %d, want 6", l.lastAppliedSeq)
+	if l.cmds.lastAppliedSeq != 6 {
+		t.Fatalf("lastAppliedSeq = %d, want 6", l.cmds.lastAppliedSeq)
 	}
 	if l.state != StatePaused {
 		t.Fatalf("state = %q, want paused", l.state)
@@ -1018,7 +1018,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.failedTargets = map[string]string{"42": "previous failure"}
+	l.cooks.failedTargets = map[string]string{"42": "previous failure"}
 
 	// Dispatching should skip this order due to failed target stickiness.
 	orders, err := readOrders(ordersPath)
@@ -1026,7 +1026,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 		t.Fatalf("read orders: %v", err)
 	}
 	failedSet := make(map[string]struct{})
-	for id := range l.failedTargets {
+	for id := range l.cooks.failedTargets {
 		failedSet[id] = struct{}{}
 	}
 	candidates := dispatchableStages(orders, nil, failedSet, nil, nil)
@@ -1035,7 +1035,7 @@ func TestFailedTargetStickiness(t *testing.T) {
 	}
 
 	// After requeue, the order should be dispatchable.
-	delete(l.failedTargets, "42")
+	delete(l.cooks.failedTargets, "42")
 	candidates = dispatchableStages(orders, nil, nil, nil, nil)
 	if len(candidates) != 1 {
 		t.Fatalf("candidates = %d, want 1 after requeue", len(candidates))

@@ -109,7 +109,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		generation:   l.nextDispatchGeneration(),
 	}
 	l.trackCookStarted(cook)
-	l.activeCooksByOrder[order.ID] = cook
+	l.cooks.activeCooksByOrder[order.ID] = cook
 	l.startSessionWatcher(ctx, cook, false)
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil

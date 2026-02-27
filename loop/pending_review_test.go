@@ -102,10 +102,10 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	if err := l.reconcile(context.Background()); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
-	if len(l.pendingReview) != 1 {
-		t.Fatalf("pendingReview size = %d, want 1", len(l.pendingReview))
+	if len(l.cooks.pendingReview) != 1 {
+		t.Fatalf("pendingReview size = %d, want 1", len(l.cooks.pendingReview))
 	}
-	pending, ok := l.pendingReview["42"]
+	pending, ok := l.cooks.pendingReview["42"]
 	if !ok {
 		t.Fatal("expected item 42 in pending review")
 	}
@@ -141,7 +141,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
+	l.cooks.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
 	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxCooks)
 	if len(plan) != 1 || plan[0].OrderID != "43" {

@@ -159,13 +159,13 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				Now:        time.Now,
 				})
 			if len(setup.FailedTargets) > 0 {
-				l.failedTargets = make(map[string]string, len(setup.FailedTargets))
+				l.cooks.failedTargets = make(map[string]string, len(setup.FailedTargets))
 				for id, reason := range setup.FailedTargets {
 					id = strings.TrimSpace(id)
 					if id == "" {
 						continue
 					}
-					l.failedTargets[id] = strings.TrimSpace(reason)
+					l.cooks.failedTargets[id] = strings.TrimSpace(reason)
 				}
 			}
 			applyFixtureActiveSessions(l, setup.ActiveSessions)
@@ -251,7 +251,7 @@ func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {
 				done:   make(chan struct{}),
 			},
 		}
-		l.activeCooksByOrder[targetID] = cook
+		l.cooks.activeCooksByOrder[targetID] = cook
 	}
 }
 
@@ -267,8 +267,8 @@ func applyFixtureAdoptedTargets(t *testing.T, l *Loop, targets []loopFixtureAdop
 		if targetID == "" || sessionID == "" {
 			continue
 		}
-		l.adoptedTargets[targetID] = sessionID
-		l.adoptedSessions = append(l.adoptedSessions, sessionID)
+		l.cooks.adoptedTargets[targetID] = sessionID
+		l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, sessionID)
 		sessionNames = append(sessionNames, loopruntime.TmuxSessionName(sessionID))
 
 		sessionDir := filepath.Join(l.runtimeDir, "sessions", sessionID)

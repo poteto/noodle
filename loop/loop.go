@@ -70,23 +70,29 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 
 	loop := &Loop{
-		projectDir:         projectDir,
-		runtimeDir:         runtimeDir,
-		config:             cfg,
-		registry:           registry,
-		registryErr:        registryErr,
-		deps:               deps,
-		logger:             deps.Logger,
-		state:              StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
-		activeCooksByOrder: map[string]*cookHandle{},
-		adoptedTargets:     map[string]string{},
-		adoptedSessions:    []string{},
-		failedTargets:      map[string]string{},
-		pendingReview:      map[string]*pendingReviewCook{},
-		pendingRetry:       map[string]*pendingRetryCook{},
-		processedIDs:       map[string]struct{}{},
-		completions:        make(chan StageResult, 1024),
-		completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
+		projectDir:  projectDir,
+		runtimeDir:  runtimeDir,
+		config:      cfg,
+		registry:    registry,
+		registryErr: registryErr,
+		deps:        deps,
+		logger:      deps.Logger,
+		state:       StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
+		cooks: cookTracker{
+			activeCooksByOrder: map[string]*cookHandle{},
+			adoptedTargets:     map[string]string{},
+			adoptedSessions:    []string{},
+			failedTargets:      map[string]string{},
+			pendingReview:      map[string]*pendingReviewCook{},
+			pendingRetry:       map[string]*pendingRetryCook{},
+		},
+		cmds: cmdProcessor{
+			processedIDs: map[string]struct{}{},
+		},
+		completionBuf: completionBuffer{
+			completions:        make(chan StageResult, 1024),
+			completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
+		},
 		activeSummary: mise.ActiveSummary{
 			ByTaskKey: map[string]int{},
 			ByStatus:  map[string]int{},
@@ -158,11 +164,11 @@ func (l *Loop) Shutdown() {
 	if l.mergeQueue != nil {
 		l.mergeQueue.Close()
 	}
-	for _, cook := range l.activeCooksByOrder {
+	for _, cook := range l.cooks.activeCooksByOrder {
 		_ = cook.session.Kill()
 	}
 	// Kill adopted sessions from previous runs that are still alive.
-	for _, sessionID := range l.adoptedSessions {
+	for _, sessionID := range l.cooks.adoptedSessions {
 		name := loopruntime.TmuxSessionName(sessionID)
 		_ = loopruntime.KillTmuxSession(name)
 	}
@@ -364,7 +370,7 @@ func (l *Loop) shutdownAndDrain() {
 			"timeout", timeout,
 			"leaked_watchers", l.watcherCount.Load(),
 		)
-		for orderID, cook := range l.activeCooksByOrder {
+		for orderID, cook := range l.cooks.activeCooksByOrder {
 			_ = cook.session.Kill()
 			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
 		}
@@ -449,7 +455,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 	}
 
 	// Simplified filtering (#60): check for non-schedule orders.
-	if len(l.activeCooksByOrder) == 0 && len(l.adoptedTargets) == 0 {
+	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 {
 		if !hasNonScheduleOrders(orders) {
 			if len(brief.Plans) == 0 {
 				l.setState(StateIdle)
@@ -483,34 +489,34 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 	}
 
 	orderBusyTargets := BusyTargets(orders)
-	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.pendingRetry)+len(l.activeCooksByOrder)+len(l.adoptedTargets))
+	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.pendingRetry)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
 	for targetID, busy := range orderBusyTargets {
 		if busy {
 			busyTargets[targetID] = struct{}{}
 		}
 	}
 
-	failedTargets := make(map[string]struct{}, len(l.failedTargets))
-	for targetID := range l.failedTargets {
+	failedTargets := make(map[string]struct{}, len(l.cooks.failedTargets))
+	for targetID := range l.cooks.failedTargets {
 		failedTargets[targetID] = struct{}{}
 	}
 
-	adoptedTargets := make(map[string]struct{}, len(l.adoptedTargets))
-	for targetID := range l.adoptedTargets {
+	adoptedTargets := make(map[string]struct{}, len(l.cooks.adoptedTargets))
+	for targetID := range l.cooks.adoptedTargets {
 		adoptedTargets[targetID] = struct{}{}
 	}
 
-	for targetID := range l.pendingReview {
+	for targetID := range l.cooks.pendingReview {
 		busyTargets[targetID] = struct{}{}
 	}
 
-	for targetID := range l.pendingRetry {
+	for targetID := range l.cooks.pendingRetry {
 		busyTargets[targetID] = struct{}{}
 	}
-	for targetID := range l.activeCooksByOrder {
+	for targetID := range l.cooks.activeCooksByOrder {
 		busyTargets[targetID] = struct{}{}
 	}
-	for targetID := range l.adoptedTargets {
+	for targetID := range l.cooks.adoptedTargets {
 		busyTargets[targetID] = struct{}{}
 	}
 
@@ -521,7 +527,7 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 	if limit <= 0 {
 		limit = 1
 	}
-	current := len(l.activeCooksByOrder) + len(l.adoptedTargets)
+	current := len(l.cooks.activeCooksByOrder) + len(l.cooks.adoptedTargets)
 	available := limit - current
 	if available <= 0 {
 		return nil
