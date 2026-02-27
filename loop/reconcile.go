@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -409,12 +410,6 @@ func (s *adoptedSession) Kill() error {
 
 func (s *adoptedSession) VerdictPath() string {
 	return ""
-}
-
-// reconcileMergingStages resets stages stuck in "merging" status from a
-// previous crash back to their prior state so they can be re-dispatched.
-func (l *Loop) reconcileMergingStages() error {
-	return nil
 }
 
 func killTmuxSession(name string) error {

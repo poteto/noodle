@@ -416,7 +416,8 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			return l.advanceAndPersist(ctx, cook)
 		}
 
-		if err := l.persistOrderStageStatus(cook.orderID, cook.stageIndex, cook.isOnFailure, StageStatusMerging); err != nil {
+		mergeMode, mergeBranch := l.resolveMergeMode(cook)
+		if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
 			return err
 		}
 		l.logger.Info("cook completing", "order", cook.orderID, "session", cook.session.ID())
@@ -521,6 +522,62 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 	}
 	l.logger.Info("cook merged", "order", cook.orderID, "worktree", cook.worktreeName)
 	return nil
+}
+
+// Merge metadata Extra keys.
+const (
+	mergeExtraWorktree   = "merge_worktree"
+	mergeExtraBranch     = "merge_branch"
+	mergeExtraGeneration = "merge_generation"
+	mergeExtraMode       = "merge_mode"
+)
+
+// resolveMergeMode determines whether the merge uses a local worktree or a
+// remote branch push. Returns the mode ("local" or "remote") and the branch
+// name (empty for local merges).
+func (l *Loop) resolveMergeMode(cook *cookHandle) (mode string, branch string) {
+	syncResult, hasSyncResult, _ := l.readSessionSyncResult(cook.session.ID())
+	if hasSyncResult && syncResult.Type == dispatcher.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+		return "remote", strings.TrimSpace(syncResult.Branch)
+	}
+	return "local", ""
+}
+
+// persistMergeMetadata writes merge-related fields into the stage's Extra map
+// and sets the status to "merging" atomically. On crash recovery, reconcile
+// reads these fields to decide how to resume or fail the merge.
+func (l *Loop) persistMergeMetadata(cook *cookHandle, mode string, branch string) error {
+	return l.mutateOrdersState(func(orders *OrdersFile) error {
+		for i := range orders.Orders {
+			if orders.Orders[i].ID != cook.orderID {
+				continue
+			}
+			stages := &orders.Orders[i].Stages
+			if cook.isOnFailure {
+				stages = &orders.Orders[i].OnFailure
+			}
+			if cook.stageIndex < 0 || cook.stageIndex >= len(*stages) {
+				return nil
+			}
+			s := &(*stages)[cook.stageIndex]
+			if s.Extra == nil {
+				s.Extra = make(map[string]json.RawMessage)
+			}
+			s.Extra[mergeExtraWorktree] = jsonQuote(cook.worktreeName)
+			s.Extra[mergeExtraBranch] = jsonQuote(branch)
+			s.Extra[mergeExtraGeneration] = jsonQuote(fmt.Sprintf("%d", cook.generation))
+			s.Extra[mergeExtraMode] = jsonQuote(mode)
+			s.Status = StageStatusMerging
+			return nil
+		}
+		return nil
+	})
+}
+
+// jsonQuote returns a JSON-encoded string value as json.RawMessage.
+func jsonQuote(s string) json.RawMessage {
+	b, _ := json.Marshal(s)
+	return json.RawMessage(b)
 }
 
 func (l *Loop) canMergeStage(stage Stage) bool {
