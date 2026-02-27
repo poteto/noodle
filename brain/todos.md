@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 74 -->
+<!-- next-id: 75 -->
 
 ## Testing & Verification
 
@@ -9,6 +9,10 @@
 ## Scaling
 
 70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archived_plans/70-scaling-the-loop-redesign/overview]]
+
+## Cleanup
+
+74. [ ] Vestigial queue naming, legacy compat shims, duplicated slicesEqual — rename schema target and misnamed files, update docs/skills referencing queue.json, delete OrderID2 compat shim and colon-separated format parser, replace duplicated slicesEqual with slices.Equal. [[plans/74-vestigial-queue-cleanup/overview]]
 
 ## Noodle Post-Plan 1
 
