@@ -274,6 +274,8 @@ func (s *spritesSession) Kill() error {
 	return nil
 }
 
+func (s *spritesSession) Controller() AgentController { return noopController{} }
+
 func (s *spritesSession) publish(ev SessionEvent) {
 	if ev.Timestamp.IsZero() {
 		ev.Timestamp = nowUTC()

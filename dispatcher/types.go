@@ -75,6 +75,7 @@ type Session interface {
 	Done() <-chan struct{}
 	TotalCost() float64
 	Kill() error
+	Controller() AgentController
 }
 
 // Dispatcher starts sessions from requests.

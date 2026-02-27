@@ -122,6 +122,8 @@ func (s *tmuxSession) Kill() error {
 	return nil
 }
 
+func (s *tmuxSession) Controller() AgentController { return noopController{} }
+
 func (s *tmuxSession) monitorPane(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()

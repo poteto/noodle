@@ -173,6 +173,8 @@ func (s *processSession) Kill() error {
 	return nil
 }
 
+func (s *processSession) Controller() AgentController { return noopController{} }
+
 // processEventInterceptor captures canonical event lines for live publishing.
 type processEventInterceptor struct {
 	session *processSession
