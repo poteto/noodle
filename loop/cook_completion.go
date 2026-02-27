@@ -105,11 +105,7 @@ func (l *Loop) handleBootstrapResult(result StageResult) {
 
 	if result.Status == StageResultCompleted {
 		l.rebuildRegistry()
-		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-		appendQueueEvent(eventsPath, QueueAuditEvent{
-			At:   l.deps.Now().UTC(),
-			Type: "bootstrap_complete",
-		})
+		_ = l.events.Emit(LoopEventBootstrapCompleted, nil)
 		l.logger.Info("bootstrap completed")
 		return
 	}

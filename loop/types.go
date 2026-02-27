@@ -9,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
@@ -182,6 +183,7 @@ type Loop struct {
 	registryErr error
 	deps        Dependencies
 	logger      *slog.Logger
+	events      *event.LoopEventWriter
 
 	// Components — field-grouping sub-structs.
 	cooks         cookTracker

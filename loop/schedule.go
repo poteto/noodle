@@ -123,10 +123,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	if l.bootstrapExhausted {
 		l.logger.Warn("bootstrap exhausted — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors",
 			"attempts", l.bootstrapAttempts)
-		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-		appendQueueEvent(eventsPath, QueueAuditEvent{
-			At:     l.deps.Now().UTC(),
-			Type:   "bootstrap_exhausted",
+		_ = l.events.Emit(LoopEventBootstrapExhausted, BootstrapExhaustedPayload{
 			Reason: fmt.Sprintf("bootstrap exhausted after %d attempts — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors", l.bootstrapAttempts),
 		})
 		return nil

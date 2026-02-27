@@ -301,16 +301,16 @@ func TestBootstrapExhaustionEmitsFeedEvent(t *testing.T) {
 		t.Fatalf("post-exhaustion cycle: %v", err)
 	}
 
-	eventsPath := filepath.Join(runtimeDir, "queue-events.ndjson")
+	eventsPath := filepath.Join(runtimeDir, "loop-events.ndjson")
 	data, err := os.ReadFile(eventsPath)
 	if err != nil {
 		t.Fatalf("read events: %v", err)
 	}
-	if !strings.Contains(string(data), "bootstrap_exhausted") {
-		t.Fatal("expected bootstrap_exhausted event in queue-events.ndjson")
+	if !strings.Contains(string(data), "bootstrap.exhausted") {
+		t.Fatal("expected bootstrap.exhausted event in loop-events.ndjson")
 	}
 	if !strings.Contains(string(data), "create .agents/skills/schedule/SKILL.md manually") {
-		t.Fatal("expected actionable message in bootstrap_exhausted event")
+		t.Fatal("expected actionable message in bootstrap.exhausted event")
 	}
 }
 
@@ -359,14 +359,14 @@ func TestSuccessfulBootstrapTriggersRebuild(t *testing.T) {
 		t.Fatal("should not be exhausted after successful bootstrap")
 	}
 
-	// Verify bootstrap_complete event was written.
-	eventsPath := filepath.Join(runtimeDir, "queue-events.ndjson")
+	// Verify bootstrap.completed event was written.
+	eventsPath := filepath.Join(runtimeDir, "loop-events.ndjson")
 	data, err := os.ReadFile(eventsPath)
 	if err != nil {
 		t.Fatalf("read events: %v", err)
 	}
-	if !strings.Contains(string(data), "bootstrap_complete") {
-		t.Fatal("expected bootstrap_complete event in queue-events.ndjson")
+	if !strings.Contains(string(data), "bootstrap.completed") {
+		t.Fatal("expected bootstrap.completed event in loop-events.ndjson")
 	}
 }
 

@@ -1,27 +1,11 @@
 package loop
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/poteto/noodle/internal/taskreg"
 )
-
-// QueueAuditEvent records a queue or registry change for TUI consumption.
-type QueueAuditEvent struct {
-	At      time.Time `json:"at"`
-	Type    string    `json:"type"`
-	Target  string    `json:"target,omitempty"`
-	Skill   string    `json:"skill,omitempty"`
-	Reason  string    `json:"reason,omitempty"`
-	Added   []string  `json:"added,omitempty"`
-	Removed []string  `json:"removed,omitempty"`
-}
 
 // RegistryDiff captures what changed between two registry snapshots.
 type RegistryDiff struct {
@@ -56,7 +40,7 @@ func diffRegistryKeys(old, new taskreg.Registry) RegistryDiff {
 }
 
 // auditOrders checks each order's stages against the current registry.
-// Orders with no resolvable stages are dropped. Emits order_drop events.
+// Orders with no resolvable stages are dropped. Emits order.dropped events.
 func (l *Loop) auditOrders() {
 	orders, err := l.currentOrders()
 	if err != nil {
@@ -95,65 +79,10 @@ func (l *Loop) auditOrders() {
 		return
 	}
 
-	eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-	now := l.deps.Now().UTC()
 	for _, id := range droppedIDs {
-		appendQueueEvent(eventsPath, QueueAuditEvent{
-			At:     now,
-			Type:   "order_drop",
-			Target: id,
-			Reason: "no stages resolve",
+		_ = l.events.Emit(LoopEventOrderDropped, OrderDroppedPayload{
+			OrderID: id,
+			Reason:  "no stages resolve",
 		})
 	}
-}
-
-const maxQueueEventLines = 200
-
-// appendQueueEvent marshals event as JSON and appends to an NDJSON file.
-// Truncates to the last 200 lines if the file exceeds that.
-func appendQueueEvent(path string, event QueueAuditEvent) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return
-	}
-	_, _ = f.Write(append(data, '\n'))
-	_ = f.Close()
-
-	truncateQueueEvents(path)
-}
-
-// truncateQueueEvents keeps only the last maxQueueEventLines lines.
-func truncateQueueEvents(path string) {
-	f, err := os.Open(path)
-	if err != nil {
-		return
-	}
-
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-	_ = f.Close()
-
-	if len(lines) <= maxQueueEventLines {
-		return
-	}
-
-	// Keep only the last maxQueueEventLines lines.
-	lines = lines[len(lines)-maxQueueEventLines:]
-	var buf strings.Builder
-	for _, line := range lines {
-		buf.WriteString(line)
-		buf.WriteByte('\n')
-	}
-	_ = os.WriteFile(path, []byte(buf.String()), 0o644)
 }

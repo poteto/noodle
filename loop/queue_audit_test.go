@@ -1,7 +1,6 @@
 package loop
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"log/slog"
@@ -12,46 +11,12 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
-
-func TestQueueEventsFileTruncation(t *testing.T) {
-	dir := t.TempDir()
-	eventsPath := filepath.Join(dir, "queue-events.ndjson")
-
-	// Write 300 lines.
-	now := time.Now().UTC()
-	for i := 0; i < 300; i++ {
-		event := QueueAuditEvent{
-			At:     now,
-			Type:   "queue_drop",
-			Target: "item",
-			Reason: "test",
-		}
-		appendQueueEvent(eventsPath, event)
-	}
-
-	// Verify truncated to 200 lines.
-	f, err := os.Open(eventsPath)
-	if err != nil {
-		t.Fatalf("open events file: %v", err)
-	}
-	defer f.Close()
-
-	var lineCount int
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		if strings.TrimSpace(scanner.Text()) != "" {
-			lineCount++
-		}
-	}
-	if lineCount != 200 {
-		t.Fatalf("expected 200 lines after truncation, got %d", lineCount)
-	}
-}
 
 func TestRegistryErrorResilience(t *testing.T) {
 	projectDir := t.TempDir()
@@ -159,6 +124,7 @@ func TestRegistryErrorResetOnRebuild(t *testing.T) {
 			Mise: &fakeMise{},
 			Now:  time.Now,
 		},
+		events: event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 	}
 
 	l.rebuildRegistry()
@@ -208,6 +174,7 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		config:     cfg,
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 		deps: Dependencies{
 			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
@@ -306,6 +273,7 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		config:     cfg,
 		registry:   testLoopRegistry(),
 		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 		deps: Dependencies{
 			Runtimes:       map[string]loopruntime.Runtime{"tmux": newMockRuntime()},
 			Worktree:       &fakeWorktree{},
@@ -396,6 +364,7 @@ func TestEnsureSkillFreshMissingSkill(t *testing.T) {
 		runtimeDir: runtimeDir,
 		config:     cfg,
 		registry:   testLoopRegistry(),
+		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
 		deps: Dependencies{
 			Mise: &fakeMise{},
 			Now:  time.Now,

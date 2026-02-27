@@ -11,6 +11,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -69,6 +70,8 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		builder.TaskTypes = registryToTaskTypeSummaries(registry)
 	}
 
+	eventsWriter := event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson"))
+
 	loop := &Loop{
 		projectDir:  projectDir,
 		runtimeDir:  runtimeDir,
@@ -77,6 +80,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		registryErr: registryErr,
 		deps:        deps,
 		logger:      deps.Logger,
+		events:      eventsWriter,
 		state:       StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
 		cooks: cookTracker{
 			activeCooksByOrder: map[string]*cookHandle{},
@@ -147,14 +151,10 @@ func (l *Loop) rebuildRegistry() {
 		fmt.Fprintf(os.Stderr, "skill registry rebuilt: added %v, removed %v\n", diff.Added, diff.Removed)
 	}
 
-	eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-	rebuildEvent := QueueAuditEvent{
-		At:      l.deps.Now().UTC(),
-		Type:    "registry_rebuild",
+	_ = l.events.Emit(LoopEventRegistryRebuilt, RegistryRebuiltPayload{
 		Added:   diff.Added,
 		Removed: diff.Removed,
-	}
-	appendQueueEvent(eventsPath, rebuildEvent)
+	})
 
 	l.auditOrders()
 }
@@ -447,10 +447,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string) (Order
 
 	if hasSyncWarnings(warnings) {
 		l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
-		eventsPath := filepath.Join(l.runtimeDir, "queue-events.ndjson")
-		appendQueueEvent(eventsPath, QueueAuditEvent{
-			At:     l.deps.Now().UTC(),
-			Type:   "sync_degraded",
+		_ = l.events.Emit(LoopEventSyncDegraded, SyncDegradedPayload{
 			Reason: strings.Join(warnings, "; "),
 		})
 	}
