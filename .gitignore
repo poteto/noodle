@@ -41,3 +41,6 @@ ui/dist/*
 ui/dist/client/*
 !ui/dist/client/.gitkeep
 ui/.output/
+
+# Test artifacts
+e2e/ui/test-results/
