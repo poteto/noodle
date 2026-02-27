@@ -115,5 +115,5 @@
     // CodeHighlight needs dangerouslySetInnerHTML for rendered syntax HTML
     "react/no-danger": "off"
   },
-  "ignorePatterns": ["routeTree.gen.ts"]
+  "ignorePatterns": ["**/routeTree.gen.ts"]
 }
