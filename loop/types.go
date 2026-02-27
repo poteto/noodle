@@ -16,6 +16,7 @@ import (
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 type State string
@@ -66,13 +67,13 @@ type Stage struct {
 
 // Order is a pipeline of stages.
 type Order struct {
-	ID        string  `json:"id"`
-	Title     string  `json:"title,omitempty"`
+	ID        string   `json:"id"`
+	Title     string   `json:"title,omitempty"`
 	Plan      []string `json:"plan,omitempty"`
-	Rationale string  `json:"rationale,omitempty"`
-	Stages    []Stage `json:"stages"`
-	Status    string  `json:"status"`
-	OnFailure []Stage `json:"on_failure,omitempty"`
+	Rationale string   `json:"rationale,omitempty"`
+	Stages    []Stage  `json:"stages"`
+	Status    string   `json:"status"`
+	OnFailure []Stage  `json:"on_failure,omitempty"`
 }
 
 // OrdersFile is the top-level orders.json structure.
@@ -136,29 +137,29 @@ type QualityVerdict struct {
 }
 
 type StageResult struct {
-	OrderID       string
-	StageIndex    int
-	Attempt       int
-	IsOnFailure   bool
-	Status        StageResultStatus
-	SessionID     string
-	Generation    uint64
-	IsSchedule    bool
-	IsBootstrap   bool
-	WorktreeName  string
-	WorktreePath  string
-	Error         error
-	CompletedAt   time.Time
+	OrderID      string
+	StageIndex   int
+	Attempt      int
+	IsOnFailure  bool
+	Status       StageResultStatus
+	SessionID    string
+	Generation   uint64
+	IsSchedule   bool
+	IsBootstrap  bool
+	WorktreeName string
+	WorktreePath string
+	Error        error
+	CompletedAt  time.Time
 }
 
 type cookHandle struct {
-	orderID     string
-	stageIndex  int
-	stage       Stage
-	isOnFailure bool
-	orderStatus string
-	plan        []string
-	session     dispatcher.Session
+	orderID      string
+	stageIndex   int
+	stage        Stage
+	isOnFailure  bool
+	orderStatus  string
+	plan         []string
+	session      loopruntime.SessionHandle
 	worktreeName string
 	worktreePath string
 	attempt      int
@@ -215,12 +216,13 @@ type Monitor interface {
 }
 
 type Dependencies struct {
-	Dispatcher Dispatcher
-	Worktree   WorktreeManager
-	Adapter    AdapterRunner
-	Mise       MiseBuilder
-	Monitor    Monitor
-	Registry   taskreg.Registry
+	Dispatcher     Dispatcher
+	Runtimes       map[string]loopruntime.Runtime
+	Worktree       WorktreeManager
+	Adapter        AdapterRunner
+	Mise           MiseBuilder
+	Monitor        Monitor
+	Registry       taskreg.Registry
 	Logger         *slog.Logger
 	Now            func() time.Time
 	OrdersFile     string
@@ -237,17 +239,17 @@ type Loop struct {
 	deps        Dependencies
 	logger      *slog.Logger
 
-	state            State
-	registryStale    atomic.Bool
+	state             State
+	registryStale     atomic.Bool
 	registryFailCount int
 
 	activeCooksByOrder map[string]*cookHandle
-	adoptedTargets  map[string]string
-	adoptedSessions []string
-	failedTargets   map[string]string
-	pendingReview   map[string]*pendingReviewCook
-	pendingRetry    map[string]*pendingRetryCook
-	processedIDs    map[string]struct{}
+	adoptedTargets     map[string]string
+	adoptedSessions    []string
+	failedTargets      map[string]string
+	pendingReview      map[string]*pendingReviewCook
+	pendingRetry       map[string]*pendingRetryCook
+	processedIDs       map[string]struct{}
 
 	completions                 chan StageResult
 	completionOverflow          []StageResult

@@ -199,6 +199,10 @@ func (s *adoptedSession) Kill() error {
 	return nil
 }
 
+func (s *adoptedSession) VerdictPath() string {
+	return ""
+}
+
 func killTmuxSession(name string) error {
 	return exec.Command("tmux", "kill-session", "-t", name).Run()
 }

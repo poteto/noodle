@@ -32,6 +32,7 @@ func (s *fakeSession) Events() <-chan dispatcher.SessionEvent {
 }
 func (s *fakeSession) Done() <-chan struct{} { return s.done }
 func (s *fakeSession) TotalCost() float64    { return 0 }
+func (s *fakeSession) VerdictPath() string   { return "" }
 func (s *fakeSession) Kill() error {
 	s.status = "killed"
 	select {
@@ -811,15 +812,15 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 
 	// Create a loop with a registry error (simulates discovery failure)
 	l := &Loop{
-		projectDir:     projectDir,
-		runtimeDir:     runtimeDir,
-		registryErr:    errors.New("task type discovery failed: bad frontmatter"),
+		projectDir:         projectDir,
+		runtimeDir:         runtimeDir,
+		registryErr:        errors.New("task type discovery failed: bad frontmatter"),
 		activeCooksByOrder: map[string]*cookHandle{},
-		adoptedTargets: map[string]string{},
-		failedTargets:  map[string]string{},
-		processedIDs:   map[string]struct{}{},
-		pendingReview:  map[string]*pendingReviewCook{},
-		pendingRetry:   map[string]*pendingRetryCook{},
+		adoptedTargets:     map[string]string{},
+		failedTargets:      map[string]string{},
+		processedIDs:       map[string]struct{}{},
+		pendingReview:      map[string]*pendingReviewCook{},
+		pendingRetry:       map[string]*pendingRetryCook{},
 		deps: Dependencies{
 			Mise:       &fakeMise{brief: mise.Brief{}},
 			Monitor:    fakeMonitor{},

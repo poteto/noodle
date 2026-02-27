@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -22,10 +23,18 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
-	if deps.Dispatcher == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
+	if deps.Runtimes == nil && deps.Dispatcher != nil {
+		deps.Runtimes = map[string]loopruntime.Runtime{
+			"tmux": loopruntime.NewDispatcherRuntime("tmux", deps.Dispatcher, runtimeDir),
+		}
+	}
+	if deps.Dispatcher == nil || deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
 		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger)
 		if deps.Dispatcher == nil {
 			deps.Dispatcher = defaults.Dispatcher
+		}
+		if deps.Runtimes == nil {
+			deps.Runtimes = defaults.Runtimes
 		}
 		if deps.Worktree == nil {
 			deps.Worktree = defaults.Worktree
@@ -44,6 +53,11 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		}
 		if deps.StatusFile == "" {
 			deps.StatusFile = defaults.StatusFile
+		}
+	}
+	if deps.Runtimes == nil && deps.Dispatcher != nil {
+		deps.Runtimes = map[string]loopruntime.Runtime{
+			"tmux": loopruntime.NewDispatcherRuntime("tmux", deps.Dispatcher, runtimeDir),
 		}
 	}
 	if deps.Now == nil {
@@ -69,23 +83,23 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 	}
 
 	return &Loop{
-		projectDir:            projectDir,
-		runtimeDir:            runtimeDir,
-		config:                cfg,
-		registry:              registry,
-		registryErr:           registryErr,
-		deps:                  deps,
-		logger:                deps.Logger,
-		state:                 StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
-		activeCooksByOrder:    map[string]*cookHandle{},
-		adoptedTargets:        map[string]string{},
-		adoptedSessions:       []string{},
-		failedTargets:         map[string]string{},
-		pendingReview:         map[string]*pendingReviewCook{},
-		pendingRetry:          map[string]*pendingRetryCook{},
-		processedIDs:          map[string]struct{}{},
-		completions:           make(chan StageResult, 1024),
-		completionOverflow:    make([]StageResult, 0, maxCompletionOverflow(cfg)),
+		projectDir:         projectDir,
+		runtimeDir:         runtimeDir,
+		config:             cfg,
+		registry:           registry,
+		registryErr:        registryErr,
+		deps:               deps,
+		logger:             deps.Logger,
+		state:              StateRunning, // Direct assignment; setState() is not used here to avoid logging the initial state.
+		activeCooksByOrder: map[string]*cookHandle{},
+		adoptedTargets:     map[string]string{},
+		adoptedSessions:    []string{},
+		failedTargets:      map[string]string{},
+		pendingReview:      map[string]*pendingReviewCook{},
+		pendingRetry:       map[string]*pendingRetryCook{},
+		processedIDs:       map[string]struct{}{},
+		completions:        make(chan StageResult, 1024),
+		completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
 	}
 }
 
@@ -148,6 +162,12 @@ func (l *Loop) Shutdown() {
 		name := tmuxSessionName(sessionID)
 		_ = killTmuxSession(name)
 	}
+	for _, runtime := range l.deps.Runtimes {
+		if runtime == nil {
+			continue
+		}
+		_ = runtime.Close()
+	}
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -156,6 +176,9 @@ func (l *Loop) Run(ctx context.Context) error {
 	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
+	}
+	if err := l.startRuntimes(ctx); err != nil {
+		return err
 	}
 	if err := l.loadFailedTargets(); err != nil {
 		return err
@@ -314,6 +337,18 @@ func maxCompletionOverflow(cfg config.Config) int {
 		return 1024
 	}
 	return cfg.Concurrency.MaxCompletionOverflow
+}
+
+func (l *Loop) startRuntimes(ctx context.Context) error {
+	for name, runtime := range l.deps.Runtimes {
+		if runtime == nil {
+			continue
+		}
+		if err := runtime.Start(ctx); err != nil {
+			return fmt.Errorf("start runtime %s: %w", name, err)
+		}
+	}
+	return nil
 }
 
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, error) {

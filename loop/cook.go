@@ -17,6 +17,7 @@ import (
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/recover"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
 
@@ -111,7 +112,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		return err
 	}
 
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		// Revert stage status to pending — otherwise restart sees "active"
 		// with no session, permanently stranding the stage.
@@ -344,6 +345,41 @@ func (l *Loop) takeCompletionOverflow() []StageResult {
 	return drained
 }
 
+func (l *Loop) dispatchSession(ctx context.Context, req dispatcher.DispatchRequest) (loopruntime.SessionHandle, error) {
+	runtimeName := strings.ToLower(strings.TrimSpace(req.Runtime))
+	if runtimeName == "" {
+		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
+	}
+	if runtimeName == "" {
+		runtimeName = "tmux"
+	}
+
+	if runtime := l.deps.Runtimes[runtimeName]; runtime != nil {
+		session, err := runtime.Dispatch(ctx, req)
+		if err == nil {
+			return session, nil
+		}
+		if runtimeName != "tmux" {
+			if fallback := l.deps.Runtimes["tmux"]; fallback != nil {
+				req.Runtime = "tmux"
+				req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
+				return fallback.Dispatch(ctx, req)
+			}
+		}
+		return nil, err
+	}
+
+	// Backward-compatibility path for tests still wiring only Dispatcher.
+	if l.deps.Dispatcher != nil {
+		session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return loopruntime.WrapDispatcherSession(session, l.runtimeDir), nil
+	}
+	return nil, fmt.Errorf("runtime %q not configured", runtimeName)
+}
+
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
 	success := status == "completed"
@@ -484,7 +520,6 @@ func (l *Loop) canMergeStage(stage Stage) bool {
 	}
 	return taskType.CanMerge
 }
-
 
 func (l *Loop) readSessionSyncResult(sessionID string) (dispatcher.SyncResult, bool, error) {
 	sessionID = strings.TrimSpace(sessionID)
@@ -658,7 +693,6 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 
 	return nil, false, nil
 }
-
 
 func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 	delete(l.adoptedTargets, targetID)

@@ -89,17 +89,17 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	if err := l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusActive); err != nil {
 		return err
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		_ = l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusPending)
 		return err
 	}
 	cook := &cookHandle{
-		orderID:     order.ID,
-		stageIndex:  stageIndex,
-		stage:       stage,
-		orderStatus: order.Status,
-		plan:        order.Plan,
+		orderID:      order.ID,
+		stageIndex:   stageIndex,
+		stage:        stage,
+		orderStatus:  order.Status,
+		plan:         order.Plan,
 		session:      session,
 		worktreeName: "",
 		worktreePath: l.projectDir,
@@ -148,7 +148,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		AllowPrimaryCheckout: true,
 		Title:                "bootstrapping schedule skill",
 	}
-	session, err := l.deps.Dispatcher.Dispatch(ctx, req)
+	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		l.logger.Warn("bootstrap dispatch failed", "error", err, "attempt", l.bootstrapAttempts+1)
 		l.bootstrapAttempts++

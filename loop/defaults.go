@@ -11,6 +11,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/worktree"
 )
@@ -45,6 +46,9 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 	if err := factory.Register("tmux", local); err != nil {
 		panic(err)
 	}
+	runtimes := map[string]loopruntime.Runtime{
+		"tmux": loopruntime.NewDispatcherRuntime("tmux", local, runtimeDir),
+	}
 	if runtimeEnabled(cfg.AvailableRuntimes(), "sprites") {
 		spriteName := strings.TrimSpace(cfg.Runtime.Sprites.SpriteName)
 		if spriteName == "" {
@@ -62,6 +66,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 			if err := factory.Register("sprites", sd); err != nil {
 				panic(err)
 			}
+			runtimes["sprites"] = loopruntime.NewDispatcherRuntime("sprites", sd, runtimeDir)
 		}
 	}
 
@@ -75,11 +80,12 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		wt = noOpWorktree{}
 	}
 	return Dependencies{
-		Dispatcher: factory,
-		Worktree:   wt,
-		Adapter:    adapter.NewRunner(projectDir, cfg),
-		Mise:       mise.NewBuilder(projectDir, cfg),
-		Monitor:    monitor.NewMonitor(runtimeDir),
+		Dispatcher:     factory,
+		Runtimes:       runtimes,
+		Worktree:       wt,
+		Adapter:        adapter.NewRunner(projectDir, cfg),
+		Mise:           mise.NewBuilder(projectDir, cfg),
+		Monitor:        monitor.NewMonitor(runtimeDir),
 		Now:            time.Now,
 		OrdersFile:     filepath.Join(runtimeDir, "orders.json"),
 		OrdersNextFile: filepath.Join(runtimeDir, "orders-next.json"),
