@@ -125,8 +125,8 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 	}
 
 	feedEvents := readSteerEvents(filepath.Join(runtimeDir, "control.ndjson"))
-	queueEvents := readQueueEvents(runtimeDir)
-	feedEvents = append(feedEvents, queueEvents...)
+	loopEvents := readLoopEvents(runtimeDir)
+	feedEvents = append(feedEvents, loopEvents...)
 	sort.SliceStable(feedEvents, func(i, j int) bool {
 		return feedEvents[i].At.Before(feedEvents[j].At)
 	})
@@ -428,8 +428,8 @@ func readSteerEvents(controlPath string) []FeedEvent {
 	return events
 }
 
-func readQueueEvents(runtimeDir string) []FeedEvent {
-	path := filepath.Join(runtimeDir, "queue-events.ndjson")
+func readLoopEvents(runtimeDir string) []FeedEvent {
+	path := filepath.Join(runtimeDir, "loop-events.ndjson")
 	file, err := os.Open(path)
 	if err != nil {
 		return nil
@@ -445,13 +445,10 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 			continue
 		}
 		var raw struct {
-			At      time.Time `json:"at"`
-			Type    string    `json:"type"`
-			Target  string    `json:"target"`
-			Skill   string    `json:"skill"`
-			Reason  string    `json:"reason"`
-			Added   []string  `json:"added"`
-			Removed []string  `json:"removed"`
+			Seq     uint64          `json:"seq"`
+			Type    string          `json:"type"`
+			At      time.Time       `json:"at"`
+			Payload json.RawMessage `json:"payload"`
 		}
 		if err := json.Unmarshal([]byte(line), &raw); err != nil {
 			continue
@@ -459,22 +456,56 @@ func readQueueEvents(runtimeDir string) []FeedEvent {
 
 		var label, body, category string
 		switch raw.Type {
-		case "order_drop", "queue_drop":
+		case "order.dropped":
 			label = "Dropped"
 			category = "order_drop"
-			if raw.Reason != "" {
-				body = fmt.Sprintf("Dropped order %s: %s", raw.Target, raw.Reason)
-			} else {
-				body = fmt.Sprintf("Dropped order %s: skill %s no longer exists", raw.Target, raw.Skill)
+			var p struct {
+				OrderID string `json:"order_id"`
+				Reason  string `json:"reason"`
 			}
-		case "registry_rebuild":
+			_ = json.Unmarshal(raw.Payload, &p)
+			if p.Reason != "" {
+				body = fmt.Sprintf("Dropped order %s: %s", p.OrderID, p.Reason)
+			} else {
+				body = fmt.Sprintf("Dropped order %s", p.OrderID)
+			}
+		case "registry.rebuilt":
 			label = "Rebuild"
 			category = "registry_rebuild"
-			body = fmt.Sprintf("Registry rebuilt — added: %v, removed: %v", raw.Added, raw.Removed)
-		case "bootstrap":
+			var p struct {
+				Added   []string `json:"added"`
+				Removed []string `json:"removed"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			body = fmt.Sprintf("Registry rebuilt — added: %v, removed: %v", p.Added, p.Removed)
+		case "bootstrap.completed":
 			label = "Bootstrap"
 			category = "bootstrap"
-			body = "Creating schedule skill from workflow analysis"
+			body = "Bootstrap completed"
+		case "bootstrap.exhausted":
+			label = "Bootstrap"
+			category = "bootstrap"
+			var p struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			if p.Reason != "" {
+				body = p.Reason
+			} else {
+				body = "Bootstrap exhausted"
+			}
+		case "sync.degraded":
+			label = "Sync"
+			category = "sync_degraded"
+			var p struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			if p.Reason != "" {
+				body = p.Reason
+			} else {
+				body = "Sync degraded"
+			}
 		default:
 			continue
 		}

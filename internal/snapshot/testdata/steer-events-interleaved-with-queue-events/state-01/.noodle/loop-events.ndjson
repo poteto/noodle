@@ -1,0 +1,2 @@
+{"seq":1,"type":"bootstrap.completed","at":"2026-02-27T11:01:00Z"}
+{"seq":2,"type":"registry.rebuilt","at":"2026-02-27T11:03:00Z","payload":{"added":["execute"],"removed":["old"]}}

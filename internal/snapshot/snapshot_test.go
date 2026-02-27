@@ -110,22 +110,24 @@ func TestFormatActionToolTypes(t *testing.T) {
 	}
 }
 
-func TestReadQueueEvents(t *testing.T) {
+func TestReadLoopEvents(t *testing.T) {
 	dir := t.TempDir()
-	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-1","skill":"old-skill","reason":"skill old-skill no longer registered"}
-{"at":"2026-02-24T10:01:00Z","type":"registry_rebuild","added":["execute","verify"],"removed":["old-skill"]}
-{"at":"2026-02-24T10:02:00Z","type":"bootstrap"}
+	ndjson := `{"seq":1,"type":"order.dropped","at":"2026-02-24T10:00:00Z","payload":{"order_id":"item-1","reason":"skill old-skill no longer registered"}}
+{"seq":2,"type":"registry.rebuilt","at":"2026-02-24T10:01:00Z","payload":{"added":["execute","verify"],"removed":["old-skill"]}}
+{"seq":3,"type":"bootstrap.completed","at":"2026-02-24T10:02:00Z"}
+{"seq":4,"type":"bootstrap.exhausted","at":"2026-02-24T10:03:00Z","payload":{"reason":"bootstrap exhausted after 3 attempts"}}
+{"seq":5,"type":"sync.degraded","at":"2026-02-24T10:04:00Z","payload":{"reason":"sync script failed"}}
 `
-	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
-		t.Fatalf("write queue-events: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
 	}
 
-	events := readQueueEvents(dir)
-	if len(events) != 3 {
-		t.Fatalf("event count = %d, want 3", len(events))
+	events := readLoopEvents(dir)
+	if len(events) != 5 {
+		t.Fatalf("event count = %d, want 5", len(events))
 	}
 
-	// legacy queue_drop mapped to order_drop category
+	// order.dropped
 	if events[0].Category != "order_drop" {
 		t.Errorf("event[0] category = %q, want order_drop", events[0].Category)
 	}
@@ -136,7 +138,7 @@ func TestReadQueueEvents(t *testing.T) {
 		t.Errorf("event[0] body = %q", events[0].Body)
 	}
 
-	// registry_rebuild
+	// registry.rebuilt
 	if events[1].Category != "registry_rebuild" {
 		t.Errorf("event[1] category = %q, want registry_rebuild", events[1].Category)
 	}
@@ -148,15 +150,37 @@ func TestReadQueueEvents(t *testing.T) {
 		t.Errorf("event[1] body = %q, want %q", events[1].Body, wantRebuild)
 	}
 
-	// bootstrap
+	// bootstrap.completed
 	if events[2].Category != "bootstrap" {
 		t.Errorf("event[2] category = %q, want bootstrap", events[2].Category)
 	}
 	if events[2].Label != "Bootstrap" {
 		t.Errorf("event[2] label = %q, want Bootstrap", events[2].Label)
 	}
-	if events[2].Body != "Creating schedule skill from workflow analysis" {
+	if events[2].Body != "Bootstrap completed" {
 		t.Errorf("event[2] body = %q", events[2].Body)
+	}
+
+	// bootstrap.exhausted
+	if events[3].Category != "bootstrap" {
+		t.Errorf("event[3] category = %q, want bootstrap", events[3].Category)
+	}
+	if events[3].Label != "Bootstrap" {
+		t.Errorf("event[3] label = %q, want Bootstrap", events[3].Label)
+	}
+	if events[3].Body != "bootstrap exhausted after 3 attempts" {
+		t.Errorf("event[3] body = %q", events[3].Body)
+	}
+
+	// sync.degraded
+	if events[4].Category != "sync_degraded" {
+		t.Errorf("event[4] category = %q, want sync_degraded", events[4].Category)
+	}
+	if events[4].Label != "Sync" {
+		t.Errorf("event[4] label = %q, want Sync", events[4].Label)
+	}
+	if events[4].Body != "sync script failed" {
+		t.Errorf("event[4] body = %q", events[4].Body)
 	}
 
 	// All should have SessionID "loop"
@@ -167,18 +191,18 @@ func TestReadQueueEvents(t *testing.T) {
 	}
 }
 
-func TestReadQueueEventsSkipsMalformed(t *testing.T) {
+func TestReadLoopEventsSkipsMalformed(t *testing.T) {
 	dir := t.TempDir()
 	ndjson := `not valid json
-{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-1","skill":"gone","reason":"skill gone no longer registered"}
+{"seq":1,"type":"order.dropped","at":"2026-02-24T10:00:00Z","payload":{"order_id":"item-1","reason":"skill gone no longer registered"}}
 {broken
-{"at":"2026-02-24T10:01:00Z","type":"bootstrap"}
+{"seq":2,"type":"bootstrap.completed","at":"2026-02-24T10:01:00Z"}
 `
-	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
-		t.Fatalf("write queue-events: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
 	}
 
-	events := readQueueEvents(dir)
+	events := readLoopEvents(dir)
 	if len(events) != 2 {
 		t.Fatalf("event count = %d, want 2 (malformed lines skipped)", len(events))
 	}
@@ -190,41 +214,41 @@ func TestReadQueueEventsSkipsMalformed(t *testing.T) {
 	}
 }
 
-func TestReadQueueEventsMissingFile(t *testing.T) {
-	events := readQueueEvents(t.TempDir())
+func TestReadLoopEventsMissingFile(t *testing.T) {
+	events := readLoopEvents(t.TempDir())
 	if len(events) != 0 {
 		t.Fatalf("event count = %d, want 0 for missing file", len(events))
 	}
 }
 
-func TestReadQueueEventsDropWithoutReason(t *testing.T) {
+func TestReadLoopEventsDropWithoutReason(t *testing.T) {
 	dir := t.TempDir()
-	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"item-2","skill":"old-skill"}
+	ndjson := `{"seq":1,"type":"order.dropped","at":"2026-02-24T10:00:00Z","payload":{"order_id":"item-2"}}
 `
-	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
-		t.Fatalf("write queue-events: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
 	}
 
-	events := readQueueEvents(dir)
+	events := readLoopEvents(dir)
 	if len(events) != 1 {
 		t.Fatalf("event count = %d, want 1", len(events))
 	}
-	want := "Dropped order item-2: skill old-skill no longer exists"
+	want := "Dropped order item-2"
 	if events[0].Body != want {
 		t.Errorf("body = %q, want %q", events[0].Body, want)
 	}
 }
 
-func TestReadQueueEventsUnknownTypeSkipped(t *testing.T) {
+func TestReadLoopEventsUnknownTypeSkipped(t *testing.T) {
 	dir := t.TempDir()
-	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"unknown_event","target":"x"}
-{"at":"2026-02-24T10:01:00Z","type":"bootstrap"}
+	ndjson := `{"seq":1,"type":"unknown.event","at":"2026-02-24T10:00:00Z"}
+{"seq":2,"type":"bootstrap.completed","at":"2026-02-24T10:01:00Z"}
 `
-	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
-		t.Fatalf("write queue-events: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
 	}
 
-	events := readQueueEvents(dir)
+	events := readLoopEvents(dir)
 	if len(events) != 1 {
 		t.Fatalf("event count = %d, want 1 (unknown type skipped)", len(events))
 	}
@@ -329,31 +353,30 @@ func TestSnapshotSerializationIncludesOrders(t *testing.T) {
 	}
 }
 
-func TestQueueEventsHandlesBothOrderDropAndLegacyQueueDrop(t *testing.T) {
+func TestLoopEventsMultipleDrops(t *testing.T) {
 	dir := t.TempDir()
-	ndjson := `{"at":"2026-02-24T10:00:00Z","type":"queue_drop","target":"legacy-1","skill":"old","reason":"legacy drop"}
-{"at":"2026-02-24T10:01:00Z","type":"order_drop","target":"order-2","skill":"gone","reason":"order drop"}
+	ndjson := `{"seq":1,"type":"order.dropped","at":"2026-02-24T10:00:00Z","payload":{"order_id":"order-1","reason":"no stages resolve"}}
+{"seq":2,"type":"order.dropped","at":"2026-02-24T10:01:00Z","payload":{"order_id":"order-2","reason":"skill removed"}}
 `
-	if err := os.WriteFile(filepath.Join(dir, "queue-events.ndjson"), []byte(ndjson), 0o644); err != nil {
-		t.Fatalf("write queue-events: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
 	}
 
-	events := readQueueEvents(dir)
+	events := readLoopEvents(dir)
 	if len(events) != 2 {
 		t.Fatalf("event count = %d, want 2", len(events))
 	}
 
-	// Both should use order_drop category
 	if events[0].Category != "order_drop" {
 		t.Errorf("event[0] category = %q, want order_drop", events[0].Category)
 	}
-	if events[0].Body != "Dropped order legacy-1: legacy drop" {
+	if events[0].Body != "Dropped order order-1: no stages resolve" {
 		t.Errorf("event[0] body = %q", events[0].Body)
 	}
 	if events[1].Category != "order_drop" {
 		t.Errorf("event[1] category = %q, want order_drop", events[1].Category)
 	}
-	if events[1].Body != "Dropped order order-2: order drop" {
+	if events[1].Body != "Dropped order order-2: skill removed" {
 		t.Errorf("event[1] body = %q", events[1].Body)
 	}
 }

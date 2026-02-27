@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 136774ec9c4669f340b3f99e18a334c181b312c6b7606536a27692064ad8b9cc
+source_hash: 6afba7714f3e14885252e23387c0512ed11c7f4d982acfd0716012387a0aee6b
 ---
 
 ## Expected Snapshot
@@ -25,7 +25,7 @@ source_hash: 136774ec9c4669f340b3f99e18a334c181b312c6b7606536a27692064ad8b9cc
       "task_type": "",
       "at": "2026-02-27T11:01:00Z",
       "label": "Bootstrap",
-      "body": "Creating schedule skill from workflow analysis",
+      "body": "Bootstrap completed",
       "category": "bootstrap"
     },
     {
