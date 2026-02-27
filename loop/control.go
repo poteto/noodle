@@ -288,10 +288,21 @@ func (l *Loop) controlMerge(orderID string) error {
 		if err := l.writeOrdersState(orders); err != nil {
 			return err
 		}
+		sid := pending.sessionID
+		_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+			OrderID:    orderID,
+			StageIndex: pending.stageIndex,
+			Reason:     reason,
+			SessionID:  &sid,
+		})
 		if strings.TrimSpace(pending.worktreeName) != "" {
 			_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 		}
 		if terminal {
+			_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+				OrderID: orderID,
+				Reason:  reason,
+			})
 			if err := l.markFailed(orderID, reason); err != nil {
 				return err
 			}
@@ -368,6 +379,17 @@ func (l *Loop) controlReject(orderID string) error {
 			return err
 		}
 	}
+	sid := pending.sessionID
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    orderID,
+		StageIndex: pending.stageIndex,
+		Reason:     "rejected by user",
+		SessionID:  &sid,
+	})
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: orderID,
+		Reason:  "rejected by user",
+	})
 	if err := l.markFailed(orderID, "rejected by user"); err != nil {
 		return err
 	}
@@ -406,7 +428,18 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	sid := pending.sessionID
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    orderID,
+		StageIndex: pending.stageIndex,
+		Reason:     reason,
+		SessionID:  &sid,
+	})
 	if terminal {
+		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+			OrderID: orderID,
+			Reason:  reason,
+		})
 		if err := l.markFailed(orderID, reason); err != nil {
 			return err
 		}
@@ -573,6 +606,9 @@ func (l *Loop) controlRequeue(orderID string) error {
 			return err
 		}
 	}
+	_ = l.events.Emit(LoopEventOrderRequeued, OrderRequeuedPayload{
+		OrderID: orderID,
+	})
 	delete(l.cooks.failedTargets, orderID)
 	return l.writeFailedTargets()
 }

@@ -221,7 +221,16 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, isOnFailure bool, 
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    orderID,
+		StageIndex: stageIdx,
+		Reason:     reason,
+	})
 	if terminal {
+		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+			OrderID: orderID,
+			Reason:  reason,
+		})
 		return l.markFailed(orderID, reason)
 	}
 	return nil

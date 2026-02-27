@@ -86,6 +86,10 @@ type MergeConflictPayload struct {
 	WorktreeName string `json:"worktree_name"`
 }
 
+type OrderRequeuedPayload struct {
+	OrderID string `json:"order_id"`
+}
+
 // sessionIDPtr returns a pointer to the session ID, or nil if the cook has no session.
 func sessionIDPtr(cook *cookHandle) *string {
 	if cook.session == nil {
