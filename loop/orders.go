@@ -202,6 +202,28 @@ func cancelOrder(orders OrdersFile, orderID string) (OrdersFile, error) {
 	return orders, nil
 }
 
+// ActiveStageOrderIDs returns the IDs of orders that have at least one stage
+// with status "active". Used for busy-set derivation: an active stage means a
+// cook was dispatched for that order (written to disk before spawn), so the
+// order should be blocked from re-dispatch even if the in-memory map is empty
+// (e.g. after crash/restart).
+func ActiveStageOrderIDs(orders OrdersFile) map[string]struct{} {
+	result := make(map[string]struct{})
+	for _, order := range orders.Orders {
+		stages := order.Stages
+		if order.Status == OrderStatusFailing {
+			stages = order.OnFailure
+		}
+		for _, s := range stages {
+			if s.Status == StageStatusActive {
+				result[order.ID] = struct{}{}
+				break
+			}
+		}
+	}
+	return result
+}
+
 // dispatchableStages finds the first pending stage per order that is ready for dispatch.
 // Orders in busy/adopted/ticketed sets are skipped. Orders in the failed set are skipped
 // unless they are in "failing" status (OnFailure must dispatch).
