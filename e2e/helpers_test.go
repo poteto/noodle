@@ -270,7 +270,10 @@ func sessionDirExists(projectDir string) (bool, error) {
 	return false, nil
 }
 
-// sessionCompleted checks if any session's meta.json shows status completed or merged.
+// sessionCompleted checks if any non-schedule session's canonical.ndjson
+// contains a completion event. This is more reliable than checking meta.json
+// (written by the monitor on a polling schedule) because canonical.ndjson is
+// written synchronously by the stamp processor as events arrive.
 func sessionCompleted(projectDir string) (bool, error) {
 	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
 	entries, err := os.ReadDir(sessionsDir)
@@ -284,20 +287,26 @@ func sessionCompleted(projectDir string) (bool, error) {
 		if !entry.IsDir() {
 			continue
 		}
-		metaPath := filepath.Join(sessionsDir, entry.Name(), "meta.json")
-		data, err := os.ReadFile(metaPath)
+		// Only check execute (non-schedule) sessions.
+		if strings.HasPrefix(entry.Name(), "schedule-") {
+			continue
+		}
+		canonicalPath := filepath.Join(sessionsDir, entry.Name(), "canonical.ndjson")
+		data, err := os.ReadFile(canonicalPath)
 		if err != nil {
 			continue
 		}
-		var meta struct {
-			Status string `json:"status"`
-		}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			continue
-		}
-		status := strings.ToLower(strings.TrimSpace(meta.Status))
-		if status == "completed" || status == "merged" {
-			return true, nil
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var event struct {
+				Type string `json:"type"`
+			}
+			if json.Unmarshal([]byte(line), &event) == nil && event.Type == "complete" {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
@@ -453,6 +462,60 @@ func copyDir(t *testing.T, src, dst string) {
 		}
 		if err := os.WriteFile(dstPath, data, 0o644); err != nil {
 			t.Fatalf("write %s: %v", dstPath, err)
+		}
+	}
+}
+
+// dumpSessionDiagnostics logs key files from failed sessions for debugging.
+// For NDJSON files, shows event type counts and the last 30 lines (the
+// tail reveals whether a completion event was emitted).
+func dumpSessionDiagnostics(t *testing.T, projectDir string) {
+	t.Helper()
+	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
+	entries, err := os.ReadDir(sessionsDir)
+	if err != nil {
+		t.Logf("diagnostics: cannot read sessions dir: %v", err)
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		sessionDir := filepath.Join(sessionsDir, entry.Name())
+
+		// Small files: dump fully.
+		for _, fname := range []string{"prompt.txt", "stderr.log"} {
+			data, err := os.ReadFile(filepath.Join(sessionDir, fname))
+			if err != nil {
+				continue
+			}
+			t.Logf("diagnostics [%s/%s]:\n%s", entry.Name(), fname, string(data))
+		}
+
+		// NDJSON files: show type counts + tail.
+		for _, fname := range []string{"canonical.ndjson", "raw.ndjson"} {
+			data, err := os.ReadFile(filepath.Join(sessionDir, fname))
+			if err != nil {
+				continue
+			}
+			lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+			typeCounts := map[string]int{}
+			for _, line := range lines {
+				var obj map[string]interface{}
+				if json.Unmarshal([]byte(line), &obj) == nil {
+					if typ, ok := obj["type"].(string); ok {
+						typeCounts[typ]++
+					}
+				}
+			}
+			t.Logf("diagnostics [%s/%s]: %d lines, type counts: %v", entry.Name(), fname, len(lines), typeCounts)
+
+			// Show last 30 lines.
+			tail := lines
+			if len(tail) > 30 {
+				tail = tail[len(tail)-30:]
+			}
+			t.Logf("diagnostics [%s/%s] TAIL:\n%s", entry.Name(), fname, strings.Join(tail, "\n"))
 		}
 	}
 }

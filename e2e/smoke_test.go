@@ -95,6 +95,8 @@ func TestSmokeAgentLoop(t *testing.T) {
 
 	err := pollMilestones(t, milestones, projectDir)
 	if err != nil {
+		// Dump session diagnostics before retrying.
+		dumpSessionDiagnostics(t, projectDir)
 		// One retry for transient failures.
 		t.Logf("first attempt failed: %v — retrying once", err)
 		cleanupNoodle(t, cmd, projectDir)
@@ -157,8 +159,10 @@ func assertOrdersExist(t *testing.T, projectDir string) {
 	t.Logf("orders.json contains %d order(s)", len(orders.Orders))
 }
 
-// assertSessionMeta verifies at least one session has a meta.json with a
-// recognized status.
+// assertSessionMeta verifies at least one non-schedule session has a
+// canonical.ndjson with a completion event. We check canonical.ndjson
+// instead of meta.json because meta.json is written asynchronously by the
+// monitor and may not exist at assertion time.
 func assertSessionMeta(t *testing.T, projectDir string) {
 	t.Helper()
 	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
@@ -168,30 +172,35 @@ func assertSessionMeta(t *testing.T, projectDir string) {
 		return
 	}
 
-	foundMeta := false
+	foundCompleted := false
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		metaPath := filepath.Join(sessionsDir, entry.Name(), "meta.json")
-		data, err := os.ReadFile(metaPath)
+		if strings.HasPrefix(entry.Name(), "schedule-") {
+			continue
+		}
+		canonicalPath := filepath.Join(sessionsDir, entry.Name(), "canonical.ndjson")
+		data, err := os.ReadFile(canonicalPath)
 		if err != nil {
 			continue
 		}
-		var meta struct {
-			SessionID string `json:"session_id"`
-			Status    string `json:"status"`
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var event struct {
+				Type string `json:"type"`
+			}
+			if json.Unmarshal([]byte(line), &event) == nil && event.Type == "complete" {
+				t.Logf("session %s: completed (canonical.ndjson)", entry.Name())
+				foundCompleted = true
+			}
 		}
-		if err := json.Unmarshal(data, &meta); err != nil {
-			t.Errorf("parse meta.json for session %s: %v", entry.Name(), err)
-			continue
-		}
-		status := strings.ToLower(strings.TrimSpace(meta.Status))
-		t.Logf("session %s: status=%s", entry.Name(), status)
-		foundMeta = true
 	}
 
-	if !foundMeta {
-		t.Error("no session meta.json found")
+	if !foundCompleted {
+		t.Error("no completed session found in canonical.ndjson")
 	}
 }
