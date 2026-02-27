@@ -98,7 +98,7 @@ func TestDone_FlipsStatusFromDraft(t *testing.T) {
 		t.Fatalf("Done returned error: %v", err)
 	}
 
-	archivedOverview := filepath.Join(dir, "archived_plans", "10-my-plan", "overview.md")
+	archivedOverview := filepath.Join(dir, "archive/plans", "10-my-plan", "overview.md")
 	data, err := os.ReadFile(archivedOverview)
 	if err != nil {
 		t.Fatalf("archived overview.md not readable: %v", err)
@@ -126,7 +126,7 @@ func TestDone_FlipsStatusFromActive(t *testing.T) {
 		t.Fatalf("Done returned error: %v", err)
 	}
 
-	archivedOverview := filepath.Join(dir, "archived_plans", "11-active-plan", "overview.md")
+	archivedOverview := filepath.Join(dir, "archive/plans", "11-active-plan", "overview.md")
 	data, err := os.ReadFile(archivedOverview)
 	if err != nil {
 		t.Fatalf("archived overview.md not readable: %v", err)
@@ -186,7 +186,7 @@ func TestDone_ArchivesPlanDirectory(t *testing.T) {
 	}
 
 	// Archived directory should exist.
-	archivedDir := filepath.Join(dir, "archived_plans", "5-archive-test")
+	archivedDir := filepath.Join(dir, "archive/plans", "5-archive-test")
 	if _, err := os.Stat(archivedDir); err != nil {
 		t.Fatalf("archived directory not found: %v", err)
 	}
@@ -201,8 +201,8 @@ func TestDone_ArchivesPlanDirectory(t *testing.T) {
 	}
 
 	// Archived index should have the plan.
-	archivedIndex, _ := os.ReadFile(filepath.Join(dir, "archived_plans", "index.md"))
-	if !strings.Contains(string(archivedIndex), "[[archived_plans/5-archive-test/overview]]") {
+	archivedIndex, _ := os.ReadFile(filepath.Join(dir, "archive/plans", "index.md"))
+	if !strings.Contains(string(archivedIndex), "[[archive/plans/5-archive-test/overview]]") {
 		t.Errorf("archived index missing wikilink: %s", string(archivedIndex))
 	}
 }
@@ -218,8 +218,8 @@ func TestDone_CreatesArchivedIndexIfMissing(t *testing.T) {
 	writeFile(t, filepath.Join(planDir, "overview.md"),
 		"---\nid: 6\ncreated: 2026-02-20\nstatus: ready\n---\n\n# First Archive\n")
 
-	// Verify no archived_plans/ exists yet.
-	archivedIndexPath := filepath.Join(dir, "archived_plans", "index.md")
+	// Verify no archive/plans/ exists yet.
+	archivedIndexPath := filepath.Join(dir, "archive/plans", "index.md")
 	if _, err := os.Stat(archivedIndexPath); !os.IsNotExist(err) {
 		t.Fatal("archived index.md already exists before test")
 	}
@@ -235,7 +235,7 @@ func TestDone_CreatesArchivedIndexIfMissing(t *testing.T) {
 	if !strings.Contains(string(data), "# Archived Plans") {
 		t.Errorf("archived index missing header: %s", string(data))
 	}
-	if !strings.Contains(string(data), "[[archived_plans/6-first-archive/overview]]") {
+	if !strings.Contains(string(data), "[[archive/plans/6-first-archive/overview]]") {
 		t.Errorf("archived index missing wikilink: %s", string(data))
 	}
 }
@@ -259,18 +259,18 @@ func TestDone_UpdatesInternalWikilinks(t *testing.T) {
 		t.Fatalf("Done returned error: %v", err)
 	}
 
-	archivedDir := filepath.Join(dir, "archived_plans", "7-link-test")
+	archivedDir := filepath.Join(dir, "archive/plans", "7-link-test")
 
 	phase1, _ := os.ReadFile(filepath.Join(archivedDir, "phase-01-setup.md"))
 	if strings.Contains(string(phase1), "[[plans/7-link-test") {
 		t.Errorf("phase-01 still has old wikilink: %s", string(phase1))
 	}
-	if !strings.Contains(string(phase1), "[[archived_plans/7-link-test/overview]]") {
+	if !strings.Contains(string(phase1), "[[archive/plans/7-link-test/overview]]") {
 		t.Errorf("phase-01 missing new wikilink: %s", string(phase1))
 	}
 
 	phase2, _ := os.ReadFile(filepath.Join(archivedDir, "phase-02-impl.md"))
-	if !strings.Contains(string(phase2), "[[archived_plans/7-link-test/overview]]") {
+	if !strings.Contains(string(phase2), "[[archive/plans/7-link-test/overview]]") {
 		t.Errorf("phase-02 missing new wikilink: %s", string(phase2))
 	}
 }
@@ -296,7 +296,7 @@ func TestDone_UpdatesTodoLinks(t *testing.T) {
 	if strings.Contains(string(todos), "[[plans/8-todo-test") {
 		t.Errorf("todos.md still has old wikilink: %s", string(todos))
 	}
-	if !strings.Contains(string(todos), "[[archived_plans/8-todo-test/overview]]") {
+	if !strings.Contains(string(todos), "[[archive/plans/8-todo-test/overview]]") {
 		t.Errorf("todos.md missing new wikilink: %s", string(todos))
 	}
 	if !strings.Contains(string(todos), "Other task") {
@@ -505,7 +505,7 @@ func TestDone_RemoveDeletesPlanDirectory(t *testing.T) {
 	}
 
 	// No archived directory should be created.
-	archivedDir := filepath.Join(dir, "archived_plans", "20-remove-test")
+	archivedDir := filepath.Join(dir, "archive/plans", "20-remove-test")
 	if _, err := os.Stat(archivedDir); !os.IsNotExist(err) {
 		t.Error("archived directory should not exist after remove")
 	}

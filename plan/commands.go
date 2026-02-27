@@ -39,7 +39,7 @@ func Create(plansDir string, todoID int, slug string) (string, error) {
 }
 
 // Done sets a plan's status to "done" and either archives or removes it.
-// onDone "keep": move to archived_plans/, update indexes and wikilinks.
+// onDone "keep": move to archive/plans/, update indexes and wikilinks.
 // onDone "remove": delete the plan directory and remove wikilinks.
 func Done(plansDir string, planID int, onDone string) error {
 	planDir, err := findPlanDir(plansDir, planID)
@@ -79,11 +79,11 @@ func Done(plansDir string, planID int, onDone string) error {
 		return removeTodoLinks(brainDir, dirName)
 	}
 
-	// Default "keep": archive to archived_plans/.
-	archivedDir := filepath.Join(brainDir, "archived_plans")
+	// Default "keep": archive to archive/plans/.
+	archivedDir := filepath.Join(brainDir, "archive/plans")
 
 	if err := os.MkdirAll(archivedDir, 0o755); err != nil {
-		return fmt.Errorf("archived_plans directory not created: %w", err)
+		return fmt.Errorf("archive/plans directory not created: %w", err)
 	}
 
 	if err := os.Rename(planDir, filepath.Join(archivedDir, dirName)); err != nil {
@@ -98,7 +98,7 @@ func Done(plansDir string, planID int, onDone string) error {
 	}
 
 	oldPrefix := "plans/" + dirName
-	newPrefix := "archived_plans/" + dirName
+	newPrefix := "archive/plans/" + dirName
 	if err := rewriteInternalLinks(filepath.Join(archivedDir, dirName), oldPrefix, newPrefix); err != nil {
 		return err
 	}
@@ -250,10 +250,10 @@ func removeWikilink(plansDir, dirName string) error {
 	return nil
 }
 
-// appendArchivedWikilink appends a plan wikilink to archived_plans/index.md, creating it if needed.
+// appendArchivedWikilink appends a plan wikilink to archive/plans/index.md, creating it if needed.
 func appendArchivedWikilink(archivedDir, dirName string) error {
 	indexPath := filepath.Join(archivedDir, "index.md")
-	link := fmt.Sprintf("- [x] [[archived_plans/%s/overview]]", dirName)
+	link := fmt.Sprintf("- [x] [[archive/plans/%s/overview]]", dirName)
 
 	existing, err := os.ReadFile(indexPath)
 	if err != nil && !os.IsNotExist(err) {

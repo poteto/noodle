@@ -18,7 +18,7 @@ INDEX="${BRAIN_DIR}/index.md"
 # Exclude plans/ subdirectories (they have their own index at plans/index.md)
 disk=$(find "$BRAIN_DIR" -name "*.md" ! -name "index.md" -type f \
     | sed "s|^${BRAIN_DIR}/||; s|\.md$||" \
-    | grep -v "^plans/.\+/" | grep -v "^archived_plans/.\+/" | sort)
+    | grep -v "^plans/.\+/" | grep -v "^archive/plans/.\+/" | sort)
 
 # Wikilinks in current index
 indexed=$(sed -n 's/.*\[\[\([^]]*\)\]\].*/\1/p' "$INDEX" | sort)
@@ -69,9 +69,9 @@ emit_files() {
     fi
 
     # Archived plans — link to their index if it exists
-    if [ -f "${BRAIN_DIR}/archived_plans/index.md" ]; then
+    if [ -f "${BRAIN_DIR}/archive/plans/index.md" ]; then
         printf '\n## Archived Plans\n'
-        echo "- [[archived_plans/index]]"
+        echo "- [[archive/plans/index]]"
     fi
     echo ""
 } > "$INDEX"

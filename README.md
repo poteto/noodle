@@ -33,7 +33,7 @@ For agents setting up Noodle in a project, see [INSTALL.md](INSTALL.md).
 - Cook: executes backlog work
 - Quality: reviews completed work
 
-Architecture details: [Open-Source Architecture Overview](brain/archived_plans/01-noodle-extensible-skill-layering/overview.md)
+Architecture details: [Open-Source Architecture Overview](brain/archive/plans/01-noodle-extensible-skill-layering/overview.md)
 
 ## Configuration
 

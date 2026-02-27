@@ -4,15 +4,11 @@
 
 ## Testing & Verification
 
-73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archived_plans/73-testing-strategy/overview]]
+73. [ ] Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archive/plans/73-testing-strategy/overview]]
 
 ## Scaling
 
-70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archived_plans/70-scaling-the-loop-redesign/overview]]
-
-## Cleanup
-
-74. [x] ~~Vestigial queue naming, legacy compat shims, duplicated slicesEqual — rename schema target and misnamed files, update docs/skills referencing queue.json, delete OrderID2 compat shim and colon-separated format parser, replace duplicated slicesEqual with slices.Equal. [[archived_plans/74-vestigial-queue-cleanup/overview]]~~ — done.
+70. [ ] Scaling the loop redesign — redesign the loop from session-centric to order-centric. Push-based completion channels, pluggable Runtime interface, in-memory orders with periodic flush, aggregate mise brief, async merge queue. Makes cycle O(events + orders) independent of total sessions. Target: 1000+ concurrent cloud agents. [[archive/plans/70-scaling-the-loop-redesign/overview]]
 
 ## Noodle Post-Plan 1
 
@@ -27,8 +23,6 @@
 
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
-34. [x] ~~Watch `failed.json` for changes~~ — mostly subsumed by #66 (event system). `stage.failed` events surface in mise brief; `requeue` control command already exists. UI retry identity fix is residual scope if needed.
-48. [x] ~~Live agent steering — replace kill+respawn steer with bidirectional pipes. Claude via `--input-format stream-json`, Codex via `codex app-server --transport stdio`. Interrupt + redirect without killing the process. Builds on #66: keeps the schedule agent alive between cycles so event reactions are instant instead of next-cycle. [[archived_plans/48-live-agent-steering/overview]]~~ — done.
 50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable. Reduced priority: #66 events enable reactive scheduling, but a manual button is still useful for DX.
 
 ## Remote Dispatchers
@@ -43,65 +37,5 @@
 
 ## Modes
 
-67. [x] ~~Manual mode~~ — superseded by #68 (unified involvement levels).
 68. [ ] Unified involvement levels — replace `autonomy` and `schedule.run` with a single `mode` field that sets sensible defaults for scheduling, dispatch, and merge gating. Three levels: `auto` (Noodle runs the kitchen, respect per-skill `permissions.merge`), `supervised` (auto-schedule, auto-dispatch, human approves all merges), `manual` (user drives scheduling and dispatch, human approves all merges). Per-skill `permissions.merge` still works as a fine-grained override. Subsumes current `autonomy` (auto/approve) and `schedule.run` (after-each/after-n/manual) into one dial.
 
-## Skill System Gaps
-
-66. [x] Event/trigger system — loop emits lifecycle events (stage completed/failed, merge, quality verdict, order lifecycle) to an event bus with NDJSON persistence. Events surface in mise brief as `recent_events`. The schedule agent reads events and decides how to react — no mechanical trigger dispatch in Go, no trigger frontmatter. Agents are the orchestrator. Subsumes #34. [[archived_plans/66-event-trigger-system/overview]]
-
-## Done
-
-52. [x] ~~Diff viewer for reviews. [[archived_plans/52-diff-viewer-for-reviews/overview]]~~ — done. `DiffViewer.tsx`, `ReviewPanel.tsx`, `GET /api/reviews/{id}/diff`.
-53. [x] ~~Work order pipeline view~~ — done. `OrderCard.tsx` with `StagePipeline`, `StageIndicator`, `StageRail`.
-49. [x] ~~Work orders redesign — replace the flat `QueueItem` queue with `Order` + `Stage` model. Subsumes #59-65. [[archived_plans/49-work-orders-redesign/overview]]~~ — done. Order/Stage types in `internal/orderx/`, loop fully migrated, old `queuex` package removed.
-72. [x] ~~Go structural cleanup — unify duplicated Order/Stage types (loop→orderx), typed status enums, cook identity type unification, Loop struct decomposition, cook.go lifecycle split, unexport/package moves, runtime/dispatcher evaluation. [[plans/72-go-structural-cleanup/overview]]~~ — done.
-59. [x] ~~Bootstrap as embedded skill — folded into #49.~~ — done via #49.
-60. [x] ~~Simplify queue filtering in loop — folded into #49.~~ — done.
-61. [x] ~~Simplify mise.json building — folded into #49.~~ — done.
-62. [x] ~~Missing sync script → graceful degradation — folded into #49.~~ — done. `mise/builder.go` returns warning instead of crashing.
-63. [x] ~~Merge conflicts → pending review — folded into #49.~~ — done. `cook_merge.go` parks conflicts for review.
-64. [x] ~~`domain_skill` frontmatter field — folded into #49.~~ — done. `DomainSkill` field in `skill/frontmatter.go`.
-65. [x] ~~Quality verdict → merge integration — folded into #49.~~ — done. `cook_completion.go` reads quality verdicts.
-71. [x] ~~Investigate typesafe server/client protocol~~ — subsumed by #73.
-47. [x] ~~Delete Go TUI — remove `tui/` package, Charm dependencies, `--headless` flag. [[archived_plans/47-delete-go-tui/overview]]~~ — done.
-46. [x] ~~Web UI — replace Bubble Tea TUI with React/TypeScript + TanStack Start SPA. Go HTTP server with SSE streaming, embedded in binary. Kanban board + Slack-style agent chat per `ui_prototype/`. Includes feed notifications for deterministic repairs (formerly #44). [[archived_plans/46-web-ui/overview]]~~ — done.
-1. [x] Noodle open-source architecture: redesign Noodle for OSS adoption — kitchen brigade naming (Chef/Sous Chef/Taster/Cook/Mise), skills as the only extension point, LLM-powered prioritization replacing deterministic scoring, adapter pattern for backlog/plans, aggressive Go code deletion, bootstrap skill. [[archived_plans/01-noodle-extensible-skill-layering/overview]]
-2. [x] ~~Investigate automated post-reflect/meditate learning step~~ — superseded by the schedule agent, which already does LLM-powered learning and queue scheduling based on session history and measured evidence.
-39. [x] ~~Upgrade Bubble Tea to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbletea/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]~~ — dependency is already on `charm.land/bubbletea/v2`.
-40. [x] ~~Upgrade Lip Gloss to v2 using the upstream migration guide. https://github.com/charmbracelet/lipgloss/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]~~ — dependency is already on `charm.land/lipgloss/v2`.
-41. [x] ~~Upgrade Bubbles to v2 using the upstream migration guide. https://github.com/charmbracelet/bubbles/blob/main/UPGRADE_GUIDE_V2.md [[archived_plans/39-charmbracelet-v2-upgrade/overview]]~~ — dependency is already on `charm.land/bubbles/v2`.
-3. [x] ~~Bootstrap Noodle on itself — run the bootstrap skill on this repo to create `.noodle.toml`, install adapter scripts to `.noodle/adapters/`, build binary to `~/.noodle/bin/`, and verify the full toolchain end-to-end. Delete stale `.noodle/config.toml` (old pre-Plan 1 schema).~~ — marked complete per user confirmation.
-4. [x] ~~End-to-end smoke test — run `noodle start --once` against real `brain/todos.md`. Verify full cycle: mise gathers state, sous chef writes queue, cook spawns in worktree, taster reviews, worktree merges to main, adapter `done` marks item complete. This is the gap between "compiles" and "works."~~ — marked complete per user confirmation.
-5. [x] ~~Integration test for the scheduling loop — a single Go test that exercises the full loop with mock spawner (no real tmux): mise → queue → spawn → monitor → complete → taster → merge → done. Catches cross-package regressions that unit tests miss.~~ — marked complete per user confirmation.
-6. [x] ~~Fix Cook struct duplication~~ — completed. `model.Cook` now stores provider/model only under `Policy` in `model/types.go`. #cleanup
-9. [x] ~~Autonomy dial~~ — completed. Three modes implemented: `full` (auto-merge, no human in loop), `review` (quality gate runs, auto-merge on APPROVE, default), `approve` (quality gate runs, human confirms merge via TUI). Wired through config, loop gating, runtime control commands, and TUI verdict cards. Pre-spawn gating was dropped in favor of post-completion approval.
-10. [x] ~~TUI as default terminal mode~~ — completed. `noodle start` now launches the TUI in interactive terminals and keeps headless behavior in non-interactive mode.
-11. [x] TUI revamp — 4B command center: left rail (agents + stats) + tabbed right pane (Feed, Queue, Brain, Config). Pastel color palette, lipgloss-inspired styling, autonomy dial (approve/review/full), quality verdicts as actionable feed cards, glamour markdown preview in Brain tab. [[archived_plans/25-tui-revamp/overview]]
-11. [x] Remove old role-based skills — delete `.agents/skills/ceo`, `.agents/skills/cto`, `.agents/skills/director`, `.agents/skills/manager`, `.agents/skills/operator`. These are pre-kitchen-brigade roles (CEO/CTO/Director/Manager/Operator) that no longer exist in the architecture. The kitchen brigade model has Chef (human), Sous Chef, Taster, Cook. #cleanup
-12. [x] Update worktree skill — `.agents/skills/worktree/SKILL.md` references `go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree` (old binary path). Update to `go run -C $CLAUDE_PROJECT_DIR . worktree hook` to match the repo-root module. #cleanup
-13. [x] Update noodle skill — `.agents/skills/noodle/SKILL.md` references `~/.noodle/config.toml` (old config path). The new config is `.noodle.toml` at project root. Update to match the Plan 1 architecture. #cleanup
-15. [x] Bootstrap & onboarding — `brew install` + `noodle start` flow: Homebrew tap for macOS distribution, INSTALL.md as agent entry point (vision + install instructions), PHILOSOPHY.md (brain, self-learning, agent-pilled rationale), auto-generated noodle skill with CI snapshot guard, first-run scaffolding in `noodle start`, agent-driven skill/adapter/hook setup. [[archived_plans/15-bootstrap-onboarding/overview]]
-18. [x] ~~Fix adapter skill name assumptions — bootstrap/docs still assume `skill = "backlog"` and `skill = "plans"` without verifying those skill names resolve in the configured skill paths.~~ — done. Config validation checks adapter skills without hardcoding names.
-23. [x] Task-type skill suite: create/rewrite a principle-grounded skill for each task type (schedule, review, verify, taster, reflect, meditate, oops, debugging, debate), extract patterns from old role-based skills, delete CEO/CTO/Director/Manager/Operator. [[archived_plans/23-task-type-skill-suite/overview]]
-16. [x] Fix default routing model in docs and defaults — the README and `config/config.go` both default `routing.defaults.model` to `claude-sonnet-4-6`. If the intended default is `claude-opus-4-6`, update README minimal config example, `config/config.go:DefaultConfig()`, and `config/config_test.go`.
-17. [x] ~~Remove `~/.noodle/skills` from default skills.paths~~ — completed/superseded. `defaultSkillPaths()` now defaults to `[".agents/skills"]` and no longer includes global `~/.noodle/skills`.
-19. [x] ~~Update defaults tests and docs table after deciding #16 — if routing default model changes, update `config/config.go:DefaultConfig()`, `config/config_test.go`, and any default tables/docs that assert old values.~~ — defaults/tests/docs now use `claude-opus-4-6`.
-21. [x] Redesign fixture framework to directory-based state fixtures with metadata assertions [[archived_plans/21-fixture-directory-redesign/overview]]
-22. [x] Make planning opinionated and first-class — native plan reader and brain/plans format done (Plan 23). Interactive TUI planning session was dropped; steering via control commands is sufficient.
-24. [x] ~~Rewrite vision/noodle doc~~ — completed. Updated to reflect current architecture: file-based state (.noodle/ JSON/NDJSON), LLM judgment / Go mechanics split, frontmatter-based task type discovery, kitchen brigade as implemented (Schedule/Quality/Cook/Mise), autonomy dial, adapters.
-27. [x] ~~Hot-reload skill registry via fsnotify~~ — superseded by #38.
-26. [x] ~~Context usage tracking — move beyond cost tracking to measure per-skill context footprint, per-session peak usage, compression events, and subagent context duplication. Surface to quality gate (flag sessions hitting compression), meditate (flag highest-footprint skills for investigation), prioritize (prefer lower-context approaches), and execute (inform delegation heuristics with actual context cost). Automates the manual audit-and-fix loop for skill/prompt bloat. [[archived_plans/26-context-usage-tracking/overview]]~~ — marked complete per user request.
-28. [x] ~~Rename `prioritize` skill/task type to `schedule`~~ — done. Skill directory, frontmatter, loop, mise, config, tests all use "schedule".
-30. [x] ~~Sprites session marked "failed" despite successful completion~~ — done. `sprites_session.go:waitAndSync` now properly checks `ExitError`/exit code and distinguishes cancellation from real failures.
-31. [x] ~~Structured loop logging~~ — done. Loop now has extensive stderr logging for registry rebuilds, session failures, queue drops, bootstrap progress, and queue validation.
-35. [x] ~~Silent plan/skill discovery warnings~~ — done. `noodle debug` command exists, `mise/builder.go` collects and returns warnings for missing scripts and plan reading failures.
-36. [x] ~~Default `recovery.max_retries` to at least 1 — currently defaults to 0, so any transient failure (sprites connection drop, temporary network issue) permanently kills the session with no retry.~~ — default is now 3.
-37. [x] ~~Skip schedule when queue already has items~~ — done. `loop/schedule.go` has `hasNonScheduleItems()` check; loop skips schedule spawning when queue has work.
-38. [x] ~~Resilient skill resolution~~ — done. Non-fatal missing skills, oops fallback, fsnotify hot-reload via `skill/watcher.go`, queue audit. [[archived_plans/38-resilient-skill-resolution/overview]]
-14. [x] ~~Evaluate interactive skill overlap with task-type skills — `.agents/skills/` has `commit`, `debugging`, `reflect`, `meditate`, `todo`, `plan` that partially overlap with task-type responsibilities. The interactive versions have different context (AskUserQuestion, human workflows), so they should be reviewed: either keep both with clear scoping, merge where possible, or delegate one to the other. The `todo` vs `backlog` naming mismatch is still the most confusing. #cleanup~~ — marked complete per user confirmation.
-42. [x] ~~Permissions-based approval gate — replace `blocking` frontmatter with `permissions: { merge: false }`, remove hardcoded quality from loop and TUI, simplify autonomy config, add request-changes flow with Huh text input. [[archived_plans/42-requires-approval-gate/overview]]~~ — completed. `permissions.merge` frontmatter implemented, autonomy config simplified to `auto`/`approve`, plan archived.
-43. [x] ~~Deterministic self-healing and status split — two-tier repair (Go fixes deterministic issues instantly, agents handle judgment calls), redesign runtime_repair.go, split loop state out of queue.json into status.json. [[archived_plans/43-deterministic-self-healing-and-status-split/overview]]~~ — done.
-44. [x] ~~TUI feed notifications for deterministic repairs~~ — folded into #46 (web UI).
-45. [x] ~~Task editor overhaul — consolidate Type+Skill, overlay dropdowns, multiline prompt.~~ — superseded by #46 (web UI will build the task editor from scratch). [[archived_plans/45-task-editor-overhaul/overview]]
-8. [x] ~~Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.~~ — decided not to do.

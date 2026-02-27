@@ -230,9 +230,9 @@ fi
 
 # --- Stage: full (archived plan + runtime state + session history) ---
 
-mkdir -p brain/archived_plans/00-project-setup
+mkdir -p brain/archive/plans/00-project-setup
 
-cat > brain/archived_plans/00-project-setup/overview.md <<'EOF'
+cat > brain/archive/plans/00-project-setup/overview.md <<'EOF'
 ---
 id: 0
 created: 2026-02-23
@@ -247,7 +247,7 @@ Bootstrap the Go project with module, CI, and basic HTTP server.
 
 ## Phases
 
-- [[archived_plans/00-project-setup/phase-01-module-and-ci]]
+- [[archive/plans/00-project-setup/phase-01-module-and-ci]]
 
 ## Verification
 
@@ -256,8 +256,8 @@ go build . && go test ./...
 ```
 EOF
 
-cat > brain/archived_plans/00-project-setup/phase-01-module-and-ci.md <<'EOF'
-Back to [[archived_plans/00-project-setup/overview]]
+cat > brain/archive/plans/00-project-setup/phase-01-module-and-ci.md <<'EOF'
+Back to [[archive/plans/00-project-setup/overview]]
 
 # Phase 1: Module and CI
 
