@@ -6,7 +6,7 @@ autonomy = "approve"
 [schedule]
 # "after-each" | "after-n" | "manual"
 run = "after-each"
-model = "claude-sonnet"
+model = "claude-opus-4-6"
 
 [routing.defaults]
 provider = "claude"
@@ -38,9 +38,6 @@ edit = "go run adapters/main.go backlog-edit"
 
 [concurrency]
 max_cooks = 1
-
-[recovery]
-max_retries = 3
 
 [monitor]
 stuck_threshold = "120s"
