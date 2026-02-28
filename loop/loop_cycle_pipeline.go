@@ -28,6 +28,10 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	promoted, emptyPromotion, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
 		l.logger.Warn("orders-next promotion failed", "error", err)
+		l.lastPromotionError = err.Error()
+		_ = l.events.Emit(LoopEventPromotionFailed, PromotionFailedPayload{
+			Reason: err.Error(),
+		})
 		// Mark promoted so the schedule order can complete and a new
 		// schedule can be spawned. Without this, the schedule order
 		// stays active forever and the loop deadlocks.
@@ -35,6 +39,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
 		l.schedulePromoted = true
+		l.lastPromotionError = ""
 		if emptyPromotion {
 			l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
 			l.logger.Info("schedule produced no orders, entering cooldown")

@@ -208,6 +208,18 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			} else {
 				body = "Sync degraded"
 			}
+		case "promotion.failed":
+			label = "Rejected"
+			category = "promotion_failed"
+			var p struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			if p.Reason != "" {
+				body = p.Reason
+			} else {
+				body = "orders-next.json validation failed"
+			}
 		default:
 			continue
 		}

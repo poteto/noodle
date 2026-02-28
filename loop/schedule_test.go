@@ -118,7 +118,7 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt([]TaskType{
 		{Key: "execute", Schedule: "When ready"},
 	})
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle")
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "")
 
 	if !strings.Contains(prompt, "/tmp/test/.noodle/orders-next.json") {
 		t.Fatal("prompt should reference absolute path to orders-next.json")
@@ -131,6 +131,29 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "execute: When ready") {
 		t.Fatal("prompt should include task types")
+	}
+}
+
+func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
+	order := Order{
+		ID:     "schedule",
+		Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
+	}
+	taskTypes := buildOrderTaskTypesPrompt(nil)
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure")
+
+	if !strings.Contains(prompt, "PREVIOUS ORDERS REJECTED") {
+		t.Fatal("prompt should include rejection header when promotion error is set")
+	}
+	if !strings.Contains(prompt, "unknown field on_failure") {
+		t.Fatal("prompt should include the specific validation error")
+	}
+
+	// No error — should not include rejection header.
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "")
+	if strings.Contains(promptClean, "PREVIOUS ORDERS REJECTED") {
+		t.Fatal("prompt should not include rejection header when no promotion error")
 	}
 }
 

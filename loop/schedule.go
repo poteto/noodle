@@ -94,9 +94,11 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	}
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
+	promotionError := l.lastPromotionError
+	l.lastPromotionError = ""
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -194,7 +196,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string) string {
 	miseFile := filepath.Join(runtimeDir, "mise.json")
 	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
 	parts := []string{
@@ -207,6 +209,9 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 		"Failed stages are removed from orders and forwarded to the scheduler. Use control commands (advance, add-stage, park-review) to manage recovery.",
 		ordersSchemaPrompt(),
 		taskTypesPrompt,
+	}
+	if errMsg := strings.TrimSpace(lastPromotionError); errMsg != "" {
+		parts = append(parts, "PREVIOUS ORDERS REJECTED: Your last orders-next.json was invalid and renamed to .bad. Fix the following error in your next output:\n"+errMsg)
 	}
 	if rationale := strings.TrimSpace(order.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)

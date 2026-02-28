@@ -17,6 +17,7 @@ const (
 	LoopEventSyncDegraded       = event.LoopEventSyncDegraded
 	LoopEventBootstrapCompleted = event.LoopEventBootstrapCompleted
 	LoopEventBootstrapExhausted = event.LoopEventBootstrapExhausted
+	LoopEventPromotionFailed    = event.LoopEventPromotionFailed
 )
 
 // Payload structs for loop events.
@@ -81,6 +82,10 @@ type MergeConflictPayload struct {
 
 type OrderRequeuedPayload struct {
 	OrderID string `json:"order_id"`
+}
+
+type PromotionFailedPayload struct {
+	Reason string `json:"reason"`
 }
 
 // sessionIDPtr returns a pointer to the session ID, or nil if the cook has no session.
