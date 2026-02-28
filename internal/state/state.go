@@ -1,0 +1,247 @@
+package state
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/statever"
+)
+
+// OrderLifecycleStatus is the lifecycle status of an order.
+type OrderLifecycleStatus string
+
+const (
+	OrderPending   OrderLifecycleStatus = "pending"
+	OrderActive    OrderLifecycleStatus = "active"
+	OrderCompleted OrderLifecycleStatus = "completed"
+	OrderFailed    OrderLifecycleStatus = "failed"
+	OrderCancelled OrderLifecycleStatus = "cancelled"
+)
+
+// StageLifecycleStatus is the lifecycle status of a stage within an order.
+type StageLifecycleStatus string
+
+const (
+	StagePending     StageLifecycleStatus = "pending"
+	StageDispatching StageLifecycleStatus = "dispatching"
+	StageRunning     StageLifecycleStatus = "running"
+	StageMerging     StageLifecycleStatus = "merging"
+	StageReview      StageLifecycleStatus = "review"
+	StageCompleted   StageLifecycleStatus = "completed"
+	StageFailed      StageLifecycleStatus = "failed"
+	StageSkipped     StageLifecycleStatus = "skipped"
+	StageCancelled   StageLifecycleStatus = "cancelled"
+)
+
+// AttemptStatus is the lifecycle status of a dispatch attempt.
+type AttemptStatus string
+
+const (
+	AttemptLaunching AttemptStatus = "launching"
+	AttemptRunning   AttemptStatus = "running"
+	AttemptCompleted AttemptStatus = "completed"
+	AttemptFailed    AttemptStatus = "failed"
+	AttemptCancelled AttemptStatus = "cancelled"
+)
+
+// RunMode controls how the loop processes orders.
+type RunMode string
+
+const (
+	RunModeAuto       RunMode = "auto"
+	RunModeSupervised RunMode = "supervised"
+	RunModeManual     RunMode = "manual"
+)
+
+// State is the top-level canonical backend state. All loop scheduling
+// decisions derive from this single model.
+type State struct {
+	Orders        map[string]OrderNode       `json:"orders"`
+	Mode          RunMode                    `json:"mode"`
+	SchemaVersion statever.SchemaVersion     `json:"schema_version"`
+	LastEventID   string                     `json:"last_event_id"`
+}
+
+// OrderNode represents an order's canonical state.
+type OrderNode struct {
+	OrderID   string               `json:"order_id"`
+	Status    OrderLifecycleStatus `json:"status"`
+	Stages    []StageNode          `json:"stages"`
+	CreatedAt time.Time            `json:"created_at"`
+	UpdatedAt time.Time            `json:"updated_at"`
+	Metadata  map[string]string    `json:"metadata"`
+}
+
+// StageNode represents a stage within an order.
+type StageNode struct {
+	StageIndex int                  `json:"stage_index"`
+	Status     StageLifecycleStatus `json:"status"`
+	Skill      string               `json:"skill"`
+	Runtime    string               `json:"runtime"`
+	Attempts   []AttemptNode        `json:"attempts"`
+	Group      string               `json:"group"`
+}
+
+// AttemptNode represents a dispatch attempt for a stage.
+type AttemptNode struct {
+	AttemptID    string        `json:"attempt_id"`
+	SessionID    string        `json:"session_id"`
+	Status       AttemptStatus `json:"status"`
+	StartedAt    time.Time     `json:"started_at"`
+	CompletedAt  time.Time     `json:"completed_at"`
+	ExitCode     *int          `json:"exit_code"`
+	WorktreeName string        `json:"worktree_name"`
+	Error        string        `json:"error"`
+}
+
+// isTerminalStageStatus reports whether the stage status is terminal
+// (no further transitions expected).
+func isTerminalStageStatus(s StageLifecycleStatus) bool {
+	switch s {
+	case StageCompleted, StageFailed, StageSkipped, StageCancelled:
+		return true
+	}
+	return false
+}
+
+// isBusyStageStatus reports whether the stage is in an active/busy state.
+func isBusyStageStatus(s StageLifecycleStatus) bool {
+	switch s {
+	case StageDispatching, StageRunning, StageMerging, StageReview:
+		return true
+	}
+	return false
+}
+
+// OrderBusyIndex returns a map from order ID to stage index for stages in
+// active states (dispatching, running, merging, review). If an order has
+// multiple busy stages, only the first is recorded.
+func (s *State) OrderBusyIndex() map[string]int {
+	idx := make(map[string]int)
+	for orderID, order := range s.Orders {
+		for _, stage := range order.Stages {
+			if isBusyStageStatus(stage.Status) {
+				idx[orderID] = stage.StageIndex
+				break
+			}
+		}
+	}
+	return idx
+}
+
+// AttemptBySessionIndex returns a map from session ID to AttemptNode pointer
+// for all attempts in state. If multiple attempts share a session ID, the
+// last one encountered wins.
+func (s *State) AttemptBySessionIndex() map[string]*AttemptNode {
+	idx := make(map[string]*AttemptNode)
+	for orderID := range s.Orders {
+		order := s.Orders[orderID]
+		for i := range order.Stages {
+			for j := range order.Stages[i].Attempts {
+				a := &order.Stages[i].Attempts[j]
+				if a.SessionID != "" {
+					idx[a.SessionID] = a
+				}
+			}
+		}
+	}
+	return idx
+}
+
+// PendingEffectIndex is a placeholder for Phase 3. Returns an empty map.
+func (s *State) PendingEffectIndex() map[string]struct{} {
+	return map[string]struct{}{}
+}
+
+// Persist writes the state to path using atomic file write.
+func (s *State) Persist(path string) error {
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode canonical state: %w", err)
+	}
+	if err := filex.WriteFileAtomic(path, append(data, '\n')); err != nil {
+		return fmt.Errorf("persist canonical state: %w", err)
+	}
+	return nil
+}
+
+// Load reads canonical state from path. Returns a zero State and no error
+// if the file does not exist (first run).
+func Load(path string) (State, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return State{}, nil
+		}
+		return State{}, fmt.Errorf("read canonical state: %w", err)
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		return State{}, nil
+	}
+	var s State
+	if err := json.Unmarshal(data, &s); err != nil {
+		return State{}, fmt.Errorf("corrupted canonical state at %s: %w", path, err)
+	}
+	return s, nil
+}
+
+// Validate checks lifecycle invariants of the state. Returns the first
+// violation found, or nil if the state is consistent.
+func (s *State) Validate() error {
+	seenAttemptIDs := make(map[string]string) // attemptID -> "order/stage" for error messages
+
+	for orderID, order := range s.Orders {
+		// Active order must have at least one non-terminal stage.
+		if order.Status == OrderActive {
+			hasNonTerminal := false
+			for _, stage := range order.Stages {
+				if !isTerminalStageStatus(stage.Status) {
+					hasNonTerminal = true
+					break
+				}
+			}
+			if !hasNonTerminal {
+				return fmt.Errorf("order %q has status active but all stages are terminal", orderID)
+			}
+		}
+
+		for i, stage := range order.Stages {
+			// Stage indexes must be sequential starting at 0.
+			if stage.StageIndex != i {
+				return fmt.Errorf("order %q stage %d has index %d (expected %d)", orderID, i, stage.StageIndex, i)
+			}
+
+			// Running stage must have at least one running attempt.
+			if stage.Status == StageRunning {
+				hasRunningAttempt := false
+				for _, a := range stage.Attempts {
+					if a.Status == AttemptRunning {
+						hasRunningAttempt = true
+						break
+					}
+				}
+				if !hasRunningAttempt {
+					return fmt.Errorf("order %q stage %d has status running but no attempt is running", orderID, i)
+				}
+			}
+
+			// AttemptIDs must be unique across the entire state.
+			for _, a := range stage.Attempts {
+				if a.AttemptID == "" {
+					continue
+				}
+				loc := fmt.Sprintf("order %q stage %d", orderID, i)
+				if prevLoc, exists := seenAttemptIDs[a.AttemptID]; exists {
+					return fmt.Errorf("attempt %q appears in both %s and %s", a.AttemptID, prevLoc, loc)
+				}
+				seenAttemptIDs[a.AttemptID] = loc
+			}
+		}
+	}
+
+	return nil
+}
