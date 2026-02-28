@@ -3,17 +3,19 @@ import { test, expect } from "@playwright/test";
 test.describe("Noodle UI smoke", () => {
   test("channel layout loads with sidebar, feed, and context panel", async ({ page }) => {
     await page.goto("/");
+    const sidebar = page.locator("aside.sidebar");
+    await expect(sidebar).toBeVisible();
 
     // NOODLE header visible in sidebar
-    await expect(page.getByText("NOODLE")).toBeVisible();
+    await expect(sidebar.getByText("NOODLE", { exact: true })).toBeVisible();
 
     // Nav links visible
-    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Live Feed" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Tree" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Live Feed" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Tree" })).toBeVisible();
 
     // SCHEDULER section visible
-    await expect(page.getByText("SCHEDULER").first()).toBeVisible();
+    await expect(sidebar.getByText("SCHEDULER")).toBeVisible();
 
     // Three-column layout present (grid with sidebar, feed, context)
     const grid = page.locator(".grid");
@@ -22,10 +24,12 @@ test.describe("Noodle UI smoke", () => {
 
   test("sidebar shows scheduler channel", async ({ page }) => {
     await page.goto("/");
+    const sidebar = page.locator("aside.sidebar");
 
     // Manager channel item exists under SCHEDULER
-    await expect(page.getByText("Manager")).toBeVisible();
-    await expect(page.getByText("LLM")).toBeVisible();
+    await expect(sidebar.getByText("Manager", { exact: true })).toBeVisible();
+    await expect(sidebar.locator(".agent-meta-line")).toContainText("SCHEDULER");
+    await expect(sidebar.locator(".agent-meta-line")).toContainText("LLM");
   });
 
   test("dashboard route loads", async ({ page }) => {
