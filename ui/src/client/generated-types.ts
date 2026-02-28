@@ -3,6 +3,10 @@ import type { PendingReviewItem } from "./generated-loop-types";
 export type { PendingReviewItem } from "./generated-loop-types";
 
 //////////
+// source: snapshot_builder.go
+
+
+//////////
 // source: types.go
 
 /**
@@ -109,6 +113,7 @@ export interface Stage {
   provider: string;
   model: string;
   runtime?: string;
+  group?: number /* int */;
   status: string;
   extra?: { [key: string]: unknown};
   session_id?: string;

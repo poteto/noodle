@@ -105,6 +105,7 @@ var schemaTargets = []targetSpec{
 			"orders[].stages[].provider":      {Description: "provider used for this stage"},
 			"orders[].stages[].model":         {Description: "model used for this stage"},
 			"orders[].stages[].runtime":       {Description: "runtime used for this stage (process, sprites, etc.)"},
+			"orders[].stages[].group":         {Type: "number (optional)", Description: "parallel group ID; stages in the same group run concurrently, groups execute sequentially (default: 0)"},
 			"orders[].stages[].status":        {Type: "string (pending|active|completed|failed|cancelled)", Description: "stage lifecycle status"},
 			"orders[].stages[].extra{}[]":     {Description: "opaque extension data preserved across round-trips"},
 			"orders[].stages[].extra_prompt":  {Description: "supplemental instructions for the cook on how to approach the task (max ~1000 chars)"},
@@ -112,7 +113,7 @@ var schemaTargets = []targetSpec{
 			"action_needed[]":                 {Description: "backlog item ID skipped pending user action"},
 		},
 		Constraints: []string{
-			"Each order is a pipeline of stages executed sequentially.",
+			"Each order is a pipeline of stage groups executed sequentially. Stages within the same group run concurrently.",
 			"Group related work (execute, quality, reflect) into stages within one order.",
 			"Stage task keys must match a `task_types[].key` from mise.",
 			"Each `rationale` should cite a specific scheduling rule or principle.",

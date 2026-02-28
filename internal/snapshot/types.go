@@ -100,6 +100,7 @@ type Stage struct {
 	Provider  string                     `json:"provider"`
 	Model     string                     `json:"model"`
 	Runtime   string                     `json:"runtime,omitempty"`
+	Group     int                        `json:"group,omitempty"`
 	Status    string                     `json:"status"`
 	Extra     map[string]json.RawMessage `json:"extra,omitempty"`
 	SessionID string                     `json:"session_id,omitempty"`

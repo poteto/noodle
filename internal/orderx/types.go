@@ -35,6 +35,7 @@ type Stage struct {
 	Provider    string                     `json:"provider"`
 	Model       string                     `json:"model"`
 	Runtime     string                     `json:"runtime,omitempty"`
+	Group       int                        `json:"group,omitempty"`
 	Status      StageStatus                `json:"status"`
 	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
 	ExtraPrompt string                     `json:"extra_prompt,omitempty"`
@@ -55,6 +56,29 @@ type OrdersFile struct {
 	GeneratedAt  time.Time `json:"generated_at"`
 	Orders       []Order   `json:"orders"`
 	ActionNeeded []string  `json:"action_needed,omitempty"`
+}
+
+// CurrentGroup returns the group number of the first stage with status
+// pending, active, or merging. Returns -1 if all stages are terminal.
+func (o Order) CurrentGroup() int {
+	for _, s := range o.Stages {
+		switch s.Status {
+		case StageStatusPending, StageStatusActive, StageStatusMerging:
+			return s.Group
+		}
+	}
+	return -1
+}
+
+// StagesInGroup returns the indices of stages belonging to the given group.
+func (o Order) StagesInGroup(group int) []int {
+	var indices []int
+	for i, s := range o.Stages {
+		if s.Group == group {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 // ValidateOrderStatus returns an error if the order status is not valid.

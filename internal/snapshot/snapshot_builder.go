@@ -101,6 +101,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 				Provider: stage.Provider,
 				Model:    stage.Model,
 				Runtime:  stage.Runtime,
+				Group:    stage.Group,
 				Status:   string(stage.Status),
 				Extra:    stage.Extra,
 			}
