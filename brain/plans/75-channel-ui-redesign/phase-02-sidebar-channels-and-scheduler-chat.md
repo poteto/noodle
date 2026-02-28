@@ -30,6 +30,15 @@ Invoke `react-best-practices`, `ts-best-practices`, `interaction-design` before 
 ### Create
 - `ui/src/components/SchedulerFeed.tsx` — feed view for scheduler: shows steer history from feed_events, input area at bottom for sending steer commands (which become new orders). **Stage completion messages** (from phase 8) appear as feed events with the agent's message content — e.g., quality agent reports findings, execute agent reports work done. These render inline in the scheduler's conversation so the user sees what agents reported.
 
+## Backend: Persistent scheduler session
+
+The scheduler must be a persistent live session (not one-shot). Today `steer("schedule", ...)` in `cook_steer.go:41` calls `rescheduleForChefPrompt`, which rewrites `orders.json` — it does NOT send a message to a live session. This phase establishes:
+
+1. Scheduler as a persistent session that stays alive across loop cycles
+2. Direct message path from the loop to the scheduler via `controller.SendMessage()`, bypassing `rescheduleForChefPrompt`
+
+This is a prerequisite for phases 8 and 9, which forward stage messages and failure events to the scheduler via this path.
+
 ## Data Structures
 
 - `Channel` — `{ id: ChannelId, name: string, status: string, model: string, host: string }`
