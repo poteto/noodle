@@ -55,38 +55,41 @@ export interface DiffResponse {
   stat: string;
 }
 
-export type ControlAction =
-  | "pause"
-  | "resume"
-  | "drain"
-  | "skip"
-  | "kill"
-  | "steer"
-  | "merge"
-  | "reject"
-  | "request-changes"
-  | "autonomy"
-  | "enqueue"
-  | "stop-all"
-  | "requeue"
-  | "edit-item"
-  | "reorder"
-  | "stop"
-  | "set-max-cooks";
-
-export interface ControlCommand {
-  id?: string;
-  action: ControlAction;
-  order_id?: string;
-  name?: string;
-  target?: string;
+// Stage-level fields shared by enqueue, edit-item, and add-stage.
+interface StageFields {
   prompt?: string;
-  value?: string;
   task_key?: string;
+  skill?: string;
   provider?: string;
   model?: string;
-  skill?: string;
 }
+
+// Discriminated union — each action carries only its valid fields.
+// Adding the wrong field (e.g. `name` on a steer) is a compile error.
+export type ControlCommand = { id?: string } & (
+  | { action: "pause" }
+  | { action: "resume" }
+  | { action: "drain" }
+  | { action: "stop-all" }
+  | { action: "skip"; order_id: string }
+  | { action: "merge"; order_id: string }
+  | { action: "reject"; order_id: string }
+  | { action: "requeue"; order_id: string }
+  | { action: "advance"; order_id: string }
+  | { action: "kill"; name: string }
+  | { action: "stop"; name: string }
+  | { action: "steer"; target: string; prompt: string }
+  | { action: "request-changes"; order_id: string; prompt?: string }
+  | { action: "park-review"; order_id: string; prompt?: string }
+  | { action: "autonomy"; value: string }
+  | { action: "set-max-cooks"; value: string }
+  | { action: "reorder"; order_id: string; value: string }
+  | { action: "enqueue"; order_id: string } & StageFields
+  | { action: "edit-item"; order_id: string } & StageFields
+  | { action: "add-stage"; order_id: string; task_key: string } & Omit<StageFields, "task_key">
+);
+
+export type ControlAction = ControlCommand["action"];
 
 export interface ControlAck {
   id: string;
