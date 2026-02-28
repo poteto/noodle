@@ -27,4 +27,4 @@ Before allowing any parallel execution (agents, goroutines, sessions):
 
 [[principles/encode-lessons-in-structure]] is the meta-principle — this is what to encode when the lesson is about concurrency.
 
-See also [[codebase/worktree-gotchas]], [[delegation/respect-api-contracts]]
+See also [[codebase/worktree-gotchas]]

@@ -38,4 +38,4 @@ When verifying delegated work, inspect the actual output artifact (`git diff --s
 
 [[principles/fix-root-causes]] extends this to debugging — check the real cause, not the proxied symptom.
 
-See also [[principles/foundational-thinking]], [[delegation/codex-scope-violations]]
+See also [[principles/foundational-thinking]]

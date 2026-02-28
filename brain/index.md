@@ -22,13 +22,6 @@
 - [[principles/subtract-before-you-add]]
 - [[principles/prove-it-works]]
 
-## Delegation
-- [[delegation]]
-- [[delegation/codex-scope-violations]]
-- [[delegation/codex-worker-dispatch]]
-- [[delegation/opus-worker-permissions]]
-- [[delegation/respect-api-contracts]]
-
 ## Codebase
 - [[codebase/adopted-session-reconciliation]]
 - [[codebase/claude-code-ndjson-protocol]]

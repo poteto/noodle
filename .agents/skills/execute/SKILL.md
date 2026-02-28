@@ -56,7 +56,7 @@ Skip only when the user is interactively driving a single-agent session and expl
 - **Team execution**: 2+ parallelizable phases in a plan. See below.
 - **Codex**: Mechanical work not requiring judgment (renames, boilerplate, repetitive edits). Never for architectural decisions.
 
-Sequential is fine when phases are tightly coupled. Study the dependency graph — phases with no shared inputs can overlap.
+Sequential is fine when phases are tightly coupled. Before parallelizing, ask: "Does any phase's output become another phase's input?" If one phase defines a type/interface that another consumes, they share an API contract and must be sequential — otherwise each invents its own version. Only phases with no type-level coupling can overlap.
 
 #### Team Execution
 

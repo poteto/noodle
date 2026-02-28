@@ -27,4 +27,4 @@ if err == nil || errors.Is(err, syscall.EPERM) {
 
 The worktree merge lockfile uses PID-based stale lock detection. Without EPERM handling, a lock held by a process running as a different user would be incorrectly classified as stale and removed — allowing concurrent merges that the lockfile was designed to prevent.
 
-See also [[codebase/worktree-gotchas]], [[principles/prove-it-works]], [[principles/fix-root-causes]], [[delegation/codex-review-value]]
+See also [[codebase/worktree-gotchas]], [[principles/prove-it-works]], [[principles/fix-root-causes]]
