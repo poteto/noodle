@@ -18,6 +18,12 @@ importers:
         specifier: ^1.52.0
         version: 1.58.2
 
+  prototype:
+    devDependencies:
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)
+
   ui:
     dependencies:
       '@tailwindcss/vite':
