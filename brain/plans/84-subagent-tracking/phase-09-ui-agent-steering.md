@@ -28,8 +28,8 @@ The `AgentNode.Steerable` field is set during snapshot building based on agent t
 Dispatch logic:
 1. Look up agent in session snapshot by agent_id
 2. If not steerable, return 400
-3. **Claude team member**: Read agent's team config from `~/.claude/teams/{team}/config.json` to find the inbox path. Append message to inbox JSON array with `{from: "user", text, summary, timestamp, read: false}`.
-4. **Codex sub-agent**: Shell out to `codex exec resume {session_id} "{text}"`. The session ID is the agent's own thread ID (from `session_meta.id`).
+3. **Claude team member**: Read agent's team config from `~/.claude/teams/{team}/config.json` to find the inbox path. Append message to inbox JSON array with `{from: "user", text, summary, timestamp, read: false}`. Use atomic write (write to temp file, rename) to avoid corrupting the inbox if multiple writers race.
+4. **Codex sub-agent**: The live steering mechanism is `send_input` — a function_call the parent agent makes to deliver input to a running sub-agent. Noodle triggers this by writing to the parent's stdin or invoking `codex exec resume` on the parent session with a prompt that tells it to send_input to the target child thread ID.
 
 **`server/routes.go`** -- Register the new endpoint.
 

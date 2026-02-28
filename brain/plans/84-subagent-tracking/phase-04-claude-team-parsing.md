@@ -25,13 +25,13 @@ Parse Claude team lifecycle (TeamCreate, SendMessage, teammate inbox messages) i
    - `AgentType` from `input.subagent_type` + marker that this is a team member
    - Extra metadata: `team_name`
 
-**New: `parse/claude_team.go`** (or inline in claude.go) -- Team inbox file parser:
+**Note on teams and steerability:** Claude team members spawned via `Agent` with `team_name` are steerable (`Steerable: true`). Regular Claude sub-agents (no team) are non-steerable.
 
-A separate function `ParseTeamInbox(path string) ([]CanonicalEvent, error)` that reads a Claude team inbox JSON file (array of `{from, text, summary, timestamp}`) and converts each message into `EventAgentMessage` events. This is called from outside the NDJSON pipeline -- by the session manager or a file watcher -- since inbox files are not part of the NDJSON stream.
+**Out-of-band ingestion:** Team inbox files (`~/.claude/teams/{name}/inboxes/{agent}.json`) live outside the NDJSON stream. The session manager polls or watches these files and feeds new messages into the event pipeline. This is wired in Phase 5 alongside Codex sub-agent file discovery.
 
 ## Data Structures
 
-- Team inbox message: `{From, Text, Summary string, Timestamp time.Time, Read bool}`
+- Team inbox message: `{From, Text, Summary string, Timestamp time.Time, Read bool, Color string}` — the `Text` field may contain nested JSON (e.g., `idle_notification`, `shutdown_request`, `task_assignment`) that should be parsed for display
 - Reuse existing `claudeContent` for tool_use input parsing
 
 ## Routing

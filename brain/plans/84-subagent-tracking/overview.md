@@ -19,7 +19,7 @@ The goal: parse sub-agent lifecycle into canonical events, track agent trees in 
 **In scope:**
 - Claude sub-agents (Agent tool) -- detected via `agent_progress` NDJSON events
 - Claude teams (TeamCreate/SendMessage) -- detected via tool_use blocks + inbox files on disk
-- Codex sub-agents -- detected via `session_meta.source.subagent` in session JSONL files + `collab_tool_call` items
+- Codex sub-agents -- detected via `session_meta.source.subagent` in session JSONL files + `function_call` items (spawn_agent, send_input, close_agent)
 - New canonical event types for agent lifecycle (spawn, progress, complete)
 - Agent tree state in session snapshot (parent/child relationships, status, identity)
 - UI: agent tree view, per-agent activity feed, agent steering (send message)
@@ -59,13 +59,13 @@ The goal: parse sub-agent lifecycle into canonical events, track agent trees in 
 
 1. [[plans/84-subagent-tracking/phase-01-canonical-agent-events]] -- Add agent event types and fields to CanonicalEvent
 2. [[plans/84-subagent-tracking/phase-02-claude-subagent-parsing]] -- Parse Claude `agent_progress` and Agent tool_use into agent events
-3. [[plans/84-subagent-tracking/phase-03-codex-subagent-parsing]] -- Parse Codex `session_meta.source.subagent` and `collab_tool_call` into agent events
+3. [[plans/84-subagent-tracking/phase-03-codex-subagent-parsing]] -- Parse Codex `session_meta.source.subagent` and `function_call` items into agent events
 4. [[plans/84-subagent-tracking/phase-04-claude-team-parsing]] -- Parse Claude team tool calls (TeamCreate, SendMessage) and inbox files
 5. [[plans/84-subagent-tracking/phase-05-event-pipeline-agent-support]] -- Wire agent events through event storage, snapshot builder, and WebSocket broadcast
 6. [[plans/84-subagent-tracking/phase-06-snapshot-agent-tree]] -- Add agent tree to session snapshot (parent/child relationships, identity, status)
 7. [[plans/84-subagent-tracking/phase-07-ui-agent-tree]] -- Agent tree component in UI with expand/collapse and status indicators
 8. [[plans/84-subagent-tracking/phase-08-ui-agent-feed]] -- Per-agent activity feed (click an agent to see its tool calls, text, errors)
-9. [[plans/84-subagent-tracking/phase-09-ui-agent-steering]] -- Send messages to agents (Claude team inbox, Codex send_input, Claude interrupt+resume)
+9. [[plans/84-subagent-tracking/phase-09-ui-agent-steering]] -- Send messages to steerable agents (Claude team inbox write, Codex send_input function_call)
 10. [[plans/84-subagent-tracking/phase-10-smoke-tests]] -- End-to-end tests with fixture NDJSON covering all agent patterns
 
 ## Verification

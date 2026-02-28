@@ -8,10 +8,9 @@ Add an agent tree to the session snapshot so the UI can render the parent/child 
 
 ## Changes
 
-**`internal/snapshot/types.go`** -- Add `AgentNode` struct and `Agents` field to `Session`:
+**`internal/snapshot/types.go`** -- `AgentNode` struct is already defined (Phase 1). Add the `Agents` field to `Session`:
 
 ```
-AgentNode: {ID, ParentID, Name, Type, Status, CurrentAction, SpawnedAt, CompletedAt}
 Session.Agents: []AgentNode
 ```
 
@@ -29,7 +28,7 @@ The agent tree is built from the event log on each snapshot rebuild (same patter
 
 ## Data Structures
 
-- `AgentNode` struct with 8 fields (see above)
+- `AgentNode` struct defined in Phase 1 (9 fields including Steerable)
 - `Session.Agents []AgentNode` -- flat list, tree structure implied by ParentID references
 
 ## Routing

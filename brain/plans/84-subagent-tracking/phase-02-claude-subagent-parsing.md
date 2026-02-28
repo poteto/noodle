@@ -26,11 +26,16 @@ Parse Claude's `agent_progress` NDJSON events and Agent `tool_use` blocks into c
 
 3. **Agent tool_result detection** (in existing `case "user"` handler):
    When a `tool_result` corresponds to an Agent tool_use (match by `tool_use_id`), emit `EventAgentComplete` with:
-   - `AgentID` extracted from the result text (pattern: `agentId: {hex}`)
+   - `AgentID` extracted from the result text — accept both `agentId: {hex}` and `agent_id: {hex}` patterns (Claude uses both camelCase and snake_case across versions)
+
+**ID reconciliation:** The Agent tool_use `id` field is a temporary correlation key. The real `agentId` arrives later in `agent_progress` events. The parser maintains a map from `tool_use_id` -> `agentId` so that when the tool_result arrives, it can emit the correct `AgentID`. If `agent_progress` never arrives (agent fails instantly), fall back to the `tool_use_id` as the agent ID.
+
+All Claude sub-agents are non-steerable (`Steerable: false`) — they run to completion with no input channel.
 
 ## Data Structures
 
 - `claudeProgressData` struct: `{Type string, AgentID string, Prompt string, Message json.RawMessage}`
+- `tool_use_id` -> `agentId` reconciliation map (built during parse, not persisted)
 - Reuse existing `claudeMessage` / `claudeContent` for parsing the inner agent message
 
 ## Routing

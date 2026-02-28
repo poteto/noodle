@@ -28,10 +28,10 @@ End-to-end tests using fixture NDJSON files that exercise the full agent trackin
 
 3. `codex_subagent.ndjson` -- A Codex parent session with collab:
    - session_meta with source: "cli" (root)
-   - collab_tool_call item.started with tool: "spawn_agent"
-   - collab_tool_call item.completed with agents_states
-   - collab_tool_call item.started with tool: "send_input"
-   - collab_tool_call item.completed with tool: "close_agent"
+   - response_item with function_call name: "spawn_agent"
+   - item.completed with agents_states
+   - response_item with function_call name: "send_input"
+   - response_item with function_call name: "close_agent"
 
 4. `codex_subagent_child.ndjson` -- A Codex sub-agent session file:
    - session_meta with source.subagent.thread_spawn (depth 1, nickname, role)

@@ -12,27 +12,32 @@ Extend `CanonicalEvent` and `event.Event` with agent-specific types and metadata
 - `EventAgentSpawn` -- a sub-agent was created
 - `EventAgentProgress` -- a sub-agent produced output (tool call, text, etc.)
 - `EventAgentComplete` -- a sub-agent finished (success or error)
-- `EventAgentMessage` -- an inter-agent message (team inbox, collab send_input)
+
+`EventAgentMessage` (inter-agent messages) is deferred — spawn/progress/complete gives full agent visibility. Messages can be added later without changing the core pipeline.
 
 Add optional fields to `CanonicalEvent`:
 - `AgentID string` -- unique agent identifier
 - `ParentAgentID string` -- parent's agent ID (empty for root)
 - `AgentName string` -- human-readable name (slug, nickname)
 - `AgentType string` -- role/type (Explore, worker, awaiter, team member name)
+- `Steerable bool` -- whether the agent accepts user messages
 
 **`event/types.go`** -- Add corresponding event types:
 - `EventAgentSpawned`
 - `EventAgentProgress`
 - `EventAgentExited`
-- `EventAgentMessage`
+
+**`internal/snapshot/types.go`** -- Define `AgentNode` struct here (foundational type used by later phases):
+- `{ID, ParentID, Name, Type, Status, CurrentAction, SpawnedAt, CompletedAt, Steerable}`
 
 **`dispatcher/session_helpers.go`** -- Extend `eventFromCanonical()` to map the new parse event types to the new event types, carrying agent metadata in the payload.
 
 ## Data Structures
 
-- `CanonicalEvent` gains 4 string fields (AgentID, ParentAgentID, AgentName, AgentType) -- all `omitempty`
-- New `EventType` constants (4 values)
-- Agent payload shape: `{agent_id, parent_agent_id, agent_name, agent_type, message}`
+- `CanonicalEvent` gains 5 fields (AgentID, ParentAgentID, AgentName, AgentType string + Steerable bool) -- all `omitempty`
+- `AgentNode` struct with 9 fields (ID, ParentID, Name, Type, Status, CurrentAction, SpawnedAt, CompletedAt, Steerable)
+- New `EventType` constants (3 values)
+- Agent payload shape: `{agent_id, parent_agent_id, agent_name, agent_type, message, steerable}`
 
 ## Routing
 
