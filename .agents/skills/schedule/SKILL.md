@@ -135,6 +135,17 @@ Read `routing.available_runtimes` from mise before writing orders.
 
 Write valid JSON to `.noodle/orders-next.json` matching `noodle schema orders`.
 
+### extra_prompt
+
+Each stage supports an optional `extra_prompt` string — supplemental instructions about *how* to approach the task. Distinct from `prompt` (what to do) and `rationale` (why it's scheduled).
+
+Use cases:
+- Relay failure context from `recent_history` (e.g., "previous attempt failed because tests weren't run — run tests this time")
+- Flag dependencies or preconditions the cook should be aware of
+- Suggest approach constraints based on scheduling context
+
+Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty when there's nothing extra to say — don't fill it for the sake of filling it. The field lives on each stage, not at the order level.
+
 ### Example: Multi-stage order
 
 ```json
