@@ -1,5 +1,6 @@
 import { useActiveChannel } from "~/client";
 import { SchedulerFeed } from "./SchedulerFeed";
+import { AgentFeed } from "./AgentFeed";
 
 export function FeedPanel() {
   const { activeChannel } = useActiveChannel();
@@ -9,9 +10,7 @@ export function FeedPanel() {
       {activeChannel.type === "scheduler" ? (
         <SchedulerFeed />
       ) : (
-        <div className="flex items-center justify-center h-full text-neutral-600 text-sm font-body">
-          Agent feed coming soon
-        </div>
+        <AgentFeed sessionId={activeChannel.sessionId} />
       )}
     </main>
   );
