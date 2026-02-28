@@ -21,7 +21,8 @@ describe("fetchSnapshot", () => {
     mockFetch.mockResolvedValue(jsonResponse(data));
 
     const result = await fetchSnapshot();
-    expect(result).toEqual(data);
+    // normalizeSnapshot fills in missing array fields with defaults.
+    expect(result).toMatchObject(data);
     expect(mockFetch).toHaveBeenCalledWith("/api/snapshot");
   });
 

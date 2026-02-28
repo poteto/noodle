@@ -82,7 +82,12 @@ describe("connectSSE", () => {
     const snapshot = { loop_state: "running", sessions: [] };
     es.emit("message", JSON.stringify(snapshot));
 
-    expect(qc.setQueryData).toHaveBeenCalledWith(SNAPSHOT_KEY, snapshot);
+    // normalizeSnapshot fills in missing array fields, so use toMatchObject.
+    const snapshotCalls = qc.setQueryData.mock.calls.filter(
+      (call: unknown[]) => JSON.stringify(call[0]) === JSON.stringify(SNAPSHOT_KEY),
+    );
+    expect(snapshotCalls).toHaveLength(1);
+    expect(snapshotCalls[0]![1]).toMatchObject(snapshot);
     expect(qc.setQueryData).toHaveBeenCalledWith(SSE_STATUS_KEY, "connected");
   });
 
