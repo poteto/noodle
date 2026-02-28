@@ -73,7 +73,6 @@ These are emitted automatically by the loop:
 | `order.requeued` | A failed order was reset and re-queued for another attempt |
 | `worktree.merged` | A cook's worktree was merged back to main |
 | `merge.conflict` | A merge failed due to conflicts |
-| `quality.written` | A quality verdict was recorded (accept or reject) |
 | `registry.rebuilt` | The skill registry was rebuilt (skills added or removed) |
 | `sync.degraded` | The backlog sync script encountered issues |
 
@@ -88,7 +87,6 @@ Events are context, not commands. Consider them alongside backlog state and sess
 - After `stage.failed` or `order.failed` — consider whether the failure needs a debugging order, or if the item should be retried with a different approach.
 - After `order.completed` — consider follow-up work (reflect, related items that were blocked).
 - After `merge.conflict` — the affected order may need manual attention; avoid re-scheduling it immediately.
-- After `quality.written` with a rejection — the item will go through on_failure stages automatically; don't duplicate that work.
 - After external events like `ci.failed` — consider scheduling an investigation or fix order if it seems actionable.
 - After `registry.rebuilt` — new task types may be available; check `task_types` for scheduling opportunities.
 

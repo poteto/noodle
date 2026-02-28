@@ -2,7 +2,6 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -302,72 +301,6 @@ func TestIntegrationOnFailurePipeline(t *testing.T) {
 	// Adapter "done" should NOT have been called (this was a failure, not success).
 	if len(env.ar.doneCalls) != 0 {
 		t.Fatalf("done calls = %#v, want [] (failure path should not fire done)", env.ar.doneCalls)
-	}
-}
-
-// --- Quality verdict gates merge ---
-// Stage completes → quality verdict rejects → failStage → OnFailure dispatches.
-
-func TestIntegrationQualityVerdictRejectsAndTriggersOnFailure(t *testing.T) {
-	orders := OrdersFile{
-		Orders: []Order{
-			{
-				ID:     "quality-1",
-				Title:  "order with quality gate",
-				Status: OrderStatusActive,
-				Stages: []Stage{
-					{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				},
-				OnFailure: []Stage{
-					{TaskKey: "oops", Skill: "oops", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				},
-			},
-		},
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Autonomy = "auto"
-
-	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
-		ic.cfg = cfg
-	})
-	l := env.loop
-
-	// Cycle 1: dispatch execute stage.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 1: %v", err)
-	}
-	if len(env.rt.sessions) != 1 {
-		t.Fatalf("expected 1 session, got %d", len(env.rt.sessions))
-	}
-
-	// Write a rejecting quality verdict before session completes.
-	sessionID := env.rt.sessions[0].id
-	qualityDir := filepath.Join(env.runtimeDir, "quality")
-	if err := os.MkdirAll(qualityDir, 0o755); err != nil {
-		t.Fatalf("mkdir quality: %v", err)
-	}
-	verdict := QualityVerdict{Accept: false, Feedback: "tests failing"}
-	data, _ := json.Marshal(verdict)
-	if err := os.WriteFile(filepath.Join(qualityDir, sessionID+".json"), data, 0o644); err != nil {
-		t.Fatalf("write verdict: %v", err)
-	}
-
-	// Session completes → cycle 2 reads verdict → fails stage → triggers OnFailure.
-	env.completeSessions("completed")
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 2: %v", err)
-	}
-
-	of := env.readOrders(t)
-	if len(of.Orders) != 1 {
-		t.Fatalf("expected 1 order (failing with OnFailure), got %d", len(of.Orders))
-	}
-	if of.Orders[0].Status != OrderStatusFailing {
-		t.Fatalf("order status = %q, want failing", of.Orders[0].Status)
-	}
-	if of.Orders[0].OnFailure[0].Status != StageStatusActive {
-		t.Fatalf("OnFailure[0] = %q, want active (dispatched)", of.Orders[0].OnFailure[0].Status)
 	}
 }
 

@@ -271,8 +271,6 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 		return "worktree merged for " + orderID
 	case "merge.conflict":
 		return "merge conflict for " + orderID
-	case "quality.written":
-		return "quality verdict for " + orderID
 	case "registry.rebuilt":
 		return "skill registry rebuilt"
 	case "sync.degraded":

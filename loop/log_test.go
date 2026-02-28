@@ -223,36 +223,6 @@ func TestLogCompletionMerge(t *testing.T) {
 	}
 }
 
-func TestLogCompletionParkForReview(t *testing.T) {
-	logger, handler := newTestLogger()
-	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
-	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
-		o.brief = &brief
-	})
-
-	// Enable pending approval so cooks get parked.
-	tc.loop.config.Autonomy = config.AutonomyApprove
-
-	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
-	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	if err := tc.loop.Cycle(context.Background()); err != nil {
-		t.Fatalf("spawn cycle: %v", err)
-	}
-
-	tc.runtime.sessions[0].complete("completed")
-
-	if err := tc.loop.Cycle(context.Background()); err != nil {
-		t.Fatalf("completion cycle: %v", err)
-	}
-
-	if !handler.hasMessage("cook parked for review") {
-		t.Fatal("expected 'cook parked for review' log entry")
-	}
-}
-
 func TestLogScheduleCompleted(t *testing.T) {
 	logger, handler := newTestLogger()
 	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}

@@ -12,8 +12,7 @@ const (
 	LoopEventOrderRequeued      = event.LoopEventOrderRequeued
 	LoopEventWorktreeMerged     = event.LoopEventWorktreeMerged
 	LoopEventMergeConflict      = event.LoopEventMergeConflict
-	LoopEventQualityWritten     = event.LoopEventQualityWritten
-	LoopEventScheduleCompleted  = event.LoopEventScheduleCompleted
+	LoopEventScheduleCompleted = event.LoopEventScheduleCompleted
 	LoopEventRegistryRebuilt    = event.LoopEventRegistryRebuilt
 	LoopEventSyncDegraded       = event.LoopEventSyncDegraded
 	LoopEventBootstrapCompleted = event.LoopEventBootstrapCompleted
@@ -61,13 +60,6 @@ type OrderCompletedPayload struct {
 type OrderFailedPayload struct {
 	OrderID string `json:"order_id"`
 	Reason  string `json:"reason"`
-}
-
-type QualityWrittenPayload struct {
-	OrderID   string `json:"order_id"`
-	SessionID string `json:"session_id"`
-	Accept    bool   `json:"accept"`
-	Feedback  string `json:"feedback,omitempty"`
 }
 
 type ScheduleCompletedPayload struct {
