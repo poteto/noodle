@@ -5,6 +5,7 @@ import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
+  merging: { symbol: "▶", cls: "stage-active" },
   pending: { symbol: "□", cls: "stage-pending" },
   completed: { symbol: "✓", cls: "stage-done" },
   failed: { symbol: "✗", cls: "stage-done" },
@@ -77,7 +78,15 @@ export function Sidebar() {
   const router = useRouter();
   const navigate = useNavigate();
   const pathname = router.state.location.pathname;
-  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const order of snapshot.orders) {
+      if (order.stages.some((s) => s.status === "active" || s.status === "merging")) {
+        initial.add(order.id);
+      }
+    }
+    return initial;
+  });
 
   function selectChannel(channel: ChannelId) {
     if (channel.type === "scheduler") {

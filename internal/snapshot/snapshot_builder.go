@@ -73,6 +73,16 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		cookSessionByOrder[cook.OrderID] = cook.SessionID
 	}
 
+	// Build a lookup from (order ID, task key) to completed session ID so
+	// stages that finished keep a navigable session_id in the UI.
+	type orderStageKey struct{ orderID, taskKey string }
+	completedSessionByStage := make(map[orderStageKey]string, len(state.RecentHistory))
+	for _, item := range state.RecentHistory {
+		if item.OrderID != "" && item.TaskKey != "" && item.SessionID != "" {
+			completedSessionByStage[orderStageKey{item.OrderID, item.TaskKey}] = item.SessionID
+		}
+	}
+
 	orders := make([]Order, 0, len(state.Orders))
 	for _, order := range state.Orders {
 		activeSessionID := cookSessionByOrder[order.ID]
@@ -90,6 +100,8 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			}
 			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
 				s.SessionID = activeSessionID
+			} else if sid := completedSessionByStage[orderStageKey{order.ID, stage.TaskKey}]; sid != "" {
+				s.SessionID = sid
 			}
 			stages = append(stages, s)
 		}

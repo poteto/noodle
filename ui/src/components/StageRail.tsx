@@ -3,6 +3,7 @@ import type { Stage, StageStatus } from "~/client";
 const dotClass: Record<StageStatus, string> = {
   completed: "done",
   active: "active",
+  merging: "active",
   pending: "pending",
   failed: "failed",
   cancelled: "pending",
