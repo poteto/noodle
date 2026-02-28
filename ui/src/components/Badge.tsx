@@ -9,7 +9,7 @@ const BADGE_CLASS: Record<string, string> = {
 export function Badge({ type }: { type: string }) {
   const cls = BADGE_CLASS[type] ?? "bg-neutral-800 text-neutral-400";
   return (
-    <span className={`font-mono text-[0.6875rem] font-bold px-2 py-0.5 inline-block ${cls}`}>
+    <span className={`font-mono text-[0.6875rem] font-bold px-2 py-0.5 inline-block animate-scale-in ${cls}`}>
       {type}
     </span>
   );

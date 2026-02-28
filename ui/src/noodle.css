@@ -41,6 +41,10 @@
   width: 18px;
   height: 18px;
   position: relative;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sidebar-header:hover .logo-mark {
+  transform: rotate(90deg);
 }
 .logo-mark::before, .logo-mark::after {
   content: '';
@@ -84,13 +88,14 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
   text-decoration: none;
 }
 .nav-item:hover {
   background: var(--color-bg-surface);
   color: var(--color-text-primary);
   border-color: var(--color-border-subtle);
+  transform: translateX(2px);
 }
 .nav-item.active {
   background: rgba(251, 219, 36, 0.04);
@@ -103,6 +108,7 @@
   height: 18px;
   opacity: 0.7;
   flex-shrink: 0;
+  transition: opacity 0.15s;
 }
 .nav-item.active .nav-icon {
   opacity: 0.9;
@@ -141,7 +147,7 @@
   align-items: center;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, border-color 0.15s, transform 0.12s;
   margin-bottom: 1px;
   border: 1px solid transparent;
   gap: 12px;
@@ -149,6 +155,7 @@
 .agent-item:hover {
   background: var(--color-bg-surface);
   border-color: var(--color-border-subtle);
+  transform: translateX(2px);
 }
 .agent-item.active {
   background: rgba(251, 219, 36, 0.03);
@@ -168,6 +175,10 @@
   color: var(--color-text-secondary);
   flex-shrink: 0;
   font-family: var(--font-mono);
+  transition: transform 0.15s;
+}
+.agent-item:hover .agent-avatar {
+  transform: scale(1.05);
 }
 
 /* Manager gets accent avatar */
@@ -219,12 +230,13 @@
   padding: 6px 12px;
   margin-top: 2px;
   border: 1px solid transparent;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, transform 0.12s;
 }
 .tree-order:hover {
   background: var(--color-bg-surface);
   border-color: var(--color-border-subtle);
   color: var(--color-text-primary);
+  transform: translateX(2px);
 }
 .tree-order.active {
   background: rgba(251, 219, 36, 0.03);
@@ -240,7 +252,7 @@
 .tree-chevron {
   font-size: 16px;
   color: var(--color-text-tertiary);
-  transition: transform 0.15s;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
   width: 14px;
 }
@@ -259,7 +271,7 @@
 .tree-stages {
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.15s ease;
+  transition: max-height 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   padding-left: 28px;
 }
 .tree-stages.open {
@@ -277,9 +289,11 @@
   letter-spacing: 0.5px;
   padding: 3px 0;
   cursor: pointer;
+  transition: color 0.12s, transform 0.12s;
 }
 .tree-stage:hover {
   color: var(--color-text-secondary);
+  transform: translateX(2px);
 }
 .tree-icon {
   flex-shrink: 0;
@@ -303,6 +317,7 @@
   border-radius: 0;
   background: var(--color-text-tertiary);
   flex-shrink: 0;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 .status-dot.active {
   background: var(--color-accent);
@@ -341,6 +356,11 @@
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
+}
+
+@keyframes message-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============================================================
@@ -419,6 +439,9 @@
   letter-spacing: 1px;
   transition: all 0.12s;
 }
+.feed-action-btn:active {
+  transform: scale(0.96);
+}
 .feed-action-btn:hover {
   border-color: var(--color-text-secondary);
   color: var(--color-text-primary);
@@ -463,9 +486,10 @@
   grid-template-columns: 36px 1fr;
   gap: 14px;
   transition: background 0.15s;
+  animation: message-enter 0.2s ease-out both;
 }
 .message-row:hover {
-  background: rgba(255, 255, 255, 0.01);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* System messages — compact */
@@ -530,6 +554,7 @@
   background: #111;
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-primary);
+  animation: scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .msg-badge.badge-read { color: var(--color-blue); border-color: var(--color-blue); background: transparent; }
 .msg-badge.badge-edit { color: var(--color-yellow); border-color: var(--color-yellow); background: transparent; }
@@ -730,6 +755,7 @@
 .idle-divider {
   text-align: center;
   padding: 20px 28px;
+  animation: fade-in 0.3s ease-out;
 }
 .idle-divider span {
   font-family: var(--font-mono);
@@ -795,10 +821,11 @@
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
   padding: 12px 16px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .input-wrapper:focus-within {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.15);
 }
 
 .input-wrapper textarea {
@@ -848,9 +875,10 @@
   cursor: pointer;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  transition: opacity 0.12s;
+  transition: opacity 0.12s, transform 0.1s;
 }
 .btn-submit:hover { opacity: 0.9; }
+.btn-submit:active { transform: scale(0.96); }
 .btn-submit:disabled { opacity: 0.4; cursor: default; }
 
 .btn-stop {
@@ -869,6 +897,14 @@
 .btn-stop:hover {
   border-color: var(--color-red);
   color: var(--color-red);
+}
+.btn-stop:active {
+  transform: scale(0.96);
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 /* ============================================================
@@ -913,6 +949,10 @@
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
   padding: 12px;
+  transition: border-color 0.15s;
+}
+.metric-card:hover {
+  border-color: var(--color-border-active);
 }
 .metric-label {
   font-family: var(--font-display);
@@ -955,6 +995,7 @@
   gap: 8px;
   padding: 6px 8px;
   border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 .stage-item.current {
   background: var(--color-bg-surface);
@@ -966,9 +1007,10 @@
   height: 6px;
   border-radius: 0;
   flex-shrink: 0;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 .stage-dot.done { background: var(--color-green); }
-.stage-dot.active { background: var(--color-accent); animation: pulse 2s infinite; }
+.stage-dot.active { background: var(--color-accent); box-shadow: 0 0 8px var(--color-accent-dim); animation: pulse 2s infinite; }
 .stage-dot.pending { background: var(--color-text-tertiary); }
 .stage-dot.failed { background: var(--color-red); }
 
@@ -1010,7 +1052,16 @@
 .ctx-progress-fill {
   height: 100%;
   background: var(--color-accent);
-  transition: width 0.4s ease;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+.ctx-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 .ctx-progress-label {
   font-family: var(--font-mono);
@@ -1083,6 +1134,7 @@
 .review-section {
   padding: 28px 36px;
   border-bottom: 1px solid var(--color-border-subtle);
+  animation: fade-in 0.25s ease-out;
 }
 
 .review-section:last-child {
@@ -1149,11 +1201,14 @@
   text-transform: uppercase;
   cursor: pointer;
   border: 1.5px solid transparent;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.12s;
 }
 
 .review-action-btn:hover {
   opacity: 0.88;
+}
+.review-action-btn:active {
+  transform: scale(0.97);
 }
 
 .review-action-primary {
@@ -1204,10 +1259,12 @@
   border: 1px solid var(--color-border-active);
   color: var(--color-text-primary);
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .review-feedback-input:focus {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.15);
 }
 
 .review-feedback-input::placeholder {
@@ -1235,7 +1292,7 @@
   border-bottom: 2px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.12s, border-color 0.2s;
 }
 
 .review-tab:hover {

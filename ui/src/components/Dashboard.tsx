@@ -99,7 +99,7 @@ export function Dashboard() {
         <h1 className="font-display font-bold text-lg tracking-wider uppercase">DASHBOARD</h1>
         <button
           onClick={() => navigate({ to: "/" })}
-          className="px-4 py-2 bg-accent text-bg-depth font-mono font-bold text-sm uppercase tracking-wider hover:opacity-90"
+          className="px-4 py-2 bg-accent text-bg-depth font-mono font-bold text-sm uppercase tracking-wider hover:opacity-90 active:scale-[0.96] transition-[opacity,transform] duration-100"
         >
           NEW ORDER
         </button>
@@ -122,7 +122,7 @@ export function Dashboard() {
                 <th
                   key={col.key}
                   onClick={() => handleSort(col.key)}
-                  className="text-left px-3 py-2 font-display font-bold text-sm text-accent tracking-wider cursor-pointer select-none hover:underline"
+                  className="text-left px-3 py-2 font-display font-bold text-sm text-accent tracking-wider cursor-pointer select-none hover:underline transition-colors duration-150"
                 >
                   {col.label}
                   {sortKey === col.key && (
@@ -134,7 +134,7 @@ export function Dashboard() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-border-subtle hover:bg-bg-surface">
+              <tr key={row.id} className="border-b border-border-subtle hover:bg-bg-surface transition-[background,border-left] duration-[120ms] hover:border-l-2 hover:border-l-accent">
                 <td className="px-3 py-2 font-mono text-sm">{row.id}</td>
                 <td className="px-3 py-2 font-mono text-sm max-w-[300px] truncate">{row.title}</td>
                 <td className="px-3 py-2">
@@ -167,7 +167,7 @@ export function Dashboard() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="border border-border-subtle bg-bg-surface px-4 py-3">
+    <div className="border border-border-subtle bg-bg-surface px-4 py-3 transition-[border-color] duration-150 hover:border-border-active">
       <div className="font-mono text-xl font-bold text-text-primary">{value}</div>
       <div className="font-display text-xs text-border-subtle uppercase tracking-wider">{label}</div>
     </div>
