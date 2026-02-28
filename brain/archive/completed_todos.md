@@ -63,3 +63,11 @@
 44. [x] ~~TUI feed notifications for deterministic repairs~~ — folded into #46 (web UI).
 45. [x] ~~Task editor overhaul — consolidate Type+Skill, overlay dropdowns, multiline prompt.~~ — superseded by #46 (web UI will build the task editor from scratch). [[archive/plans/45-task-editor-overhaul/overview]]
 8. [x] ~~Run-level cost budget — enforce a total-run budget cap (e.g. "stop after spending $50"). `SpawnRequest` has per-cook budget but nothing aggregates across the run. Add a `budget.max_run_cost` config field; the loop checks cumulative cost before spawning.~~ — decided not to do.
+29. [x] Backlog-only scheduling — simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. Context passthrough (extra_prompt) addressed by #66 events. [[archive/plans/29-queue-item-context-passthrough/overview]]
+32. [x] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
+33. [x] Instance lock via flock — `noodle start` acquires an advisory file lock on `.noodle/noodle.lock`. Kernel releases the lock automatically on process exit (no stale lockfiles).
+50. [x] Reschedule button in web UI — superseded by #75 channel UI redesign.
+51. [x] Feed timeline — superseded by #75 channel UI redesign.
+54. [x] Skill registry browser — superseded by #75 channel UI redesign.
+55. [x] Health & stuck detection UI — superseded by #75 channel UI redesign.
+75. [x] ~~Redesign UI from kanban to Slack/Discord-style channel layout. Schedule agent is the primary "manager" agent — user's main conversation partner — and can shut down other agents when their work is done. Each cook is a conversation channel in a sidebar grouped by status (active/idle/done). User talks to the scheduler by default but can switch to any specific agent. Backend: idle state detection via EventResult canonical event so orders advance without waiting for process exit. Auto-advance for mechanical stages (schedule, quality), explicit dismiss for execute stages. [[archive/plans/75-channel-ui-redesign/overview]]~~ — done.
