@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
@@ -22,21 +21,11 @@ var (
 	reEstimate       = regexp.MustCompile(`~(small|medium|large)`)
 	rePlanRef = regexp.MustCompile(`\[\[plans/([0-9]+-[^/]+)/overview\]\]`)
 	reSpaces  = regexp.MustCompile(`\s+`)
-	rePlanDir = regexp.MustCompile(`^[0-9][0-9]-`)
 )
 
 type backlogPayload struct {
 	Title   string `json:"title"`
 	Section string `json:"section"`
-}
-
-type planPayload struct {
-	Title string `json:"title"`
-	Slug  string `json:"slug"`
-}
-
-type phasePayload struct {
-	Name string `json:"name"`
 }
 
 func main() {
@@ -54,12 +43,6 @@ func main() {
 		err = backlogDone(arg(2))
 	case "backlog-edit":
 		err = backlogEdit(arg(2))
-	case "plan-create":
-		err = planCreate()
-	case "plan-done":
-		err = planDone(arg(2))
-	case "plan-phase-add":
-		err = planPhaseAdd(arg(2))
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}
@@ -259,214 +242,6 @@ func backlogEdit(id string) error {
 	return writeLinesAtomic(todosFile, lines)
 }
 
-func planCreate() error {
-	payload, err := readPlanPayload(os.Stdin)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(payload.Title) == "" {
-		return fmt.Errorf("title required")
-	}
-	plansDir := envOrDefault("NOODLE_PLANS_DIR", "brain/plans")
-	indexFile := filepath.Join(plansDir, "index.md")
-
-	if err := os.MkdirAll(plansDir, 0o755); err != nil {
-		return err
-	}
-	if _, err := os.Stat(indexFile); errors.Is(err, os.ErrNotExist) {
-		if err := os.WriteFile(indexFile, []byte("# Plans\n\n"), 0o644); err != nil {
-			return err
-		}
-	}
-
-	slug := strings.TrimSpace(payload.Slug)
-	if slug == "" {
-		slug = slugify(payload.Title)
-	}
-
-	id, err := nextPlanID(plansDir)
-	if err != nil {
-		return err
-	}
-	id2 := fmt.Sprintf("%02d", id)
-	dir := filepath.Join(plansDir, id2+"-"+slug)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-
-	now := time.Now().Format("2006-01-02")
-	overview := strings.Join([]string{
-		"---",
-		fmt.Sprintf("id: %d", id),
-		fmt.Sprintf("created: %s", now),
-		fmt.Sprintf("updated: %s", now),
-		"status: active",
-		"---",
-		"",
-		"# " + payload.Title,
-		"",
-		"## Phases",
-		"",
-		fmt.Sprintf("- [ ] [[plans/%s-%s/phase-01-scaffold]] - Scaffold", id2, slug),
-		"",
-	}, "\n")
-	if err := os.WriteFile(filepath.Join(dir, "overview.md"), []byte(overview), 0o644); err != nil {
-		return err
-	}
-
-	phase := strings.Join([]string{
-		fmt.Sprintf("Back to [[plans/%s-%s/overview]]", id2, slug),
-		"",
-		"# Phase 1 - Scaffold",
-		"",
-		"## Goal",
-		"## Changes",
-		"## Data Structures",
-		"## Verification",
-		"### Static",
-		"### Runtime",
-		"",
-	}, "\n")
-	if err := os.WriteFile(filepath.Join(dir, "phase-01-scaffold.md"), []byte(phase), 0o644); err != nil {
-		return err
-	}
-
-	idxLines, err := readLines(indexFile)
-	if err != nil {
-		return err
-	}
-	idxLines = append(idxLines, fmt.Sprintf("- [ ] [[plans/%s-%s/overview]]", id2, slug))
-	if err := writeLinesAtomic(indexFile, idxLines); err != nil {
-		return err
-	}
-
-	fmt.Fprintln(os.Stdout, id2)
-	return nil
-}
-
-func planDone(id string) error {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return fmt.Errorf("id required")
-	}
-	idNum, err := strconv.Atoi(id)
-	if err != nil {
-		return fmt.Errorf("id required")
-	}
-	id2 := fmt.Sprintf("%02d", idNum)
-
-	plansDir := envOrDefault("NOODLE_PLANS_DIR", "brain/plans")
-	planDir, err := findPlanDir(plansDir, id2)
-	if err != nil {
-		return err
-	}
-
-	overviewFile := filepath.Join(planDir, "overview.md")
-	overviewLines, err := readLines(overviewFile)
-	if err != nil {
-		return err
-	}
-	for i, line := range overviewLines {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "status:") {
-			overviewLines[i] = "status: done"
-		}
-	}
-	if err := writeLinesAtomic(overviewFile, overviewLines); err != nil {
-		return err
-	}
-
-	indexFile := filepath.Join(plansDir, "index.md")
-	if indexLines, err := readLines(indexFile); err == nil {
-		needle := "- [ ] [[plans/" + id2 + "-"
-		repl := "- [x] [[plans/" + id2 + "-"
-		for i, line := range indexLines {
-			if strings.Contains(line, needle) {
-				indexLines[i] = strings.Replace(line, needle, repl, 1)
-			}
-		}
-		if err := writeLinesAtomic(indexFile, indexLines); err != nil {
-			return err
-		}
-	}
-
-	todosFile := envOrDefault("NOODLE_TODOS_FILE", "brain/todos.md")
-	if todoLines, err := readLines(todosFile); err == nil {
-		re := regexp.MustCompile(`^([0-9]+\. )\[ \](.*\[\[plans/` + regexp.QuoteMeta(id2) + `-[^\]]*/overview\]\].*)$`)
-		for i, line := range todoLines {
-			if m := re.FindStringSubmatch(line); len(m) == 3 {
-				todoLines[i] = m[1] + "[x]" + m[2]
-			}
-		}
-		if err := writeLinesAtomic(todosFile, todoLines); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func planPhaseAdd(id string) error {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return fmt.Errorf("id required")
-	}
-	idNum, err := strconv.Atoi(id)
-	if err != nil {
-		return fmt.Errorf("id required")
-	}
-	id2 := fmt.Sprintf("%02d", idNum)
-
-	payload, err := readPhasePayload(os.Stdin)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(payload.Name) == "" {
-		return fmt.Errorf("name required")
-	}
-
-	plansDir := envOrDefault("NOODLE_PLANS_DIR", "brain/plans")
-	planDir, err := findPlanDir(plansDir, id2)
-	if err != nil {
-		return err
-	}
-
-	slug := slugify(payload.Name)
-	phaseFiles, err := filepath.Glob(filepath.Join(planDir, "phase-*.md"))
-	if err != nil {
-		return err
-	}
-	num := len(phaseFiles) + 1
-	num2 := fmt.Sprintf("%02d", num)
-	base := filepath.Base(planDir)
-	phaseFile := filepath.Join(planDir, "phase-"+num2+"-"+slug+".md")
-
-	phase := strings.Join([]string{
-		"Back to [[plans/" + base + "/overview]]",
-		"",
-		fmt.Sprintf("# Phase %d - %s", num, payload.Name),
-		"",
-		"## Goal",
-		"## Changes",
-		"## Data Structures",
-		"## Verification",
-		"### Static",
-		"### Runtime",
-		"",
-	}, "\n")
-	if err := os.WriteFile(phaseFile, []byte(phase), 0o644); err != nil {
-		return err
-	}
-
-	overviewFile := filepath.Join(planDir, "overview.md")
-	lines, err := readLines(overviewFile)
-	if err != nil {
-		return err
-	}
-	lines = append(lines, fmt.Sprintf("- [ ] [[plans/%s/phase-%s-%s]] - %s", base, num2, slug, payload.Name))
-	return writeLinesAtomic(overviewFile, lines)
-}
-
 func readBacklogPayload(r io.Reader) (backlogPayload, error) {
 	var payload backlogPayload
 	data, err := io.ReadAll(r)
@@ -475,30 +250,6 @@ func readBacklogPayload(r io.Reader) (backlogPayload, error) {
 	}
 	if len(bytes.TrimSpace(data)) == 0 {
 		return payload, nil
-	}
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return payload, err
-	}
-	return payload, nil
-}
-
-func readPlanPayload(r io.Reader) (planPayload, error) {
-	var payload planPayload
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return payload, err
-	}
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return payload, err
-	}
-	return payload, nil
-}
-
-func readPhasePayload(r io.Reader) (phasePayload, error) {
-	var payload phasePayload
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return payload, err
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return payload, err
@@ -609,70 +360,6 @@ func hasSection(lines []string, section string) bool {
 		}
 	}
 	return false
-}
-
-func nextPlanID(plansDir string) (int, error) {
-	entries, err := os.ReadDir(plansDir)
-	if err != nil {
-		return 0, err
-	}
-	maxID := 0
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !rePlanDir.MatchString(name) {
-			continue
-		}
-		id, err := strconv.Atoi(name[:2])
-		if err != nil {
-			continue
-		}
-		if id > maxID {
-			maxID = id
-		}
-	}
-	return maxID + 1, nil
-}
-
-func findPlanDir(plansDir, id2 string) (string, error) {
-	entries, err := os.ReadDir(plansDir)
-	if err != nil {
-		return "", err
-	}
-	prefix := id2 + "-"
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if strings.HasPrefix(entry.Name(), prefix) {
-			return filepath.Join(plansDir, entry.Name()), nil
-		}
-	}
-	return "", fmt.Errorf("plan not found")
-}
-
-func slugify(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	var b strings.Builder
-	lastDash := false
-	for _, r := range value {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			b.WriteRune(r)
-			lastDash = false
-			continue
-		}
-		if !lastDash {
-			b.WriteByte('-')
-			lastDash = true
-		}
-	}
-	slug := strings.Trim(b.String(), "-")
-	if slug == "" {
-		return "plan"
-	}
-	return slug
 }
 
 func envOrDefault(key, fallback string) string {
