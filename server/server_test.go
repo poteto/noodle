@@ -1,8 +1,6 @@
 package server
 
 import (
-	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/loop"
 )
@@ -29,12 +29,14 @@ func testServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dir := t.TempDir()
 
+	broker := NewSessionEventBroker()
 	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
 	s := New(Options{
 		RuntimeDir:        dir,
 		Addr:              "127.0.0.1:0",
 		Now:               func() time.Time { return fixed },
 		LoopStateProvider: &staticProvider{state: loop.LoopState{Status: "running"}},
+		Broker:            broker,
 	})
 	return s, dir
 }
@@ -200,52 +202,221 @@ func TestCORSBlocksNonLocalhost(t *testing.T) {
 	}
 }
 
-func TestSSEStream(t *testing.T) {
+func TestWSConnection(t *testing.T) {
 	s, _ := testServer(t)
 
-	// Use a real HTTP test server for SSE.
 	ts := httptest.NewServer(s.httpServer.Handler)
 	defer ts.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/events", nil)
-	resp, err := http.DefaultClient.Do(req)
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/api/ws"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		t.Fatalf("SSE request: %v", err)
+		t.Fatalf("WS dial: %v", err)
 	}
-	defer resp.Body.Close()
+	defer conn.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
-	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "text/event-stream") {
-		t.Fatalf("content-type = %q, want text/event-stream", ct)
+	// Read the initial snapshot.
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read initial message: %v", err)
 	}
 
-	// Read the initial snapshot event (unnamed SSE — just data: lines).
-	scanner := bufio.NewScanner(resp.Body)
-	var dataLine string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "data: ") {
-			dataLine = strings.TrimPrefix(line, "data: ")
-			break
-		}
+	var envelope struct {
+		Type string          `json:"type"`
+		Data json.RawMessage `json:"data"`
 	}
-
-	if dataLine == "" {
-		t.Fatal("expected non-empty data line")
+	if err := json.Unmarshal(msg, &envelope); err != nil {
+		t.Fatalf("unmarshal envelope: %v", err)
+	}
+	if envelope.Type != "snapshot" {
+		t.Fatalf("type = %q, want snapshot", envelope.Type)
 	}
 
 	var snap snapshot.Snapshot
-	if err := json.Unmarshal([]byte(dataLine), &snap); err != nil {
-		t.Fatalf("decode SSE snapshot: %v", err)
+	if err := json.Unmarshal(envelope.Data, &snap); err != nil {
+		t.Fatalf("decode snapshot: %v", err)
 	}
 	if snap.UpdatedAt.IsZero() {
-		t.Fatal("expected non-zero updated_at in SSE snapshot")
+		t.Fatal("expected non-zero updated_at in WS snapshot")
+	}
+}
+
+func TestWSHubDiffGating(t *testing.T) {
+	broker := NewSessionEventBroker()
+	hub := newWSHub(broker)
+	dir := t.TempDir()
+
+	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
+	now := func() time.Time { return fixed }
+
+	provider := &staticProvider{state: loop.LoopState{Status: "running"}}
+
+	sub := &mockSubscriber{}
+	// Wrap mock as a wsClient-like subscriber via the hub's broadcast path.
+	// Instead, test directly via loadAndBroadcast by adding a real wsClient.
+	// Use a channel-based approach: add a fake wsClient with a buffered send channel.
+	fakeSend := make(chan []byte, 16)
+	fakeClient := &wsClient{
+		send: fakeSend,
+		hub:  hub,
+	}
+	hub.addClient(fakeClient)
+	_ = sub // not used in this approach
+
+	// First load should broadcast.
+	hub.loadAndBroadcast(dir, now, provider, nil)
+	select {
+	case msg := <-fakeSend:
+		if !strings.Contains(string(msg), `"type":"snapshot"`) {
+			t.Fatalf("expected snapshot envelope, got %s", msg)
+		}
+	default:
+		t.Fatal("expected broadcast on first load")
+	}
+
+	// Second load with same data should NOT broadcast (diff gating).
+	hub.loadAndBroadcast(dir, now, provider, nil)
+	select {
+	case msg := <-fakeSend:
+		t.Fatalf("expected no broadcast on unchanged data, got %s", msg)
+	default:
+		// Good, no message.
+	}
+
+	hub.removeClient(fakeClient)
+}
+
+func TestWSSubscribeSessionEvents(t *testing.T) {
+	s, dir := testServer(t)
+
+	// Write some events to disk for backfill.
+	sessionID := "test-session-1"
+	sessionDir := filepath.Join(dir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		t.Fatalf("mkdir session dir: %v", err)
+	}
+	ev := event.Event{
+		Type:      event.EventAction,
+		Payload:   json.RawMessage(`{"tool":"read","message":"reading file"}`),
+		Timestamp: time.Now(),
+		SessionID: sessionID,
+	}
+	evData, _ := json.Marshal(ev)
+	if err := os.WriteFile(filepath.Join(sessionDir, "events.ndjson"), append(evData, '\n'), 0o644); err != nil {
+		t.Fatalf("write events: %v", err)
+	}
+
+	ts := httptest.NewServer(s.httpServer.Handler)
+	defer ts.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/api/ws"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+
+	// Read and discard the initial snapshot.
+	conn.ReadMessage()
+
+	// Send subscribe.
+	subMsg, _ := json.Marshal(map[string]string{
+		"type":       "subscribe",
+		"session_id": sessionID,
+	})
+	if err := conn.WriteMessage(websocket.TextMessage, subMsg); err != nil {
+		t.Fatalf("write subscribe: %v", err)
+	}
+
+	// Read backfill.
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read backfill: %v", err)
+	}
+	var backfill struct {
+		Type      string `json:"type"`
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(raw, &backfill); err != nil {
+		t.Fatalf("unmarshal backfill: %v", err)
+	}
+	if backfill.Type != "backfill" {
+		t.Fatalf("type = %q, want backfill", backfill.Type)
+	}
+	if backfill.SessionID != sessionID {
+		t.Fatalf("session_id = %q, want %q", backfill.SessionID, sessionID)
+	}
+
+	// Read subscribed ack.
+	_, raw, err = conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read subscribed: %v", err)
+	}
+	var ack struct {
+		Type      string `json:"type"`
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(raw, &ack); err != nil {
+		t.Fatalf("unmarshal ack: %v", err)
+	}
+	if ack.Type != "subscribed" {
+		t.Fatalf("type = %q, want subscribed", ack.Type)
+	}
+}
+
+func TestWSControl(t *testing.T) {
+	s, dir := testServer(t)
+
+	ts := httptest.NewServer(s.httpServer.Handler)
+	defer ts.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/api/ws"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+
+	// Read and discard the initial snapshot.
+	conn.ReadMessage()
+
+	// Send control command via WS.
+	ctrlMsg, _ := json.Marshal(map[string]any{
+		"type": "control",
+		"data": map[string]string{
+			"action": "pause",
+		},
+	})
+	if err := conn.WriteMessage(websocket.TextMessage, ctrlMsg); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	// Read control ack.
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read control ack: %v", err)
+	}
+	var ackEnv struct {
+		Type string         `json:"type"`
+		Data map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &ackEnv); err != nil {
+		t.Fatalf("unmarshal ack: %v", err)
+	}
+	if ackEnv.Type != "control_ack" {
+		t.Fatalf("type = %q, want control_ack", ackEnv.Type)
+	}
+	if ackEnv.Data["action"] != "pause" {
+		t.Fatalf("action = %v, want pause", ackEnv.Data["action"])
+	}
+
+	// Verify the command was written to disk.
+	data, err := os.ReadFile(filepath.Join(dir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	if !strings.Contains(string(data), "pause") {
+		t.Fatalf("control.ndjson missing pause command")
 	}
 }
 
@@ -301,44 +472,6 @@ func TestPostControlEnqueue(t *testing.T) {
 	if cmd.TaskKey != "execute" {
 		t.Fatalf("task_key = %q", cmd.TaskKey)
 	}
-}
-
-func TestSSEHubDiffGating(t *testing.T) {
-	hub := newSSEHub()
-	dir := t.TempDir()
-
-	fixed := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
-	now := func() time.Time { return fixed }
-
-	provider := &staticProvider{state: loop.LoopState{Status: "running"}}
-
-	client := &sseClient{
-		ch:     make(chan []byte, 16),
-		closed: make(chan struct{}),
-	}
-	hub.addClient(client)
-
-	// First load should broadcast.
-	hub.loadAndBroadcast(dir, now, provider, nil)
-	select {
-	case msg := <-client.ch:
-		if !strings.Contains(string(msg), "data: ") {
-			t.Fatalf("expected data event, got %s", msg)
-		}
-	default:
-		t.Fatal("expected broadcast on first load")
-	}
-
-	// Second load with same data should NOT broadcast (diff gating).
-	hub.loadAndBroadcast(dir, now, provider, nil)
-	select {
-	case msg := <-client.ch:
-		t.Fatalf("expected no broadcast on unchanged data, got %s", msg)
-	default:
-		// Good, no message.
-	}
-
-	hub.removeClient(client)
 }
 
 func TestGetIndex(t *testing.T) {
