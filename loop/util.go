@@ -30,6 +30,9 @@ func buildCookPrompt(orderID string, stage Stage, plan []string, title string, r
 	if strings.TrimSpace(rationale) != "" {
 		parts = append(parts, "Context: "+strings.TrimSpace(rationale))
 	}
+	if strings.TrimSpace(stage.ExtraPrompt) != "" {
+		parts = append(parts, "Scheduling context: "+strings.TrimSpace(stage.ExtraPrompt))
+	}
 	if strings.TrimSpace(resumePrompt) != "" {
 		parts = append(parts, resumePrompt)
 	}
