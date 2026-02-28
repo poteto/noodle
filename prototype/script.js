@@ -516,7 +516,6 @@ function renderFeedHeader(ch) {
       <span class="status-dot ${dotClass}"></span>
       <span>${statusText}</span>
       ${actions}
-      <a href="/deploy.html" class="btn-new-order">NEW ORDER</a>
     </div>
   `;
 }
