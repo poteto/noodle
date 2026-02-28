@@ -26,8 +26,8 @@ type startRuntimeLoop interface {
 	State() loop.LoopState
 }
 
-var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config) startRuntimeLoop {
-	return loop.New(projectDir, noodleBin, cfg, loop.Dependencies{})
+var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config, deps loop.Dependencies) startRuntimeLoop {
+	return loop.New(projectDir, noodleBin, cfg, deps)
 }
 
 var openBrowserFunc = openBrowser
@@ -74,7 +74,11 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	}
 	defer lock.Close()
 
-	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config)
+	broker := server.NewSessionEventBroker()
+
+	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config, loop.Dependencies{
+		EventSink: broker,
+	})
 	if opts.once {
 		return runtimeLoop.Cycle(ctx)
 	}
@@ -90,7 +94,7 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 
 	interactive := isInteractiveTerminal()
 	if shouldStartServer(app.Config.Server, interactive) {
-		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop, warnings) }()
+		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop, warnings, broker) }()
 	}
 	return runtimeLoop.Run(ctx)
 }
@@ -108,7 +112,7 @@ func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 	return interactive
 }
 
-func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider, warnings []string) error {
+func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider, warnings []string, broker *server.SessionEventBroker) error {
 	port := cfg.Server.Port
 	if port == 0 {
 		port = 3000
@@ -124,6 +128,7 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, pro
 		Config:            &cfg,
 		LoopStateProvider: provider,
 		Warnings:          warnings,
+		Broker:            broker,
 	})
 
 	errCh := make(chan error, 1)

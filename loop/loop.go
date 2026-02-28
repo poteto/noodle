@@ -25,7 +25,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		deps.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
 	if deps.Runtimes == nil || deps.Worktree == nil || deps.Adapter == nil || deps.Mise == nil || deps.Monitor == nil {
-		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger)
+		defaults := defaultDependencies(projectDir, runtimeDir, noodleBin, cfg, deps.Logger, deps.EventSink)
 		if deps.Runtimes == nil {
 			deps.Runtimes = defaults.Runtimes
 		}

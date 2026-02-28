@@ -9,6 +9,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/statusfile"
@@ -149,6 +150,7 @@ type Dependencies struct {
 	Mise           MiseBuilder
 	Monitor        Monitor
 	Registry       taskreg.Registry
+	EventSink      dispatcher.SessionEventSink
 	Logger         *slog.Logger
 	Now            func() time.Time
 	OrdersFile     string

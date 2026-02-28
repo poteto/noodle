@@ -51,7 +51,7 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 
 	fakeLoop := &fakeStartLoop{}
 	originalFactory := newStartRuntimeLoop
-	newStartRuntimeLoop = func(string, string, config.Config) startRuntimeLoop {
+	newStartRuntimeLoop = func(string, string, config.Config, loop.Dependencies) startRuntimeLoop {
 		return fakeLoop
 	}
 	t.Cleanup(func() { newStartRuntimeLoop = originalFactory })

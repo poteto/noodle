@@ -23,7 +23,7 @@ func (noOpWorktree) Merge(string, string) error     { return nil }
 func (noOpWorktree) MergeRemoteBranch(string) error { return nil }
 func (noOpWorktree) Cleanup(string, bool) error     { return nil }
 
-func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config, logger *slog.Logger) Dependencies {
+func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config, logger *slog.Logger, sink dispatcher.SessionEventSink) Dependencies {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}
 	local := dispatcher.NewProcessDispatcher(dispatcher.ProcessDispatcherConfig{
 		ProjectDir:    projectDir,
@@ -31,6 +31,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 		NoodleBin:     noodleBin,
 		SkillResolver: resolver,
 		RuntimeKind:   "process",
+		Sink:          sink,
 		ProviderConfigs: dispatcher.ProviderConfigs{
 			Claude: dispatcher.ProviderConfig{
 				Path: cfg.Agents.Claude.Path,
@@ -58,6 +59,7 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				SpriteName:    spriteName,
 				Token:         cfg.Runtime.Sprites.Token(),
 				GitToken:      cfg.Runtime.Sprites.GitToken(),
+				Sink:          sink,
 			})
 			runtimes["sprites"] = loopruntime.NewSpritesRuntime(sd, runtimeDir, cfg.Runtime.Sprites.MaxConcurrent)
 		}
