@@ -782,7 +782,7 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Autonomy = "approve"
+	cfg.Mode = "supervised"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree: &fakeWorktree{},
@@ -803,8 +803,8 @@ func TestCycleStampsLoopStateWhenPaused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read status: %v", err)
 	}
-	if status.Autonomy != "approve" {
-		t.Fatalf("autonomy = %q, want approve", status.Autonomy)
+	if status.Mode != "supervised" {
+		t.Fatalf("mode = %q, want supervised", status.Mode)
 	}
 }
 
@@ -821,7 +821,7 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Autonomy = "auto"
+	cfg.Mode = "auto"
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree: &fakeWorktree{},
@@ -842,8 +842,8 @@ func TestCycleStampsLoopStateWhenDraining(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read status: %v", err)
 	}
-	if status.Autonomy != "auto" {
-		t.Fatalf("autonomy = %q, want auto", status.Autonomy)
+	if status.Mode != "auto" {
+		t.Fatalf("mode = %q, want auto", status.Mode)
 	}
 }
 

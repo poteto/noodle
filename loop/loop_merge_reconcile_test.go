@@ -168,7 +168,7 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Autonomy = "auto"
+	cfg.Mode = "auto"
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
@@ -216,7 +216,7 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Autonomy = "auto"
+	cfg.Mode = "auto"
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}

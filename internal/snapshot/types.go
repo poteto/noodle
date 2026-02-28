@@ -44,15 +44,15 @@ type Snapshot struct {
 	Recent   []Session `json:"recent"`
 	Orders   []Order   `json:"orders"`
 
-	ActiveOrderIDs  []string                `json:"active_order_ids"`
-	ActionNeeded    []string                `json:"action_needed"`
-	EventsBySession map[string][]EventLine  `json:"events_by_session"`
-	FeedEvents      []FeedEvent             `json:"feed_events"`
-	TotalCostUSD    float64                 `json:"total_cost_usd"`
+	ActiveOrderIDs  []string               `json:"active_order_ids"`
+	ActionNeeded    []string               `json:"action_needed"`
+	EventsBySession map[string][]EventLine `json:"events_by_session"`
+	FeedEvents      []FeedEvent            `json:"feed_events"`
+	TotalCostUSD    float64                `json:"total_cost_usd"`
 
 	PendingReviews     []loop.PendingReviewItem `json:"pending_reviews"`
 	PendingReviewCount int                      `json:"pending_review_count"`
-	Autonomy           string                   `json:"autonomy"`
+	Mode               string                   `json:"mode"`
 	MaxCooks           int                      `json:"max_cooks"`
 	Warnings           []string                 `json:"warnings"`
 }

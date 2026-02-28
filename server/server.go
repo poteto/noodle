@@ -213,7 +213,7 @@ func (s *Server) loadSnapshot() (snapshot.Snapshot, error) {
 // controlRequest is the JSON body for POST /api/control.
 type controlRequest struct {
 	Action   string `json:"action"`
-	OrderID string `json:"order_id,omitempty"`
+	OrderID  string `json:"order_id,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Target   string `json:"target,omitempty"`
 	Prompt   string `json:"prompt,omitempty"`
@@ -282,7 +282,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
 		"provider":   s.config.Routing.Defaults.Provider,
 		"model":      s.config.Routing.Defaults.Model,
-		"autonomy":   s.config.Autonomy,
+		"mode":       s.config.Mode,
 		"task_types": names,
 	}
 	writeJSON(w, http.StatusOK, resp)

@@ -13,7 +13,7 @@ import (
 type Status struct {
 	Active    []string `json:"active,omitempty"`
 	LoopState string   `json:"loop_state,omitempty"`
-	Autonomy  string   `json:"autonomy,omitempty"`
+	Mode      string   `json:"mode,omitempty"`
 	MaxCooks  int      `json:"max_cooks,omitempty"`
 }
 

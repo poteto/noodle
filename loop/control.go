@@ -213,8 +213,8 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
-	case "autonomy":
-		if err := l.controlAutonomy(cmd.Value); err != nil {
+	case "mode":
+		if err := l.controlMode(cmd.Value); err != nil {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}

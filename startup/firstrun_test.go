@@ -31,10 +31,10 @@ func TestEnsureProjectStructureFreshDirectory(t *testing.T) {
 
 	// Verify files exist with expected content
 	wantFiles := map[string]string{
-		"brain/index.md":       "# Brain",
-		"brain/todos.md":       "<!-- next-id: 1 -->",
-		"brain/principles.md":  "# Principles",
-		".noodle.toml":         `autonomy = "auto"`,
+		"brain/index.md":      "# Brain",
+		"brain/todos.md":      "<!-- next-id: 1 -->",
+		"brain/principles.md": "# Principles",
+		".noodle.toml":        `mode = "auto"`,
 	}
 	for relPath, wantContent := range wantFiles {
 		data, err := os.ReadFile(filepath.Join(dir, relPath))

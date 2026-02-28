@@ -9,18 +9,12 @@ const (
 	DefaultConfigPath = ".noodle.toml"
 )
 
-// Autonomy modes control how much human oversight the loop requires.
-const (
-	AutonomyAuto    = "auto"    // auto-merge on success, unless task type disallows it
-	AutonomyApprove = "approve" // human must confirm merge
-)
-
 // Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
-	Autonomy    string                   `toml:"autonomy"`
+	Mode        string                   `toml:"mode"`
 	Recovery    RecoveryConfig           `toml:"recovery"`
 	Monitor     MonitorConfig            `toml:"monitor"`
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
@@ -198,7 +192,7 @@ func DefaultConfig() Config {
 		Skills: SkillsConfig{
 			Paths: defaultSkillPaths(),
 		},
-		Autonomy: AutonomyAuto,
+		Mode: "auto",
 		Recovery: RecoveryConfig{
 			MaxRetries: 3,
 		},

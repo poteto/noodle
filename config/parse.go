@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/poteto/noodle/internal/state"
 )
 
 // Load reads and validates config from disk.
@@ -58,8 +59,8 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Routing.Tags = map[string]ModelPolicy{}
 	}
 
-	if !metadata.IsDefined("autonomy") {
-		config.Autonomy = AutonomyAuto
+	if !metadata.IsDefined("mode") {
+		config.Mode = string(state.RunModeAuto)
 	}
 
 	if !metadata.IsDefined("recovery", "max_retries") {
@@ -138,14 +139,14 @@ func applyAdapterDefaults(adapters map[string]AdapterConfig) {
 }
 
 func validateParsedValues(config Config) error {
-	switch config.Autonomy {
-	case AutonomyAuto, AutonomyApprove:
+	switch config.Mode {
+	case string(state.RunModeAuto), string(state.RunModeSupervised), string(state.RunModeManual):
 	case "":
 		// treated as default in applyDefaults
 	default:
 		return fmt.Errorf(
-			"autonomy: unsupported value %q (expected auto, approve)",
-			config.Autonomy,
+			"mode: unsupported value %q (supported: auto, supervised, manual)",
+			config.Mode,
 		)
 	}
 	if err := validateProvider("routing.defaults.provider", config.Routing.Defaults.Provider); err != nil {

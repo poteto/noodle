@@ -22,7 +22,7 @@ source_hash: 2f483067da70e9a3fc0824c7323bb117a283d3c65adc1ca099e0f90ef835d221
   "total_cost_usd": 0,
   "pending_reviews": [],
   "pending_review_count": 0,
-  "autonomy": "",
+  "mode": "",
   "max_cooks": 0
 }
 ```

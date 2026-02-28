@@ -34,7 +34,7 @@ type LoopState struct {
 	ActiveOrderIDs     []string            `json:"active_order_ids"`
 	TotalCostUSD       float64             `json:"total_cost_usd"`
 	MaxCooks           int                 `json:"max_cooks"`
-	Autonomy           string              `json:"autonomy"`
+	Mode               string              `json:"mode"`
 	ActionNeeded       []string            `json:"action_needed"`
 }
 
@@ -123,7 +123,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		ActiveOrderIDs:     activeOrderIDs(ordersFile),
 		TotalCostUSD:       totalCost,
 		MaxCooks:           l.config.Concurrency.MaxCooks,
-		Autonomy:           l.config.Autonomy,
+		Mode:               l.config.Mode,
 		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
 	}
 }

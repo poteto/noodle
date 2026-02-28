@@ -18,6 +18,7 @@ import (
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/lockfile"
+	"github.com/poteto/noodle/internal/statever"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/server"
 	"github.com/spf13/cobra"
@@ -77,6 +78,11 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 		return err
 	}
 	defer lock.Close()
+
+	stateMarkerPath := filepath.Join(runtimeDir, "state.json")
+	if err := statever.CheckCompatibility(stateMarkerPath); err != nil {
+		return fmt.Errorf("state compatibility check failed at %s: %w", stateMarkerPath, err)
+	}
 
 	broker := server.NewSessionEventBroker()
 	apiLogger := newAPILogger(os.Stderr)

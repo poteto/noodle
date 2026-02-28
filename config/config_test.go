@@ -19,8 +19,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Routing.Defaults.Model != "claude-opus-4-6" {
 		t.Fatalf("routing.defaults.model default = %q", config.Routing.Defaults.Model)
 	}
-	if config.Autonomy != "auto" {
-		t.Fatalf("autonomy default = %q, want auto", config.Autonomy)
+	if config.Mode != "auto" {
+		t.Fatalf("mode default = %q, want auto", config.Mode)
 	}
 	if config.Recovery.MaxRetries != 3 {
 		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
@@ -121,8 +121,8 @@ edit = "gh issue edit"
 	if config.Routing.Tags["frontend"].Model != "opus" {
 		t.Fatalf("routing.tags.frontend.model = %q", config.Routing.Tags["frontend"].Model)
 	}
-	if config.Autonomy != "auto" {
-		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
+	if config.Mode != "auto" {
+		t.Fatalf("expected default mode=auto, got %q", config.Mode)
 	}
 	if config.Recovery.MaxRetries != 5 {
 		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
@@ -142,8 +142,8 @@ model = "claude-sonnet-4-6"
 		t.Fatalf("Parse minimal config: %v", err)
 	}
 
-	if config.Autonomy != "auto" {
-		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
+	if config.Mode != "auto" {
+		t.Fatalf("expected default mode=auto, got %q", config.Mode)
 	}
 	if config.Adapters != nil {
 		t.Fatal("adapters should remain unset when omitted from an existing config file")
@@ -377,11 +377,11 @@ func TestValidateAdapterScriptCommandVsPathChecks(t *testing.T) {
 	}
 }
 
-func TestAutonomyFieldParsesDirectly(t *testing.T) {
-	for _, mode := range []string{"auto", "approve"} {
+func TestModeFieldParsesDirectly(t *testing.T) {
+	for _, mode := range []string{"auto", "supervised", "manual"} {
 		t.Run(mode, func(t *testing.T) {
 			config, err := Parse([]byte(`
-autonomy = "` + mode + `"
+mode = "` + mode + `"
 
 [routing.defaults]
 provider = "claude"
@@ -390,16 +390,16 @@ model = "claude-sonnet-4-6"
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
-			if config.Autonomy != mode {
-				t.Fatalf("autonomy = %q, want %q", config.Autonomy, mode)
+			if config.Mode != mode {
+				t.Fatalf("mode = %q, want %q", config.Mode, mode)
 			}
 		})
 	}
 }
 
-func TestAutonomyExplicitPersistsWhenSet(t *testing.T) {
+func TestModeExplicitPersistsWhenSet(t *testing.T) {
 	config, err := Parse([]byte(`
-autonomy = "approve"
+mode = "supervised"
 
 [routing.defaults]
 provider = "claude"
@@ -408,24 +408,24 @@ model = "claude-sonnet-4-6"
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if config.Autonomy != "approve" {
-		t.Fatalf("autonomy = %q, want approve", config.Autonomy)
+	if config.Mode != "supervised" {
+		t.Fatalf("mode = %q, want supervised", config.Mode)
 	}
 }
 
-func TestAutonomyInvalidValueReturnsError(t *testing.T) {
+func TestModeInvalidValueReturnsError(t *testing.T) {
 	_, err := Parse([]byte(`
-autonomy = "yolo"
+mode = "yolo"
 
 [routing.defaults]
 provider = "claude"
 model = "claude-sonnet-4-6"
 `))
 	if err == nil {
-		t.Fatal("expected parse error for invalid autonomy")
+		t.Fatal("expected parse error for invalid mode")
 	}
-	if !strings.Contains(err.Error(), "autonomy") {
-		t.Fatalf("error %q missing autonomy field reference", err)
+	if !strings.Contains(err.Error(), "mode") {
+		t.Fatalf("error %q missing mode field reference", err)
 	}
 }
 

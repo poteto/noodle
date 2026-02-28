@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/statever"
 	"github.com/poteto/noodle/loop"
 )
 
@@ -73,6 +75,49 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	}
 	if capturedDeps.Logger == nil {
 		t.Fatal("expected runStart to inject a logger dependency")
+	}
+}
+
+func TestRunStartRefusesFutureStateVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir .noodle: %v", err)
+	}
+	if err := statever.Write(filepath.Join(runtimeDir, "state.json"), statever.StateMarker{
+		SchemaVersion: statever.Current + 1,
+		GeneratedAt:   time.Now(),
+	}); err != nil {
+		t.Fatalf("write state marker: %v", err)
+	}
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(projectDir); err != nil {
+		t.Fatalf("chdir project dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalDir) })
+
+	loopCreated := false
+	originalFactory := newStartRuntimeLoop
+	newStartRuntimeLoop = func(_ string, _ string, _ config.Config, _ loop.Dependencies) startRuntimeLoop {
+		loopCreated = true
+		return &fakeStartLoop{}
+	}
+	t.Cleanup(func() { newStartRuntimeLoop = originalFactory })
+
+	app := &App{Config: config.DefaultConfig()}
+	err = runStart(context.Background(), app, startOptions{once: true})
+	if err == nil {
+		t.Fatal("expected state compatibility error")
+	}
+	if !strings.Contains(err.Error(), "state version") {
+		t.Fatalf("error = %q, want state version failure", err)
+	}
+	if loopCreated {
+		t.Fatal("loop should not be created when state version is incompatible")
 	}
 }
 

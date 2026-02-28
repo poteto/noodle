@@ -91,12 +91,12 @@ func loadFixtureLoopState(t *testing.T, runtimeDir string) loop.LoopState {
 		var s struct {
 			LoopState string `json:"loop_state"`
 			MaxCooks  int    `json:"max_cooks"`
-			Autonomy  string `json:"autonomy"`
+			Mode      string `json:"mode"`
 		}
 		if json.Unmarshal(data, &s) == nil {
 			state.Status = s.LoopState
 			state.MaxCooks = s.MaxCooks
-			state.Autonomy = s.Autonomy
+			state.Mode = s.Mode
 		}
 	}
 

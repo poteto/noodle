@@ -143,7 +143,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		TotalCostUSD:       state.TotalCostUSD,
 		PendingReviews:     nonNilReviews(state.PendingReviews),
 		PendingReviewCount: state.PendingReviewCount,
-		Autonomy:           state.Autonomy,
+		Mode:               state.Mode,
 		MaxCooks:           state.MaxCooks,
 	}, nil
 }
@@ -231,4 +231,3 @@ func nonNilReviews(s []loop.PendingReviewItem) []loop.PendingReviewItem {
 	}
 	return append([]loop.PendingReviewItem(nil), s...)
 }
-

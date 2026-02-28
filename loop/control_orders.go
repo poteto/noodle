@@ -5,17 +5,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/state"
 )
 
-func (l *Loop) controlAutonomy(value string) error {
+func (l *Loop) controlMode(value string) error {
 	value = strings.ToLower(strings.TrimSpace(value))
 	switch value {
-	case config.AutonomyAuto, config.AutonomyApprove:
-		l.config.Autonomy = value
+	case string(state.RunModeAuto), string(state.RunModeSupervised), string(state.RunModeManual):
+		l.config.Mode = value
 		return nil
 	default:
-		return fmt.Errorf("unsupported autonomy value %q", value)
+		return fmt.Errorf("unsupported mode value %q", value)
 	}
 }
 
