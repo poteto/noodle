@@ -42,7 +42,7 @@ Invoke `go-best-practices` before starting.
 - `loop/types.go` — remove `QualityVerdict` struct (lines 83-87)
 - `loop/event_payloads.go` — remove `QualityWrittenPayload` (lines 66-71)
 - `event/loop_event.go` — remove `LoopEventQualityWritten` constant. Also clean up references in schedule skill docs (`schedule/SKILL.md:76`) and mise event summaries (`mise/builder.go:313`).
-- `loop/cook_completion.go` — simplify the schedule special case (lines 124-129). Schedule still needs: (1) `schedule.completed` event emission (mise watermark at `mise/builder.go:196` depends on it), (2) `removeOrder` (schedule is one-shot, not an advancing pipeline). BUT: remove the early return that bypasses the new message-reading path. The persistent scheduler (phase 2) may change this further — one-shot schedule may not exist once the scheduler is persistent. **Prerequisite**: `permissions.merge: false` must be set in schedule frontmatter first.
+- `loop/cook_completion.go` — keep the schedule special case (lines 124-129). Schedule is a singleton orchestrator, not a worktree-based cook — it's structurally different and its special handling is infrastructure, not judgment. It still needs: (1) `schedule.completed` event emission (mise watermark at `mise/builder.go:196`), (2) `removeOrder` (one-shot, not an advancing pipeline). The persistent scheduler (phase 2) may eliminate one-shot schedule entirely. No frontmatter changes needed — the loop already identifies schedule via `isScheduleStage()`.
 - `loop/cook_completion.go` — remove approve-mode parking of ALL non-schedule stages (line 135). Parking is now the scheduler's decision when it receives a message, not a hardcoded loop behavior.
 - `.noodle/quality/` directory and verdict files — no longer written or read
 
@@ -57,9 +57,7 @@ Invoke `go-best-practices` before starting.
 ## Modify
 
 - `.agents/skills/quality/SKILL.md` — instead of writing a verdict file, call `noodle event emit --session $NOODLE_SESSION_ID stage_message --payload '...'` with the assessment content.
-- `.agents/skills/schedule/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
-- `.agents/skills/quality/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
-- `.agents/skills/reflect/SKILL.md` — do NOT add `permissions.merge: false`. Reflect writes to `brain/` in a worktree; its changes must be merged.
+- `.agents/skills/quality/SKILL.md` — add `permissions.merge: false` to noodle frontmatter. Quality assesses work but doesn't produce mergeable output.
 - `loop/cook_completion.go` — `handleCompletion` uses `StageResult.Status` instead of re-deriving from `cook.session.Status()`
 - `internal/snapshot/snapshot.go` — `readLoopEvents` maps ALL defined loop event types (not just 5). Include message content from `StageCompletedPayload.Message` in the feed event body. Normalize scheduler feed identity to one canonical channel ID.
 
@@ -156,7 +154,7 @@ Update `.agents/skills/quality/references/verdict-schema.md` → rename to `stag
 - Unit test: stage with `blocking: false` auto-advances AND forwards message
 - Unit test: omitted `blocking` field defaults to true
 - Unit test: `readQualityVerdict` is gone — no quality verdict file reading
-- Unit test: schedule stage auto-advances like any other messageless stage (no special case)
+- Unit test: schedule stage still uses its own completion path (emit `schedule.completed`, removeOrder)
 - Unit test: `readLoopEvents` maps all defined loop event types
 - Unit test: `StageCompletedPayload.Message` is included in feed event
 
