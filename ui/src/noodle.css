@@ -538,14 +538,11 @@
 .msg-body {
   font-family: var(--font-mono);
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   line-height: 1.6;
   max-width: 720px;
   white-space: pre-wrap;
   word-break: break-word;
-}
-.message-row.from-manager .msg-body {
-  color: var(--color-text-primary);
 }
 .msg-body code {
   font-family: var(--font-mono);
@@ -555,7 +552,18 @@
   padding: 2px 5px;
 }
 
-/* Markdown body — rendered Think messages */
+/* JSON body — spawned events */
+.msg-json {
+  background: #0a0a0a;
+  border: 1px solid var(--color-border-subtle);
+  padding: 10px 14px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  overflow-x: auto;
+}
+
+/* Markdown body — rendered Think/Prompt messages */
 .msg-markdown {
   white-space: normal;
 }
