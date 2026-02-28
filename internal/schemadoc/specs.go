@@ -116,6 +116,7 @@ var schemaTargets = []targetSpec{
 			"orders[].stages[].runtime":       {Description: "runtime used for this stage (process, sprites, etc.)"},
 			"orders[].stages[].status":        {Type: "string (pending|active|completed|failed|cancelled)", Description: "stage lifecycle status"},
 			"orders[].stages[].extra{}[]":     {Description: "opaque extension data preserved across round-trips"},
+			"orders[].stages[].extra_prompt":  {Description: "supplemental instructions for the cook on how to approach the task (max ~1000 chars)"},
 			"orders[].status":                 {Type: "string (active|completed|failed|failing)", Description: "order lifecycle status"},
 			"orders[].on_failure[].task_key":  {Description: "recovery stage task type key"},
 			"orders[].on_failure[].prompt":    {Description: "recovery stage prompt"},
@@ -124,7 +125,8 @@ var schemaTargets = []targetSpec{
 			"orders[].on_failure[].model":     {Description: "recovery stage model"},
 			"orders[].on_failure[].runtime":   {Description: "recovery stage runtime"},
 			"orders[].on_failure[].status":    {Type: "string (pending|active|completed|failed|cancelled)", Description: "recovery stage status"},
-			"orders[].on_failure[].extra{}[]": {Description: "opaque extension data preserved across round-trips"},
+			"orders[].on_failure[].extra{}[]":     {Description: "opaque extension data preserved across round-trips"},
+			"orders[].on_failure[].extra_prompt":  {Description: "supplemental instructions for the cook on how to approach the task (max ~1000 chars)"},
 			"action_needed[]":                 {Description: "backlog item ID skipped pending user action"},
 		},
 		Constraints: []string{

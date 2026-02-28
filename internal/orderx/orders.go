@@ -162,6 +162,18 @@ func NormalizeAndValidateOrders(
 			return of, false, fmt.Errorf("order %q has terminal status %q", id, orders[i].Status)
 		}
 
+		// Truncate extra_prompt on all stages.
+		for j := range orders[i].Stages {
+			if truncateExtraPrompt(&orders[i].Stages[j]) {
+				changed = true
+			}
+		}
+		for j := range orders[i].OnFailure {
+			if truncateExtraPrompt(&orders[i].OnFailure[j]) {
+				changed = true
+			}
+		}
+
 		// Validate and filter main stages.
 		validStages := make([]Stage, 0, len(orders[i].Stages))
 		for j := range orders[i].Stages {
@@ -227,4 +239,32 @@ func isValidStageTaskType(stage *Stage, reg taskreg.Registry) bool {
 		Skill:   stage.Skill,
 	})
 	return ok
+}
+
+const extraPromptMaxRunes = 1000
+
+// truncateExtraPrompt caps ExtraPrompt at extraPromptMaxRunes runes.
+// Prefers a word boundary (last space); falls back to hard rune truncation
+// when the last space is before 80% of the limit.
+func truncateExtraPrompt(stage *Stage) bool {
+	runes := []rune(stage.ExtraPrompt)
+	if len(runes) <= extraPromptMaxRunes {
+		return false
+	}
+	truncated := runes[:extraPromptMaxRunes]
+	// Try word boundary: find last space in truncated slice.
+	lastSpace := -1
+	for i := len(truncated) - 1; i >= 0; i-- {
+		if truncated[i] == ' ' {
+			lastSpace = i
+			break
+		}
+	}
+	threshold := extraPromptMaxRunes * 80 / 100
+	if lastSpace >= threshold {
+		stage.ExtraPrompt = string(truncated[:lastSpace])
+	} else {
+		stage.ExtraPrompt = string(truncated)
+	}
+	return true
 }

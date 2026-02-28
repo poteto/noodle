@@ -37,7 +37,8 @@ type Stage struct {
 	Model    string                     `json:"model"`
 	Runtime  string                     `json:"runtime,omitempty"`
 	Status   StageStatus                `json:"status"`
-	Extra    map[string]json.RawMessage `json:"extra,omitempty"`
+	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
+	ExtraPrompt string                     `json:"extra_prompt,omitempty"`
 }
 
 // Order is a pipeline of stages (serialization type).
