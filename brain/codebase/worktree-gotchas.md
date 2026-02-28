@@ -12,6 +12,12 @@ The Bash tool maintains a **persistent shell** across calls. `cd` in one call dr
 
 `git -C <path>` changes git's working directory, not the shell's. If the shell cwd is inside a worktree, `git -C /project-root worktree remove` still kills the shell.
 
+## `lint:arch` at repo root can include nested worktrees
+
+Running `pnpm run lint:arch` from the main checkout can report duplicate size warnings from `.claude/worktrees/*`.
+
+To get warnings for just your active branch, run lint inside the target worktree (`noodle worktree exec <name> pnpm run lint:arch`).
+
 ## Rebase from outside a worktree = fatal error
 
 `git rebase main <branch>` fails with `fatal: '<branch>' is already used by worktree`. Use `git -C <worktree-path> rebase main` instead.
