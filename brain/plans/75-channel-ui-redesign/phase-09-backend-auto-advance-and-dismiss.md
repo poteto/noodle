@@ -26,12 +26,12 @@ Invoke `go-best-practices` before starting.
 - **`noodle event emit`**: `cmd_event.go` — CLI command that emits loop events to `loop-events.ndjson`. Extend this to support session events so agents can emit `stage_message` from the command line. No file-based messaging needed — the CLI handles atomic NDJSON writing.
 - **Event reader**: `event/reader.go` — `EventReader.ReadSession()` reads session events with filters. The loop already uses this for steer resume context (`cook_steer.go:144`).
 - **Loop event emitter**: `event/loop_event.go` — `LoopEventWriter.Emit()` appends lifecycle events. The `stage.completed` event already has `StageCompletedPayload`.
-- `schedule` is already special-cased to auto-advance on success (`cook_completion.go:124-129`) — this special case gets removed since auto-advance is now the default for all messageless completions.
+- `schedule` is already special-cased on success (`cook_completion.go:124-129`) — emits `schedule.completed` and calls `removeOrder`. See schedule-specific handling below.
 
 ## Key design decisions
 
 1. **Auto-advance is the default.** No message = advance. The loop handles this with no scheduler involvement. This is fast and has no dependency on the scheduler being alive.
-2. **Messages use the session event system via CLI.** Agents call `noodle event emit --session $SESSION_ID stage_message --payload '...'` to emit a session event. The loop reads it on completion via `EventReader`. Extend `cmd_event.go` to support a `--session` flag that writes to the session event log instead of the loop event log.
+2. **Messages use the session event system via CLI.** Agents call `noodle event emit --session $NOODLE_SESSION_ID stage_message --payload '...'` to emit a session event. The loop reads it on completion via `EventReader`. Extend `cmd_event.go` to support a `--session` flag that writes to the session event log instead of the loop event log.
 3. **Messages are forwarded to the scheduler via direct message.** The loop sends the message to the persistent scheduler session via `controller.SendMessage()` — NOT via `rescheduleForChefPrompt`. This requires the steer path for schedule targets to be updated in phase 2.
 4. **The scheduler chat UI shows the message.** The `stage.completed` loop event carries the message payload. The feed renders it in the scheduler channel so the user can see what agents reported and what the scheduler decided.
 
@@ -42,12 +42,13 @@ Invoke `go-best-practices` before starting.
 - `loop/types.go` — remove `QualityVerdict` struct (lines 83-87)
 - `loop/event_payloads.go` — remove `QualityWrittenPayload` (lines 66-71)
 - `event/loop_event.go` — remove `LoopEventQualityWritten` constant. Also clean up references in schedule skill docs (`schedule/SKILL.md:76`) and mise event summaries (`mise/builder.go:313`).
-- `loop/cook_completion.go` — remove the schedule special case (lines 124-129). Schedule is just another messageless stage that auto-advances. **Prerequisite**: `permissions.merge: false` must be set in schedule frontmatter first, otherwise schedule completion falls into the merge path with an empty worktree name.
+- `loop/cook_completion.go` — simplify the schedule special case (lines 124-129). Schedule still needs: (1) `schedule.completed` event emission (mise watermark at `mise/builder.go:196` depends on it), (2) `removeOrder` (schedule is one-shot, not an advancing pipeline). BUT: remove the early return that bypasses the new message-reading path. The persistent scheduler (phase 2) may change this further — one-shot schedule may not exist once the scheduler is persistent. **Prerequisite**: `permissions.merge: false` must be set in schedule frontmatter first.
 - `loop/cook_completion.go` — remove approve-mode parking of ALL non-schedule stages (line 135). Parking is now the scheduler's decision when it receives a message, not a hardcoded loop behavior.
 - `.noodle/quality/` directory and verdict files — no longer written or read
 
 ## Add
 
+- `dispatcher/command.go` — add `NOODLE_SESSION_ID` to `buildDispatchEnv` (line 120). Currently only sets `NOODLE_WORKTREE`/`PROVIDER`/`MODEL`. Without this, agents cannot call `noodle event emit --session $NOODLE_SESSION_ID` because they don't know their session ID.
 - `cmd_event.go` — add `--session <id>` flag to `noodle event emit`. When provided, writes to the session event log (`sessions/{id}/events.ndjson`) via `EventWriter` instead of the loop event log.
 - `event/types.go` — add `EventStageMessage EventType = "stage_message"` to session event types
 - `loop/cook_completion.go` — in `handleCompletion`, after stage completes: read session events for `stage_message`. If none found, auto-advance. If found and `blocking: true`, forward to scheduler and don't advance. If found and `blocking: false`, auto-advance AND forward message to scheduler (informational).
@@ -55,10 +56,10 @@ Invoke `go-best-practices` before starting.
 
 ## Modify
 
-- `.agents/skills/quality/SKILL.md` — instead of writing a verdict file, call `noodle event emit --session $SESSION_ID stage_message --payload '...'` with the assessment content.
+- `.agents/skills/quality/SKILL.md` — instead of writing a verdict file, call `noodle event emit --session $NOODLE_SESSION_ID stage_message --payload '...'` with the assessment content.
 - `.agents/skills/schedule/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
 - `.agents/skills/quality/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
-- `.agents/skills/reflect/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
+- `.agents/skills/reflect/SKILL.md` — do NOT add `permissions.merge: false`. Reflect writes to `brain/` in a worktree; its changes must be merged.
 - `loop/cook_completion.go` — `handleCompletion` uses `StageResult.Status` instead of re-deriving from `cook.session.Status()`
 - `internal/snapshot/snapshot.go` — `readLoopEvents` maps ALL defined loop event types (not just 5). Include message content from `StageCompletedPayload.Message` in the feed event body. Normalize scheduler feed identity to one canonical channel ID.
 
@@ -128,7 +129,7 @@ func (p StageMessagePayload) IsBlocking() bool {
 
 Update `.agents/skills/quality/SKILL.md`:
 - Remove: "Write verdict to `.noodle/quality/<session-id>.json`"
-- Add: "Emit a `stage_message` event: `noodle event emit --session $SESSION_ID stage_message --payload '<json>'`"
+- Add: "Emit a `stage_message` event: `noodle event emit --session $NOODLE_SESSION_ID stage_message --payload '<json>'`"
 - Accept → emit `{ "message": "<summary>", "blocking": false }` — pipeline continues, scheduler sees the green light
 - Reject → emit `{ "message": "<detailed findings>", "blocking": true }` — scheduler reads findings and decides (retry, add oops stage, or abort)
 - The message content replaces the verdict JSON. Write it as natural language the scheduler can act on, not structured JSON. Include specific file paths, line context, and principle violations so the scheduler can brief the retry cook.

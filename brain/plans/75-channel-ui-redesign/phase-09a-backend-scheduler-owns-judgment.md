@@ -37,7 +37,7 @@ Invoke `go-best-practices` before starting.
 ### All `failStage` call sites (4 total)
 1. `loop/cook_completion.go:258` — `failAndPersist` helper (removed above)
 2. `loop/control.go:284` — quality verdict gate in `controlMerge` (already removed in phase 8)
-3. `loop/control.go:424` — `controlRequestChanges` calls `failStage` for rejected reviews. Update to use new simplified failure path (mark failed, persist, no OnFailure routing).
+3. `loop/control.go:424` — `controlRequestChanges` calls `failStage` for rejected reviews. Also has a max-concurrency no-op at `control.go:409` that silently drops the request. Update to use new simplified failure path (mark failed, persist, no OnFailure routing) and remove the concurrency gate.
 4. `loop/reconcile.go:217` — `failMergingStage` for crash recovery of stuck "merging" stages. Update to use new simplified failure path + forward to scheduler.
 
 ### OnFailure pipeline
@@ -46,6 +46,8 @@ Invoke `go-best-practices` before starting.
 - `loop/reconcile.go:87-112` — remove `isOnFailure` tracking in crash recovery scan
 - `loop/types.go:93,115,139` — remove `isOnFailure`/`IsOnFailure` fields from cook identity types
 - `loop/cook_steer.go:127` — remove `IsOnFailure` from steer context
+- `loop/schedule.go:207` — remove `on_failure` instructions from scheduler prompt. The scheduler currently instructs agents to generate `on_failure` stages in orders; with OnFailure removed, `ParseOrdersStrict` would reject those orders.
+- Additional OnFailure references will surface as compiler errors: `loop/state_orders.go`, `loop/cook_spawn.go`, `loop/cook_watcher.go`, `loop/loop.go`, `internal/orderx/orders.go`, `internal/snapshot/snapshot.go`, `internal/snapshot/types.go`. These are mechanical removals — follow the compiler.
 
 ### Merge conflict auto-parking
 - `loop/cook_merge.go` — remove auto-parking on merge conflict (lines 135-155) and the `parkPendingReview` call (line 146). Replace with: emit `merge.conflict` loop event, forward to scheduler. The scheduler decides (retry with rebase, park for review, abort).
@@ -53,7 +55,7 @@ Invoke `go-best-practices` before starting.
 ### Hardcoded retry limits
 - `loop/cook_retry.go` — remove `retryCook` function's max retry threshold (lines 139-147) and automatic retry spawning. Remove retry deferral logic (lines 151-161) and `pendingRetry` state.
 - `loop/cook_retry.go` — remove `processPendingRetries` (lines 85-129) and its call in the loop cycle. No automatic retry queue.
-- Remove `pendingRetry` map from `cookTracker` and `writePendingRetry`/`loadPendingRetry` persistence.
+- Remove `pendingRetry` map from `cookTracker` and `writePendingRetry`/`loadPendingRetry` persistence (`pending_retry.go:39`). Also remove pending retry references in: `loop.go:324` (cycle call), `loop.go:499` (shutdown), `state_orders.go:103` (state load), `merge_cycle.go:22` (retry after merge), `cook_completion.go:81` (retry-on-failure), `reconcile.go:61` (crash recovery). Persistence file: `.noodle/pending-retry.json`.
 
 ### Pending review mechanism update
 - `parkPendingReview` (`pending_review.go:77`) has exactly 2 callers — both being removed:
@@ -68,9 +70,9 @@ Existing commands in `control.go:177-256` that the scheduler can already use: `s
 
 New commands the scheduler needs:
 
-- **`advance`** — advance past a stage blocked by a `stage_message` (from phase 8). Takes `order_id`. Calls `advanceOrder` on the order, allowing the pipeline to continue. Currently no control command exposes `advanceOrder` externally.
-- **`add-stage`** — insert a stage into an existing order's pipeline. Takes `order_id`, `task_key`, `provider`, `model`, `skill`. The scheduler uses this to dynamically add recovery stages (e.g., "oops" fix stage after a failure). Insert after the current active stage.
-- **`park-review`** — park an order for human review. Takes `order_id`, `reason`. Calls `parkPendingReview` — this becomes the sole creation path for pending reviews, replacing the removed auto-parking callers.
+- **`advance`** — advance past a stage blocked by a `stage_message` (from phase 8). Takes `order_id`. Must call `advanceAndPersist` (not raw `advanceOrder`) to get the full completion side effects: `stage.completed` event emission, `order.completed` event if final, and `backlogDone` adapter call (`cook_completion.go:216-249`).
+- **`add-stage`** — insert a stage into an existing order's pipeline. Takes `order_id`, `task_key`, `provider`, `model`, `skill`. The scheduler uses this to dynamically add recovery stages (e.g., "oops" fix stage after a failure). Insert after the last completed or failed stage (not just "active" — if all stages failed, there's no active stage to anchor on). The `Prompt` field on `ControlCommand` carries context from the failure for the new stage.
+- **`park-review`** — park an order for human review. Takes `order_id`, `reason`. Current `parkPendingReview` (`pending_review.go:77`) requires a `cookHandle` for session ID, worktree name, and stage index — but at park time the cook has already completed. Refactor: either enrich `ControlCommand` with session/worktree fields, or have `parkPendingReview` look up the information from the order/session state on disk. This becomes the sole creation path for pending reviews.
 
 ## Modify
 
@@ -82,7 +84,8 @@ New commands the scheduler needs:
 - `loop/cook_merge.go` — when merge conflicts: emit `merge.conflict` loop event (already exists), forward conflict details to scheduler via `controller.SendMessage()`. Message includes: order ID, worktree name, conflicted files. Scheduler decides: "retry with rebase," "park for human review," or "abort."
 
 ### Retry path
-- Retries are now scheduler-initiated. The scheduler receives a failure message, decides to retry, and issues a control command (`add-stage` with the same task key, or `requeue`). The Go loop executes it mechanically.
+- Retries are now scheduler-initiated. The scheduler receives a failure message, decides to retry, and issues a control command (`add-stage` with the same task key). The Go loop executes it mechanically.
+- `requeue` (`control.go:576`) depends on `failedTargets` map populated by `markFailed`. Since failed orders now stay in the orders file (not removed + marked failed), `requeue` won't find them. Either adapt `requeue` to operate on orders with failed stages, or have the scheduler use `add-stage` exclusively for retries.
 - Remove the concept of "pending retry" as a loop-managed state.
 
 ### What NOT to change
@@ -99,7 +102,7 @@ New commands the scheduler needs:
 - Remove `isOnFailure` from cook identity types (`cookHandle`, `pendingRetryCook`, `dispatchCandidate`)
 - Remove `pendingRetry` map from `cookTracker` and pending retry persistence
 - `StageFailedPayload` — add `AgentOutput string` field (last lines of agent output for scheduler context)
-- `MergeConflictPayload` — add `ConflictedFiles []string` field
+- `MergeConflictPayload` — add `ConflictedFiles []string` field. Source error type (`worktree/merge_conflict.go:7`) also lacks file list — extract conflicted files via `git diff --name-only --diff-filter=U` after merge failure.
 - `ControlCommand` — no struct changes needed (existing fields cover new commands: `Action`, `OrderID`, `TaskKey`, `Provider`, `Model`, `Skill`, `Prompt`)
 
 ## Verification
