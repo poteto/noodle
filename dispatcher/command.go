@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/internal/shellx"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 const codexSkillRefsLimitBytes = 50 * 1024
@@ -117,7 +118,7 @@ func buildDispatchEnv(req DispatchRequest) []string {
 
 func composePrompts(provider, requestPrompt, preamble, skillSystemPrompt string) (systemPrompt, finalPrompt string) {
 	finalPrompt = requestPrompt
-	fullSystemPrompt := joinNonEmpty(preamble, skillSystemPrompt)
+	fullSystemPrompt := stringx.JoinNonEmpty("\n\n", preamble, skillSystemPrompt)
 	if strings.EqualFold(provider, "claude") {
 		systemPrompt = fullSystemPrompt
 		return systemPrompt, finalPrompt
@@ -129,12 +130,3 @@ func composePrompts(provider, requestPrompt, preamble, skillSystemPrompt string)
 	return systemPrompt, finalPrompt
 }
 
-func joinNonEmpty(parts ...string) string {
-	var out []string
-	for _, p := range parts {
-		if strings.TrimSpace(p) != "" {
-			out = append(out, p)
-		}
-	}
-	return strings.Join(out, "\n\n")
-}

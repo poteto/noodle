@@ -25,6 +25,18 @@ func NonEmpty(value, fallback string) string {
 	return value
 }
 
+// JoinNonEmpty joins non-empty strings with the given separator.
+// Each part is trimmed before checking; only non-empty trimmed parts are included.
+func JoinNonEmpty(sep string, parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	return strings.Join(out, sep)
+}
+
 // MiddleTruncate shortens a string by replacing the middle with "…".
 // For paths containing slashes, it preserves the first and last segments
 // and truncates inner segments (e.g., "/Users/…/orders.json").

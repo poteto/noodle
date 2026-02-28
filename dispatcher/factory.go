@@ -22,9 +22,9 @@ func (f *DispatcherFactory) Register(runtime string, dispatcher Dispatcher) erro
 		return fmt.Errorf("dispatcher factory not initialized")
 	}
 	if dispatcher == nil {
-		return fmt.Errorf("dispatcher for runtime %q not configured", normalizeRuntime(runtime))
+		return fmt.Errorf("dispatcher for runtime %q not configured", NormalizeRuntime(runtime))
 	}
-	key := normalizeRuntime(runtime)
+	key := NormalizeRuntime(runtime)
 	f.runtimes[key] = dispatcher
 	return nil
 }
@@ -33,7 +33,7 @@ func (f *DispatcherFactory) Dispatch(ctx context.Context, req DispatchRequest) (
 	if f == nil {
 		return nil, fmt.Errorf("dispatcher factory not initialized")
 	}
-	runtime := normalizeRuntime(req.Runtime)
+	runtime := NormalizeRuntime(req.Runtime)
 	dispatcher, ok := f.runtimes[runtime]
 	if !ok {
 		return nil, fmt.Errorf("runtime %q not configured", runtime)

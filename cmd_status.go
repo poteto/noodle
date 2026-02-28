@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/snapshot"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/spf13/cobra"
 )
@@ -81,29 +81,16 @@ func readSessionSummary(runtimeDir string) (active int, loopState string, _ erro
 		return 0, "", err
 	}
 	active = len(status.Active)
-	loopState = normalizeLoopState(status.LoopState)
+	loopState = snapshot.NormalizeLoopState(status.LoopState)
 	if loopState == "" {
 		loopState = "running"
 	}
 	return active, loopState, nil
 }
 
-func normalizeLoopState(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "running":
-		return "running"
-	case "paused":
-		return "paused"
-	case "draining":
-		return "draining"
-	default:
-		return ""
-	}
-}
-
 func pickLoopState(current, candidate string) string {
-	current = normalizeLoopState(current)
-	candidate = normalizeLoopState(candidate)
+	current = snapshot.NormalizeLoopState(current)
+	candidate = snapshot.NormalizeLoopState(candidate)
 	if candidate == "" {
 		return current
 	}

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/poteto/noodle/dispatcher"
 )
 
 type HeartbeatObserver struct {
@@ -128,15 +130,7 @@ func readSessionRuntime(runtimeDir, sessionID string) (string, error) {
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return "", err
 	}
-	return normalizeObserverRuntime(payload.Runtime), nil
-}
-
-func normalizeObserverRuntime(runtime string) string {
-	runtime = strings.ToLower(strings.TrimSpace(runtime))
-	if runtime == "" {
-		return "process"
-	}
-	return runtime
+	return dispatcher.NormalizeRuntime(payload.Runtime), nil
 }
 
 func canonicalLogObservation(runtimeDir, sessionID string) (Observation, error) {

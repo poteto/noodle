@@ -112,7 +112,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 
 	return Snapshot{
 		UpdatedAt:          now.UTC(),
-		LoopState:          normalizeLoopState(state.Status),
+		LoopState:          NormalizeLoopState(state.Status),
 		Sessions:           sessions,
 		Active:             active,
 		Recent:             recent,
@@ -162,7 +162,8 @@ func enrichActiveSession(reader *event.EventReader, sessionID string, session *S
 	session.ContextWindowUsagePct = pct
 }
 
-func normalizeLoopState(value string) string {
+// NormalizeLoopState maps a raw loop state string to a canonical constant.
+func NormalizeLoopState(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "idle":
 		return LoopStateIdle

@@ -73,7 +73,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 			resetWorktreeState(worktreePath)
 		}
 		if hint := worktreeResumeContext(worktreePath, name); hint != "" {
-			resumePrompt = joinPromptParts(hint, resumePrompt)
+			resumePrompt = stringx.JoinNonEmpty("\n\n", hint, resumePrompt)
 		}
 	}
 	prompt := buildCookPrompt(cand.OrderID, stage, order.Plan, order.Title, order.Rationale, resumePrompt)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/internal/shellx"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 )
@@ -48,63 +49,16 @@ func titleFromPrompt(prompt string, maxWords int) string {
 	return strings.Join(words[:maxWords], " ") + "..."
 }
 
-func joinPromptParts(parts ...string) string {
-	var out []string
-	for _, p := range parts {
-		if strings.TrimSpace(p) != "" {
-			out = append(out, strings.TrimSpace(p))
-		}
-	}
-	return strings.Join(out, "\n\n")
-}
-
 func nonEmpty(value, fallback string) string {
 	return stringx.NonEmpty(value, fallback)
-}
-
-func sanitizeName(value string) string {
-	name := sanitizeToken(value)
-	if name == "" {
-		return "cook"
-	}
-	return name
-}
-
-func sanitizeToken(value string) string {
-	value = strings.TrimSpace(strings.ToLower(value))
-	if value == "" {
-		return ""
-	}
-	builder := strings.Builder{}
-	lastHyphen := false
-	for _, r := range value {
-		isAlphaNum := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
-		if isAlphaNum {
-			builder.WriteRune(r)
-			lastHyphen = false
-			continue
-		}
-		if !lastHyphen {
-			builder.WriteByte('-')
-			lastHyphen = true
-		}
-	}
-	name := strings.Trim(builder.String(), "-")
-	return name
 }
 
 // cookBaseName returns the worktree name for a stage dispatch.
 // Format: order-id-stageIndex-task-key (e.g., "29-0-execute").
 // Tokens are dasherized so branch/worktree names stay git- and fs-safe.
 func cookBaseName(orderID string, stageIndex int, taskKey string) string {
-	orderToken := sanitizeToken(orderID)
-	if orderToken == "" {
-		orderToken = "order"
-	}
-	taskToken := sanitizeToken(taskKey)
-	if taskToken == "" {
-		taskToken = "task"
-	}
+	orderToken := shellx.SanitizeToken(orderID, "order")
+	taskToken := shellx.SanitizeToken(taskKey, "task")
 	return fmt.Sprintf("%s-%d-%s", orderToken, stageIndex, taskToken)
 }
 
