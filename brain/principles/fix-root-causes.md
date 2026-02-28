@@ -18,6 +18,10 @@ Symptom fixes accumulate: each workaround makes the system harder to reason abou
 
 Code doesn't change between runs. State does. When "fails after restart," suspect stale persistent state first — config files, caches, lock files, serialized state. If clearing a state file restores behavior, prioritize state validation as the fix.
 
+## Own Every File You Touch
+
+Never label an issue "pre-existing" to justify skipping it. If you touch a file, you own its quality. Fix lint errors, style violations, and bugs in the file regardless of who introduced them. The distinction between "my changes" and "existing code" doesn't exist — all codebase issues are shared ownership.
+
 ## Relationship to Other Principles
 
 [[principles/prove-it-works]] says to check real state, not proxies. This extends that to debugging: check the real cause, not the proxied symptom.
