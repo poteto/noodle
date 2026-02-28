@@ -13,7 +13,6 @@
 ## UI
 
 77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
-78. [ ] Configure vite-plugin-react to install babel-plugin-react-compiler
 
 ## Server
 
