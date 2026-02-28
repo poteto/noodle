@@ -1,6 +1,6 @@
-import { createElement, createContext, useContext, useEffect } from "react";
+import { createElement, createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { connectWS, SNAPSHOT_KEY, WS_STATUS_KEY, subscribeSession, unsubscribeSession, sendWSControl } from "./ws";
+import { connectWS, SNAPSHOT_KEY, subscribeSession, unsubscribeSession, sendWSControl, subscribeWSStatus, getWSStatus } from "./ws";
 import type { WSStatus } from "./ws";
 import { fetchSnapshot, sendControl, fetchReviewDiff } from "./api";
 import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse, ChannelId } from "./types";
@@ -54,14 +54,7 @@ export function useSessionEvents(sessionId: string | undefined) {
 }
 
 export function useWSStatus(): WSStatus {
-  const queryClient = useQueryClient();
-  const { data } = useQuery<WSStatus>({
-    queryKey: WS_STATUS_KEY,
-    queryFn: () => queryClient.getQueryData(WS_STATUS_KEY) ?? "connecting",
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-  return data ?? "connecting";
+  return useSyncExternalStore(subscribeWSStatus, getWSStatus);
 }
 
 export function useReviewDiff(itemId: string) {

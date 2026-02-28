@@ -3,7 +3,6 @@ import type { Snapshot, EventLine, ControlCommand, ControlAck } from "./types";
 import { normalizeSnapshot } from "./api";
 
 const SNAPSHOT_KEY = ["snapshot"] as const;
-const WS_STATUS_KEY = ["wsStatus"] as const;
 const RECONNECT_DELAY_MS = 2000;
 
 export type WSStatus = "connected" | "connecting" | "disconnected";
@@ -29,6 +28,20 @@ type WSClientMessage =
 let ws: WebSocket | null = null;
 let queryClientRef: QueryClient | null = null;
 let closed = false;
+
+// WS status — module-level store for useSyncExternalStore (avoids useQuery
+// returning a new object reference on every snapshot push).
+let currentWSStatus: WSStatus = "connecting";
+const wsStatusListeners = new Set<() => void>();
+
+export function subscribeWSStatus(cb: () => void): () => void {
+  wsStatusListeners.add(cb);
+  return () => wsStatusListeners.delete(cb);
+}
+
+export function getWSStatus(): WSStatus {
+  return currentWSStatus;
+}
 
 // Single ref-count map for both counting and reconnection tracking
 const sessionRefCounts = new Map<string, number>();
@@ -59,7 +72,13 @@ export function subscribeDelta(sessionId: string, listener: (text: string) => vo
 }
 
 function setStatus(status: WSStatus) {
-  queryClientRef?.setQueryData(WS_STATUS_KEY, status);
+  if (currentWSStatus === status) {
+    return;
+  }
+  currentWSStatus = status;
+  for (const fn of wsStatusListeners) {
+    fn();
+  }
 }
 
 function sendJSON(msg: WSClientMessage) {
@@ -225,4 +244,4 @@ export function sendWSControl(cmd: ControlCommand): Promise<ControlAck> {
   });
 }
 
-export { SNAPSHOT_KEY, WS_STATUS_KEY };
+export { SNAPSHOT_KEY };

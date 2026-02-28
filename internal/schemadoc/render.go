@@ -1,6 +1,7 @@
 package schemadoc
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -65,11 +66,14 @@ func renderJSONSchema(target targetSpec) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	encoded, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(root); err != nil {
 		return "", fmt.Errorf("encode schema for %s: %w", target.Info.Name, err)
 	}
-	return string(encoded), nil
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
 func validateSpec(target targetSpec) error {
