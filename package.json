@@ -10,6 +10,7 @@
     "vet": "go vet ./...",
     "lint:arch": "sh scripts/lint-arch.sh",
     "check": "pnpm run build && pnpm run test && pnpm run vet && pnpm run lint:arch && pnpm run fixtures:loop && pnpm run fixtures:hash",
+    "count:loc": "go run ./scripts/repo-size-charts.go",
     "reset": "go run . reset",
     "start": "go run . start",
     "status": "go run . status",
