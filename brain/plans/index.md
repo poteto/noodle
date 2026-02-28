@@ -6,3 +6,4 @@
 - [x] ~~[[plans/34-failed-target-reset-runtime/overview]]~~ — mostly subsumed by #66
 - [ ] [[plans/68-unified-involvement-levels/overview]]
 - [ ] [[plans/69-cursor-dispatcher/overview]]
+- [ ] [[plans/75-channel-ui-redesign/overview]]
