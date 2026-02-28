@@ -11,12 +11,17 @@ import {
   CODE_BLOCK,
   CODE_FENCE,
   CODE_INLINE,
+  LANG,
 } from "streaming-markdown";
 import type { Default_Renderer_Data, Token, Attr, Parser } from "streaming-markdown";
 import { subscribeDelta } from "~/client";
+import { highlightCode, getScopeFromLang } from "./CodeHighlight";
 
 function createRenderer(root: HTMLElement) {
   const base = default_renderer(root);
+
+  let currentLang = "";
+  let codeNode: HTMLElement | null = null;
 
   return {
     ...base,
@@ -27,19 +32,35 @@ function createRenderer(root: HTMLElement) {
         return;
       }
       if (type === CODE_BLOCK || type === CODE_FENCE) {
-        node.className = "code-block";
+        node.parentElement?.classList.add("code-block");
+        codeNode = node;
+        currentLang = "";
       } else if (type === CODE_INLINE) {
         node.className = "code-inline";
       }
     },
     end_token(data: Default_Renderer_Data) {
+      const node = data.nodes[data.index];
       default_end_token(data);
+      if (node && node === codeNode) {
+        const raw = node.textContent ?? "";
+        if (currentLang && getScopeFromLang(currentLang)) {
+          void highlightCode(raw, currentLang).then((html) => {
+            node.innerHTML = html;
+          });
+        }
+        codeNode = null;
+        currentLang = "";
+      }
     },
     add_text(data: Default_Renderer_Data, text: string) {
       default_add_text(data, text);
     },
     set_attr(data: Default_Renderer_Data, type: Attr, value: string) {
       default_set_attr(data, type, value);
+      if (type === LANG) {
+        currentLang = value;
+      }
     },
   };
 }

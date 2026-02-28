@@ -20,6 +20,7 @@ function createRenderer(root: HTMLElement) {
   const base = default_renderer(root);
 
   let currentLang = "";
+  let codeNode: HTMLElement | null = null;
 
   return {
     ...base,
@@ -30,7 +31,10 @@ function createRenderer(root: HTMLElement) {
         return;
       }
       if (type === CODE_BLOCK || type === CODE_FENCE) {
-        node.className = "code-block";
+        // default_add_token creates <pre><code>; node is the <code>.
+        // Put "code-block" on <pre> — LANG attr overwrites <code>'s class.
+        node.parentElement?.classList.add("code-block");
+        codeNode = node;
         currentLang = "";
       } else if (type === CODE_INLINE) {
         node.className = "code-inline";
@@ -39,15 +43,14 @@ function createRenderer(root: HTMLElement) {
     end_token(data: Default_Renderer_Data) {
       const node = data.nodes[data.index];
       default_end_token(data);
-      if (node && (node.tagName === "PRE" || node.classList?.contains("code-block"))) {
-        const codeEl = node.querySelector("code") ?? node;
-        const raw = codeEl.textContent ?? "";
+      if (node && node === codeNode) {
+        const raw = node.textContent ?? "";
         if (currentLang && getScopeFromLang(currentLang)) {
           void highlightCode(raw, currentLang).then((html) => {
-            codeEl.innerHTML = html;
-            return html;
+            node.innerHTML = html;
           });
         }
+        codeNode = null;
         currentLang = "";
       }
     },
