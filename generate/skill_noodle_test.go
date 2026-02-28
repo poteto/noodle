@@ -63,3 +63,64 @@ func TestGeneratedSkillContainsAllCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestGeneratedSkillContainsV2Contracts(t *testing.T) {
+	content, err := GenerateSkillContent()
+	if err != nil {
+		t.Fatalf("GenerateSkillContent: %v", err)
+	}
+
+	v2Sections := []string{
+		"## Mode Contract",
+		"## Runtime Capabilities",
+		"## Canonical State Model",
+		"## Control Commands",
+		"## Dispatch and Projection",
+	}
+
+	for _, section := range v2Sections {
+		if !strings.Contains(content, section) {
+			t.Errorf("generated skill missing V2 contract section %q", section)
+		}
+	}
+
+	v2Vocabulary := []string{
+		"supervised",
+		"mode_epoch",
+		"steerable",
+		"polling",
+		"remote_sync",
+		"requested_mode",
+		"effective_mode",
+		"RouteCompletion",
+		"PlanDispatches",
+	}
+
+	for _, term := range v2Vocabulary {
+		if !strings.Contains(content, term) {
+			t.Errorf("generated skill missing V2 vocabulary term %q", term)
+		}
+	}
+}
+
+func TestGeneratedSkillNoRemovedContracts(t *testing.T) {
+	content, err := GenerateSkillContent()
+	if err != nil {
+		t.Fatalf("GenerateSkillContent: %v", err)
+	}
+
+	removed := []string{
+		"schedule.run",
+		"schedule.model",
+		"PendingApproval",
+		"isScheduleTarget",
+		"steerFallbackRespawn",
+		"promptItemRegexp",
+	}
+
+	for _, term := range removed {
+		if strings.Contains(content, term) {
+			t.Errorf("generated skill still references removed contract %q", term)
+		}
+	}
+}

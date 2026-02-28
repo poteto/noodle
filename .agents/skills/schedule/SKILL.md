@@ -13,6 +13,18 @@ Use `noodle schema mise` and `noodle schema orders` as the schema source of trut
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
+## Mode Awareness
+
+The loop runs in one of three modes (set via `autonomy` config). The mode determines what the scheduler and dispatcher are allowed to do:
+
+| Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
+|------|----------|----------|------------|------------|
+| `auto` | yes | yes | yes | yes |
+| `supervised` | yes | yes | no | no |
+| `manual` | no | no | no | no |
+
+In `manual` mode, the scheduler is not invoked — the operator manages orders directly. In `supervised` mode, scheduling and dispatch proceed normally, but merges and retries require human approval. Always write valid orders regardless of mode; the loop applies mode gates after promotion.
+
 ## Orders Model
 
 Output is `{orders: [...]}` where each order is a **pipeline of stages** executed sequentially. Group related work into stages within one order rather than separate orders.
@@ -59,18 +71,22 @@ The mise brief includes a `recent_events` array — lifecycle events emitted by 
 
 ### Internal Events
 
-These are emitted automatically by the loop:
+These are emitted automatically by the loop. The V2 backend uses canonical event types:
 
 | Event type | Meaning |
 |------------|---------|
-| `stage.completed` | A stage finished successfully (includes order ID, task key) |
-| `stage.failed` | A stage failed (includes reason) |
-| `order.completed` | All stages in an order finished — the order is done |
-| `order.failed` | An order failed terminally |
+| `stage_completed` | A stage finished successfully (includes order ID, stage index) |
+| `stage_failed` | A stage failed (includes reason) |
+| `order_completed` | All stages in an order finished — the order is done |
+| `order_failed` | An order failed terminally |
+| `dispatch_requested` | A stage is ready for dispatch (includes order ID, stage index) |
+| `dispatch_completed` | A dispatch attempt finished (includes attempt ID, exit code) |
+| `mode_changed` | The run mode was changed (includes from/to mode, epoch) |
+| `merge_completed` | A cook's worktree was merged back to main |
+| `merge_failed` | A merge failed (includes error reason) |
+| `session_adopted` | An orphaned session was recovered on startup |
 | `order.dropped` | An order was removed because its task type is no longer registered |
 | `order.requeued` | A failed order was reset and re-queued for another attempt |
-| `worktree.merged` | A cook's worktree was merged back to main |
-| `merge.conflict` | A merge failed due to conflicts |
 | `registry.rebuilt` | The skill registry was rebuilt (skills added or removed) |
 | `sync.degraded` | The backlog sync script encountered issues |
 
@@ -109,6 +125,19 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 - **Work around blockers**: If the top-priority item is blocked, schedule the next viable item — never idle.
 - **Timebox failures**: If an item has failed 2+ times in `recent_history`, deschedule or split it.
 
+## Stage Lifecycle
+
+Stages in the canonical state follow this lifecycle:
+
+```
+pending -> dispatching -> running -> merging -> review -> completed
+                                  \-> failed (may retry -> pending)
+                                  \-> cancelled
+                                  \-> skipped
+```
+
+The scheduler writes stages with `"status": "pending"`. The dispatcher and loop manage all subsequent transitions. If a stage fails and the retry policy allows, it resets to `pending` for another attempt. Each attempt is tracked as an `AttemptNode` with its own lifecycle (launching, running, completed, failed, cancelled).
+
 ## Model Routing
 
 | Task type | Provider | Model |
@@ -122,11 +151,24 @@ When uncertain, codex for implementation, opus for judgment.
 
 Read `routing.available_runtimes` from mise before writing orders.
 
-- If only `tmux` is available, set stage `"runtime": "tmux"`.
+- If only `process` is available, set stage `"runtime": "process"`.
 - If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
-- Keep `review`, `reflect`, and `meditate` on `"runtime": "tmux"` unless explicitly justified.
-- Do not emit `"runtime": "cursor"` yet (Cursor backend is not implemented).
+- Keep `review`, `reflect`, and `meditate` on `"runtime": "process"` unless explicitly justified.
+- `cursor` runtime requires `polling` and `remote_sync` capabilities — only use when available and appropriate.
 - Always include `"runtime"` on scheduled stages so dispatch routing is explicit.
+
+### Runtime Capabilities
+
+Each runtime declares capabilities that affect dispatch behavior:
+
+| Capability | Description |
+|------------|-------------|
+| `steerable` | Session supports live message injection (steer control command) |
+| `polling` | Session status must be polled (no push completion signal) |
+| `remote_sync` | Session runs remotely and needs branch push/pull |
+| `heartbeat` | Session emits periodic heartbeats for liveness detection |
+
+Default profiles: `process` and `sprites` are steerable. `cursor` requires polling and remote sync.
 
 ## Output
 
@@ -156,8 +198,8 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "status": "active",
       "stages": [
         {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"},
-        {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
+        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
+        {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
   ]
@@ -175,9 +217,9 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "rationale": "unresolved design question needs structured debate before implementation",
       "status": "active",
       "stages": [
-        {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"},
+        {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
         {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
-        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
+        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
   ]
@@ -195,7 +237,7 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "rationale": "3 reflects accumulated, time to consolidate",
       "status": "active",
       "stages": [
-        {"task_key": "meditate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
+        {"task_key": "meditate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
   ]

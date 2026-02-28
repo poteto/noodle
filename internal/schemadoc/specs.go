@@ -129,7 +129,7 @@ var schemaTargets = []targetSpec{
 		FieldDocs: map[string]FieldDoc{
 			"active[]":   {Description: "order IDs currently being cooked"},
 			"loop_state": {Description: "current loop state (running, paused, draining, idle)"},
-			"autonomy":   {Description: "current runtime autonomy mode (auto, approve)"},
+			"autonomy":   {Type: "string (auto|supervised|manual)", Description: "current run mode governing schedule, dispatch, retry, and merge gates"},
 			"max_cooks":  {Type: "number", Description: "current max concurrency (may differ from config if overridden at runtime)"},
 		},
 	},
