@@ -21,7 +21,7 @@ Scripts can be any executable -- shell scripts, binaries, or inline commands lik
 
 Each adapter action maps to a script path in config. Scripts receive arguments via environment variables and must produce NDJSON output for sync actions.
 
-1. **Sync** -- reads all items from your system, writes NDJSON to stdout. Each line is a `BacklogItem` or `PlanItem`.
+1. **Sync** -- reads all items from your system, writes NDJSON to stdout. Each line is a `BacklogItem` (with optional `plan` field pointing to a plan file).
 2. **Add** -- creates a new item. Receives `NOODLE_TITLE` and `NOODLE_BODY` env vars.
 3. **Done** -- marks an item complete. Receives `NOODLE_ID`.
 4. **Edit** -- updates an item. Receives `NOODLE_ID`, `NOODLE_FIELD`, `NOODLE_VALUE`.

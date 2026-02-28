@@ -20,12 +20,9 @@ var (
 	reTodoLine       = regexp.MustCompile(`^([0-9]+)\. \[([ xX])\] (.*)$`)
 	reTag            = regexp.MustCompile(`#[A-Za-z0-9_-]+`)
 	reEstimate       = regexp.MustCompile(`~(small|medium|large)`)
-	rePlanRef        = regexp.MustCompile(`\[\[plans/([0-9]+-[^/]+)/overview\]\]`)
-	reSpaces         = regexp.MustCompile(`\s+`)
-	rePlansIndexRef  = regexp.MustCompile(`\[\[(plans/[0-9][0-9]-[^/]+/overview)\]\]`)
-	rePlanDir        = regexp.MustCompile(`^[0-9][0-9]-`)
-	rePhaseChecklist = regexp.MustCompile(`^- \[([ xX])\] (.*)$`)
-	rePhaseName      = regexp.MustCompile(`—\s*(.+)$`)
+	rePlanRef = regexp.MustCompile(`\[\[plans/([0-9]+-[^/]+)/overview\]\]`)
+	reSpaces  = regexp.MustCompile(`\s+`)
+	rePlanDir = regexp.MustCompile(`^[0-9][0-9]-`)
 )
 
 type backlogPayload struct {
@@ -57,8 +54,6 @@ func main() {
 		err = backlogDone(arg(2))
 	case "backlog-edit":
 		err = backlogEdit(arg(2))
-	case "plans-sync":
-		err = plansSync()
 	case "plan-create":
 		err = planCreate()
 	case "plan-done":
@@ -262,86 +257,6 @@ func backlogEdit(id string) error {
 		}
 	}
 	return writeLinesAtomic(todosFile, lines)
-}
-
-func plansSync() error {
-	plansDir := envOrDefault("NOODLE_PLANS_DIR", "brain/plans")
-	indexFile := filepath.Join(plansDir, "index.md")
-	file, err := os.Open(indexFile)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	encoder := json.NewEncoder(os.Stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		m := rePlansIndexRef.FindStringSubmatch(line)
-		if len(m) != 2 {
-			continue
-		}
-		rel := m[1]
-		id := extractPlanID(rel)
-		if id == "" {
-			continue
-		}
-		dir := filepath.Join(plansDir, strings.TrimSuffix(strings.TrimPrefix(rel, "plans/"), "/overview"))
-		overview := filepath.Join(dir, "overview.md")
-
-		status := "active"
-		title := filepath.Base(dir)
-		if overviewLines, err := readLines(overview); err == nil {
-			if s := parseFrontmatterStatus(overviewLines); s != "" {
-				status = s
-			}
-			if h := parseHeading(overviewLines); h != "" {
-				title = h
-			}
-		}
-
-		phases := []map[string]string{}
-		if overviewLines, err := readLines(overview); err == nil {
-			firstOpen := true
-			for _, pline := range overviewLines {
-				mm := rePhaseChecklist.FindStringSubmatch(pline)
-				if len(mm) != 3 {
-					continue
-				}
-				phaseName := phaseNameFromChecklistLine(pline)
-				phaseStatus := "pending"
-				if mm[1] == "x" || mm[1] == "X" {
-					phaseStatus = "done"
-				} else if firstOpen {
-					phaseStatus = "active"
-					firstOpen = false
-				}
-				phases = append(phases, map[string]string{
-					"name":   phaseName,
-					"status": phaseStatus,
-				})
-			}
-		}
-		if len(phases) == 0 {
-			phases = append(phases, map[string]string{"name": "phase-1", "status": "active"})
-		}
-
-		item := map[string]any{
-			"id":     id,
-			"title":  title,
-			"status": status,
-			"phases": phases,
-			"tags":   []string{},
-		}
-		if err := encoder.Encode(item); err != nil {
-			return err
-		}
-	}
-	return scanner.Err()
 }
 
 func planCreate() error {
@@ -696,44 +611,6 @@ func hasSection(lines []string, section string) bool {
 	return false
 }
 
-func extractPlanID(rel string) string {
-	rel = strings.TrimSpace(rel)
-	rel = strings.TrimPrefix(rel, "plans/")
-	parts := strings.SplitN(rel, "-", 2)
-	if len(parts) == 0 {
-		return ""
-	}
-	id := strings.TrimSpace(parts[0])
-	if len(id) != 2 {
-		return ""
-	}
-	return id
-}
-
-func parseFrontmatterStatus(lines []string) string {
-	for _, line := range lines {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "status:") {
-			status := strings.TrimSpace(strings.TrimPrefix(trim, "status:"))
-			switch status {
-			case "draft", "active", "done":
-				return status
-			}
-		}
-	}
-	return ""
-}
-
-func parseHeading(lines []string) string {
-	for _, line := range lines {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "# ") {
-			return strings.TrimSpace(strings.TrimPrefix(trim, "# "))
-		}
-	}
-	return ""
-}
-
 func nextPlanID(plansDir string) (int, error) {
 	entries, err := os.ReadDir(plansDir)
 	if err != nil {
@@ -806,18 +683,3 @@ func envOrDefault(key, fallback string) string {
 	return value
 }
 
-func phaseNameFromChecklistLine(line string) string {
-	if match := rePhaseName.FindStringSubmatch(line); len(match) == 2 {
-		name := strings.TrimSpace(match[1])
-		if name != "" {
-			return name
-		}
-	}
-	if idx := strings.LastIndex(line, " - "); idx >= 0 {
-		name := strings.TrimSpace(line[idx+3:])
-		if name != "" {
-			return name
-		}
-	}
-	return "phase"
-}
