@@ -73,7 +73,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	reqRuntime := normalizeRuntime(req.Runtime)
+	reqRuntime := NormalizeRuntime(req.Runtime)
 	if reqRuntime != "sprites" {
 		return nil, fmt.Errorf("runtime %q not supported by sprites dispatcher", reqRuntime)
 	}
@@ -100,14 +100,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, fmt.Errorf("create event writer: %w", err)
 	}
 
-	var skillBundle loadedSkill
-	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
-		skillBundle = loadedSkill{SystemPrompt: sp}
-	} else if req.DomainSkill != "" {
-		skillBundle, err = loadExecuteBundle(d.skillResolver, req.Provider, req.Skill, req.DomainSkill)
-	} else {
-		skillBundle, err = loadSkillBundle(d.skillResolver, req.Provider, req.Skill)
-	}
+	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
 	if err != nil {
 		return nil, err
 	}
@@ -115,18 +108,9 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	preamble := buildSessionPreamble()
 	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 
-	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
-		return nil, fmt.Errorf("write prompt file: %w", err)
-	}
-
-	// input.txt: full composed prompt piped to agent stdin (includes
-	// inlined skill content for providers without system prompt support).
-	inputFile := promptPath
-	if composedPrompt != req.Prompt {
-		inputFile = filepath.Join(sessionDir, "input.txt")
-		if err := os.WriteFile(inputFile, []byte(composedPrompt), 0o644); err != nil {
-			return nil, fmt.Errorf("write input file: %w", err)
-		}
+	inputFile, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt)
+	if err != nil {
+		return nil, err
 	}
 
 	sprite := d.newSprite(d.spriteName)

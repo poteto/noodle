@@ -48,7 +48,7 @@ func NewProcessDispatcher(config ProcessDispatcherConfig) *ProcessDispatcher {
 		skillResolver:   config.SkillResolver,
 		providerConfigs: config.ProviderConfigs,
 		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
-		runtimeKind:     normalizeRuntime(config.RuntimeKind),
+		runtimeKind:     NormalizeRuntime(config.RuntimeKind),
 		sink:            config.Sink,
 	}
 }
@@ -61,7 +61,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	if reqRuntime == "" {
 		reqRuntime = d.runtimeKind
 	} else {
-		reqRuntime = normalizeRuntime(reqRuntime)
+		reqRuntime = NormalizeRuntime(reqRuntime)
 	}
 	if reqRuntime != d.runtimeKind {
 		return nil, fmt.Errorf("runtime %q not configured", reqRuntime)
