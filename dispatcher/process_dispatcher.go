@@ -23,6 +23,7 @@ type ProcessDispatcherConfig struct {
 	ProviderConfigs ProviderConfigs
 	RuntimeDefault  string // command template from config, empty = built-in
 	RuntimeKind     string // runtime kind this dispatcher instance services
+	Sink            SessionEventSink
 }
 
 // ProcessDispatcher dispatches provider sessions as direct child processes
@@ -35,6 +36,7 @@ type ProcessDispatcher struct {
 	providerConfigs ProviderConfigs
 	runtimeDefault  string
 	runtimeKind     string
+	sink            SessionEventSink
 }
 
 func NewProcessDispatcher(config ProcessDispatcherConfig) *ProcessDispatcher {
@@ -46,6 +48,7 @@ func NewProcessDispatcher(config ProcessDispatcherConfig) *ProcessDispatcher {
 		providerConfigs: config.ProviderConfigs,
 		runtimeDefault:  strings.TrimSpace(config.RuntimeDefault),
 		runtimeKind:     normalizeRuntime(config.RuntimeKind),
+		sink:            config.Sink,
 	}
 }
 
@@ -178,6 +181,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		prompt:        req.Prompt,
 		warnings:      skillBundle.Warnings,
 		controller:    controller,
+		sink:          d.sink,
 	})
 	session.start(ctx)
 	return session, nil

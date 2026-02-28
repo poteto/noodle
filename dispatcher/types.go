@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/poteto/noodle/event"
 )
 
 // ProviderConfig holds optional CLI binary directory and extra flags by provider.
@@ -88,6 +90,11 @@ type Session interface {
 	TotalCost() float64
 	Kill() error
 	Controller() AgentController
+}
+
+// SessionEventSink receives real-time session events for broadcasting.
+type SessionEventSink interface {
+	PublishSessionEvent(sessionID string, ev event.Event)
 }
 
 // Dispatcher starts sessions from requests.

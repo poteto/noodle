@@ -28,6 +28,7 @@ type SpritesDispatcherConfig struct {
 	SpriteName    string
 	Token         string
 	GitToken      string // GitHub token for repo access on the sprite
+	Sink          SessionEventSink
 }
 
 // SpritesDispatcher dispatches sessions on remote Sprites VMs via the sprites-go SDK.
@@ -39,6 +40,7 @@ type SpritesDispatcher struct {
 	spriteName    string
 	token         string
 	gitToken      string
+	sink          SessionEventSink
 
 	// newSprite creates a Sprite handle. Injected for testing.
 	newSprite func(name string) spriteHandle
@@ -60,6 +62,7 @@ func NewSpritesDispatcher(config SpritesDispatcherConfig) *SpritesDispatcher {
 		spriteName:    strings.TrimSpace(config.SpriteName),
 		token:         config.Token,
 		gitToken:      config.GitToken,
+		sink:          config.Sink,
 		newSprite: func(name string) spriteHandle {
 			return client.Sprite(name)
 		},
@@ -207,6 +210,7 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		prompt:        req.Prompt,
 		warnings:      skillBundle.Warnings,
 		remoteURL:     remoteURL,
+		sink:          d.sink,
 	})
 	session.start(ctx)
 	return session, nil

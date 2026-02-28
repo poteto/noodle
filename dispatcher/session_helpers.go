@@ -114,6 +114,11 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 	}
 }
 
+// FormatEventLine converts a canonical event into an event.Event for sink broadcasting.
+func FormatEventLine(sessionID string, ce parse.CanonicalEvent) (event.Event, bool) {
+	return eventFromCanonical(sessionID, ce)
+}
+
 // parseActionMessage extracts a tool name and summary from a canonical action message.
 // Conventions: "$ cmd" → bash, "text:..." → think, "user:..." → prompt, "Tool detail" → tool.
 func parseActionMessage(message string) (tool string, summary string) {

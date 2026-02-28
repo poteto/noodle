@@ -41,6 +41,7 @@ type processSession struct {
 	promptLogged bool
 	warnings     []string
 	controller   *claudeController // nil for non-steerable sessions
+	sink         SessionEventSink
 }
 
 type processSessionConfig struct {
@@ -52,6 +53,7 @@ type processSessionConfig struct {
 	prompt        string
 	warnings      []string
 	controller    *claudeController // nil for non-steerable sessions
+	sink          SessionEventSink
 }
 
 func newProcessSession(cfg processSessionConfig) *processSession {
@@ -64,6 +66,7 @@ func newProcessSession(cfg processSessionConfig) *processSession {
 		prompt:        cfg.prompt,
 		warnings:      append([]string(nil), cfg.warnings...),
 		controller:    cfg.controller,
+		sink:          cfg.sink,
 		status:        "running",
 		done:          make(chan struct{}),
 		events:        make(chan SessionEvent, 32),
@@ -246,6 +249,12 @@ func (s *processSession) consumeCanonicalLine(line []byte) {
 		}
 	}
 
+	if s.sink != nil {
+		if ev, ok := FormatEventLine(s.id, ce); ok {
+			s.sink.PublishSessionEvent(s.id, ev)
+		}
+	}
+
 	if ce.Type == parse.EventInit {
 		s.emitPromptEvent(ce.Timestamp)
 	}
@@ -280,17 +289,22 @@ func (s *processSession) emitPromptEvent(timestamp time.Time) {
 	if err != nil {
 		return
 	}
-	if err := s.eventWriter.Append(context.Background(), event.Event{
+	promptEvent := event.Event{
 		Type:      event.EventAction,
 		Payload:   payload,
 		Timestamp: timestamp,
 		SessionID: s.id,
-	}); err != nil {
+	}
+	if err := s.eventWriter.Append(context.Background(), promptEvent); err != nil {
 		s.publish(SessionEvent{
 			Type:      "warning",
 			Message:   "event log append failed: " + err.Error(),
 			Timestamp: nowUTC(),
 		})
+	}
+
+	if s.sink != nil {
+		s.sink.PublishSessionEvent(s.id, promptEvent)
 	}
 }
 

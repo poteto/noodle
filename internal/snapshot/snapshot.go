@@ -181,41 +181,48 @@ func ReadSessionEvents(runtimeDir, sessionID string) ([]EventLine, error) {
 func mapEventLines(events []event.Event) []EventLine {
 	lines := make([]EventLine, 0, len(events))
 	for _, ev := range events {
-		line := EventLine{
-			At:       ev.Timestamp,
-			Label:    "Event",
-			Body:     "",
-			Category: TraceFilterAll,
+		if line, ok := FormatSingleEvent(ev); ok {
+			lines = append(lines, line)
 		}
-		switch ev.Type {
-		case event.EventCost:
-			line.Label = "Cost"
-			line.Category = TraceFilterAll
-			line.Body = formatCost(ev.Payload)
-		case event.EventTicketClaim, event.EventTicketProgress, event.EventTicketDone, event.EventTicketBlocked, event.EventTicketRelease:
-			line.Label = "Ticket"
-			line.Category = TraceFilterTicket
-			line.Body = formatTicket(ev.Payload, string(ev.Type))
-		case event.EventAction:
-			label, body, category := formatAction(ev.Payload)
-			line.Label = label
-			line.Body = body
-			line.Category = category
-		case event.EventStateChange:
-			line.Label = "State"
-			line.Category = TraceFilterAll
-			line.Body = formatStateChange(ev.Payload)
-		default:
-			line.Label = strings.Title(strings.ReplaceAll(string(ev.Type), "_", " "))
-			line.Body = summarizePayload(ev.Payload)
-			line.Category = TraceFilterAll
-		}
-		if line.Body == "" {
-			line.Body = "(no details)"
-		}
-		lines = append(lines, line)
 	}
 	return lines
+}
+
+// FormatSingleEvent converts a single event.Event into an EventLine for display.
+func FormatSingleEvent(ev event.Event) (EventLine, bool) {
+	line := EventLine{
+		At:       ev.Timestamp,
+		Label:    "Event",
+		Body:     "",
+		Category: TraceFilterAll,
+	}
+	switch ev.Type {
+	case event.EventCost:
+		line.Label = "Cost"
+		line.Category = TraceFilterAll
+		line.Body = formatCost(ev.Payload)
+	case event.EventTicketClaim, event.EventTicketProgress, event.EventTicketDone, event.EventTicketBlocked, event.EventTicketRelease:
+		line.Label = "Ticket"
+		line.Category = TraceFilterTicket
+		line.Body = formatTicket(ev.Payload, string(ev.Type))
+	case event.EventAction:
+		label, body, category := formatAction(ev.Payload)
+		line.Label = label
+		line.Body = body
+		line.Category = category
+	case event.EventStateChange:
+		line.Label = "State"
+		line.Category = TraceFilterAll
+		line.Body = formatStateChange(ev.Payload)
+	default:
+		line.Label = strings.Title(strings.ReplaceAll(string(ev.Type), "_", " "))
+		line.Body = summarizePayload(ev.Payload)
+		line.Category = TraceFilterAll
+	}
+	if line.Body == "" {
+		line.Body = "(no details)"
+	}
+	return line, true
 }
 
 func formatCost(payload json.RawMessage) string {

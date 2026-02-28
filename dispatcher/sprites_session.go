@@ -32,6 +32,7 @@ type spritesSessionConfig struct {
 	prompt        string
 	warnings      []string
 	remoteURL     string
+	sink          SessionEventSink
 }
 
 type spritesSession struct {
@@ -60,6 +61,7 @@ type spritesSession struct {
 	startWarnings []string
 	prompt        string
 	promptLogged  bool
+	sink          SessionEventSink
 }
 
 func newSpritesSession(cfg spritesSessionConfig) *spritesSession {
@@ -79,6 +81,7 @@ func newSpritesSession(cfg spritesSessionConfig) *spritesSession {
 		events:        make(chan SessionEvent, 32),
 		startWarnings: append([]string(nil), cfg.warnings...),
 		prompt:        cfg.prompt,
+		sink:          cfg.sink,
 	}
 }
 
@@ -236,6 +239,12 @@ func (s *spritesSession) consumeCanonicalLine(line []byte) {
 		}
 	}
 
+	if s.sink != nil {
+		if ev, ok := FormatEventLine(s.id, ce); ok {
+			s.sink.PublishSessionEvent(s.id, ev)
+		}
+	}
+
 	if ce.Type == parse.EventInit {
 		s.emitPromptEvent(ce.Timestamp)
 	}
@@ -258,6 +267,22 @@ func (s *spritesSession) emitPromptEvent(timestamp time.Time) {
 		Message:   prompt,
 		Timestamp: timestamp,
 	})
+
+	if s.sink != nil {
+		payload, err := json.Marshal(map[string]any{
+			"tool":    "prompt",
+			"action":  "prompt_injected",
+			"message": prompt,
+		})
+		if err == nil {
+			s.sink.PublishSessionEvent(s.id, event.Event{
+				Type:      event.EventAction,
+				Payload:   payload,
+				Timestamp: timestamp,
+				SessionID: s.id,
+			})
+		}
+	}
 }
 
 func (s *spritesSession) ID() string      { return s.id }
