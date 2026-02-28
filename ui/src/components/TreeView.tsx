@@ -102,7 +102,7 @@ export function TreeView() {
 
   return (
     <div
-      className="h-screen w-full relative"
+      className="h-full w-full relative"
       style={{
         background: "var(--color-bg-depth)",
         backgroundImage:

@@ -6,8 +6,10 @@ import { buildSnapshot, buildOrder, buildStage } from "../test-utils";
 import type { Snapshot, ChannelId } from "~/client";
 
 const mockSetActiveChannel = vi.fn();
+const mockNavigate = vi.fn();
 let mockActiveChannel: ChannelId = { type: "scheduler" };
 let mockSnapshot: Snapshot = buildSnapshot();
+let mockPathname = "/";
 
 vi.mock("~/client", async () => {
   const actual = await vi.importActual<typeof import("~/client")>("~/client");
@@ -23,21 +25,27 @@ vi.mock("~/client", async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ state: { location: { pathname: "/" } } }),
+  useRouter: () => ({ state: { location: { pathname: mockPathname } } }),
+  useNavigate: () => mockNavigate,
+  Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
+    <a href={to} className={className}>{children}</a>
+  ),
 }));
 
 beforeEach(() => {
   mockActiveChannel = { type: "scheduler" };
   mockSnapshot = buildSnapshot();
+  mockPathname = "/";
   mockSetActiveChannel.mockClear();
+  mockNavigate.mockClear();
 });
 
 describe("Sidebar", () => {
   it("renders nav links", () => {
     render(<Sidebar />);
-    expect(screen.getByText("DASHBOARD")).toBeInTheDocument();
-    expect(screen.getByText("LIVE FEED")).toBeInTheDocument();
-    expect(screen.getByText("TREE")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Live Feed")).toBeInTheDocument();
+    expect(screen.getByText("Tree")).toBeInTheDocument();
   });
 
   it("renders scheduler channel item", () => {
@@ -63,15 +71,15 @@ describe("Sidebar", () => {
     expect(screen.getByText("Fix auth bug")).toBeInTheDocument();
   });
 
-  it("selects scheduler channel when Manager clicked", async () => {
+  it("navigates to / when Manager clicked", async () => {
     mockActiveChannel = { type: "agent", sessionId: "s1" };
     render(<Sidebar />);
     const user = userEvent.setup();
     await user.click(screen.getByText("Manager"));
-    expect(mockSetActiveChannel).toHaveBeenCalledWith({ type: "scheduler" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
-  it("selects agent channel when stage with session_id clicked", async () => {
+  it("navigates to actor route when stage with session_id clicked", async () => {
     mockSnapshot = buildSnapshot({
       orders: [
         buildOrder({
@@ -86,8 +94,10 @@ describe("Sidebar", () => {
     });
     render(<Sidebar />);
     const user = userEvent.setup();
+    // Click to expand the order first
+    await user.click(screen.getByText("Test order"));
     await user.click(screen.getByText("execute"));
-    expect(mockSetActiveChannel).toHaveBeenCalledWith({ type: "agent", sessionId: "s1" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
   });
 
   it("displays total cost in footer", () => {
@@ -98,8 +108,50 @@ describe("Sidebar", () => {
 
   it("highlights active nav link", () => {
     render(<Sidebar />);
-    const liveFeed = screen.getByText("LIVE FEED");
-    expect(liveFeed.className).toContain("border-accent");
-    expect(liveFeed.className).toContain("text-accent");
+    const liveFeed = screen.getByText("Live Feed");
+    const link = liveFeed.closest("a");
+    expect(link?.className).toContain("active");
+  });
+
+  it("navigates to actor route from non-feed page", async () => {
+    mockPathname = "/dashboard";
+    mockSnapshot = buildSnapshot({
+      orders: [
+        buildOrder({
+          id: "order-1",
+          title: "Test order",
+          status: "active",
+          stages: [
+            buildStage({ status: "active", task_key: "execute", session_id: "s1" }),
+          ],
+        }),
+      ],
+    });
+    render(<Sidebar />);
+    const user = userEvent.setup();
+    // Click to expand the order first
+    await user.click(screen.getByText("Test order"));
+    await user.click(screen.getByText("execute"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
+  });
+
+  it("navigates to / when Manager clicked from feed page", async () => {
+    mockPathname = "/";
+    render(<Sidebar />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Manager"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("renders logo mark", () => {
+    const { container } = render(<Sidebar />);
+    expect(container.querySelector(".logo-mark")).toBeTruthy();
+  });
+
+  it("renders agent avatar for manager", () => {
+    const { container } = render(<Sidebar />);
+    const avatar = container.querySelector(".agent-avatar");
+    expect(avatar).toBeTruthy();
+    expect(avatar?.textContent).toBe("M");
   });
 });

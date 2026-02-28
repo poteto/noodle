@@ -6,44 +6,33 @@ import { ReviewBanner } from "./ReviewBanner";
 
 function AgentHeader({ session, onStop }: { session: Session; onStop: () => void }) {
   return (
-    <div className="p-4 border-b border-border-subtle flex items-center gap-3">
-      <div className="flex-1 min-w-0">
-        <h2 className="text-sm font-display font-bold uppercase tracking-wider truncate">
-          {session.display_name}
-        </h2>
-        <div className="flex items-center gap-2 mt-1">
-          {session.task_key && (
-            <span className="text-[10px] font-body bg-accent text-black px-1.5 py-0.5 font-bold">
-              {session.task_key}
-            </span>
-          )}
-          <span className="text-[10px] font-body bg-neutral-800 text-neutral-300 px-1.5 py-0.5">
-            {session.model}
-          </span>
-          <span
-            className={`text-xs font-body ${
-              session.status === "running"
-                ? "text-green"
-                : session.status === "failed"
-                  ? "text-red"
-                  : "text-neutral-500"
-            }`}
-          >
-            {session.status}
-          </span>
-          <span className="text-xs text-neutral-600 font-body">
-            {formatCost(session.total_cost_usd)}
-          </span>
-        </div>
+    <header className="feed-header">
+      <div className="feed-title">
+        {session.display_name}
+        {session.task_key && (
+          <span className="feed-badge badge-task">{session.task_key}</span>
+        )}
+        <span className="feed-badge">{session.model}</span>
+        <span className="feed-badge" style={{
+          color: session.status === "running" ? "var(--color-green)" :
+                 session.status === "failed" ? "var(--color-red)" :
+                 "var(--color-text-secondary)",
+          borderColor: session.status === "running" ? "var(--color-green)" :
+                       session.status === "failed" ? "var(--color-red)" :
+                       undefined,
+        }}>
+          {session.status}
+        </span>
       </div>
-      <button
-        type="button"
-        onClick={onStop}
-        className="text-xs font-body uppercase px-3 py-1.5 border border-red text-red hover:bg-red/10"
-      >
-        STOP
-      </button>
-    </div>
+      <div className="feed-actions">
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+          {formatCost(session.total_cost_usd)}
+        </span>
+        <button type="button" className="feed-action-btn stop-btn" onClick={onStop}>
+          Stop
+        </button>
+      </div>
+    </header>
   );
 }
 
@@ -93,70 +82,75 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
   if (!session) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-600 text-sm font-body">
-        Session not found
+      <div className="feed-container" style={{ alignItems: "center", justifyContent: "center" }}>
+        <span style={{ color: "var(--color-text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 14 }}>
+          Session not found
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <AgentHeader session={session} onStop={handleStop} />
 
-      <div className="relative flex-1 overflow-hidden">
-        <div
-          ref={containerRef}
-          className="h-full overflow-y-auto py-3 scroll-smooth"
-          onScroll={handleScroll}
-        >
-          {events.length === 0 && (
-            <div className="text-neutral-600 text-sm font-body text-center pt-10">
-              No events yet.
-            </div>
-          )}
-          {events.map((event) => (
-            <MessageRow key={event.at} event={event} />
-          ))}
-        </div>
-
-        {!autoScroll && (
-          <button
-            type="button"
-            onClick={() => {
-              if (containerRef.current) {
-                containerRef.current.scrollTop = containerRef.current.scrollHeight;
-              }
-              setAutoScroll(true);
-            }}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-accent text-black font-body text-xs font-bold uppercase tracking-wider px-3 py-1.5 animate-fade-in"
-          >
-            New messages
-          </button>
+      <div
+        ref={containerRef}
+        className="feed-content"
+        onScroll={handleScroll}
+      >
+        {events.length === 0 && (
+          <div style={{ textAlign: "center", paddingTop: 40, color: "var(--color-text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+            No events yet.
+          </div>
         )}
+        {events.map((event) => (
+          <MessageRow key={event.at} event={event} />
+        ))}
       </div>
+
+      {!autoScroll && (
+        <button
+          type="button"
+          onClick={() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTop = containerRef.current.scrollHeight;
+            }
+            setAutoScroll(true);
+          }}
+          className="btn-new-order"
+          style={{ position: "absolute", bottom: 100, left: "50%", transform: "translateX(-50%)", zIndex: 20 }}
+        >
+          New messages
+        </button>
+      )}
 
       {pendingReview && <ReviewBanner review={pendingReview} />}
 
-      <div className="p-4 border-t border-border-subtle">
-        <div className="flex gap-2">
+      <div className="input-area">
+        <div className="input-wrapper">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Steer this agent..."
-            rows={2}
-            className="flex-1 bg-transparent border border-border-subtle focus:border-accent font-body text-sm text-text-primary p-2 resize-none outline-none placeholder:text-neutral-600"
+            rows={1}
           />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!input.trim()}
-            className="self-end bg-accent text-black font-body uppercase text-xs px-4 py-2 disabled:opacity-50"
-          >
-            SEND
-          </button>
+          <div className="input-footer">
+            <div className="input-hint">
+              <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline
+            </div>
+            <button
+              type="button"
+              className="btn-submit"
+              onClick={handleSubmit}
+              disabled={!input.trim()}
+            >
+              SEND
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

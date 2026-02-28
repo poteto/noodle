@@ -1,15 +1,27 @@
 @import "tailwindcss";
 @import "./starry-night-theme.css";
+@import "./noodle.css";
 
 @theme {
   --color-bg-depth: #030303;
   --color-bg-surface: #0A0A0A;
+  --color-bg-surface-hover: #111111;
+  --color-bg-surface-active: #151515;
   --color-border-subtle: #1A1A1A;
+  --color-border-active: #333333;
   --color-text-primary: #E0E0E0;
+  --color-text-secondary: #888888;
+  --color-text-tertiary: #666666;
   --color-accent: #FBDB24;
+  --color-accent-dim: rgba(251, 219, 36, 0.12);
+  --color-accent-subtle: rgba(251, 219, 36, 0.06);
   --color-green: #4ADE80;
+  --color-green-glow: rgba(74, 222, 128, 0.10);
   --color-red: #F87171;
-  --font-display: 'Inter', sans-serif;
+  --color-yellow: #FBDB24;
+  --color-yellow-glow: rgba(251, 219, 36, 0.10);
+  --color-blue: #60A5FA;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-body: 'JetBrains Mono', monospace;
   --font-mono: 'JetBrains Mono', monospace;
 

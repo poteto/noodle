@@ -1,5 +1,6 @@
+/* Starry Night dark theme — tuned for dark backgrounds */
 .pl-c {
-  color: #b0a060;
+  color: #6a737d;
   font-style: italic;
 }
 
@@ -8,25 +9,25 @@
 .pl-cm,
 .pl-cp,
 .pl-cpf {
-  color: #8a6800;
+  color: #79b8ff;
 }
 
 .pl-e,
 .pl-ef,
 .pl-ent {
-  color: #5830a0;
+  color: #b392f0;
 }
 
 .pl-en,
 .pl-fm {
-  color: #1858a0;
+  color: #b392f0;
 }
 
 .pl-k,
 .pl-ko,
 .pl-kv,
 .pl-ow {
-  color: #a04070;
+  color: #f97583;
 }
 
 .pl-s,
@@ -40,24 +41,24 @@
 .pl-si,
 .pl-sx,
 .pl-ss {
-  color: #1a7a3a;
+  color: #9ecbff;
 }
 
 .pl-smi,
 .pl-sm {
-  color: #4a4020;
+  color: #e1e4e8;
 }
 
 .pl-v,
 .pl-vm,
 .pl-vi {
-  color: #b85a20;
+  color: #ffab70;
 }
 
 .pl-kos,
 .pl-pse,
 .pl-pde {
-  color: #4a4020;
+  color: #e1e4e8;
 }
 
 .pl-mh,
@@ -69,23 +70,23 @@
 .pl-mn,
 .pl-mx,
 .pl-mr {
-  color: #8a6800;
+  color: #79b8ff;
 }
 
 .pl-sr {
-  color: #1858a0;
+  color: #dbedff;
 }
 
 .pl-bu {
-  color: #a82020;
+  color: #f97583;
 }
 
 .pl-ii {
-  color: #fff;
-  background-color: #a82020;
+  color: #fafbfc;
+  background-color: #b31d28;
 }
 
 .pl-err {
-  color: #fff;
-  background-color: #a82020;
+  color: #fafbfc;
+  background-color: #b31d28;
 }

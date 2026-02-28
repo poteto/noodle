@@ -1,35 +1,68 @@
+import { useState } from "react";
 import { useActiveChannel, useSuspenseSnapshot, useSSEStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 
-const stageIcon: Record<StageStatus, string> = {
-  active: "\u25A0",
-  pending: "\u25A1",
-  completed: "\u2713",
-  failed: "\u2717",
-  cancelled: "\u25A1",
+const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
+  active: { symbol: "▶", cls: "stage-active" },
+  pending: { symbol: "○", cls: "stage-pending" },
+  completed: { symbol: "✓", cls: "stage-done" },
+  failed: { symbol: "✗", cls: "stage-done" },
+  cancelled: { symbol: "○", cls: "stage-pending" },
 };
 
-function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+function DashboardIcon() {
   return (
-    <a
-      href={href}
-      className={`block px-3 py-1.5 text-xs uppercase tracking-wider font-body border-l-2 ${
-        active
-          ? "border-accent text-accent"
-          : "border-transparent text-neutral-500 hover:text-text-primary hover:bg-white/5"
-      }`}
-    >
-      {label}
-    </a>
+    <svg className="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="1" width="6" height="6" rx="1" />
+      <rect x="11" y="1" width="6" height="6" rx="1" />
+      <rect x="1" y="11" width="6" height="6" rx="1" />
+      <rect x="11" y="11" width="6" height="6" rx="1" />
+    </svg>
+  );
+}
+
+function FeedIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="5" r="3" />
+      <path d="M2 16c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+    </svg>
+  );
+}
+
+function TreeIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="9" r="2.5" />
+      <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" />
+    </svg>
   );
 }
 
 function SSEDot() {
   const status = useSSEStatus();
-  const color =
-    status === "connected" ? "bg-green" : status === "connecting" ? "bg-yellow-400" : "bg-red";
-  return <div className={`w-2 h-2 ${color}`} />;
+  const cls = status === "connected" ? "active" : status === "connecting" ? "thinking" : "idle";
+  return <div className={`status-dot ${cls}`} />;
+}
+
+function NavLink({
+  to,
+  label,
+  active,
+  icon,
+}: {
+  to: string;
+  label: string;
+  active: boolean;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Link to={to} className={`nav-item ${active ? "active" : ""}`}>
+      {icon}
+      {label}
+    </Link>
+  );
 }
 
 function channelEq(a: ChannelId, b: ChannelId): boolean {
@@ -40,94 +73,124 @@ function channelEq(a: ChannelId, b: ChannelId): boolean {
 
 export function Sidebar() {
   const { data: snapshot } = useSuspenseSnapshot();
-  const { activeChannel, setActiveChannel } = useActiveChannel();
+  const { activeChannel } = useActiveChannel();
   const router = useRouter();
+  const navigate = useNavigate();
   const pathname = router.state.location.pathname;
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+
+  function selectChannel(channel: ChannelId) {
+    if (channel.type === "scheduler") {
+      navigate({ to: "/" });
+    } else {
+      navigate({ to: "/actor/$id", params: { id: channel.sessionId } });
+    }
+  }
+
+  function toggleOrder(orderId: string) {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  }
 
   const schedulerChannel: ChannelId = { type: "scheduler" };
   const isSchedulerActive = channelEq(activeChannel, schedulerChannel);
+  const isFeedRoute = pathname === "/" || pathname.startsWith("/actor/");
+  const sseStatus = useSSEStatus();
+  const statusLabel = sseStatus === "connected" ? "running" : sseStatus === "connecting" ? "connecting" : "offline";
 
   return (
-    <aside className="flex flex-col border-r border-border-subtle bg-bg-surface h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-        <h1 className="text-lg font-display font-bold tracking-wider uppercase">NOODLE</h1>
-        <SSEDot />
+    <aside className="sidebar">
+      <div className="sidebar-header">
+        <div className="logo-mark" />
+        <span>NOODLE</span>
+        <span className="header-status"><SSEDot /> {statusLabel}</span>
       </div>
 
-      {/* Nav */}
-      <nav className="py-2 border-b border-border-subtle">
-        <NavLink href="/dashboard" label="DASHBOARD" active={pathname === "/dashboard"} />
-        <NavLink href="/" label="LIVE FEED" active={pathname === "/"} />
-        <NavLink href="/tree" label="TREE" active={pathname === "/tree"} />
+      <nav className="sidebar-nav">
+        <NavLink to="/dashboard" label="Dashboard" active={pathname === "/dashboard"} icon={<DashboardIcon />} />
+        <NavLink to="/" label="Live Feed" active={isFeedRoute} icon={<FeedIcon />} />
+        <NavLink to="/tree" label="Tree" active={pathname === "/tree"} icon={<TreeIcon />} />
       </nav>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Scheduler section */}
-        <div className="p-2">
-          <div className="px-2 py-1.5 text-xs uppercase tracking-wider text-neutral-500">
-            SCHEDULER
+      <div className="section-label">Agents</div>
+      <ul className="agent-list">
+        <li
+          className={`agent-item manager ${isSchedulerActive ? "active" : ""}`}
+          onClick={() => selectChannel(schedulerChannel)}
+        >
+          <div className="agent-avatar">M</div>
+          <div className="agent-info">
+            <span className="agent-name">Manager</span>
+            <span className="agent-meta-line">SCHEDULER · LLM</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveChannel(schedulerChannel)}
-            className={`w-full text-left px-3 py-1.5 text-sm font-body flex items-center gap-2 cursor-pointer ${
-              isSchedulerActive ? "text-accent bg-white/5" : "text-text-primary hover:bg-white/5"
-            }`}
-          >
-            <span>Manager</span>
-            <span className="ml-auto text-xs text-neutral-500 font-body">LLM</span>
-          </button>
-        </div>
+          <div className={`status-dot ${sseStatus === "connected" ? "active" : "idle"}`} />
+        </li>
+      </ul>
 
-        {/* Orders section */}
-        <div className="p-2">
-          <div className="px-2 py-1.5 text-xs uppercase tracking-wider text-neutral-500">
-            ORDERS
-          </div>
-          {snapshot.orders.length === 0 && (
-            <div className="px-3 py-1.5 text-xs text-neutral-600">No orders</div>
-          )}
-          {snapshot.orders.map((order) => (
-            <div key={order.id} className="mb-1">
-              <div className="px-3 py-1 text-sm text-text-primary truncate">
-                {order.title || order.id}
-              </div>
-              {order.stages.map((stage, i) => {
-                const agentChannel: ChannelId | null = stage.session_id
-                  ? { type: "agent", sessionId: stage.session_id }
-                  : null;
-                const isActive = agentChannel ? channelEq(activeChannel, agentChannel) : false;
-                return (
-                  <button
-                    key={stage.task_key || i}
-                    type="button"
-                    disabled={!agentChannel}
-                    onClick={() => agentChannel && setActiveChannel(agentChannel)}
-                    className={`w-full text-left pl-6 pr-3 py-0.5 text-xs font-body flex items-center gap-1.5 ${
-                      isActive
-                        ? "text-accent bg-white/5"
-                        : agentChannel
-                          ? "text-neutral-400 hover:bg-white/5 cursor-pointer"
-                          : "text-neutral-600"
-                    }`}
-                  >
-                    <span className={stage.status === "failed" ? "text-red" : stage.status === "active" ? "text-green" : ""}>
-                      {stageIcon[stage.status] || "\u25A1"}
-                    </span>
-                    <span className="truncate">{stage.task_key || stage.skill || `Stage ${i + 1}`}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+      <div className="section-label">
+        Orders <span className="section-count">{snapshot.orders.length}</span>
       </div>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-border-subtle text-xs text-neutral-500 font-body">
-        {formatCost(snapshot.total_cost_usd)}
+      <div className="agent-tree">
+        {snapshot.orders.length === 0 && (
+          <div style={{ padding: "6px 12px", color: "var(--color-text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+            No orders
+          </div>
+        )}
+        {snapshot.orders.map((order) => {
+          const isExpanded = expandedOrders.has(order.id);
+          const hasActiveStage = order.stages.some((s) => s.status === "active");
+          const orderActive = order.stages.some((s) => {
+            if (!s.session_id) return false;
+            const ch: ChannelId = { type: "agent", sessionId: s.session_id };
+            return channelEq(activeChannel, ch);
+          });
+
+          return (
+            <div key={order.id}>
+              <div
+                className={`tree-order ${orderActive ? "active" : ""}`}
+                onClick={() => toggleOrder(order.id)}
+              >
+                <span className={`tree-chevron ${isExpanded ? "open" : ""}`}>▸</span>
+                <span className="tree-label">{order.title || order.id}</span>
+                {hasActiveStage && <div className="status-dot active" />}
+              </div>
+              <div className={`tree-stages ${isExpanded ? "open" : ""}`}>
+                {order.stages.map((stage, i) => {
+                  const agentChannel: ChannelId | null = stage.session_id
+                    ? { type: "agent", sessionId: stage.session_id }
+                    : null;
+                  const info = stageStatusIcon[stage.status] || stageStatusIcon.pending;
+
+                  return (
+                    <div
+                      key={stage.task_key || i}
+                      className={`tree-stage ${info.cls}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (agentChannel) selectChannel(agentChannel);
+                      }}
+                      style={{ cursor: agentChannel ? "pointer" : "default" }}
+                    >
+                      <span className="tree-icon">{info.symbol}</span>
+                      <span>{stage.task_key || stage.skill || `Stage ${i + 1}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="sidebar-footer">
+        <span className="footer-label">Session Cost</span>
+        <span className="footer-value">{formatCost(snapshot.total_cost_usd)}</span>
       </div>
     </aside>
   );

@@ -8,16 +8,16 @@ export function MetricCard({
   unit?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 p-3 bg-bg-depth border border-border-subtle">
-      <span className="text-xs uppercase tracking-wider text-neutral-500">
-        {label}
-      </span>
-      <span className="text-lg font-mono text-text-primary">
+    <div className="metric-card">
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">
         {value}
         {unit && (
-          <span className="text-xs text-neutral-500 ml-1">{unit}</span>
+          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginLeft: 4 }}>
+            {unit}
+          </span>
         )}
-      </span>
+      </div>
     </div>
   );
 }

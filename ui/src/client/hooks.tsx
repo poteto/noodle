@@ -1,4 +1,4 @@
-import { createElement, createContext, useContext, useEffect, useState } from "react";
+import { createElement, createContext, useContext, useEffect } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY } from "./sse";
 import type { SSEStatus } from "./sse";
@@ -71,9 +71,20 @@ interface ActiveChannelContextValue {
 
 const ActiveChannelContext = createContext<ActiveChannelContextValue | null>(null);
 
-export function ActiveChannelProvider({ children }: { children: React.ReactNode }) {
-  const [activeChannel, setActiveChannel] = useState<ChannelId>({ type: "scheduler" });
-  return createElement(ActiveChannelContext.Provider, { value: { activeChannel, setActiveChannel } }, children);
+export function ActiveChannelProvider({
+  channel,
+  onChannelChange,
+  children,
+}: {
+  channel: ChannelId;
+  onChannelChange: (channel: ChannelId) => void;
+  children: React.ReactNode;
+}) {
+  return createElement(
+    ActiveChannelContext.Provider,
+    { value: { activeChannel: channel, setActiveChannel: onChannelChange } },
+    children,
+  );
 }
 
 export function useActiveChannel() {

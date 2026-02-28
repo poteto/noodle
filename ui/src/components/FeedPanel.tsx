@@ -10,10 +10,7 @@ export function FeedPanel() {
   const { activeChannel } = useActiveChannel();
 
   return (
-    <main
-      key={channelKey(activeChannel)}
-      className="flex flex-col h-full overflow-hidden bg-bg-depth animate-fade-in"
-    >
+    <main key={channelKey(activeChannel)} className="feed-container animate-fade-in">
       {activeChannel.type === "scheduler" ? (
         <SchedulerFeed />
       ) : (

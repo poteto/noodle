@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TreeRouteImport } from './routes/tree'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActorIdRouteImport } from './routes/actor.$id'
 
 const TreeRoute = TreeRouteImport.update({
   id: '/tree',
@@ -28,35 +29,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActorIdRoute = ActorIdRouteImport.update({
+  id: '/actor/$id',
+  path: '/actor/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/tree': typeof TreeRoute
+  '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/tree': typeof TreeRoute
+  '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/tree': typeof TreeRoute
+  '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/tree'
+  fullPaths: '/' | '/dashboard' | '/tree' | '/actor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/tree'
-  id: '__root__' | '/' | '/dashboard' | '/tree'
+  to: '/' | '/dashboard' | '/tree' | '/actor/$id'
+  id: '__root__' | '/' | '/dashboard' | '/tree' | '/actor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   TreeRoute: typeof TreeRoute
+  ActorIdRoute: typeof ActorIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/actor/$id': {
+      id: '/actor/$id'
+      path: '/actor/$id'
+      fullPath: '/actor/$id'
+      preLoaderRoute: typeof ActorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   TreeRoute: TreeRoute,
+  ActorIdRoute: ActorIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

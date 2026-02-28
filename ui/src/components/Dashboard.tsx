@@ -93,19 +93,10 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-depth text-text-primary">
+    <div className="flex flex-col h-full bg-bg-depth text-text-primary">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-bg-surface">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate({ to: "/" })}
-            className="font-display font-bold text-lg tracking-wider uppercase text-accent hover:underline"
-          >
-            NOODLE
-          </button>
-          <span className="text-border-subtle">/</span>
-          <h1 className="font-display font-bold text-lg tracking-wider uppercase">DASHBOARD</h1>
-        </div>
+        <h1 className="font-display font-bold text-lg tracking-wider uppercase">DASHBOARD</h1>
         <button
           onClick={() => navigate({ to: "/" })}
           className="px-4 py-2 bg-accent text-bg-depth font-mono font-bold text-sm uppercase tracking-wider hover:opacity-90"

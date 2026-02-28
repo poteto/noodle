@@ -1,12 +1,13 @@
 import type { EventLine } from "~/client";
+import { MarkdownBody } from "./MarkdownBody";
 
-const TOOL_BADGE: Record<string, string> = {
-  Read: "bg-blue-900/50 text-blue-300",
-  Edit: "bg-yellow-900/50 text-yellow-300",
-  Bash: "bg-green-900/50 text-green-300",
-  Write: "bg-purple-900/50 text-purple-300",
-  Glob: "bg-blue-900/50 text-blue-300",
-  Grep: "bg-blue-900/50 text-blue-300",
+const TOOL_BADGE_CLASS: Record<string, string> = {
+  Read: "badge-read",
+  Edit: "badge-edit",
+  Write: "badge-write",
+  Bash: "badge-bash",
+  Glob: "badge-read",
+  Grep: "badge-read",
 };
 
 function formatTime(iso: string): string {
@@ -18,46 +19,46 @@ function initials(label: string): string {
   return label.slice(0, 2).toUpperCase();
 }
 
+function typeClass(event: EventLine): string {
+  if (event.category === "ticket") return "type-system";
+  if (event.label === "Cost") return "type-cost";
+  if (event.label === "Think") return "type-system";
+  if (event.label === "Manager") return "from-manager";
+  if (event.label === "User") return "from-user";
+  return "";
+}
+
 export function MessageRow({ event }: { event: EventLine }) {
   if (event.category === "ticket") {
     return (
-      <div className="text-xs text-neutral-600 text-center py-1 font-body">
-        {event.label}
+      <div className="idle-divider">
+        <span>{event.label}</span>
       </div>
     );
   }
 
-  const isThink = event.label === "Think";
-  const isCost = event.label === "Cost";
-
-  if (isCost) {
+  if (event.label === "Cost") {
     return (
-      <div className="text-xs text-neutral-600 px-10 py-0.5 font-body">
-        {event.body}
+      <div className="message-row type-cost">
+        <span className="msg-body" style={{ fontSize: 12 }}>{event.body}</span>
       </div>
     );
   }
 
-  const badgeClass = TOOL_BADGE[event.label] ?? "bg-neutral-800 text-neutral-300";
+  const badgeCls = TOOL_BADGE_CLASS[event.label] ?? "";
 
   return (
-    <div className={`flex gap-3 px-4 py-2 ${isThink ? "opacity-60 italic" : ""}`}>
-      <div
-        className={`w-7 h-7 flex items-center justify-center text-[10px] font-bold shrink-0 ${badgeClass}`}
-      >
-        {initials(event.label)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold font-body ${badgeClass} px-1.5 py-0.5`}>
-            {event.label}
-          </span>
-          <span className="text-xs text-neutral-600 font-body">{formatTime(event.at)}</span>
+    <div className={`message-row ${typeClass(event)}`}>
+      <div className="msg-avatar">{initials(event.label)}</div>
+      <div>
+        <div className="msg-meta">
+          <span className={`msg-badge ${badgeCls}`}>{event.label}</span>
+          <span>{formatTime(event.at)}</span>
         </div>
         {event.body && (
-          <div className="font-body whitespace-pre-wrap text-sm text-text-primary mt-1 break-words">
-            {event.body}
-          </div>
+          event.label === "Think"
+            ? <MarkdownBody text={event.body} />
+            : <div className="msg-body">{event.body}</div>
         )}
       </div>
     </div>

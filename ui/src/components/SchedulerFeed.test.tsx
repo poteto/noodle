@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SchedulerFeed } from "./SchedulerFeed";
-import { buildSnapshot, buildOrder } from "../test-utils";
+import { buildSnapshot } from "../test-utils";
 import type { Snapshot } from "~/client";
 
 const mockSend = vi.fn();
@@ -14,6 +14,7 @@ vi.mock("~/client", async () => {
     ...actual,
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
     useSendControl: () => ({ mutate: mockSend, isPending: false }),
+    useSessionEvents: () => ({ data: [] }),
   };
 });
 
@@ -25,36 +26,24 @@ beforeEach(() => {
 describe("SchedulerFeed", () => {
   it("renders scheduler header", () => {
     render(<SchedulerFeed />);
-    expect(screen.getByText("SCHEDULER")).toBeInTheDocument();
+    expect(screen.getByText("Scheduler")).toBeInTheDocument();
   });
 
-  it("renders empty state when no orders", () => {
+  it("renders empty state when no scheduler session", () => {
     render(<SchedulerFeed />);
-    expect(screen.getByText("No orders yet. Send a prompt to start.")).toBeInTheDocument();
-  });
-
-  it("renders orders as summary items", () => {
-    mockSnapshot = buildSnapshot({
-      orders: [
-        buildOrder({ id: "order-1", title: "Fix the tests" }),
-        buildOrder({ id: "order-2", title: "Add login page" }),
-      ],
-    });
-    render(<SchedulerFeed />);
-    expect(screen.getByText("Fix the tests")).toBeInTheDocument();
-    expect(screen.getByText("Add login page")).toBeInTheDocument();
+    expect(screen.getByText(/No scheduler session found/)).toBeInTheDocument();
   });
 
   it("renders input area", () => {
     render(<SchedulerFeed />);
-    expect(screen.getByPlaceholderText("Send a prompt to the scheduler...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Talk to the scheduler...")).toBeInTheDocument();
     expect(screen.getByText("SEND")).toBeInTheDocument();
   });
 
   it("sends steer command on submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Send a prompt to the scheduler...");
+    const textarea = screen.getByPlaceholderText("Talk to the scheduler...");
     await user.type(textarea, "deploy to staging");
     await user.click(screen.getByText("SEND"));
     expect(mockSend).toHaveBeenCalledWith({
@@ -67,7 +56,7 @@ describe("SchedulerFeed", () => {
   it("sends steer command on Enter", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Send a prompt to the scheduler...");
+    const textarea = screen.getByPlaceholderText("Talk to the scheduler...");
     await user.type(textarea, "run tests{Enter}");
     expect(mockSend).toHaveBeenCalledWith({
       action: "steer",
@@ -79,7 +68,7 @@ describe("SchedulerFeed", () => {
   it("clears input after submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Send a prompt to the scheduler...") as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText("Talk to the scheduler...") as HTMLTextAreaElement;
     await user.type(textarea, "do something");
     await user.click(screen.getByText("SEND"));
     expect(textarea.value).toBe("");

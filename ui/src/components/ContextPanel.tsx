@@ -35,26 +35,6 @@ function findOrderForSession(
   );
 }
 
-const actionBadgeColor: Record<string, string> = {
-  read: "text-neutral-400 bg-neutral-800",
-  edit: "text-accent bg-accent/10",
-  write: "text-green bg-green/10",
-};
-
-function contextWindowColor(pct: number): string {
-  if (pct > 80) return "text-red";
-  if (pct > 50) return "text-accent";
-  return "text-green";
-}
-
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-sm font-display font-bold uppercase tracking-wider p-4 border-b border-border-subtle">
-      {children}
-    </div>
-  );
-}
-
 function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
   const activeCount = snapshot.active.length;
   const orderCount = snapshot.orders.length;
@@ -62,39 +42,33 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
 
   return (
     <>
-      <SectionHeader>System Status</SectionHeader>
+      <div className="context-header">System Status</div>
 
-      <div className="p-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wider text-neutral-500">Loop</span>
-          <span className="text-xs font-mono text-accent uppercase">{snapshot.loop_state}</span>
+      <div className="context-body">
+        <div className="metric-grid">
+          <MetricCard label="Loop" value={snapshot.loop_state} />
+          <MetricCard label="Active" value={String(activeCount)} />
+          <MetricCard label="Orders" value={String(orderCount)} />
+          <MetricCard label="Cost" value={formatCost(snapshot.total_cost_usd)} />
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-2 p-4">
-        <MetricCard label="Active" value={String(activeCount)} />
-        <MetricCard label="Orders" value={String(orderCount)} />
-        <MetricCard label="Cost" value={formatCost(snapshot.total_cost_usd)} />
-        <MetricCard label="Warnings" value={String(warningCount)} />
+        {warningCount > 0 && (
+          <>
+            <div className="ctx-section-label">Warnings</div>
+            <div className="file-list">
+              {snapshot.warnings.map((w, i) => (
+                <div
+                  key={i}
+                  className="file-item"
+                  style={{ color: "var(--color-red)", lineHeight: 1.8 }}
+                >
+                  {w}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
-
-      {warningCount > 0 && (
-        <div className="px-4 pb-4">
-          <div className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
-            Warnings
-          </div>
-          <ul className="space-y-1">
-            {snapshot.warnings.map((w, i) => (
-              <li
-                key={i}
-                className="text-xs font-mono text-red px-2 py-1 bg-red/5 border border-red/20"
-              >
-                {w}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </>
   );
 }
@@ -115,89 +89,75 @@ function AgentContext({
     : 0;
   const totalStages = order ? order.stages.length : 0;
   const progressPct = totalStages > 0 ? (completedStages / totalStages) * 100 : 0;
-
   const cwPct = Math.round(session.context_window_usage_pct);
 
   return (
     <>
-      <SectionHeader>{session.display_name || session.id}</SectionHeader>
+      <div className="context-header">{session.display_name || session.id}</div>
 
-      <div className="grid grid-cols-2 gap-2 p-4">
-        <MetricCard label="Cost" value={formatCost(session.total_cost_usd)} />
-        <MetricCard
-          label="Duration"
-          value={formatDuration(session.duration_seconds)}
-        />
-        <MetricCard
-          label="Context"
-          value={`${cwPct}%`}
-        />
-        <MetricCard label="Model" value={session.model} />
-      </div>
-
-      {/* Context window bar */}
-      <div className="px-4 pb-4">
-        <div className="h-1.5 bg-neutral-800 w-full">
-          <div
-            className={`h-full progress-fill ${cwPct > 80 ? "bg-red" : cwPct > 50 ? "bg-accent" : "bg-green"}`}
-            style={{ width: `${Math.min(cwPct, 100)}%` }}
-          />
+      <div className="context-body">
+        <div className="metric-grid">
+          <MetricCard label="Cost" value={formatCost(session.total_cost_usd)} />
+          <MetricCard label="Duration" value={formatDuration(session.duration_seconds)} />
+          <MetricCard label="Context" value={`${cwPct}%`} />
+          <MetricCard label="Model" value={session.model} />
         </div>
-        <div className={`text-xs mt-1 ${contextWindowColor(cwPct)}`}>
-          {cwPct}% context used
-        </div>
-      </div>
 
-      {/* Stage pipeline */}
-      {order && (
-        <div className="px-4 pb-4 border-t border-border-subtle pt-4">
-          <div className="text-xs uppercase tracking-wider text-neutral-500 mb-3">
-            Pipeline
+        {/* Context window bar */}
+        <div className="ctx-progress">
+          <div className="ctx-progress-bar">
+            <div
+              className="ctx-progress-fill"
+              style={{
+                width: `${Math.min(cwPct, 100)}%`,
+                background: cwPct > 80 ? "var(--color-red)" : cwPct > 50 ? "var(--color-accent)" : "var(--color-green)",
+              }}
+            />
           </div>
-          <StageRail stages={order.stages} />
+          <div className="ctx-progress-label">
+            <span>{cwPct}% context used</span>
+          </div>
+        </div>
 
-          {/* Progress bar */}
-          {totalStages > 0 && (
-            <div className="mt-3">
-              <div className="h-1 bg-neutral-800 w-full">
-                <div
-                  className="h-full bg-green progress-fill"
-                  style={{ width: `${progressPct}%` }}
-                />
+        {/* Stage pipeline */}
+        {order && (
+          <>
+            <div className="ctx-section-label">Pipeline</div>
+            <StageRail stages={order.stages} />
+
+            {totalStages > 0 && (
+              <div className="ctx-progress" style={{ marginTop: 12 }}>
+                <div className="ctx-progress-bar">
+                  <div
+                    className="ctx-progress-fill"
+                    style={{ width: `${progressPct}%`, background: "var(--color-green)" }}
+                  />
+                </div>
+                <div className="ctx-progress-label">
+                  <span>{completedStages}/{totalStages} stages</span>
+                </div>
               </div>
-              <div className="text-xs text-neutral-500 mt-1">
-                {completedStages}/{totalStages} stages
-              </div>
+            )}
+          </>
+        )}
+
+        {/* Files touched */}
+        {filesTouched.length > 0 && (
+          <>
+            <div className="ctx-section-label">Files ({filesTouched.length})</div>
+            <div className="file-list">
+              {filesTouched.map((f, i) => (
+                <div key={i} className="file-item">
+                  <span className={`file-action ${f.action}`}>{f.action}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.path}>
+                    {f.path}
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Files touched */}
-      {filesTouched.length > 0 && (
-        <div className="px-4 pb-4 border-t border-border-subtle pt-4">
-          <div className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
-            Files ({filesTouched.length})
-          </div>
-          <ul className="space-y-1 max-h-48 overflow-y-auto">
-            {filesTouched.map((f, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-2 text-xs font-mono"
-              >
-                <span
-                  className={`px-1 py-0.5 text-[10px] uppercase font-bold ${actionBadgeColor[f.action]}`}
-                >
-                  {f.action}
-                </span>
-                <span className="text-neutral-400 truncate" title={f.path}>
-                  {f.path}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -207,7 +167,7 @@ function ReviewDiffPanel({ review }: { review: PendingReviewItem }) {
 
   return (
     <>
-      <SectionHeader>Review Diff</SectionHeader>
+      <div className="context-header">Review Diff</div>
       <DiffViewer
         diff={data?.diff ?? ""}
         stat={data?.stat ?? ""}
@@ -235,8 +195,8 @@ export function ContextPanel() {
       : undefined;
 
   return (
-    <aside className="flex flex-col border-l border-border-subtle bg-bg-surface h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
+    <aside className="context-panel">
+      <div style={{ flex: 1, overflowY: "auto" }}>
         {activeChannel.type === "scheduler" ? (
           <SchedulerContext snapshot={snapshot} />
         ) : pendingReview ? (
@@ -244,7 +204,14 @@ export function ContextPanel() {
         ) : session ? (
           <AgentContext session={session} snapshot={snapshot} />
         ) : (
-          <div className="p-4 text-xs text-neutral-500">Session not found</div>
+          <>
+            <div className="context-header">Agent</div>
+            <div className="context-body">
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Session not found
+              </span>
+            </div>
+          </>
         )}
       </div>
     </aside>
