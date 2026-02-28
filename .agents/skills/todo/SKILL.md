@@ -34,13 +34,13 @@ Manage the project backlog at `brain/todos.md`. Edit the file directly with Edit
 
 ### Mark done
 
-Change `[ ]` to `[x]` and wrap the description in `~~strikethrough~~`:
+Change `[ ]` to `[x]` and update the description with a reason:
 
 ```
-2. [x] ~~Old description~~ — reason it was closed/superseded.
+2. [x] Old description — superseded by #75 channel UI redesign
 ```
 
-The item stays in the file for history.
+Then move the done item from `brain/todos.md` to `brain/archive/todos.md`. Remove empty sections left behind.
 
 ### Edit description
 

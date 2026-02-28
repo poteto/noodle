@@ -204,6 +204,10 @@ To update an existing todo's description, edit the item text in place (preserve 
 
 Do NOT edit `brain/index.md` — the auto-index hook maintains it automatically.
 
+### Archiving completed plans
+
+When a plan is fully done, move its directory from `brain/plans/` to `brain/archive/plans/` and update the link in `brain/plans/index.md` to point to the archive path. Mark the corresponding todo as done and move it to `brain/archive/todos.md` (see the `todo` skill).
+
 ## Step 8 — Present to User
 
 Summarize the plan: list the phases, scope boundaries, applicable skills, and verification approach. Ask the user to review the plan files in `brain/plans/`.
