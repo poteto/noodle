@@ -19,7 +19,7 @@ vi.mock("~/client", async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ state: { location: { pathname: "/" } } }),
+  useLocation: () => ({ pathname: "/" }),
   useNavigate: () => vi.fn(),
   Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
     <a href={to} className={className}>{children}</a>

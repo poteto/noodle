@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
-import { Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
@@ -84,9 +84,8 @@ function channelEq(a: ChannelId, b: ChannelId): boolean {
 export function Sidebar() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { activeChannel } = useActiveChannel();
-  const router = useRouter();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const pathname = router.state.location.pathname;
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const order of snapshot.orders) {

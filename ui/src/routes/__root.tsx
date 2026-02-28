@@ -1,5 +1,5 @@
 import { Suspense, useMemo, useCallback } from "react";
-import { createRootRoute, Outlet, useRouter, useNavigate } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ActiveChannelProvider } from "~/client";
 import type { ChannelId } from "~/client";
@@ -16,9 +16,8 @@ const queryClient = new QueryClient({
 });
 
 function RootComponent() {
-  const router = useRouter();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const pathname = router.state.location.pathname;
 
   const activeChannel: ChannelId = useMemo(() => {
     if (pathname.startsWith("/actor/")) {
