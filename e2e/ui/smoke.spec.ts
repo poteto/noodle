@@ -75,22 +75,33 @@ test.describe("Noodle UI smoke", () => {
     expect(config).toHaveProperty("task_types");
   });
 
-  test("events SSE endpoint is reachable", async ({ page, baseURL }) => {
-    // Navigate to the app first so we have a valid page context
+  test("WebSocket endpoint is reachable", async ({ page, baseURL }) => {
     await page.goto("/");
-    // Use page.evaluate with an AbortController so we can verify the SSE
-    // endpoint responds with the right content-type without waiting for
-    // the (infinite) stream to complete.
-    const contentType = await page.evaluate(async (url) => {
-      const controller = new AbortController();
-      const res = await fetch(url, {
-        headers: { Accept: "text/event-stream" },
-        signal: controller.signal,
+    // Verify we can open a WebSocket connection and receive the initial snapshot.
+    const received = await page.evaluate(async (url) => {
+      const wsURL = url!.replace(/^http/, "ws") + "/api/ws";
+      return new Promise<boolean>((resolve) => {
+        const ws = new WebSocket(wsURL);
+        const timeout = setTimeout(() => {
+          ws.close();
+          resolve(false);
+        }, 5000);
+        ws.addEventListener("message", (event) => {
+          clearTimeout(timeout);
+          ws.close();
+          try {
+            const msg = JSON.parse(event.data);
+            resolve(msg.type === "snapshot");
+          } catch {
+            resolve(false);
+          }
+        });
+        ws.addEventListener("error", () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
       });
-      const ct = res.headers.get("content-type");
-      controller.abort();
-      return ct;
-    }, `${baseURL}/api/events`);
-    expect(contentType).toContain("text/event-stream");
+    }, baseURL);
+    expect(received).toBe(true);
   });
 });

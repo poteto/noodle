@@ -27,8 +27,14 @@ type wsClient struct {
 	closeOnce sync.Once
 }
 
-// Send implements Subscriber. Non-blocking channel send; returns false if full.
-func (c *wsClient) Send(msg []byte) bool {
+// Send implements Subscriber. Non-blocking channel send; returns false if full
+// or if the client has been closed.
+func (c *wsClient) Send(msg []byte) (ok bool) {
+	defer func() {
+		if recover() != nil {
+			ok = false
+		}
+	}()
 	select {
 	case c.send <- msg:
 		return true
