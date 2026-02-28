@@ -67,9 +67,6 @@ func (l *Loop) persistMergeMetadata(cook *cookHandle, mode string, branch string
 				continue
 			}
 			stages := &orders.Orders[i].Stages
-			if cook.isOnFailure {
-				stages = &orders.Orders[i].OnFailure
-			}
 			if cook.stageIndex < 0 || cook.stageIndex >= len(*stages) {
 				return nil
 			}
@@ -140,16 +137,18 @@ func (l *Loop) handleMergeConflict(cook *cookHandle, err error) error {
 	if isScheduleStage(cook.stage) {
 		return err
 	}
-	// Park for pending review instead of permanent failure.
+	// Forward conflict to scheduler and mark the stage as failed.
 	reason := "merge conflict: " + conflictErr.Error()
-	l.logger.Warn("merge conflict, parking for review", "order", cook.orderID, "reason", reason)
-	if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
-		return parkErr
-	}
+	l.logger.Warn("merge conflict, forwarding to scheduler", "order", cook.orderID, "reason", reason)
+	l.forwardToScheduler(cook, "merge_conflict", reason)
 	_ = l.events.Emit(LoopEventMergeConflict, MergeConflictPayload{
 		OrderID:      cook.orderID,
 		StageIndex:   cook.stageIndex,
 		WorktreeName: cook.worktreeName,
 	})
+	// Park for pending review so the chef can decide.
+	if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
+		return parkErr
+	}
 	return nil
 }

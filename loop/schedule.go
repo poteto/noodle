@@ -105,12 +105,12 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	if err := l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusActive); err != nil {
+	if err := l.persistOrderStageStatus(order.ID, stageIndex, StageStatusActive); err != nil {
 		return err
 	}
 	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
-		_ = l.persistOrderStageStatus(order.ID, stageIndex, false, StageStatusPending)
+		_ = l.persistOrderStageStatus(order.ID, stageIndex, StageStatusPending)
 		return err
 	}
 	cook := &cookHandle{
@@ -204,7 +204,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize orders for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		"Each order is a pipeline of stages. Group related stages (e.g. execute, quality, reflect) into one order.",
-		"You may specify on_failure stages for orders that need a recovery pipeline.",
+		"Failed stages are removed from orders and forwarded to the scheduler. Use control commands (advance, add-stage, park-review) to manage recovery.",
 		ordersSchemaPrompt(),
 		taskTypesPrompt,
 	}

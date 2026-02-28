@@ -280,16 +280,6 @@ func TestSnapshotSerializationIncludesOrders(t *testing.T) {
 					},
 				},
 				Status: "active",
-				OnFailure: []Stage{
-					{
-						TaskKey:  "review",
-						Prompt:   "review it",
-						Skill:    "review",
-						Provider: "claude",
-						Model:    "claude-sonnet-4-6",
-						Status:   "pending",
-					},
-				},
 			},
 		},
 		ActiveOrderIDs: []string{"o-1"},
@@ -341,12 +331,6 @@ func TestSnapshotSerializationIncludesOrders(t *testing.T) {
 	}
 	if string(order.Stages[0].Extra["key"]) != `"val"` {
 		t.Errorf("roundtrip stage extra[key] = %s", order.Stages[0].Extra["key"])
-	}
-	if len(order.OnFailure) != 1 {
-		t.Fatalf("roundtrip on_failure count = %d", len(order.OnFailure))
-	}
-	if order.OnFailure[0].TaskKey != "review" {
-		t.Errorf("roundtrip on_failure task_key = %q", order.OnFailure[0].TaskKey)
 	}
 	if len(roundtrip.ActiveOrderIDs) != 1 || roundtrip.ActiveOrderIDs[0] != "o-1" {
 		t.Errorf("roundtrip active_order_ids = %v", roundtrip.ActiveOrderIDs)

@@ -46,7 +46,6 @@ const (
 	OrderStatusActive    = orderx.OrderStatusActive
 	OrderStatusCompleted = orderx.OrderStatusCompleted
 	OrderStatusFailed    = orderx.OrderStatusFailed
-	OrderStatusFailing   = orderx.OrderStatusFailing
 )
 
 type StageResultStatus string
@@ -84,7 +83,6 @@ type StageResult struct {
 	OrderID      string
 	StageIndex   int
 	Attempt      int
-	IsOnFailure  bool
 	Status       StageResultStatus
 	SessionID    string
 	Generation   uint64
@@ -106,7 +104,6 @@ type cookIdentity struct {
 
 type cookHandle struct {
 	cookIdentity
-	isOnFailure  bool
 	orderStatus  orderx.OrderStatus
 	session      loopruntime.SessionHandle
 	worktreeName string
@@ -124,16 +121,6 @@ type pendingReviewCook struct {
 	worktreePath string
 	sessionID    string
 	reason       string
-}
-
-// pendingRetryCook is a stage whose retry dispatch failed, waiting for
-// runtime repair before retrying.
-type pendingRetryCook struct {
-	cookIdentity
-	isOnFailure bool
-	orderStatus orderx.OrderStatus
-	attempt     int    // the next attempt to use (already incremented)
-	displayName string // stable kitchen name from original spawn
 }
 
 type WorktreeManager interface {

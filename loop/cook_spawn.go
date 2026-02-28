@@ -97,7 +97,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	}
 
 	// Persist active status BEFORE spawning session — restart safety.
-	if err := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, cand.IsOnFailure, StageStatusActive); err != nil {
+	if err := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusActive); err != nil {
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
@@ -108,7 +108,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	if err != nil {
 		// Revert stage status to pending — otherwise restart sees "active"
 		// with no session, permanently stranding the stage.
-		_ = l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, cand.IsOnFailure, StageStatusPending)
+		_ = l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusPending)
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
@@ -127,7 +127,6 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 			stage:      stage,
 			plan:       order.Plan,
 		},
-		isOnFailure:  cand.IsOnFailure,
 		orderStatus:  order.Status,
 		session:      session,
 		worktreeName: name,
@@ -221,6 +220,6 @@ func (l *Loop) ensureWorktree(name string) (bool, error) {
 	return true, nil
 }
 
-func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status orderx.StageStatus) error {
-	return l.ensureOrderStageStatus(orderID, stageIndex, isOnFailure, status)
+func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, status orderx.StageStatus) error {
+	return l.ensureOrderStageStatus(orderID, stageIndex, status)
 }

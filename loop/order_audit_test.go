@@ -50,7 +50,6 @@ func TestRegistryErrorResilience(t *testing.T) {
 			adoptedTargets:     map[string]string{},
 			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
-			pendingRetry:       map[string]*pendingRetryCook{},
 		},
 		cmds: cmdProcessor{
 			processedIDs: map[string]struct{}{},
@@ -192,7 +191,6 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 			adoptedTargets:     map[string]string{},
 			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
-			pendingRetry:       map[string]*pendingRetryCook{},
 		},
 		cmds: cmdProcessor{
 			processedIDs: map[string]struct{}{},
@@ -291,7 +289,6 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 			adoptedTargets:     map[string]string{},
 			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
-			pendingRetry:       map[string]*pendingRetryCook{},
 		},
 		cmds: cmdProcessor{
 			processedIDs: map[string]struct{}{},

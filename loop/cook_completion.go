@@ -10,7 +10,6 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/internal/recover"
 )
 
 func (l *Loop) drainCompletions(ctx context.Context) error {
@@ -126,7 +125,6 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 		stageMsg := l.readStageMessage(cook.session.ID())
 		if stageMsg != nil && stageMsg.IsBlocking() {
 			l.logger.Info("stage message blocks advance", "order", cook.orderID, "session", cook.session.ID())
-			// Forward to scheduler and park — don't auto-advance.
 			l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message)
 			_ = l.parkPendingReview(cook, "blocked by stage message: "+stageMsg.Message)
 			return nil
@@ -168,23 +166,45 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			l.logger.Info("schedule wrote orders-next before failing, treating as complete", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
+		// consumeOrdersNext sets schedulePromoted when it promotes
+		// orders-next.json. Only treat the schedule as done if we know
+		// the promotion actually happened — pre-existing non-schedule
+		// orders should not suppress a retry.
 		if l.schedulePromoted {
 			l.logger.Info("schedule already promoted, removing schedule order", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
-		// Schedule failures are still fatal — no scheduler to forward to.
-		return fmt.Errorf("schedule failed: cook exited with status %s", status)
 	}
-	// Non-schedule stage failure: mark failed and forward to scheduler.
 	reason := "cook exited with status " + status
-	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
-	if err == nil {
-		resolved := retryFailureReason(reason, info)
-		if resolved != "" {
-			reason = resolved
-		}
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
 	}
-	return l.failAndPersist(cook, reason)
+	orders, err = failStage(orders, cook.orderID, reason)
+	if err != nil {
+		return err
+	}
+	if err := l.writeOrdersState(orders); err != nil {
+		return err
+	}
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    cook.orderID,
+		StageIndex: cook.stageIndex,
+		Reason:     reason,
+		SessionID:  sessionIDPtr(cook),
+	})
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: cook.orderID,
+		Reason:  reason,
+	})
+	if err := l.markFailed(cook.orderID, reason); err != nil {
+		return err
+	}
+	l.forwardToScheduler(cook, "stage_failed", reason)
+	if strings.TrimSpace(cook.worktreeName) != "" {
+		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+	}
+	return nil
 }
 
 // advanceAndPersist advances the order stage and persists the result.
@@ -216,42 +236,12 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
 			OrderID: cook.orderID,
 		})
-		// Final stage — fire adapter "done".
+		// Final stage of a non-failing order — fire adapter "done".
 		if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{cook.orderID}}); err != nil {
 			if !isMissingAdapter(err) {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-// failAndPersist marks the current stage as failed, persists, emits events,
-// and forwards the failure to the scheduler. The order stays in the orders
-// file — the scheduler decides what to do next.
-func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	orders, err = failStage(orders, cook.orderID, reason)
-	if err != nil {
-		return err
-	}
-	if err := l.writeOrdersState(orders); err != nil {
-		return err
-	}
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:    cook.orderID,
-		StageIndex: cook.stageIndex,
-		Reason:     reason,
-		SessionID:  sessionIDPtr(cook),
-	})
-	// Forward failure to scheduler.
-	l.forwardToScheduler(cook, "stage_failed", reason)
-	// Clean up worktree on failure.
-	if strings.TrimSpace(cook.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}
 	return nil
 }

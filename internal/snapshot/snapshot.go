@@ -96,23 +96,6 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			}
 			stages = append(stages, s)
 		}
-		onFailure := make([]Stage, 0, len(order.OnFailure))
-		for _, stage := range order.OnFailure {
-			s := Stage{
-				TaskKey:  stage.TaskKey,
-				Prompt:   stage.Prompt,
-				Skill:    stage.Skill,
-				Provider: stage.Provider,
-				Model:    stage.Model,
-				Runtime:  stage.Runtime,
-				Status:   string(stage.Status),
-				Extra:    stage.Extra,
-			}
-			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
-				s.SessionID = activeSessionID
-			}
-			onFailure = append(onFailure, s)
-		}
 		orders = append(orders, Order{
 			ID:        order.ID,
 			Title:     order.Title,
@@ -120,7 +103,6 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			Rationale: order.Rationale,
 			Stages:    stages,
 			Status:    string(order.Status),
-			OnFailure: onFailure,
 		})
 	}
 

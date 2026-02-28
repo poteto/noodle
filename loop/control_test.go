@@ -94,9 +94,9 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 	}
 }
 
-// controlRequestChanges now calls failStage (not dispatch). With no OnFailure stages,
-// it should be terminal — the order is removed and markFailed is called.
-func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
+// controlRequestChanges should terminally fail the order, remove it, and mark
+// the target failed.
+func TestControlRequestChangesMarksFailedAndRemovesOrder(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlRequestChanges("42", "Add missing tests"); err != nil {
@@ -105,9 +105,8 @@ func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
 	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after request-changes")
 	}
-	// No OnFailure stages → terminal → markFailed.
 	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected order to be marked failed (no OnFailure stages)")
+		t.Fatal("expected order to be marked failed")
 	}
 	// Order should be removed from orders.json.
 	orders, err := readOrders(l.deps.OrdersFile)
@@ -121,69 +120,13 @@ func TestControlRequestChangesNoOnFailureTerminal(t *testing.T) {
 	}
 }
 
-// controlRequestChanges with OnFailure stages triggers failStage non-terminally.
-func TestControlRequestChangesWithOnFailure(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusActive,
-		Stages:    []Stage{{TaskKey: "execute", Status: StageStatusActive}},
-		OnFailure: []Stage{{TaskKey: "debugging", Status: StageStatusPending}},
-	}}}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	l.cooks.pendingReview["42"] = &pendingReviewCook{
-		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
-		worktreeName: "42-0-execute",
-	}
-
-	if err := l.controlRequestChanges("42", "fix tests"); err != nil {
-		t.Fatalf("controlRequestChanges: %v", err)
-	}
-	if _, ok := l.cooks.pendingReview["42"]; ok {
-		t.Fatal("pending review should be removed")
-	}
-	// OnFailure exists → not terminal → markFailed NOT called.
-	if _, ok := l.cooks.failedTargets["42"]; ok {
-		t.Fatal("order should not be in failedTargets (OnFailure exists)")
-	}
-	// Order should still be in orders.json with status "failing".
-	orders, err := readOrders(l.deps.OrdersFile)
-	if err != nil {
-		t.Fatalf("read orders: %v", err)
-	}
-	found := false
-	for _, o := range orders.Orders {
-		if o.ID == "42" {
-			found = true
-			if o.Status != OrderStatusFailing {
-				t.Fatalf("order status = %q, want %q", o.Status, OrderStatusFailing)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("order 42 should still be in orders.json")
-	}
-}
-
 func TestControlRequestChangesAllowsEmptyFeedback(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlRequestChanges("42", "   "); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
 	}
-	// With empty feedback, order should still be terminally failed (no OnFailure).
+	// With empty feedback, order should still be terminally failed.
 	if _, ok := l.cooks.failedTargets["42"]; !ok {
 		t.Fatal("expected order to be marked failed")
 	}
@@ -201,7 +144,7 @@ func TestControlRequestChangesNotInPendingReview(t *testing.T) {
 	}
 }
 
-func TestControlRejectKeepsPendingOnFailure(t *testing.T) {
+func TestControlRejectKeepsPendingOnWriteFailure(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	// Make the runtime dir unwritable so markFailed cannot write failed.json.
@@ -427,152 +370,6 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 	}
 }
 
-func TestControlRejectSkipsOnFailure(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusActive,
-		Stages:    []Stage{{TaskKey: "execute", Status: StageStatusActive}},
-		OnFailure: []Stage{{TaskKey: "debugging", Status: StageStatusPending}},
-	}}}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	l.cooks.pendingReview["42"] = &pendingReviewCook{
-		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "execute"}},
-		worktreeName: "42-0-execute",
-	}
-
-	if err := l.controlReject("42"); err != nil {
-		t.Fatalf("controlReject: %v", err)
-	}
-	// User rejection is terminal — skips OnFailure. Order removed, failure marked.
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected order to be in failed targets after reject")
-	}
-	orders, err := readOrders(ordersPath)
-	if err != nil {
-		t.Fatalf("read orders: %v", err)
-	}
-	for _, o := range orders.Orders {
-		if o.ID == "42" {
-			t.Fatal("order 42 should be removed (reject skips OnFailure)")
-		}
-	}
-}
-
-func TestControlRequeueResetsFailedOrderStages(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusFailing,
-		Stages: []Stage{
-			{TaskKey: "execute", Status: StageStatusFailed},
-			{TaskKey: "quality", Status: StageStatusCancelled},
-		},
-		OnFailure: []Stage{
-			{TaskKey: "debugging", Status: StageStatusFailed},
-		},
-	}}}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	l.cooks.failedTargets = map[string]string{"42": "test failure"}
-	if err := l.writeFailedTargets(); err != nil {
-		t.Fatalf("write failed targets: %v", err)
-	}
-
-	if err := l.controlRequeue("42"); err != nil {
-		t.Fatalf("controlRequeue: %v", err)
-	}
-
-	// Failed target should be removed.
-	if _, ok := l.cooks.failedTargets["42"]; ok {
-		t.Fatal("order 42 should not be in failed targets after requeue")
-	}
-
-	orders, err := readOrders(ordersPath)
-	if err != nil {
-		t.Fatalf("read orders: %v", err)
-	}
-	if len(orders.Orders) != 1 {
-		t.Fatalf("orders count = %d, want 1", len(orders.Orders))
-	}
-	o := orders.Orders[0]
-	if o.Status != OrderStatusActive {
-		t.Fatalf("order status = %q, want %q", o.Status, OrderStatusActive)
-	}
-	// All main stages should be reset to pending.
-	for i, s := range o.Stages {
-		if s.Status != StageStatusPending {
-			t.Fatalf("Stages[%d].Status = %q, want pending", i, s.Status)
-		}
-	}
-	// All OnFailure stages should also be reset to pending.
-	for i, s := range o.OnFailure {
-		if s.Status != StageStatusPending {
-			t.Fatalf("OnFailure[%d].Status = %q, want pending", i, s.Status)
-		}
-	}
-}
-
-func TestControlRequeueFailingStatusResetsToActive(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusFailing,
-		Stages: []Stage{{TaskKey: "execute", Status: StageStatusFailed}},
-	}}}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	l.cooks.failedTargets = map[string]string{"42": "failed"}
-	if err := l.writeFailedTargets(); err != nil {
-		t.Fatalf("write failed targets: %v", err)
-	}
-
-	if err := l.controlRequeue("42"); err != nil {
-		t.Fatalf("controlRequeue: %v", err)
-	}
-
-	orders, err := readOrders(ordersPath)
-	if err != nil {
-		t.Fatalf("read orders: %v", err)
-	}
-	if orders.Orders[0].Status != OrderStatusActive {
-		t.Fatalf("order status = %q, want %q", orders.Orders[0].Status, OrderStatusActive)
-	}
-}
 
 func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 	projectDir := t.TempDir()
@@ -643,43 +440,6 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 	}
 	if ar.doneCalls[0] != "42" {
 		t.Fatalf("done call arg = %q, want 42", ar.doneCalls[0])
-	}
-}
-
-func TestControlMergeFinalOnFailureStageCallsMarkFailed(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	// Order in "failing" status with a single OnFailure stage.
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusFailing,
-		Stages:    []Stage{{TaskKey: "execute", Status: StageStatusFailed}},
-		OnFailure: []Stage{{TaskKey: "debugging", Status: StageStatusActive}},
-	}}}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	l.cooks.pendingReview["42"] = &pendingReviewCook{
-		cookIdentity: cookIdentity{orderID: "42", stageIndex: 0, stage: Stage{TaskKey: "debugging"}},
-		worktreeName: "42-0-debugging",
-		sessionID:    "sess-42",
-	}
-
-	if err := l.controlMerge("42"); err != nil {
-		t.Fatalf("controlMerge: %v", err)
-	}
-	// Final OnFailure stage of failing order → markFailed (not adapter "done").
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected order to be marked failed after final OnFailure stage")
 	}
 }
 

@@ -34,15 +34,6 @@ func TestReadWriteOrdersRoundTrip(t *testing.T) {
 						},
 					},
 				},
-				OnFailure: []Stage{
-					{
-						TaskKey:  "execute",
-						Prompt:   "rollback",
-						Provider: "claude",
-						Model:    "claude-opus-4-6",
-						Status:   StageStatusPending,
-					},
-				},
 			},
 		},
 		ActionNeeded: []string{"check order 1"},
@@ -68,9 +59,6 @@ func TestReadWriteOrdersRoundTrip(t *testing.T) {
 	}
 	if string(got.Orders[0].Stages[0].Extra["priority"]) != `42` {
 		t.Errorf("Extra[priority] lost in round-trip")
-	}
-	if len(got.Orders[0].OnFailure) != 1 {
-		t.Fatalf("OnFailure len = %d, want 1", len(got.Orders[0].OnFailure))
 	}
 }
 
@@ -324,13 +312,12 @@ func makeStage(status orderx.StageStatus) Stage {
 	}
 }
 
-func makeOrder(id string, status orderx.OrderStatus, stages []Stage, onFailure []Stage) Order {
+func makeOrder(id string, status orderx.OrderStatus, stages []Stage) Order {
 	return Order{
-		ID:        id,
-		Title:     "order " + id,
-		Status:    status,
-		Stages:    stages,
-		OnFailure: onFailure,
+		ID:     id,
+		Title:  "order " + id,
+		Status: status,
+		Stages: stages,
 	}
 }
 
@@ -340,7 +327,7 @@ func TestActiveStageForOrder(t *testing.T) {
 			makeStage(StageStatusCompleted),
 			makeStage(StageStatusPending),
 			makeStage(StageStatusPending),
-		}, nil)
+		})
 		idx, stage := activeStageForOrder(order)
 		if idx != 1 {
 			t.Errorf("idx = %d, want 1", idx)
@@ -358,7 +345,7 @@ func TestActiveStageForOrder(t *testing.T) {
 			makeStage(StageStatusCompleted),
 			makeStage(StageStatusActive),
 			makeStage(StageStatusPending),
-		}, nil)
+		})
 		idx, stage := activeStageForOrder(order)
 		if idx != 1 {
 			t.Errorf("idx = %d, want 1", idx)
@@ -372,26 +359,10 @@ func TestActiveStageForOrder(t *testing.T) {
 		order := makeOrder("1", OrderStatusActive, []Stage{
 			makeStage(StageStatusCompleted),
 			makeStage(StageStatusCompleted),
-		}, nil)
+		})
 		idx, stage := activeStageForOrder(order)
 		if idx != -1 || stage != nil {
 			t.Errorf("expected (-1, nil), got (%d, %v)", idx, stage)
-		}
-	})
-
-	t.Run("failing order checks OnFailure", func(t *testing.T) {
-		order := makeOrder("1", OrderStatusFailing, []Stage{
-			makeStage(StageStatusFailed),
-		}, []Stage{
-			makeStage(StageStatusCompleted),
-			makeStage(StageStatusPending),
-		})
-		idx, stage := activeStageForOrder(order)
-		if idx != 1 {
-			t.Errorf("idx = %d, want 1", idx)
-		}
-		if stage.Status != StageStatusPending {
-			t.Errorf("status = %q, want pending", stage.Status)
 		}
 	})
 }
@@ -404,7 +375,7 @@ func TestAdvanceOrder(t *testing.T) {
 					makeStage(StageStatusPending),
 					makeStage(StageStatusPending),
 					makeStage(StageStatusPending),
-				}, nil),
+				}),
 			},
 		}
 
@@ -450,8 +421,8 @@ func TestAdvanceOrder(t *testing.T) {
 	t.Run("final stage removes order", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
-				makeOrder("keep", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("remove", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
+				makeOrder("keep", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("remove", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 			},
 		}
 
@@ -472,7 +443,7 @@ func TestAdvanceOrder(t *testing.T) {
 
 	t.Run("missing order returns error", func(t *testing.T) {
 		of := OrdersFile{Orders: []Order{
-			makeOrder("1", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
+			makeOrder("1", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 		}}
 
 		_, _, err := advanceOrder(of, "nonexistent")
@@ -488,7 +459,7 @@ func TestAdvanceOrder(t *testing.T) {
 					makeStage(StageStatusCompleted),
 					makeStage(StageStatusActive),
 					makeStage(StageStatusPending),
-				}, nil),
+				}),
 			},
 		}
 		of, removed, err := advanceOrder(of, "1")
@@ -502,137 +473,23 @@ func TestAdvanceOrder(t *testing.T) {
 			t.Errorf("stage 1 = %q, want completed", of.Orders[0].Stages[1].Status)
 		}
 	})
-
-	t.Run("failing order advances OnFailure stages", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusFailing, []Stage{
-					makeStage(StageStatusCompleted),
-					makeStage(StageStatusFailed),
-					makeStage(StageStatusCancelled),
-				}, []Stage{
-					makeStage(StageStatusPending),
-					makeStage(StageStatusPending),
-				}),
-			},
-		}
-
-		// Advance first OnFailure stage.
-		of, removed, err := advanceOrder(of, "1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if removed {
-			t.Fatal("removed too early")
-		}
-		if of.Orders[0].OnFailure[0].Status != StageStatusCompleted {
-			t.Errorf("OnFailure[0] = %q, want completed", of.Orders[0].OnFailure[0].Status)
-		}
-
-		// Advance second (last) OnFailure stage — removes order.
-		of, removed, err = advanceOrder(of, "1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !removed {
-			t.Fatal("expected removed=true on last OnFailure stage")
-		}
-		if len(of.Orders) != 0 {
-			t.Errorf("expected 0 orders, got %d", len(of.Orders))
-		}
-	})
 }
 
 func TestFailStage(t *testing.T) {
-	t.Run("no OnFailure removes order", func(t *testing.T) {
+	t.Run("removes order (always terminal)", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
 				makeOrder("1", OrderStatusActive, []Stage{
 					makeStage(StageStatusCompleted),
 					makeStage(StageStatusActive),
 					makeStage(StageStatusPending),
-				}, nil),
-			},
-		}
-
-		of, terminal, err := failStage(of, "1", "test failure")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !terminal {
-			t.Fatal("expected terminal=true with no OnFailure")
-		}
-		if len(of.Orders) != 0 {
-			t.Fatalf("expected 0 orders, got %d", len(of.Orders))
-		}
-	})
-
-	t.Run("with OnFailure sets failing", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusActive, []Stage{
-					makeStage(StageStatusCompleted),
-					makeStage(StageStatusActive),
-					makeStage(StageStatusPending),
-				}, []Stage{
-					makeStage(StageStatusPending),
-					makeStage(StageStatusPending),
 				}),
 			},
 		}
 
-		of, terminal, err := failStage(of, "1", "test failure")
+		of, err := failStage(of, "1", "test failure")
 		if err != nil {
 			t.Fatal(err)
-		}
-		if terminal {
-			t.Fatal("expected terminal=false when OnFailure exists")
-		}
-		if len(of.Orders) != 1 {
-			t.Fatalf("expected 1 order, got %d", len(of.Orders))
-		}
-
-		order := of.Orders[0]
-		if order.Status != OrderStatusFailing {
-			t.Errorf("status = %q, want failing", order.Status)
-		}
-		// Main stages: completed, failed, cancelled.
-		if order.Stages[0].Status != StageStatusCompleted {
-			t.Errorf("stage 0 = %q, want completed", order.Stages[0].Status)
-		}
-		if order.Stages[1].Status != StageStatusFailed {
-			t.Errorf("stage 1 = %q, want failed", order.Stages[1].Status)
-		}
-		if order.Stages[2].Status != StageStatusCancelled {
-			t.Errorf("stage 2 = %q, want cancelled", order.Stages[2].Status)
-		}
-		// OnFailure stages should be pending.
-		for i, s := range order.OnFailure {
-			if s.Status != StageStatusPending {
-				t.Errorf("OnFailure[%d] = %q, want pending", i, s.Status)
-			}
-		}
-	})
-
-	t.Run("already failing removes order", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusFailing, []Stage{
-					makeStage(StageStatusFailed),
-					makeStage(StageStatusCancelled),
-				}, []Stage{
-					makeStage(StageStatusCompleted),
-					makeStage(StageStatusActive),
-				}),
-			},
-		}
-
-		of, terminal, err := failStage(of, "1", "OnFailure also failed")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !terminal {
-			t.Fatal("expected terminal=true when already failing")
 		}
 		if len(of.Orders) != 0 {
 			t.Fatalf("expected 0 orders, got %d", len(of.Orders))
@@ -641,7 +498,7 @@ func TestFailStage(t *testing.T) {
 
 	t.Run("missing order returns error", func(t *testing.T) {
 		of := OrdersFile{}
-		_, _, err := failStage(of, "nonexistent", "reason")
+		_, err := failStage(of, "nonexistent", "reason")
 		if err == nil {
 			t.Fatal("expected error for missing order")
 		}
@@ -652,12 +509,10 @@ func TestCancelOrder(t *testing.T) {
 	t.Run("mix of completed and pending", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
-				makeOrder("keep", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
+				makeOrder("keep", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 				makeOrder("cancel", OrderStatusActive, []Stage{
 					makeStage(StageStatusCompleted),
 					makeStage(StageStatusActive),
-					makeStage(StageStatusPending),
-				}, []Stage{
 					makeStage(StageStatusPending),
 				}),
 			},
@@ -696,10 +551,10 @@ func TestDispatchableStages(t *testing.T) {
 					makeStage(StageStatusCompleted),
 					makeStage(StageStatusPending),
 					makeStage(StageStatusPending),
-				}, nil),
+				}),
 				makeOrder("b", OrderStatusActive, []Stage{
 					makeStage(StageStatusPending),
-				}, nil),
+				}),
 			},
 		}
 
@@ -713,19 +568,16 @@ func TestDispatchableStages(t *testing.T) {
 		if candidates[1].OrderID != "b" || candidates[1].StageIndex != 0 {
 			t.Errorf("candidate 1 = %+v", candidates[1])
 		}
-		if candidates[0].IsOnFailure || candidates[1].IsOnFailure {
-			t.Error("IsOnFailure should be false for active orders")
-		}
 	})
 
 	t.Run("skips busy/failed/adopted/ticketed", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
-				makeOrder("busy", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("failed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("adopted", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("ticketed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("free", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
+				makeOrder("busy", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("failed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("adopted", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("ticketed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("free", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 			},
 		}
 
@@ -750,7 +602,7 @@ func TestDispatchableStages(t *testing.T) {
 					makeStage(StageStatusCompleted),
 					makeStage(StageStatusActive),
 					makeStage(StageStatusPending),
-				}, nil),
+				}),
 			},
 		}
 
@@ -760,56 +612,10 @@ func TestDispatchableStages(t *testing.T) {
 		}
 	})
 
-	t.Run("dispatches OnFailure for failing orders", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusFailing, []Stage{
-					makeStage(StageStatusFailed),
-					makeStage(StageStatusCancelled),
-				}, []Stage{
-					makeStage(StageStatusCompleted),
-					makeStage(StageStatusPending),
-				}),
-			},
-		}
-
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
-		if len(candidates) != 1 {
-			t.Fatalf("expected 1 candidate, got %d", len(candidates))
-		}
-		if !candidates[0].IsOnFailure {
-			t.Error("expected IsOnFailure=true")
-		}
-		if candidates[0].StageIndex != 1 {
-			t.Errorf("StageIndex = %d, want 1", candidates[0].StageIndex)
-		}
-	})
-
-	t.Run("exempts failing from failed set", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusFailing, []Stage{
-					makeStage(StageStatusFailed),
-				}, []Stage{
-					makeStage(StageStatusPending),
-				}),
-			},
-		}
-
-		failedSet := map[string]struct{}{"1": {}}
-		candidates := dispatchableStages(of, empty, failedSet, empty, empty)
-		if len(candidates) != 1 {
-			t.Fatalf("expected 1 candidate (failing exempt from failed), got %d", len(candidates))
-		}
-		if candidates[0].OrderID != "1" {
-			t.Errorf("candidate = %q, want 1", candidates[0].OrderID)
-		}
-	})
-
 	t.Run("skips degenerate empty stages", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
-				makeOrder("empty", OrderStatusActive, []Stage{}, nil),
+				makeOrder("empty", OrderStatusActive, []Stage{}),
 			},
 		}
 
@@ -819,27 +625,12 @@ func TestDispatchableStages(t *testing.T) {
 		}
 	})
 
-	t.Run("skips failing order with empty OnFailure", func(t *testing.T) {
-		of := OrdersFile{
-			Orders: []Order{
-				makeOrder("1", OrderStatusFailing, []Stage{
-					makeStage(StageStatusFailed),
-				}, []Stage{}),
-			},
-		}
-
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
-		if len(candidates) != 0 {
-			t.Fatalf("expected 0 candidates for failing order with empty OnFailure, got %d", len(candidates))
-		}
-	})
-
 	t.Run("respects array ordering", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
-				makeOrder("first", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("second", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
-				makeOrder("third", OrderStatusActive, []Stage{makeStage(StageStatusPending)}, nil),
+				makeOrder("first", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("second", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("third", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 			},
 		}
 
@@ -858,26 +649,18 @@ func TestActiveOrderIDs(t *testing.T) {
 		Orders: []Order{
 			makeOrder("active-pending", OrderStatusActive, []Stage{
 				makeStage(StageStatusPending),
-			}, nil),
+			}),
 			makeOrder("active-active", OrderStatusActive, []Stage{
 				makeStage(StageStatusActive),
-			}, nil),
-			makeOrder("failing-pending", OrderStatusFailing, []Stage{
-				makeStage(StageStatusFailed),
-			}, []Stage{
-				makeStage(StageStatusPending),
 			}),
 			makeOrder("done", OrderStatusCompleted, []Stage{
 				makeStage(StageStatusCompleted),
-			}, nil),
-			makeOrder("failing-empty", OrderStatusFailing, []Stage{
-				makeStage(StageStatusFailed),
-			}, []Stage{}),
+			}),
 		},
 	}
 
 	got := activeOrderIDs(of)
-	want := []string{"active-pending", "active-active", "failing-pending"}
+	want := []string{"active-pending", "active-active"}
 	if len(got) != len(want) {
 		t.Fatalf("activeOrderIDs len = %d, want %d (%v)", len(got), len(want), got)
 	}
@@ -895,19 +678,9 @@ func TestBusyTargets(t *testing.T) {
 				makeStage(StageStatusCompleted),
 				makeStage(StageStatusActive),
 				makeStage(StageStatusPending),
-			}, nil),
+			}),
 			makeOrder("not-busy-main", OrderStatusActive, []Stage{
 				makeStage(StageStatusCompleted),
-				makeStage(StageStatusPending),
-			}, nil),
-			makeOrder("busy-failing", OrderStatusFailing, []Stage{
-				makeStage(StageStatusFailed),
-			}, []Stage{
-				makeStage(StageStatusActive),
-			}),
-			makeOrder("not-busy-failing", OrderStatusFailing, []Stage{
-				makeStage(StageStatusFailed),
-			}, []Stage{
 				makeStage(StageStatusPending),
 			}),
 		},
@@ -917,14 +690,8 @@ func TestBusyTargets(t *testing.T) {
 	if !busy["busy-main"] {
 		t.Fatal("expected busy-main to be busy")
 	}
-	if !busy["busy-failing"] {
-		t.Fatal("expected busy-failing to be busy")
-	}
 	if busy["not-busy-main"] {
 		t.Fatal("did not expect not-busy-main to be busy")
-	}
-	if busy["not-busy-failing"] {
-		t.Fatal("did not expect not-busy-failing to be busy")
 	}
 }
 
@@ -935,7 +702,7 @@ func TestLifecycleValueSemantics(t *testing.T) {
 			makeOrder("1", OrderStatusActive, []Stage{
 				makeStage(StageStatusPending),
 				makeStage(StageStatusPending),
-			}, nil),
+			}),
 		},
 	}
 
@@ -977,15 +744,6 @@ func TestOrdersFileCloneRoundTrip(t *testing.T) {
 					},
 				},
 				Status: OrderStatusActive,
-				OnFailure: []Stage{
-					{
-						TaskKey:  "execute",
-						Prompt:   "rollback",
-						Provider: "claude",
-						Model:    "claude-opus-4-6",
-						Status:   StageStatusPending,
-					},
-				},
 			},
 		},
 		ActionNeeded: []string{"check"},
@@ -1011,8 +769,5 @@ func TestOrdersFileCloneRoundTrip(t *testing.T) {
 	}
 	if string(s.Extra["key"]) != `"value"` {
 		t.Errorf("Extra lost in clone round-trip")
-	}
-	if len(o.OnFailure) != 1 || o.OnFailure[0].Prompt != "rollback" {
-		t.Errorf("OnFailure mismatch")
 	}
 }

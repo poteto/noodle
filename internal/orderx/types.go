@@ -25,18 +25,17 @@ const (
 	OrderStatusActive    OrderStatus = "active"
 	OrderStatusCompleted OrderStatus = "completed"
 	OrderStatusFailed    OrderStatus = "failed"
-	OrderStatusFailing   OrderStatus = "failing"
 )
 
 // Stage is a unit of work within an order (serialization type).
 type Stage struct {
-	TaskKey  string                     `json:"task_key,omitempty"`
-	Prompt   string                     `json:"prompt,omitempty"`
-	Skill    string                     `json:"skill,omitempty"`
-	Provider string                     `json:"provider"`
-	Model    string                     `json:"model"`
-	Runtime  string                     `json:"runtime,omitempty"`
-	Status   StageStatus                `json:"status"`
+	TaskKey     string                     `json:"task_key,omitempty"`
+	Prompt      string                     `json:"prompt,omitempty"`
+	Skill       string                     `json:"skill,omitempty"`
+	Provider    string                     `json:"provider"`
+	Model       string                     `json:"model"`
+	Runtime     string                     `json:"runtime,omitempty"`
+	Status      StageStatus                `json:"status"`
 	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
 	ExtraPrompt string                     `json:"extra_prompt,omitempty"`
 }
@@ -49,7 +48,6 @@ type Order struct {
 	Rationale string      `json:"rationale,omitempty"`
 	Stages    []Stage     `json:"stages"`
 	Status    OrderStatus `json:"status"`
-	OnFailure []Stage     `json:"on_failure,omitempty"`
 }
 
 // OrdersFile is the top-level orders.json structure (serialization type).
@@ -62,7 +60,7 @@ type OrdersFile struct {
 // ValidateOrderStatus returns an error if the order status is not valid.
 func ValidateOrderStatus(status OrderStatus) error {
 	switch status {
-	case OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing:
+	case OrderStatusActive, OrderStatusCompleted, OrderStatusFailed:
 		return nil
 	case "":
 		return fmt.Errorf("order status is required")

@@ -53,7 +53,7 @@ func (l *Loop) setOrdersState(orders OrdersFile) {
 	l.ordersLoaded = true
 }
 
-func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, isOnFailure bool, status orderx.StageStatus) error {
+func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, status orderx.StageStatus) error {
 	if orderID == "" {
 		return fmt.Errorf("order id not set")
 	}
@@ -62,12 +62,8 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, isOnFailur
 			if orders.Orders[i].ID != orderID {
 				continue
 			}
-			stages := &orders.Orders[i].Stages
-			if isOnFailure {
-				stages = &orders.Orders[i].OnFailure
-			}
-			if stageIndex >= 0 && stageIndex < len(*stages) {
-				(*stages)[stageIndex].Status = status
+			if stageIndex >= 0 && stageIndex < len(orders.Orders[i].Stages) {
+				orders.Orders[i].Stages[stageIndex].Status = status
 			}
 			return nil
 		}
@@ -96,12 +92,6 @@ func (l *Loop) flushState() error {
 	}
 	if err := l.writeFailedTargets(); err != nil {
 		return fmt.Errorf("flush failed targets: %w", err)
-	}
-	if l.TestFlushBarrier != nil {
-		l.TestFlushBarrier()
-	}
-	if err := l.writePendingRetry(); err != nil {
-		return fmt.Errorf("flush pending retry: %w", err)
 	}
 	if l.TestFlushBarrier != nil {
 		l.TestFlushBarrier()

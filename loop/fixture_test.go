@@ -15,7 +15,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -33,7 +32,6 @@ type loopFixtureSetup struct {
 	RecoveryMaxRetries       *int                       `json:"recovery_max_retries"`
 	BootstrapAttempts        int                        `json:"bootstrap_attempts"`
 	BootstrapExhausted       bool                       `json:"bootstrap_exhausted"`
-	PendingRetry             []loopFixturePendingRetry  `json:"pending_retry"`
 }
 
 type loopFixtureActiveSession struct {
@@ -44,16 +42,6 @@ type loopFixtureActiveSession struct {
 type loopFixtureAdoptedTarget struct {
 	ID        string `json:"id"`
 	SessionID string `json:"session_id"`
-}
-
-type loopFixturePendingRetry struct {
-	OrderID     string `json:"order_id"`
-	StageIndex  int    `json:"stage_index"`
-	Stage       Stage  `json:"stage"`
-	IsOnFailure bool   `json:"is_on_failure"`
-	OrderStatus string `json:"order_status"`
-	Attempt     int    `json:"attempt"`
-	DisplayName string `json:"display_name"`
 }
 
 type loopFixtureMiseRun struct {
@@ -184,7 +172,6 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			applyFixtureActiveSessions(l, setup.ActiveSessions)
 			applyFixtureAdoptedTargets(t, l, setup.AdoptedTargets)
 			applyFixtureBootstrap(l, setup)
-			applyFixturePendingRetry(l, setup.PendingRetry)
 			if msg := strings.TrimSpace(setup.WorktreeMergeError); msg != "" {
 				if strings.HasPrefix(msg, "merge_conflict:") {
 					branch := strings.TrimSpace(strings.TrimPrefix(msg, "merge_conflict:"))
@@ -392,25 +379,5 @@ func applyFixtureBootstrap(l *Loop, setup loopFixtureSetup) {
 	}
 	if setup.BootstrapExhausted {
 		l.bootstrapExhausted = true
-	}
-}
-
-func applyFixturePendingRetry(l *Loop, retries []loopFixturePendingRetry) {
-	for _, r := range retries {
-		orderID := strings.TrimSpace(r.OrderID)
-		if orderID == "" {
-			continue
-		}
-		l.cooks.pendingRetry[orderID] = &pendingRetryCook{
-			cookIdentity: cookIdentity{
-				orderID:    orderID,
-				stageIndex: r.StageIndex,
-				stage:      r.Stage,
-			},
-			isOnFailure: r.IsOnFailure,
-			orderStatus: orderx.OrderStatus(r.OrderStatus),
-			attempt:     r.Attempt,
-			displayName: r.DisplayName,
-		}
 	}
 }

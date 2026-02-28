@@ -55,15 +55,6 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		return err
 	}
 
-	// Load pending retries AFTER reconcile builds the live-session index
-	// (adoptedTargets). This ensures we don't retry orders that already
-	// have a recovered session handling them.
-	if err := l.loadPendingRetry(); err != nil {
-		return err
-	}
-	if err := l.reconcilePendingRetry(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -82,34 +73,26 @@ func (l *Loop) reconcileMergingStages() error {
 	}
 
 	type mergingStage struct {
-		orderIdx    int
-		stageIdx    int
-		isOnFailure bool
-		stage       Stage
-		order       Order
+		orderIdx int
+		stageIdx int
+		stage    Stage
+		order    Order
 	}
 	var merging []mergingStage
 
 	for oi, order := range orders.Orders {
-		if order.Status != OrderStatusActive && order.Status != OrderStatusFailing {
+		if order.Status != OrderStatusActive {
 			continue
 		}
-		scanStages := func(stages []Stage, isOnFailure bool) {
-			for si, s := range stages {
-				if s.Status == StageStatusMerging {
-					merging = append(merging, mergingStage{
-						orderIdx:    oi,
-						stageIdx:    si,
-						isOnFailure: isOnFailure,
-						stage:       s,
-						order:       order,
-					})
-				}
+		for si, s := range order.Stages {
+			if s.Status == StageStatusMerging {
+				merging = append(merging, mergingStage{
+					orderIdx: oi,
+					stageIdx: si,
+					stage:    s,
+					order:    order,
+				})
 			}
-		}
-		scanStages(order.Stages, false)
-		if order.Status == OrderStatusFailing {
-			scanStages(order.OnFailure, true)
 		}
 	}
 
@@ -125,7 +108,7 @@ func (l *Loop) reconcileMergingStages() error {
 		// Missing metadata — can't recover.
 		if wtName == "" && branch == "" {
 			l.logger.Warn("merging stage missing metadata, failing", "order", ms.order.ID, "stage", ms.stageIdx)
-			if err := l.failMergingStage(ms.order.ID, ms.stageIdx, ms.isOnFailure, "merging stage missing merge metadata after crash"); err != nil {
+			if err := l.failMergingStage(ms.order.ID, ms.stageIdx, "merging stage missing merge metadata after crash"); err != nil {
 				return err
 			}
 			continue
@@ -134,7 +117,7 @@ func (l *Loop) reconcileMergingStages() error {
 		// Check if a live session was adopted for this order.
 		if _, adopted := l.cooks.adoptedTargets[ms.order.ID]; adopted {
 			l.logger.Info("merging stage has live session, resetting to active", "order", ms.order.ID, "stage", ms.stageIdx)
-			if err := l.persistOrderStageStatus(ms.order.ID, ms.stageIdx, ms.isOnFailure, StageStatusActive); err != nil {
+			if err := l.persistOrderStageStatus(ms.order.ID, ms.stageIdx, StageStatusActive); err != nil {
 				return err
 			}
 			continue
@@ -156,7 +139,6 @@ func (l *Loop) reconcileMergingStages() error {
 					stage:      ms.stage,
 					plan:       ms.order.Plan,
 				},
-				isOnFailure: ms.isOnFailure,
 				orderStatus: ms.order.Status,
 			}
 			if err := l.advanceAndPersist(context.Background(), cook); err != nil {
@@ -175,7 +157,6 @@ func (l *Loop) reconcileMergingStages() error {
 					stage:      ms.stage,
 					plan:       ms.order.Plan,
 				},
-				isOnFailure:  ms.isOnFailure,
 				orderStatus:  ms.order.Status,
 				worktreeName: wtName,
 				worktreePath: l.worktreePath(wtName),
@@ -186,7 +167,7 @@ func (l *Loop) reconcileMergingStages() error {
 			} else {
 				if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 					l.logger.Warn("crash recovery merge failed, failing stage", "order", ms.order.ID, "err", err)
-					if failErr := l.failMergingStage(ms.order.ID, ms.stageIdx, ms.isOnFailure, "crash recovery merge failed: "+err.Error()); failErr != nil {
+					if failErr := l.failMergingStage(ms.order.ID, ms.stageIdx, "crash recovery merge failed: "+err.Error()); failErr != nil {
 						return failErr
 					}
 					continue
@@ -200,7 +181,7 @@ func (l *Loop) reconcileMergingStages() error {
 
 		// Branch gone, no live session — fail.
 		l.logger.Warn("merging stage branch not found, failing", "order", ms.order.ID, "stage", ms.stageIdx, "branch", checkBranch)
-		if err := l.failMergingStage(ms.order.ID, ms.stageIdx, ms.isOnFailure, "merge branch "+checkBranch+" not found after crash"); err != nil {
+		if err := l.failMergingStage(ms.order.ID, ms.stageIdx, "merge branch "+checkBranch+" not found after crash"); err != nil {
 			return err
 		}
 	}
@@ -209,12 +190,12 @@ func (l *Loop) reconcileMergingStages() error {
 }
 
 // failMergingStage transitions a stuck merging stage to failed via failStage.
-func (l *Loop) failMergingStage(orderID string, stageIdx int, isOnFailure bool, reason string) error {
+func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) error {
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
-	orders, terminal, err := failStage(orders, orderID, reason)
+	orders, err = failStage(orders, orderID, reason)
 	if err != nil {
 		return err
 	}
@@ -226,14 +207,11 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, isOnFailure bool, 
 		StageIndex: stageIdx,
 		Reason:     reason,
 	})
-	if terminal {
-		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-			OrderID: orderID,
-			Reason:  reason,
-		})
-		return l.markFailed(orderID, reason)
-	}
-	return nil
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: orderID,
+		Reason:  reason,
+	})
+	return l.markFailed(orderID, reason)
 }
 
 // extraString reads a string value from a stage's Extra map.

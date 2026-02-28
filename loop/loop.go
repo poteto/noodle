@@ -88,7 +88,6 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 			adoptedSessions:    []string{},
 			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
-			pendingRetry:       map[string]*pendingRetryCook{},
 		},
 		cmds: cmdProcessor{
 			processedIDs: map[string]struct{}{},
@@ -321,9 +320,6 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 	if err := l.processControlCommands(); err != nil {
 		return false, err
 	}
-	if err := l.processPendingRetries(ctx); err != nil {
-		return false, err
-	}
 	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}
@@ -496,38 +492,35 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 	}
 
 	orderBusyTargets := busyTargets(orders)
-	busyTargets := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.pendingRetry)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
+	busySet := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
 	for targetID, busy := range orderBusyTargets {
 		if busy {
-			busyTargets[targetID] = struct{}{}
+			busySet[targetID] = struct{}{}
 		}
 	}
 
-	failedTargets := make(map[string]struct{}, len(l.cooks.failedTargets))
+	failedSet := make(map[string]struct{}, len(l.cooks.failedTargets))
 	for targetID := range l.cooks.failedTargets {
-		failedTargets[targetID] = struct{}{}
+		failedSet[targetID] = struct{}{}
 	}
 
-	adoptedTargets := make(map[string]struct{}, len(l.cooks.adoptedTargets))
+	adoptedSet := make(map[string]struct{}, len(l.cooks.adoptedTargets))
 	for targetID := range l.cooks.adoptedTargets {
-		adoptedTargets[targetID] = struct{}{}
+		adoptedSet[targetID] = struct{}{}
 	}
 
 	for targetID := range l.cooks.pendingReview {
-		busyTargets[targetID] = struct{}{}
+		busySet[targetID] = struct{}{}
 	}
 
-	for targetID := range l.cooks.pendingRetry {
-		busyTargets[targetID] = struct{}{}
-	}
 	for targetID := range l.cooks.activeCooksByOrder {
-		busyTargets[targetID] = struct{}{}
+		busySet[targetID] = struct{}{}
 	}
 	for targetID := range l.cooks.adoptedTargets {
-		busyTargets[targetID] = struct{}{}
+		busySet[targetID] = struct{}{}
 	}
 
-	candidates := dispatchableStages(orders, busyTargets, failedTargets, adoptedTargets, activeTicketTargetSet(brief))
+	candidates := dispatchableStages(orders, busySet, failedSet, adoptedSet, activeTicketTargetSet(brief))
 
 	// Limit to capacity.
 	limit := capacity

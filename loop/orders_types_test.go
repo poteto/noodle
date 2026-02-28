@@ -73,9 +73,6 @@ func TestOrderJSONRoundTrip(t *testing.T) {
 			{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive},
 		},
 		Status: OrderStatusActive,
-		OnFailure: []Stage{
-			{TaskKey: "execute", Prompt: "rollback changes", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-		},
 	}
 
 	data, err := json.Marshal(original)
@@ -106,12 +103,6 @@ func TestOrderJSONRoundTrip(t *testing.T) {
 	if decoded.Status != OrderStatusActive {
 		t.Errorf("Status = %q, want %q", decoded.Status, OrderStatusActive)
 	}
-	if len(decoded.OnFailure) != 1 {
-		t.Fatalf("OnFailure len = %d, want 1", len(decoded.OnFailure))
-	}
-	if decoded.OnFailure[0].Prompt != "rollback changes" {
-		t.Errorf("OnFailure[0].Prompt = %q", decoded.OnFailure[0].Prompt)
-	}
 }
 
 func TestOrdersFileJSONRoundTrip(t *testing.T) {
@@ -131,12 +122,9 @@ func TestOrdersFileJSONRoundTrip(t *testing.T) {
 			{
 				ID:     "2",
 				Title:  "second order",
-				Status: OrderStatusFailing,
+				Status: OrderStatusFailed,
 				Stages: []Stage{
 					{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusFailed},
-				},
-				OnFailure: []Stage{
-					{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive},
 				},
 			},
 		},
@@ -238,93 +226,6 @@ func TestStageExtraRoundTrip(t *testing.T) {
 	}
 }
 
-func TestOrderOnFailureRoundTrip(t *testing.T) {
-	t.Run("with stages", func(t *testing.T) {
-		order := Order{
-			ID:     "1",
-			Status: OrderStatusActive,
-			Stages: []Stage{
-				{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-			},
-			OnFailure: []Stage{
-				{TaskKey: "execute", Prompt: "rollback", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				{TaskKey: "execute", Prompt: "notify", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-			},
-		}
-
-		data, err := json.Marshal(order)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-
-		var decoded Order
-		if err := json.Unmarshal(data, &decoded); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-
-		if len(decoded.OnFailure) != 2 {
-			t.Fatalf("OnFailure len = %d, want 2", len(decoded.OnFailure))
-		}
-		if decoded.OnFailure[0].Prompt != "rollback" {
-			t.Errorf("OnFailure[0].Prompt = %q", decoded.OnFailure[0].Prompt)
-		}
-		if decoded.OnFailure[1].Prompt != "notify" {
-			t.Errorf("OnFailure[1].Prompt = %q", decoded.OnFailure[1].Prompt)
-		}
-	})
-
-	t.Run("nil", func(t *testing.T) {
-		order := Order{
-			ID:     "2",
-			Status: OrderStatusActive,
-			Stages: []Stage{
-				{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-			},
-			OnFailure: nil,
-		}
-
-		data, err := json.Marshal(order)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-
-		var decoded Order
-		if err := json.Unmarshal(data, &decoded); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-
-		if decoded.OnFailure != nil {
-			t.Errorf("OnFailure = %v, want nil", decoded.OnFailure)
-		}
-	})
-
-	t.Run("empty slice", func(t *testing.T) {
-		order := Order{
-			ID:     "3",
-			Status: OrderStatusActive,
-			Stages: []Stage{
-				{Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-			},
-			OnFailure: []Stage{},
-		}
-
-		data, err := json.Marshal(order)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-
-		var decoded Order
-		if err := json.Unmarshal(data, &decoded); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-
-		// Empty slice serializes as omitted (omitempty), decoded as nil.
-		if decoded.OnFailure != nil {
-			t.Errorf("OnFailure = %v, want nil (empty omitted)", decoded.OnFailure)
-		}
-	})
-}
-
 func TestStageStatusConstants(t *testing.T) {
 	tests := []struct {
 		name string
@@ -353,7 +254,6 @@ func TestOrderStatusConstants(t *testing.T) {
 		{"active", OrderStatusActive, "active"},
 		{"completed", OrderStatusCompleted, "completed"},
 		{"failed", OrderStatusFailed, "failed"},
-		{"failing", OrderStatusFailing, "failing"},
 	}
 	for _, tt := range tests {
 		if tt.got != tt.want {
@@ -363,7 +263,7 @@ func TestOrderStatusConstants(t *testing.T) {
 }
 
 func TestValidateOrderStatus(t *testing.T) {
-	valid := []orderx.OrderStatus{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed, OrderStatusFailing}
+	valid := []orderx.OrderStatus{OrderStatusActive, OrderStatusCompleted, OrderStatusFailed}
 	for _, s := range valid {
 		if err := orderx.ValidateOrderStatus(s); err != nil {
 			t.Errorf("ValidateOrderStatus(%q) = %v, want nil", s, err)

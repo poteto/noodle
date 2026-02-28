@@ -126,8 +126,8 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	if !strings.Contains(prompt, "/tmp/test/.noodle/mise.json") {
 		t.Fatal("prompt should reference absolute path to mise.json")
 	}
-	if !strings.Contains(prompt, "on_failure") {
-		t.Fatal("prompt should mention on_failure stages")
+	if strings.Contains(prompt, "recovery pipeline") {
+		t.Fatal("prompt should not mention recovery pipeline stages")
 	}
 	if !strings.Contains(prompt, "execute: When ready") {
 		t.Fatal("prompt should include task types")

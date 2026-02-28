@@ -90,7 +90,6 @@ type Order struct {
 	Rationale string   `json:"rationale,omitempty"`
 	Stages    []Stage  `json:"stages"`
 	Status    string   `json:"status"`
-	OnFailure []Stage  `json:"on_failure,omitempty"`
 }
 
 // Stage is a unit of work within an order in the snapshot.

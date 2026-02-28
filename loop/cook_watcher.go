@@ -28,7 +28,6 @@ func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBoot
 			OrderID:      handle.orderID,
 			StageIndex:   handle.stageIndex,
 			Attempt:      handle.attempt,
-			IsOnFailure:  handle.isOnFailure,
 			Status:       stageResultStatus(handle.session.Status()),
 			SessionID:    sessionID,
 			Generation:   handle.generation,

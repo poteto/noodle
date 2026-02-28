@@ -275,7 +275,6 @@ func (l *Loop) controlMerge(orderID string) error {
 	// Merge the worktree.
 	cook := &cookHandle{
 		cookIdentity: pending.cookIdentity,
-		isOnFailure:  false,
 		orderStatus:  OrderStatusActive,
 		worktreeName: pending.worktreeName,
 		worktreePath: pending.worktreePath,
@@ -289,7 +288,6 @@ func (l *Loop) controlMerge(orderID string) error {
 	for _, o := range orders.Orders {
 		if o.ID == orderID {
 			cook.orderStatus = o.Status
-			cook.isOnFailure = o.Status == OrderStatusFailing
 			break
 		}
 	}
@@ -326,7 +324,7 @@ func (l *Loop) controlReject(orderID string) error {
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
-	// User rejection skips OnFailure — cancel and remove the order directly.
+	// Cancel and remove the order directly.
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
@@ -372,7 +370,6 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		return nil
 	}
 
-	// Call failStage — if OnFailure stages exist, they run; if not, terminal failure.
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
@@ -382,7 +379,7 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if trimmedFeedback != "" {
 		reason += ": " + trimmedFeedback
 	}
-	orders, terminal, err := failStage(orders, orderID, reason)
+	orders, err = failStage(orders, orderID, reason)
 	if err != nil {
 		return err
 	}
@@ -396,14 +393,12 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		Reason:     reason,
 		SessionID:  &sid,
 	})
-	if terminal {
-		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-			OrderID: orderID,
-			Reason:  reason,
-		})
-		if err := l.markFailed(orderID, reason); err != nil {
-			return err
-		}
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: orderID,
+		Reason:  reason,
+	})
+	if err := l.markFailed(orderID, reason); err != nil {
+		return err
 	}
 
 	// Clean up the worktree for the failed stage.
@@ -485,24 +480,20 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 		if stageIdx < 0 || stage == nil {
 			return fmt.Errorf("order %q has no editable stage", orderID)
 		}
-		stages := &orders.Orders[i].Stages
-		if orders.Orders[i].Status == OrderStatusFailing {
-			stages = &orders.Orders[i].OnFailure
-		}
 		if prompt := strings.TrimSpace(cmd.Prompt); prompt != "" {
-			(*stages)[stageIdx].Prompt = prompt
+			orders.Orders[i].Stages[stageIdx].Prompt = prompt
 		}
 		if taskKey := strings.TrimSpace(cmd.TaskKey); taskKey != "" {
-			(*stages)[stageIdx].TaskKey = taskKey
+			orders.Orders[i].Stages[stageIdx].TaskKey = taskKey
 		}
 		if provider := strings.TrimSpace(cmd.Provider); provider != "" {
-			(*stages)[stageIdx].Provider = provider
+			orders.Orders[i].Stages[stageIdx].Provider = provider
 		}
 		if model := strings.TrimSpace(cmd.Model); model != "" {
-			(*stages)[stageIdx].Model = model
+			orders.Orders[i].Stages[stageIdx].Model = model
 		}
 		if skill := strings.TrimSpace(cmd.Skill); skill != "" {
-			(*stages)[stageIdx].Skill = skill
+			orders.Orders[i].Stages[stageIdx].Skill = skill
 		}
 		break
 	}
@@ -544,7 +535,7 @@ func (l *Loop) controlRequeue(orderID string) error {
 	}
 
 	// If order still exists in orders.json, reset all failed/cancelled stages
-	// in both Stages and OnFailure to "pending", set Order.Status to "active".
+	// to "pending", set Order.Status to "active".
 	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
 	// on I/O errors.
 	orders, err := l.currentOrders()
@@ -558,7 +549,6 @@ func (l *Loop) controlRequeue(orderID string) error {
 		}
 		orders.Orders[i].Status = OrderStatusActive
 		resetStages(&orders.Orders[i].Stages)
-		resetStages(&orders.Orders[i].OnFailure)
 		updated = true
 		break
 	}

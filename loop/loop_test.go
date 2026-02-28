@@ -504,9 +504,6 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if !strings.Contains(rt.calls[0].Prompt, "orders.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing orders schema: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "on_failure") {
-		t.Fatalf("spawn prompt missing on_failure documentation: %q", rt.calls[0].Prompt)
-	}
 	if !strings.Contains(rt.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", rt.calls[0].Prompt)
 	}
@@ -595,112 +592,6 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 }
 
-func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
-	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Recovery.MaxRetries = 0
-
-	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "42", Title: "test", Status: "open"}}}
-	rt := newMockRuntime()
-	wt := &fakeWorktree{}
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   wt,
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: briefWithPlans},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-		OrdersFile: ordersPath,
-	})
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("spawn cycle: %v", err)
-	}
-	if len(rt.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(rt.sessions))
-	}
-	rt.sessions[0].complete("failed")
-
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("failure cycle: %v", err)
-	}
-	for _, call := range rt.calls[1:] {
-		if call.Name == "42" {
-			t.Fatalf("expected no respawn for failed item 42, calls = %#v", rt.calls)
-		}
-	}
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected target to be marked failed")
-	}
-	if _, err := os.Stat(filepath.Join(runtimeDir, "failed.json")); err != nil {
-		t.Fatalf("expected failed.json: %v", err)
-	}
-
-	// Verify the order was removed from orders.json after failure.
-	updatedOrders, err := readOrders(ordersPath)
-	if err != nil {
-		t.Fatalf("read orders: %v", err)
-	}
-	for _, order := range updatedOrders.Orders {
-		if order.ID == "42" {
-			t.Fatal("order 42 should have been removed after failure")
-		}
-	}
-}
-
-func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Recovery.MaxRetries = 0
-
-	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
-	rt := newMockRuntime()
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: briefWithPlans},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-	})
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("spawn cycle: %v", err)
-	}
-	if len(rt.sessions) != 1 {
-		t.Fatalf("sessions = %d", len(rt.sessions))
-	}
-	rt.sessions[0].complete("exited")
-
-	err := l.Cycle(context.Background())
-	if err == nil {
-		t.Fatal("expected Cycle to return error for exited schedule session")
-	}
-	if !strings.Contains(err.Error(), "schedule failed after retries") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -776,13 +667,12 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 		projectDir:  projectDir,
 		runtimeDir:  runtimeDir,
 		registryErr: errors.New("task type discovery failed: bad frontmatter"),
-		cooks: cookTracker{
-			activeCooksByOrder: map[string]*cookHandle{},
-			adoptedTargets:     map[string]string{},
-			failedTargets:      map[string]string{},
-			pendingReview:      map[string]*pendingReviewCook{},
-			pendingRetry:       map[string]*pendingRetryCook{},
-		},
+			cooks: cookTracker{
+				activeCooksByOrder: map[string]*cookHandle{},
+				adoptedTargets:     map[string]string{},
+				failedTargets:      map[string]string{},
+				pendingReview:      map[string]*pendingReviewCook{},
+			},
 		cmds: cmdProcessor{
 			processedIDs: map[string]struct{}{},
 		},
@@ -1277,220 +1167,6 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	}
 }
 
-// TestNoDoubleSpawnAfterFailedRetry verifies that when a retry dispatch fails,
-// the item stays in pendingRetry and is retried next cycle — never spawned
-// fresh via planCycleSpawns with a reset attempt counter.
-//
-// Sequence:
-//  1. Cycle 1: item "37" spawns session A
-//  2. Session A fails (Done fires)
-//  3. Cycle 2: drainCompletions picks up A, retryCook→spawnCook fails,
-//     item lands in pendingRetry. Cycle returns the spawn error.
-//  4. Cycle 3: processPendingRetries fires, spawnCook succeeds.
-//     Item is in activeCooksByOrder with attempt > 0.
-//
-// TestRetryCookRespectsMaxCooks verifies that retryCook defers to pendingRetry
-// when the loop is already at max concurrency. Without this check, two adopted
-// sessions completing with errors in the same collectAdoptedCompletions call
-// would both get retried, exceeding max_cooks.
-func TestRetryCookRespectsMaxCooks(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-
-	// Orders has both item 29 and a schedule. The schedule order is needed
-	// so that the adopted schedule session's retry doesn't fail on
-	// "order not found" during removeOrder.
-	orders := OrdersFile{Orders: []Order{
-		testOrder("29", "execute", "execute", "claude", "claude-opus-4-6"),
-		testOrder("schedule", "schedule", "schedule", "claude", "claude-sonnet"),
-	}}
-	orders.Orders[0].Plan = []string{"plans/29-test/overview"}
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	rt := newMockRuntime()
-	wt := &fakeWorktree{}
-
-	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = 1
-	cfg.Recovery.MaxRetries = 3
-
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   wt,
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: mise.Brief{Backlog: []adapter.BacklogItem{{ID: "29", Title: "test", Status: "open"}}}},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-	})
-
-	// Simulate: item 29 was spawned in a previous cycle and is still running.
-	item29Session := &mockSession{id: "29-sess", status: "running", done: make(chan struct{})}
-	item29Cook := &cookHandle{
-		cookIdentity: cookIdentity{
-			orderID: "29",
-			stage: Stage{
-				TaskKey:  "execute",
-				Skill:    "execute",
-				Provider: "claude",
-				Model:    "claude-opus-4-6",
-			},
-			plan: []string{"plans/29-test/overview"},
-		},
-		session:      item29Session,
-		worktreeName: "29",
-		worktreePath: filepath.Join(projectDir, ".worktrees", "29"),
-	}
-	l.cooks.activeCooksByOrder["29"] = item29Cook
-
-	// Simulate: an adopted schedule session from a previous loop instance
-	// has just completed with error.
-	schedSessID := "schedule-adopted-sess"
-	schedSessionDir := filepath.Join(runtimeDir, "sessions", schedSessID)
-	if err := os.MkdirAll(schedSessionDir, 0o755); err != nil {
-		t.Fatalf("mkdir adopted session: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(schedSessionDir, "meta.json"),
-		[]byte(`{"status":"failed"}`), 0o644); err != nil {
-		t.Fatalf("write adopted meta: %v", err)
-	}
-	// Write a prompt that matches the schedule prompt pattern so ReadSessionTarget
-	// returns "schedule".
-	if err := os.WriteFile(filepath.Join(schedSessionDir, "prompt.txt"),
-		[]byte("Use Skill(schedule) to refresh the queue from .noodle/mise.json.\n"), 0o644); err != nil {
-		t.Fatalf("write adopted prompt: %v", err)
-	}
-
-	// Write process.json so PID-based liveness check works.
-	procMeta, _ := json.Marshal(map[string]any{
-		"pid":        os.Getpid(),
-		"session_id": schedSessID,
-		"started_at": time.Now().UTC().Format(time.RFC3339),
-	})
-	if err := os.WriteFile(filepath.Join(schedSessionDir, "process.json"), procMeta, 0o644); err != nil {
-		t.Fatalf("write process.json: %v", err)
-	}
-
-	l.cooks.adoptedTargets["schedule"] = schedSessID
-	l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, schedSessID)
-
-	// Run completion drain (which includes collectAdoptedCompletions).
-	// The adopted schedule session is "failed", so handleCompletion → retryCook.
-	// Item 29 is still running, so activeCooksByOrder already has 1 entry.
-	if err := l.drainCompletions(context.Background()); err != nil {
-		t.Fatalf("drainCompletions: %v", err)
-	}
-
-	// The invariant: activeCooksByOrder must never exceed max_cooks.
-	if len(l.cooks.activeCooksByOrder) > cfg.Concurrency.MaxCooks {
-		t.Fatalf("BUG: activeCooksByOrder has %d entries (max_cooks=%d) — retryCook exceeded concurrency limit",
-			len(l.cooks.activeCooksByOrder), cfg.Concurrency.MaxCooks)
-	}
-
-	// The schedule retry should have been deferred to pendingRetry.
-	if _, ok := l.cooks.pendingRetry["schedule"]; !ok {
-		t.Fatal("expected schedule retry to be deferred to pendingRetry")
-	}
-}
-
-func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-
-	orders := OrdersFile{Orders: []Order{testOrder("37", "execute", "execute", "claude", "claude-opus-4-6")}}
-	orders.Orders[0].Plan = []string{"plans/37-test/overview"}
-	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	// Call 0: cycle 1 spawns "37" → succeeds
-	// Call 1: cycle 2 retry of "37" → fails (transient dispatch error)
-	// Call 2+: cycle 3 onward → succeeds
-	failAt := map[int]error{1: errors.New("dispatch unavailable")}
-	rt := newMockRuntime()
-	callCount := 0
-	rt.dispatchHook = func(req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
-		idx := callCount
-		callCount++
-		if err, ok := failAt[idx]; ok {
-			return nil, err
-		}
-		s := &mockSession{id: req.Name + "-id", status: "running", done: make(chan struct{})}
-		rt.sessions = append(rt.sessions, s)
-		return s, nil
-	}
-	wt := &fakeWorktree{}
-
-	cfg := config.DefaultConfig()
-	cfg.Recovery.MaxRetries = 3
-
-	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   wt,
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: mise.Brief{Backlog: []adapter.BacklogItem{{ID: "37", Title: "test", Status: "open"}}}},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
-	})
-
-	// --- Cycle 1: spawns session A for item "37" ---
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 1: %v", err)
-	}
-	if len(rt.sessions) != 1 {
-		t.Fatalf("expected 1 session after cycle 1, got %d", len(rt.sessions))
-	}
-	if _, ok := l.cooks.activeCooksByOrder["37"]; !ok {
-		t.Fatal("expected item 37 in activeCooksByOrder after cycle 1")
-	}
-
-	// Simulate: session A fails
-	sessionA := rt.sessions[0]
-	sessionA.complete("failed")
-
-	// Create the worktree directory so ensureWorktree doesn't call Create again
-	// (mirrors production: worktree exists from cycle 1's dispatch).
-	if err := os.MkdirAll(filepath.Join(projectDir, ".worktrees", "37"), 0o755); err != nil {
-		t.Fatalf("mkdir worktree: %v", err)
-	}
-
-	// --- Cycle 2: collect A, retry fails, item goes to pendingRetry ---
-	err := l.Cycle(context.Background())
-	if err == nil {
-		t.Fatal("expected cycle 2 to return error from failed retry dispatch")
-	}
-	if _, ok := l.cooks.pendingRetry["37"]; !ok {
-		t.Fatal("expected item 37 in pendingRetry after failed retry dispatch")
-	}
-
-	// --- Cycle 3: pendingRetry fires, spawnCook succeeds ---
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 3: %v", err)
-	}
-
-	cook37, ok := l.cooks.activeCooksByOrder["37"]
-	if !ok {
-		t.Fatal("expected item 37 in activeCooksByOrder after cycle 3 (pending retry should have fired)")
-	}
-	if cook37.attempt == 0 {
-		t.Errorf(
-			"BUG: item '37' was spawned fresh (attempt 0) instead of via " +
-				"pendingRetry (attempt counter lost between failed retry and next cycle)",
-		)
-	}
-}
-
 func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -1516,7 +1192,6 @@ func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{orderID: "order-1", stageIndex: 0},
-		isOnFailure:  false,
 		worktreeName: "order-1-0-execute",
 		generation:   42,
 		session:      &adoptedSession{id: "sess-1", status: "completed"},

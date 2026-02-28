@@ -10,7 +10,6 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
-	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -209,101 +208,6 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 	}
 }
 
-// --- OnFailure pipeline end-to-end ---
-// stage fails → failStage → order becomes "failing" → OnFailure stage dispatches →
-// completes → advanceOrder removes order → markFailed called.
-
-func TestIntegrationOnFailurePipeline(t *testing.T) {
-	orders := OrdersFile{
-		Orders: []Order{
-			{
-				ID:     "fail-1",
-				Title:  "order with failure routing",
-				Status: OrderStatusActive,
-				Stages: []Stage{
-					{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-					{TaskKey: "review", Skill: "review", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				},
-				OnFailure: []Stage{
-					{TaskKey: "oops", Skill: "oops", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				},
-			},
-		},
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Recovery.MaxRetries = 0
-
-	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
-		ic.cfg = cfg
-	})
-	l := env.loop
-
-	// Cycle 1: dispatch stage 0 (execute).
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 1: %v", err)
-	}
-	if len(env.rt.sessions) != 1 {
-		t.Fatalf("cycle 1 sessions = %d", len(env.rt.sessions))
-	}
-
-	// Stage 0 fails.
-	env.completeSessions("failed")
-
-	// Cycle 2: handle failure → order becomes "failing", OnFailure stage dispatches.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 2: %v", err)
-	}
-
-	of := env.readOrders(t)
-	if len(of.Orders) != 1 {
-		t.Fatalf("expected 1 order in failing state, got %d", len(of.Orders))
-	}
-	order := of.Orders[0]
-	if order.Status != OrderStatusFailing {
-		t.Fatalf("order status = %q, want failing", order.Status)
-	}
-	// Main stages: stage 0 failed, stage 1 cancelled.
-	if order.Stages[0].Status != StageStatusFailed {
-		t.Fatalf("stage 0 = %q, want failed", order.Stages[0].Status)
-	}
-	if order.Stages[1].Status != StageStatusCancelled {
-		t.Fatalf("stage 1 = %q, want cancelled", order.Stages[1].Status)
-	}
-	// OnFailure stage 0 should be active (dispatched).
-	if order.OnFailure[0].Status != StageStatusActive {
-		t.Fatalf("OnFailure[0] = %q, want active", order.OnFailure[0].Status)
-	}
-
-	// OnFailure stage completes.
-	env.completeSessions("completed")
-
-	// Cycle 3: advance OnFailure stage → order removed → markFailed called.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 3: %v", err)
-	}
-
-	of = env.readOrders(t)
-	for _, o := range of.Orders {
-		if o.ID == "fail-1" {
-			t.Fatal("order fail-1 should have been removed after OnFailure completed")
-		}
-	}
-
-	// Should be in failed targets (OnFailure completes = original failure stands).
-	if _, ok := l.cooks.failedTargets["fail-1"]; !ok {
-		t.Fatal("expected fail-1 in failedTargets")
-	}
-	if _, err := os.Stat(filepath.Join(env.runtimeDir, "failed.json")); err != nil {
-		t.Fatalf("expected failed.json: %v", err)
-	}
-
-	// Adapter "done" should NOT have been called (this was a failure, not success).
-	if len(env.ar.doneCalls) != 0 {
-		t.Fatalf("done calls = %#v, want [] (failure path should not fire done)", env.ar.doneCalls)
-	}
-}
-
 // --- Merge conflict → pending review → controlMerge resolves ---
 
 func TestIntegrationMergeConflictResolution(t *testing.T) {
@@ -394,136 +298,6 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	}
 }
 
-// --- Failed-target stickiness + requeue recovery ---
-
-func TestIntegrationFailedTargetStickinessAndRequeue(t *testing.T) {
-	orders := OrdersFile{
-		Orders: []Order{
-			{
-				ID:     "sticky-1",
-				Title:  "order that will fail and be requeued",
-				Status: OrderStatusActive,
-				Stages: []Stage{
-					{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-					{TaskKey: "reflect", Skill: "reflect", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
-				},
-			},
-		},
-	}
-
-	cfg := config.DefaultConfig()
-	cfg.Recovery.MaxRetries = 0
-
-	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
-		ic.cfg = cfg
-	})
-	l := env.loop
-
-	// Cycle 1: dispatch execute stage.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 1: %v", err)
-	}
-
-	// Stage fails.
-	env.completeSessions("failed")
-
-	// Cycle 2: failure → order removed, marked in failedTargets.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 2: %v", err)
-	}
-
-	if _, ok := l.cooks.failedTargets["sticky-1"]; !ok {
-		t.Fatal("expected sticky-1 in failedTargets after failure")
-	}
-
-	// Write a new orders-next.json with the same order ID (simulating scheduler re-creating it).
-	nextPath := filepath.Join(env.runtimeDir, "orders-next.json")
-	nextOrders := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{
-				ID:     "sticky-1",
-				Status: orderx.OrderStatusActive,
-				Stages: []orderx.Stage{
-					{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
-				},
-			},
-		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, nextOrders); err != nil {
-		t.Fatalf("write orders-next: %v", err)
-	}
-
-	// Cycle 3: consumeOrdersNext promotes the order, but it should be blocked
-	// by failedTargets — not dispatched.
-	spawnCountBefore := len(env.rt.calls)
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 3: %v", err)
-	}
-
-	// Verify the order was promoted into orders.json.
-	of := env.readOrders(t)
-	found := false
-	for _, o := range of.Orders {
-		if o.ID == "sticky-1" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("sticky-1 should be in orders.json after promotion")
-	}
-
-	// But it should NOT have been dispatched (blocked by failedTargets).
-	dispatched := false
-	for _, call := range env.rt.calls[spawnCountBefore:] {
-		if strings.Contains(call.Name, "sticky-1") {
-			dispatched = true
-		}
-	}
-	if dispatched {
-		t.Fatal("sticky-1 should not be dispatched while in failedTargets")
-	}
-
-	// Now requeue: clear failed state, reset stages.
-	if err := l.controlRequeue("sticky-1"); err != nil {
-		t.Fatalf("controlRequeue: %v", err)
-	}
-
-	if _, ok := l.cooks.failedTargets["sticky-1"]; ok {
-		t.Fatal("sticky-1 should be removed from failedTargets after requeue")
-	}
-
-	// Verify order stages were reset in orders.json.
-	of = env.readOrders(t)
-	for _, o := range of.Orders {
-		if o.ID == "sticky-1" {
-			if o.Status != OrderStatusActive {
-				t.Fatalf("order status = %q, want active after requeue", o.Status)
-			}
-			for i, s := range o.Stages {
-				if s.Status != StageStatusPending {
-					t.Fatalf("stage %d = %q, want pending after requeue", i, s.Status)
-				}
-			}
-		}
-	}
-
-	// Cycle 4: should now dispatch the requeued order.
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("cycle 4: %v", err)
-	}
-
-	dispatched = false
-	for _, call := range env.rt.calls {
-		if strings.Contains(call.Name, "sticky-1") {
-			dispatched = true
-		}
-	}
-	if !dispatched {
-		t.Fatal("sticky-1 should be dispatched after requeue")
-	}
-}
-
 // --- Loop file readability for snapshot consumers ---
 // Verifies orders.json and pending-review.json are readable after loop
 // operations. Does NOT exercise snapshot.LoadSnapshot or API serialization
@@ -542,13 +316,10 @@ func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 			},
 			{
 				ID:     "snap-2",
-				Title:  "order with OnFailure",
-				Status: OrderStatusFailing,
+				Title:  "second order in queue",
+				Status: OrderStatusActive,
 				Stages: []Stage{
-					{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusFailed},
-				},
-				OnFailure: []Stage{
-					{TaskKey: "oops", Skill: "oops", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
+					{TaskKey: "reflect", Skill: "reflect", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending},
 				},
 			},
 		},
@@ -586,8 +357,8 @@ func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 	if orderStatuses["snap-1"] != string(OrderStatusActive) {
 		t.Fatalf("snap-1 status = %q, want active", orderStatuses["snap-1"])
 	}
-	if orderStatuses["snap-2"] != string(OrderStatusFailing) {
-		t.Fatalf("snap-2 status = %q, want failing", orderStatuses["snap-2"])
+	if orderStatuses["snap-2"] != string(OrderStatusActive) {
+		t.Fatalf("snap-2 status = %q, want active", orderStatuses["snap-2"])
 	}
 
 	// Verify pending reviews are present.

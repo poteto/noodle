@@ -121,10 +121,9 @@ func (l *Loop) steerRespawn(cook *cookHandle, prompt string) error {
 	})
 	delete(l.cooks.activeCooksByOrder, cook.orderID)
 	cand := dispatchCandidate{
-		OrderID:     cook.orderID,
-		StageIndex:  cook.stageIndex,
-		Stage:       cook.stage,
-		IsOnFailure: cook.isOnFailure,
+		OrderID:    cook.orderID,
+		StageIndex: cook.stageIndex,
+		Stage:      cook.stage,
 	}
 	order := Order{
 		ID:     cook.orderID,

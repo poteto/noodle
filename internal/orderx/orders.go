@@ -60,8 +60,7 @@ func WriteOrdersAtomic(path string, of OrdersFile) error {
 }
 
 // ApplyOrderRoutingDefaults fills missing provider/model on stages from config
-// defaults. Applies to both Stages and OnFailure stages. Updates fields
-// in-place to preserve Stage.Extra.
+// defaults. Updates fields in-place to preserve Stage.Extra.
 func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.Config) (OrdersFile, bool) {
 	orders := make([]Order, len(of.Orders))
 	copy(orders, of.Orders)
@@ -69,11 +68,6 @@ func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.C
 	for i := range orders {
 		for j := range orders[i].Stages {
 			if stageChanged := applyStageRoutingDefaults(&orders[i].Stages[j], reg, cfg); stageChanged {
-				changed = true
-			}
-		}
-		for j := range orders[i].OnFailure {
-			if stageChanged := applyStageRoutingDefaults(&orders[i].OnFailure[j], reg, cfg); stageChanged {
 				changed = true
 			}
 		}
@@ -120,14 +114,11 @@ func applyStageRoutingDefaults(stage *Stage, reg taskreg.Registry, cfg config.Co
 }
 
 // NormalizeAndValidateOrders validates stage task types against registry, drops
-// orders with no valid main stages, strips invalid OnFailure stages, normalizes
-// IDs, and rejects orders with empty status.
+// orders with no valid main stages, normalizes IDs, and rejects orders with
+// empty status.
 //
 // Duplicate order IDs within the same file are rejected as validation errors.
 // For cross-file duplicate handling during promotion, see consumeOrdersNext.
-//
-// If a "failing" order has all its OnFailure stages stripped, it is treated as
-// terminal: removed and an error annotation is appended.
 func NormalizeAndValidateOrders(
 	of OrdersFile,
 	reg taskreg.Registry,
@@ -168,11 +159,6 @@ func NormalizeAndValidateOrders(
 				changed = true
 			}
 		}
-		for j := range orders[i].OnFailure {
-			if truncateExtraPrompt(&orders[i].OnFailure[j]) {
-				changed = true
-			}
-		}
 
 		// Validate and filter main stages.
 		validStages := make([]Stage, 0, len(orders[i].Stages))
@@ -193,35 +179,6 @@ func NormalizeAndValidateOrders(
 			continue
 		}
 		orders[i].Stages = validStages
-
-		// Validate and filter OnFailure stages.
-		if len(orders[i].OnFailure) > 0 {
-			validOnFailure := make([]Stage, 0, len(orders[i].OnFailure))
-			for j := range orders[i].OnFailure {
-				if err := ValidateStageStatus(orders[i].OnFailure[j].Status); err != nil {
-					return of, false, fmt.Errorf("order %q on_failure stage %d: %w", id, j, err)
-				}
-				if isValidStageTaskType(&orders[i].OnFailure[j], reg) {
-					validOnFailure = append(validOnFailure, orders[i].OnFailure[j])
-				} else {
-					changed = true
-				}
-			}
-			if len(validOnFailure) == 0 {
-				orders[i].OnFailure = nil
-				changed = true
-			} else if len(validOnFailure) != len(orders[i].OnFailure) {
-				orders[i].OnFailure = validOnFailure
-			}
-		}
-
-		// "failing" + empty OnFailure = terminal.
-		if orders[i].Status == OrderStatusFailing && len(orders[i].OnFailure) == 0 {
-			changed = true
-			of.ActionNeeded = append(of.ActionNeeded,
-				fmt.Sprintf("order %q: failing with no recovery stages, removed as terminal", id))
-			continue
-		}
 
 		kept = append(kept, orders[i])
 	}

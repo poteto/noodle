@@ -249,52 +249,6 @@ func TestLogScheduleCompleted(t *testing.T) {
 	}
 }
 
-func TestLogRetryAndFailure(t *testing.T) {
-	logger, handler := newTestLogger()
-	maxRetries := 1
-	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
-	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
-		o.maxRetries = &maxRetries
-		o.brief = &brief
-	})
-
-	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
-	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
-		t.Fatalf("write orders: %v", err)
-	}
-
-	// Cycle 1: dispatch.
-	if err := tc.loop.Cycle(context.Background()); err != nil {
-		t.Fatalf("spawn cycle: %v", err)
-	}
-
-	// Fail the first session → triggers retry.
-	tc.runtime.sessions[0].complete("error")
-
-	if err := tc.loop.Cycle(context.Background()); err != nil {
-		t.Fatalf("retry cycle: %v", err)
-	}
-
-	if !handler.hasMessage("cook retrying") {
-		t.Fatal("expected 'cook retrying' log entry")
-	}
-
-	// Fail the retry → exhausts retries → permanent failure.
-	tc.runtime.sessions[1].complete("error")
-
-	if err := tc.loop.Cycle(context.Background()); err != nil {
-		t.Fatalf("failure cycle: %v", err)
-	}
-
-	entry, ok := handler.findEntry("cook failed permanently")
-	if !ok {
-		t.Fatal("expected 'cook failed permanently' log entry")
-	}
-	if entry.Level != slog.LevelWarn {
-		t.Fatalf("expected Warn level, got %v", entry.Level)
-	}
-}
-
 func TestLogStateTransition(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger)
