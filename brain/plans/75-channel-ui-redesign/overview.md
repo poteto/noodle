@@ -81,6 +81,32 @@ Use **Tailwind CSS** (already installed as Tailwind v4.2 via Vite plugin) for al
 10. [[plans/75-channel-ui-redesign/phase-10-brutalist-theme-and-visual-polish]]
 11. [[plans/75-channel-ui-redesign/phase-11-verification-and-smoke-tests]]
 
+## PM Instructions (persist across compaction)
+
+These are the operating rules for the lead PM agent executing this plan:
+
+0. **CRITICAL: PM does NOT implement.** PM is a project manager only. Research via subagents, delegate all implementation to team agents.
+1. **All agents must use Tasks** (TaskCreate/TaskUpdate/TaskList) for every item in their phases.
+2. **Worktree discipline:** PM has its own worktree. Agents create their own worktrees and merge into PM's worktree — NOT main. One commit per logical change.
+3. **Always spawn fresh agents** to keep context clean.
+4. **Review all work** via a separate review agent against the plan before merging.
+5. **E2E smoke tests** at the end — must include NEW test cases since the UI is completely changing.
+6. **Codex allowed** for mechanical work that does not require judgment.
+7. **No YAGNI / no backwards compat.** Check that agents aren't adding overly defensive code. Let e2e smoke tests show what to fix.
+8. **Use /chrome** to visually verify the UI in browser and click around.
+9. **Do not stop.** Keep going until the plan is fully complete.
+
+## Execution Batches
+
+Dependency analysis for parallelization:
+
+- **Batch 1:** Phase 1 (foundation — delete kanban, scaffold shell)
+- **Batch 2:** Phase 2 + Phase 6 + Phase 7 (sidebar/scheduler + tree route + dashboard route — all need Phase 1, independent of each other)
+- **Batch 3:** Phase 3 + Phase 4 + Phase 8 (agent feed + context panel + backend stage messages — all need Phase 2)
+- **Batch 4:** Phase 5 + Phase 9 (review flow needs 3+4, scheduler judgment needs 8)
+- **Batch 5:** Phase 10 (brutalist theme — needs all UI phases)
+- **Batch 6:** Phase 11 (verification and smoke tests — needs everything)
+
 ## Verification
 
 ```bash
