@@ -11,7 +11,8 @@ Define one canonical backend state model that all loop decisions use, replacing 
 - Introduce canonical state package/types for orders, stages, attempts, and run mode
 - Consolidate lifecycle enums into typed status sets used across loop/runtime/snapshot
 - Define explicit state serialization contract for crash-safe persistence
-- Keep adapters for legacy internal call sites only during migration phases
+- Define lifecycle invariants and access-pattern indexes up front
+- Delete replaced paths directly when callers are switched (no compatibility adapters)
 
 ## Data Structures
 
@@ -21,12 +22,22 @@ Define one canonical backend state model that all loop decisions use, replacing 
 - `AttemptNode`
 - `RunMode`
 - `OrderLifecycleStatus`, `StageLifecycleStatus`, `AttemptStatus`
+- `OrderBusyIndex`, `AttemptBySessionIndex`, `PendingEffectIndex`
+
+### Access-Pattern Matrix
+
+| Access need | Primary structure |
+|-------------|-------------------|
+| Active stage lookup by order | `OrderBusyIndex` |
+| Session completion -> attempt lookup | `AttemptBySessionIndex` |
+| Retry candidate scan | `AttemptNode` status + retry index |
+| Projection build | canonical `State` + projection reducer |
 
 ## Routing
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Architecture / judgment | `claude` | `claude-opus-4-6` | Canonical type boundaries and status semantics |
+| Architecture / judgment | `claude` | `claude-opus-4-6` | Canonical type boundaries and invariants |
 
 ## Verification
 
@@ -34,11 +45,12 @@ Define one canonical backend state model that all loop decisions use, replacing 
 
 - Type checks pass for new canonical types
 - No stringly-typed lifecycle status comparisons in migrated files
+- Index definitions align with declared access-pattern matrix
 - `go test ./... && go vet ./...`
 
 ### Runtime
 
+- End-of-phase e2e smoke test: `pnpm test:smoke`
 - Serialization round-trip tests for canonical state
-- State migration tests proving no data loss for active orders/stages
+- State persistence tests proving no data loss for active orders/stages/attempts
 - Edge cases: empty orders, terminal states, partially active pipelines
-

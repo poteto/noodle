@@ -10,7 +10,7 @@ Split pure state transitions from side effects so loop behavior becomes determin
 
 - Implement reducer that maps `(State, StateEvent) -> (State, []Effect)`
 - Introduce effect executor pipeline for dispatch, merge, cleanup, and file projections
-- Ensure effect execution is idempotent and retry-safe
+- Ensure effect execution is idempotent and retry-safe via durable effect ledger
 - Move existing imperative transition logic into reducer transitions
 
 ## Data Structures
@@ -19,6 +19,23 @@ Split pure state transitions from side effects so loop behavior becomes determin
 - `Effect`
 - `EffectDispatch`, `EffectMerge`, `EffectWriteProjection`, `EffectAck`
 - `EffectResult`
+- `EffectLedgerRecord` (`pending`, `running`, `done`, `failed`)
+
+### Concurrency Model (Required)
+
+- Single reducer goroutine owns canonical state mutation.
+- Effect workers run concurrently but never mutate canonical state directly.
+- Effect workers emit effect-result events back to ingestion arbiter.
+- Reducer commits effect state transitions from those events.
+
+### Crash-Consistency Protocol
+
+1. Persist ingested event with sequence.
+2. Reduce event to next state and effect set.
+3. Persist state snapshot + effect ledger updates atomically.
+4. Execute effects with deterministic `effect_id` idempotency key.
+5. Persist effect result.
+6. Emit ack/projection updates after durable commit.
 
 ## Routing
 
@@ -32,10 +49,13 @@ Split pure state transitions from side effects so loop behavior becomes determin
 
 - Reducer package has no side-effect imports
 - Effect executors consume typed effect payloads only
+- Lint rule forbids canonical-state writes outside reducer package
 - `go test ./... && go vet ./...`
 
 ### Runtime
 
+- End-of-phase e2e smoke test: `pnpm test:smoke`
 - Table-driven reducer tests for all lifecycle transitions
 - Effect retry tests proving no double-merge/double-dispatch
-- Edge cases: effect failure mid-cycle, partial executor outage, stale lock recovery
+- Crash-window tests between each protocol step above
+- Edge cases: partial executor outage, stale lock recovery

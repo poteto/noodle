@@ -9,16 +9,26 @@ Normalize all external inputs into canonical events with deterministic idempoten
 ## Changes
 
 - Introduce ingestion boundary for control commands, scheduler outputs, and runtime completions
-- Assign monotonic sequence/event IDs at ingestion boundaries
-- Enforce replay-safe dedup semantics (command ID + sequence watermark)
-- Remove direct state mutations from ingress handlers
+- Route all input through a single ingestion arbiter
+- Assign monotonic sequence/event IDs only in the ingestion arbiter
+- Enforce source-specific dedup semantics; remove direct state mutations from ingress handlers
+- Emit operator-auditable dedup metadata in ack/projection outputs
 
 ## Data Structures
 
 - `StateEvent`
 - `InputEnvelope`
 - `EventID`
-- `AppliedEventIndex`
+- `AppliedEventIndex` (per-source)
+- `DedupReason`
+
+### Idempotency Identity Matrix
+
+| Source | Identity key |
+|--------|---------------|
+| Control command | `command_id` |
+| Scheduler output | `scheduler_generation_id + order_id` |
+| Runtime completion | `attempt_id + terminal_status` |
 
 ## Routing
 
@@ -36,7 +46,8 @@ Normalize all external inputs into canonical events with deterministic idempoten
 
 ### Runtime
 
+- End-of-phase e2e smoke test: `pnpm test:smoke`
 - Replay tests: same input stream twice converges to identical state
-- Duplicate command tests: repeated `control.ndjson` lines apply once
-- Crash-replay tests around ack/write boundaries
-- Edge cases: malformed event payloads, missing IDs, out-of-order sequence
+- Duplicate command tests: repeated `control.ndjson` lines apply once with explicit dedup reason
+- Crash-replay tests around ingest/ack boundaries
+- Edge cases: malformed payloads, missing IDs, out-of-order sequence

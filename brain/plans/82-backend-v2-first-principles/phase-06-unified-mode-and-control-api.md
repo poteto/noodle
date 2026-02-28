@@ -10,15 +10,32 @@ Replace split oversight controls with one global mode that deterministically gat
 
 - Add config `mode = auto | supervised | manual`
 - Remove `autonomy` and vestigial `schedule.run` from backend contract
-- Replace control action `autonomy` with `mode`
+- Delete control action `autonomy`; `mode` is the only oversight control
 - Add manual `dispatch` control action for explicit launch in manual mode
-- Update status/snapshot fields to surface `mode` only
+- Add mode transition contract in status/snapshot (`requested_mode`, `effective_mode`, `requested_by`, `reason`, `applied_at`)
+- Add blocked-action reason codes for schedule/dispatch/retry/merge gates
+
+### Alternatives considered
+
+1. Keep two controls and wire missing behavior.
+2. Single global mode with explicit gate semantics.
+3. Two modes only + per-skill overrides.
+
+Chosen: **(2)** for operator clarity and deterministic gate evaluation.
+
+### In-flight semantics
+
+- Add `mode_epoch` to canonical state.
+- Effects are stamped with creation `mode_epoch`.
+- Executor revalidates epoch before commit; mismatches emit deterministic cancellation/defer events.
 
 ## Data Structures
 
 - `RunMode`
-- `ModeGate` helper for schedule/dispatch/retry/merge checks
+- `ModeGate`
+- `ModeTransitionRecord`
 - `ControlAction` enum updates
+- `ModeEpoch`
 
 ## Routing
 
@@ -36,8 +53,10 @@ Replace split oversight controls with one global mode that deterministically gat
 
 ### Runtime
 
+- End-of-phase e2e smoke test: `pnpm test:smoke`
 - Mode matrix integration tests:
   - auto: full automation with per-skill merge permissions
   - supervised: auto schedule/dispatch with mandatory review parking
   - manual: no auto schedule/dispatch/retry, explicit dispatch required
-- Edge cases: runtime mode change during active sessions
+- In-flight mode change tests with queued and running effects
+- UX acceptance: blocked actions include `why` and exact next control command

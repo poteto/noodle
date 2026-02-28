@@ -25,22 +25,29 @@ The redesign target is not "new tech"; it is a cleaner structural core:
 - Runtime capability contract unifying process/sprites/cursor behavior
 - Unified human involvement mode replacing split oversight knobs
 - Projection layer for files + snapshot + websocket backed by one state source
-- Schema/skill alignment and explicit cutover plan with legacy deletion
+- Schema/skill alignment and explicit break-and-cutover plan
 
 **Out of scope:**
 
 - Database/message queue introduction
 - Plugin API beyond skills
 - New role taxonomy or major product workflow expansion
-- Backward compatibility shims for removed config/runtime contracts
+- User-facing backward compatibility work
 
 ## Constraints
 
 - Preserve "everything is a file" as the external API contract
 - Preserve single-writer discipline for shared mutable files
-- No dual-path legacy support after cutover (migrate, then delete)
+- No dual-path support after cutover (delete old paths outright)
 - Cross-platform behavior (macOS/Linux/Windows) remains required
 - Error messages must describe failure state, not expectations
+
+### Execution and Serialization Model (Decision)
+
+- A **single ingestion arbiter** accepts all external inputs and is the only component allowed to assign canonical event sequence IDs.
+- A **single state writer loop** is the only component allowed to mutate canonical state and write shared state files.
+- Effect executors never mutate canonical state directly; they emit effect-result events that re-enter ingestion.
+- Backend startup enforces process exclusivity for the state directory; a second writer fails fast.
 
 ### Alternatives Considered
 
@@ -55,10 +62,22 @@ Reason: (1) keeps known structural debt alive; (3) adds operational complexity t
 
 1. Replace split oversight controls with one global `mode` field:
 `auto | supervised | manual`.
-2. Replace control action `autonomy` with `mode`; add explicit manual `dispatch`.
+2. Delete control action `autonomy`; add explicit manual `dispatch`.
 3. Introduce runtime capability contract (`steerable`, `polling`, `remote_sync`, `heartbeat`).
 4. Make canonical backend state explicit (`State`, `OrderNode`, `StageNode`, `AttemptNode`) and project files/UI from it.
 5. Keep `orders-next.json` as scheduler ingress and `orders.json` as projected agent-visible view.
+6. Add read-only canonical file contract: `.noodle/state.json` with `last_applied_event_id`, `projection_hash`, `generated_at`, and schema version.
+7. Version all projections and websocket deltas with canonical event sequence for convergence and replay.
+
+## Phase Behavior Matrix
+
+| Phase range | Expected behavior |
+|-------------|-------------------|
+| 00-02 | Internal migration scaffolding and serialization hardening |
+| 03-05 | Reducer/effect core active and validated on golden paths |
+| 06-08 | New `mode` contract and schema/skill contracts active; old control/config fields removed |
+| 09 | Hard cutover and old-path deletion; incompatible runtime state requires explicit reset |
+| 10 | Stability hardening and scale verification |
 
 ## Applicable Skills
 
@@ -69,6 +88,7 @@ Reason: (1) keeps known structural debt alive; (3) adds operational complexity t
 
 ## Phases
 
+0. [[plans/82-backend-v2-first-principles/phase-00-preflight-subtraction-and-fencing]]
 1. [[plans/82-backend-v2-first-principles/phase-01-canonical-state-model]]
 2. [[plans/82-backend-v2-first-principles/phase-02-event-ingestion-and-idempotency]]
 3. [[plans/82-backend-v2-first-principles/phase-03-reducer-and-effect-engine]]
@@ -80,6 +100,14 @@ Reason: (1) keeps known structural debt alive; (3) adds operational complexity t
 9. [[plans/82-backend-v2-first-principles/phase-09-cutover-and-legacy-deletion]]
 10. [[plans/82-backend-v2-first-principles/phase-10-scale-and-resilience-verification]]
 
+## Program-Level Acceptance Gates
+
+- Duplicate dispatches across replay/restart: `0`
+- Lost terminal stage/order states after replay: `0`
+- Deterministic state hash match across repeated replay of same event stream: `100%`
+- Projection sequence monotonicity violations: `0`
+- Mixed-version startup without explicit failure-state refusal: `0`
+
 ## Verification
 
 ```bash
@@ -88,4 +116,3 @@ sh scripts/lint-arch.sh
 pnpm --filter noodle-ui typecheck
 pnpm test:smoke
 ```
-

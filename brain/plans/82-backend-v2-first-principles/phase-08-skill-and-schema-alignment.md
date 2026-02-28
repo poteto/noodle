@@ -11,7 +11,8 @@ Align skill guidance and schema docs with the new backend contracts so scheduler
 - Update generated schema docs for config, status, snapshot, and orders contracts
 - Update schedule skill references for mode semantics and runtime vocabulary
 - Update noodle skill config/control command tables
-- Remove legacy contract references from skill docs
+- Remove old-contract references from skill docs
+- Add before/after examples for mode/control/file contracts to reduce operator ambiguity
 
 ## Data Structures
 
@@ -34,6 +35,7 @@ Align skill guidance and schema docs with the new backend contracts so scheduler
 
 ### Runtime
 
+- End-of-phase e2e smoke test: `pnpm test:smoke`
 - Schedule skill reads mise and emits orders compatible with new mode/runtime contract
 - UI client typecheck passes against regenerated backend schema types
 - Edge cases: manual mode scheduling instructions, runtime availability hints
