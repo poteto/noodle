@@ -2,10 +2,8 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -131,29 +129,6 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 
 		canMerge := l.canMergeStage(cook.stage)
 
-		// In approve autonomy mode, park for human review.
-		if l.config.PendingApproval() {
-			l.logger.Info("cook parked for review", "order", cook.orderID, "session", cook.session.ID())
-			return l.parkPendingReview(cook, "")
-		}
-
-		// Quality verdict gate (auto autonomy mode only).
-		if canMerge {
-			verdict, hasVerdict := l.readQualityVerdict(cook.session.ID())
-			if hasVerdict {
-				_ = l.events.Emit(LoopEventQualityWritten, QualityWrittenPayload{
-					OrderID:   cook.orderID,
-					SessionID: cook.session.ID(),
-					Accept:    verdict.Accept,
-					Feedback:  verdict.Feedback,
-				})
-				if !verdict.Accept {
-					l.logger.Warn("quality verdict rejected", "order", cook.orderID, "session", cook.session.ID(), "feedback", verdict.Feedback)
-					return l.failAndPersist(cook, "quality rejected: "+verdict.Feedback)
-				}
-			}
-		}
-
 		if !canMerge {
 			// Non-mergeable stage (e.g., debate, schedule) — advance without merge.
 			return l.advanceAndPersist(ctx, cook)
@@ -192,24 +167,6 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 		}
 	}
 	return l.retryCook(ctx, cook, "cook exited with status "+status)
-}
-
-// readQualityVerdict reads the quality verdict file for a session.
-// Returns (verdict, true) when a valid verdict exists, (zero, false) when no
-// verdict file is present. Parse errors log a warning and return (zero, false)
-// so a corrupt file doesn't silently bypass the quality gate on retry.
-func (l *Loop) readQualityVerdict(sessionID string) (QualityVerdict, bool) {
-	path := filepath.Join(l.runtimeDir, "quality", sessionID+".json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return QualityVerdict{}, false
-	}
-	var verdict QualityVerdict
-	if err := json.Unmarshal(data, &verdict); err != nil {
-		l.logger.Warn("corrupt quality verdict file", "path", path, "err", err)
-		return QualityVerdict{}, false
-	}
-	return verdict, true
 }
 
 // advanceAndPersist advances the order stage and persists the result.

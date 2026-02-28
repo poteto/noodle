@@ -80,12 +80,6 @@ type ControlAck struct {
 	At      time.Time `json:"at"`
 }
 
-// QualityVerdict is the minimal struct for reading verdict files at the merge boundary.
-type QualityVerdict struct {
-	Accept   bool   `json:"accept"`
-	Feedback string `json:"feedback,omitempty"`
-}
-
 type StageResult struct {
 	OrderID      string
 	StageIndex   int

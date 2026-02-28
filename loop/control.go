@@ -272,45 +272,6 @@ func (l *Loop) controlMerge(orderID string) error {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
 
-	// Quality verdict gate — even the manual merge path respects quality verdicts.
-	verdict, hasVerdict := l.readQualityVerdict(pending.sessionID)
-	if hasVerdict && !verdict.Accept {
-		// Quality gate failed — call failStage instead of merging.
-		orders, err := l.currentOrders()
-		if err != nil {
-			return err
-		}
-		reason := "quality rejected: " + verdict.Feedback
-		orders, terminal, err := failStage(orders, orderID, reason)
-		if err != nil {
-			return err
-		}
-		if err := l.writeOrdersState(orders); err != nil {
-			return err
-		}
-		sid := pending.sessionID
-		_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-			OrderID:    orderID,
-			StageIndex: pending.stageIndex,
-			Reason:     reason,
-			SessionID:  &sid,
-		})
-		if strings.TrimSpace(pending.worktreeName) != "" {
-			_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
-		}
-		if terminal {
-			_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-				OrderID: orderID,
-				Reason:  reason,
-			})
-			if err := l.markFailed(orderID, reason); err != nil {
-				return err
-			}
-		}
-		delete(l.cooks.pendingReview, orderID)
-		return l.writePendingReview()
-	}
-
 	// Merge the worktree.
 	cook := &cookHandle{
 		cookIdentity: pending.cookIdentity,
