@@ -131,7 +131,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, fmt.Errorf("build command: %w", err)
 	}
 	cmd.Dir = req.WorktreePath
-	cmd.Env = buildDispatchEnv(req)
+	cmd.Env = append(buildDispatchEnv(req), "NOODLE_SESSION_ID="+sessionID)
 
 	process, err := StartProcess(cmd)
 	if err != nil {

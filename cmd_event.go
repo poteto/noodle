@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -24,6 +25,7 @@ func newEventCmd(app *App) *cobra.Command {
 
 func newEventEmitCmd(app *App) *cobra.Command {
 	var payload string
+	var sessionID string
 	cmd := &cobra.Command{
 		Use:   "emit <type>",
 		Short: cmdmeta.Short("event", "emit"),
@@ -33,11 +35,35 @@ func newEventEmitCmd(app *App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			sid := strings.TrimSpace(sessionID)
+			if sid != "" {
+				return runSessionEventEmit(runtimeDir, sid, strings.TrimSpace(args[0]), payload)
+			}
 			return runEventEmit(runtimeDir, strings.TrimSpace(args[0]), payload)
 		},
 	}
 	cmd.Flags().StringVar(&payload, "payload", "", "Event payload as JSON")
+	cmd.Flags().StringVar(&sessionID, "session", "", "Session ID (writes to session event log instead of loop event log)")
 	return cmd
+}
+
+func runSessionEventEmit(runtimeDir, sessionID, eventType, payload string) error {
+	w, err := event.NewEventWriter(runtimeDir, sessionID)
+	if err != nil {
+		return err
+	}
+
+	ev := event.Event{
+		Type:      event.EventType(eventType),
+		SessionID: sessionID,
+	}
+	if payload != "" {
+		if !json.Valid([]byte(payload)) {
+			return fmt.Errorf("payload is not valid JSON")
+		}
+		ev.Payload = json.RawMessage(payload)
+	}
+	return w.Append(context.Background(), ev)
 }
 
 func runEventEmit(runtimeDir, eventType, payload string) error {

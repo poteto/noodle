@@ -44,6 +44,7 @@ type StageCompletedPayload struct {
 	StageIndex int     `json:"stage_index"`
 	TaskKey    string  `json:"task_key"`
 	SessionID  *string `json:"session_id,omitempty"`
+	Message    *string `json:"message,omitempty"`
 }
 
 type StageFailedPayload struct {

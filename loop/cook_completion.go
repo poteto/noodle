@@ -2,12 +2,15 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
+	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/recover"
 )
 
 func (l *Loop) drainCompletions(ctx context.Context) error {
@@ -76,14 +79,6 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 	delete(l.cooks.activeCooksByOrder, cook.orderID)
 	if err := l.handleCompletion(ctx, cook); err != nil {
 		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
-			l.cooks.pendingRetry[cook.orderID] = &pendingRetryCook{
-				cookIdentity: cook.cookIdentity,
-				isOnFailure:  cook.isOnFailure,
-				orderStatus:  cook.orderStatus,
-				attempt:      cook.attempt + 1,
-				displayName:  cook.displayName,
-			}
-			_ = l.writePendingRetry()
 			return conflictErr
 		}
 	}
@@ -127,11 +122,27 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			return l.removeOrder(cook.orderID)
 		}
 
+		// Read stage_message events from the session.
+		stageMsg := l.readStageMessage(cook.session.ID())
+		if stageMsg != nil && stageMsg.IsBlocking() {
+			l.logger.Info("stage message blocks advance", "order", cook.orderID, "session", cook.session.ID())
+			// Forward to scheduler and park — don't auto-advance.
+			l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message)
+			_ = l.parkPendingReview(cook, "blocked by stage message: "+stageMsg.Message)
+			return nil
+		}
+		// Non-blocking message or no message — auto-advance.
+		var msg *string
+		if stageMsg != nil {
+			msg = &stageMsg.Message
+			l.forwardToScheduler(cook, "stage_message", stageMsg.Message)
+		}
+
 		canMerge := l.canMergeStage(cook.stage)
 
 		if !canMerge {
 			// Non-mergeable stage (e.g., debate, schedule) — advance without merge.
-			return l.advanceAndPersist(ctx, cook)
+			return l.advanceAndPersist(ctx, cook, msg)
 		}
 
 		mergeMode, mergeBranch := l.resolveMergeMode(cook)
@@ -143,7 +154,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			if err := l.mergeCookWorktree(ctx, cook); err != nil {
 				return err
 			}
-			return l.advanceAndPersist(ctx, cook)
+			return l.advanceAndPersist(ctx, cook, msg)
 		}
 		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
 		l.logger.Info("cook queued for merge", "order", cook.orderID, "session", cook.session.ID(), "stage", cook.stageIndex)
@@ -157,20 +168,28 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			l.logger.Info("schedule wrote orders-next before failing, treating as complete", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
-		// consumeOrdersNext sets schedulePromoted when it promotes
-		// orders-next.json. Only treat the schedule as done if we know
-		// the promotion actually happened — pre-existing non-schedule
-		// orders should not suppress a retry.
 		if l.schedulePromoted {
 			l.logger.Info("schedule already promoted, removing schedule order", "session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
+		// Schedule failures are still fatal — no scheduler to forward to.
+		return fmt.Errorf("schedule failed: cook exited with status %s", status)
 	}
-	return l.retryCook(ctx, cook, "cook exited with status "+status)
+	// Non-schedule stage failure: mark failed and forward to scheduler.
+	reason := "cook exited with status " + status
+	info, err := recover.CollectRecoveryInfo(ctx, l.runtimeDir, cook.session.ID())
+	if err == nil {
+		resolved := retryFailureReason(reason, info)
+		if resolved != "" {
+			reason = resolved
+		}
+	}
+	return l.failAndPersist(cook, reason)
 }
 
 // advanceAndPersist advances the order stage and persists the result.
-func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
+// The optional message is included in the stage.completed event payload.
+func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message ...*string) error {
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
@@ -182,21 +201,22 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	var msg *string
+	if len(message) > 0 {
+		msg = message[0]
+	}
 	_ = l.events.Emit(LoopEventStageCompleted, StageCompletedPayload{
 		OrderID:    cook.orderID,
 		StageIndex: cook.stageIndex,
 		TaskKey:    cook.stage.TaskKey,
 		SessionID:  sessionIDPtr(cook),
+		Message:    msg,
 	})
 	if removed {
-		if cook.orderStatus == OrderStatusFailing || cook.isOnFailure {
-			// OnFailure pipeline completed — the original failure stands.
-			return l.markFailed(cook.orderID, "on-failure pipeline completed")
-		}
 		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
 			OrderID: cook.orderID,
 		})
-		// Final stage of a non-failing order — fire adapter "done".
+		// Final stage — fire adapter "done".
 		if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{cook.orderID}}); err != nil {
 			if !isMissingAdapter(err) {
 				return err
@@ -206,13 +226,15 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle) error {
 	return nil
 }
 
-// failAndPersist calls failStage and persists the result.
+// failAndPersist marks the current stage as failed, persists, emits events,
+// and forwards the failure to the scheduler. The order stays in the orders
+// file — the scheduler decides what to do next.
 func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
-	orders, terminal, err := failStage(orders, cook.orderID, reason)
+	orders, err = failStage(orders, cook.orderID, reason)
 	if err != nil {
 		return err
 	}
@@ -225,20 +247,46 @@ func (l *Loop) failAndPersist(cook *cookHandle, reason string) error {
 		Reason:     reason,
 		SessionID:  sessionIDPtr(cook),
 	})
-	if terminal {
-		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-			OrderID: cook.orderID,
-			Reason:  reason,
-		})
-		if err := l.markFailed(cook.orderID, reason); err != nil {
-			return err
-		}
-	}
+	// Forward failure to scheduler.
+	l.forwardToScheduler(cook, "stage_failed", reason)
 	// Clean up worktree on failure.
 	if strings.TrimSpace(cook.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}
 	return nil
+}
+
+// forwardToScheduler sends a message to the scheduler session about an event.
+// Best-effort — if the scheduler is not alive, the message is dropped and the
+// order stays in the orders file for later recovery.
+func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details string) {
+	var schedulerCook *cookHandle
+	for _, c := range l.cooks.activeCooksByOrder {
+		if isScheduleStage(c.stage) {
+			schedulerCook = c
+			break
+		}
+	}
+	if schedulerCook == nil {
+		l.logger.Info("scheduler not active, event stays in orders for later recovery",
+			"order", cook.orderID, "event", eventType)
+		return
+	}
+	controller := schedulerCook.session.Controller()
+	if !controller.Steerable() {
+		l.logger.Info("scheduler not steerable, event stays in orders for later recovery",
+			"order", cook.orderID, "event", eventType)
+		return
+	}
+	msg := fmt.Sprintf("[%s] order=%s stage=%d task=%s: %s",
+		eventType, cook.orderID, cook.stageIndex, cook.stage.TaskKey, details)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := controller.SendMessage(ctx, msg); err != nil {
+			l.logger.Warn("failed to forward to scheduler", "order", cook.orderID, "err", err)
+		}
+	}()
 }
 
 func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
@@ -272,6 +320,24 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 		l.dropAdoptedTarget(targetID, sessionID)
 	}
 	return nil
+}
+
+// readStageMessage reads the most recent stage_message event from a session's
+// event log. Returns nil if no stage_message was emitted.
+func (l *Loop) readStageMessage(sessionID string) *event.StageMessagePayload {
+	reader := event.NewEventReader(l.runtimeDir)
+	events, err := reader.ReadSession(sessionID, event.EventFilter{
+		Types: map[event.EventType]struct{}{event.EventStageMessage: {}},
+	})
+	if err != nil || len(events) == 0 {
+		return nil
+	}
+	last := events[len(events)-1]
+	var payload event.StageMessagePayload
+	if err := json.Unmarshal(last.Payload, &payload); err != nil {
+		return nil
+	}
+	return &payload
 }
 
 // removeOrder removes an order from orders.json by ID.

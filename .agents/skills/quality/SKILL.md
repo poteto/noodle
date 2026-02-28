@@ -1,13 +1,15 @@
 ---
 name: quality
-description: Post-cook quality gate. Reviews completed cook work for correctness, scope discipline, and principle compliance. Writes verdict to .noodle/quality/.
+description: Post-cook quality gate. Reviews completed cook work for correctness, scope discipline, and principle compliance. Emits stage_message events with findings.
 noodle:
   schedule: "After each cook session completes"
+  permissions:
+    merge: false
 ---
 
 # Quality
 
-Review completed cook work. Write verdict to `.noodle/quality/<session-id>.json`. See `references/verdict-schema.md` for schema.
+Review completed cook work. Emit a `stage_message` event with your assessment. See `references/stage-message-schema.md` for the event schema.
 
 Operate fully autonomously. Never ask the user.
 
@@ -23,7 +25,7 @@ Run in order. Stop early and reject on any high-severity finding.
 
 - Read the plan phase the cook was assigned (from the cook's initial prompt or mise context).
 - Run `git diff --stat` and `git log --oneline` for the cook's commits.
-- Flag files changed outside the plan phase's stated scope as `scope_violations`.
+- Flag files changed outside the plan phase's stated scope as scope violations.
 
 ### 2. Code Quality
 
@@ -49,15 +51,29 @@ Run in order. Stop early and reject on any high-severity finding.
 
 ## Verdict
 
-Write `.noodle/quality/<session-id>.json` matching `references/verdict-schema.md`.
+Emit a `stage_message` event with your assessment:
 
-**Accept**: All checks pass, scope clean, tests present and passing.
+```sh
+noodle event emit --session $NOODLE_SESSION_ID stage_message --payload '<json>'
+```
 
-**Reject**: Include specific actionable feedback. Reference the exact file, line context, and principle violated. The retry cook must be able to fix issues from feedback alone.
+**Accept**: Emit with `blocking: false`. The pipeline continues and the scheduler sees the green light.
+
+```json
+{ "message": "All checks pass. Tests green, scope clean.", "blocking": false }
+```
+
+**Reject**: Emit with `blocking: true` (or omit `blocking`). The scheduler reads findings and decides (retry, add oops stage, or abort).
+
+```json
+{ "message": "Rejected: 3 high issues. [1] Missing test for edge case in handleCompletion. [2] Scope violation: modified cook_merge.go outside plan phase scope. [3] Error message uses expectation form.", "blocking": true }
+```
+
+Write the message as natural language the scheduler can act on. Include specific file paths, line context, and principle violations so the scheduler can brief the retry cook.
 
 ## Non-blocking Issues
 
-Issues that don't warrant rejection (style nits, minor improvements, documentation gaps): file as backlog items via the backlog adapter. Record their IDs in `todos_created`.
+Issues that don't warrant rejection (style nits, minor improvements, documentation gaps): file as backlog items via the backlog adapter.
 
 ## Principles
 

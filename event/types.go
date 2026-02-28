@@ -20,6 +20,9 @@ const (
 	EventCookStarted   EventType = "cook_started"
 	EventCookCompleted EventType = "cook_completed"
 
+	// Stage message events (emitted by agents via CLI).
+	EventStageMessage EventType = "stage_message"
+
 	// Ticket protocol events.
 	EventTicketClaim    EventType = "ticket_claim"
 	EventTicketProgress EventType = "ticket_progress"
@@ -34,6 +37,21 @@ type Event struct {
 	Payload   json.RawMessage `json:"payload,omitempty"`
 	Timestamp time.Time       `json:"timestamp"`
 	SessionID string          `json:"session_id"`
+}
+
+// StageMessagePayload is the payload for stage_message events.
+type StageMessagePayload struct {
+	Message  string `json:"message"`
+	Blocking *bool  `json:"blocking,omitempty"`
+}
+
+// IsBlocking returns whether the message blocks auto-advance.
+// Default (nil) is true — blocking.
+func (p StageMessagePayload) IsBlocking() bool {
+	if p.Blocking == nil {
+		return true
+	}
+	return *p.Blocking
 }
 
 // TicketTargetType identifies what a ticket claims.

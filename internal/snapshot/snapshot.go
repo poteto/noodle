@@ -454,8 +454,53 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			continue
 		}
 
-		var label, body, category string
+		var label, body, category, taskType string
 		switch raw.Type {
+		case "stage.completed":
+			label = "Completed"
+			category = "stage_completed"
+			var p struct {
+				OrderID string  `json:"order_id"`
+				TaskKey string  `json:"task_key"`
+				Message *string `json:"message"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			taskType = p.TaskKey
+			if p.Message != nil && *p.Message != "" {
+				body = *p.Message
+			}
+		case "stage.failed":
+			label = "Failed"
+			category = "stage_failed"
+			var p struct {
+				OrderID string `json:"order_id"`
+				TaskKey string `json:"task_key"`
+				Reason  string `json:"reason"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			taskType = p.TaskKey
+			body = p.Reason
+		case "order.completed":
+			label = "Order Complete"
+			category = "order_completed"
+			var p struct {
+				OrderID string `json:"order_id"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			body = p.OrderID
+		case "order.failed":
+			label = "Order Failed"
+			category = "order_failed"
+			var p struct {
+				OrderID string `json:"order_id"`
+				Reason  string `json:"reason"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			if p.Reason != "" {
+				body = p.Reason
+			} else {
+				body = p.OrderID
+			}
 		case "order.dropped":
 			label = "Dropped"
 			category = "order_drop"
@@ -469,6 +514,36 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			} else {
 				body = fmt.Sprintf("Dropped order %s", p.OrderID)
 			}
+		case "order.requeued":
+			label = "Requeued"
+			category = "order_requeued"
+			var p struct {
+				OrderID string `json:"order_id"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			body = p.OrderID
+		case "worktree.merged":
+			label = "Merged"
+			category = "worktree_merged"
+			var p struct {
+				OrderID      string `json:"order_id"`
+				WorktreeName string `json:"worktree_name"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			body = p.WorktreeName
+		case "merge.conflict":
+			label = "Conflict"
+			category = "merge_conflict"
+			var p struct {
+				OrderID      string `json:"order_id"`
+				WorktreeName string `json:"worktree_name"`
+			}
+			_ = json.Unmarshal(raw.Payload, &p)
+			body = p.WorktreeName
+		case "schedule.completed":
+			label = "Scheduled"
+			category = "schedule_completed"
+			taskType = "schedule"
 		case "registry.rebuilt":
 			label = "Rebuild"
 			category = "registry_rebuild"
@@ -517,6 +592,7 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 		events = append(events, FeedEvent{
 			SessionID: "loop",
 			AgentName: "loop",
+			TaskType:  taskType,
 			At:        at,
 			Label:     label,
 			Body:      body,
