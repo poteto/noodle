@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 84 -->
+<!-- next-id: 85 -->
 
 ## Bootstrap Skill Fixes
 
@@ -21,4 +21,5 @@
 ## Backend
 
 82. [ ] Backend V2 first-principles rewrite — redesign loop internals around a canonical order-centric state model and reducer/effect pipeline while preserving files-as-API and skills-only extensibility. Unify oversight into `mode`, standardize runtime capability contracts, align projections/files/UI streams from one state source, then cut over and delete legacy paths. [[plans/82-backend-v2-first-principles/overview]]
-83. [ ] Error recoverability taxonomy — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
+83. [ ] Error recoverability taxonomy
+84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]

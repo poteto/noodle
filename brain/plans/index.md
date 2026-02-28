@@ -11,3 +11,4 @@
 - [x] ~~[[archive/plans/75-channel-ui-redesign/overview]]~~
 - [x] ~~[[plans/76-websocket-streaming/overview]]~~
 - [ ] [[plans/81-stage-groups/overview]]
+- [ ] [[plans/84-subagent-tracking/overview]]
