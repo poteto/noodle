@@ -19,8 +19,21 @@ export type {
   Health,
 } from "./types";
 export { useActiveChannel, ActiveChannelProvider } from "./hooks";
-export { fetchSnapshot, normalizeSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
-export { connectWS, SNAPSHOT_KEY, subscribeSession, unsubscribeSession, sendWSControl } from "./ws";
+export {
+  fetchSnapshot,
+  normalizeSnapshot,
+  fetchSessionEvents,
+  sendControl,
+  fetchConfig,
+} from "./api";
+export {
+  connectWS,
+  SNAPSHOT_KEY,
+  subscribeSession,
+  unsubscribeSession,
+  sendWSControl,
+  subscribeDelta,
+} from "./ws";
 export type { WSStatus } from "./ws";
 export {
   useSnapshot,

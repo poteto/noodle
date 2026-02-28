@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/internal/stringx"
 )
@@ -22,6 +23,18 @@ type claudeLine struct {
 	Result    json.RawMessage `json:"result"`
 	Usage     json.RawMessage `json:"usage"`
 	Message   json.RawMessage `json:"message"`
+	Event     json.RawMessage `json:"event"`
+}
+
+type claudeStreamEvent struct {
+	Type  string         `json:"type"`
+	Index int            `json:"index"`
+	Delta claudeSSEDelta `json:"delta"`
+}
+
+type claudeSSEDelta struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
 }
 
 type claudeMessage struct {
@@ -126,6 +139,8 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		}
 
 		return []CanonicalEvent{event}, nil
+	case "stream_event":
+		return parseClaudeStreamEvent(payload.Event, ts)
 	case "user":
 		msg, ok := decodeClaudeMessage(payload.Message)
 		if !ok {
@@ -310,4 +325,25 @@ func looksLikeErrorText(text string) bool {
 	return strings.Contains(lower, "error") ||
 		strings.Contains(lower, "failed") ||
 		strings.Contains(lower, "exit code")
+}
+
+func parseClaudeStreamEvent(raw json.RawMessage, ts time.Time) ([]CanonicalEvent, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var sse claudeStreamEvent
+	if err := json.Unmarshal(raw, &sse); err != nil {
+		return nil, nil
+	}
+	if sse.Type != "content_block_delta" || sse.Delta.Type != "text_delta" {
+		return nil, nil
+	}
+	if sse.Delta.Text == "" {
+		return nil, nil
+	}
+	return []CanonicalEvent{{
+		Type:      EventDelta,
+		Message:   sse.Delta.Text,
+		Timestamp: ts,
+	}}, nil
 }

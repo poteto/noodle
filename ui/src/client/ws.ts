@@ -13,6 +13,7 @@ type WSServerMessage =
   | { type: "snapshot"; data: Snapshot }
   | { type: "backfill"; session_id: string; data: EventLine[] }
   | { type: "session_event"; session_id: string; data: EventLine }
+  | { type: "session_delta"; session_id: string; text: string; at: string }
   | { type: "subscribed"; session_id: string }
   | { type: "unsubscribed"; session_id: string }
   | { type: "control_ack"; data: ControlAck }
@@ -38,6 +39,25 @@ const pendingControls = new Map<
   { resolve: (ack: ControlAck) => void; reject: (err: Error) => void }
 >();
 
+// Delta event bus — per-session text delta listeners (not React Query — too
+// high frequency for per-token re-renders).
+const deltaListeners = new Map<string, Set<(text: string) => void>>();
+
+export function subscribeDelta(sessionId: string, listener: (text: string) => void): () => void {
+  let set = deltaListeners.get(sessionId);
+  if (!set) {
+    set = new Set();
+    deltaListeners.set(sessionId, set);
+  }
+  set.add(listener);
+  return () => {
+    set?.delete(listener);
+    if (set?.size === 0) {
+      deltaListeners.delete(sessionId);
+    }
+  };
+}
+
 function setStatus(status: WSStatus) {
   queryClientRef?.setQueryData(WS_STATUS_KEY, status);
 }
@@ -57,32 +77,40 @@ function handleMessage(event: MessageEvent) {
   }
 
   switch (msg.type) {
-    case "snapshot":
+    case "snapshot": {
       queryClientRef?.setQueryData(SNAPSHOT_KEY, normalizeSnapshot(msg.data));
       break;
-    case "backfill":
+    }
+    case "backfill": {
       // Replaces cache -- not append
-      queryClientRef?.setQueryData(
-        ["sessionEvents", msg.session_id],
-        msg.data,
-      );
+      queryClientRef?.setQueryData(["sessionEvents", msg.session_id], msg.data);
       break;
+    }
     case "session_event": {
       // Append single live event, dedup by timestamp
-      queryClientRef?.setQueryData<EventLine[]>(
-        ["sessionEvents", msg.session_id],
-        (old = []) => {
-          const lastAt = old.length > 0 ? old[old.length - 1].at : null;
-          if (lastAt && msg.data.at <= lastAt) return old;
-          return [...old, msg.data];
-        },
-      );
+      queryClientRef?.setQueryData<EventLine[]>(["sessionEvents", msg.session_id], (old = []) => {
+        const lastAt = old.length > 0 ? (old.at(-1)?.at ?? null) : null;
+        if (lastAt && msg.data.at <= lastAt) {
+          return old;
+        }
+        return [...old, msg.data];
+      });
+      break;
+    }
+    case "session_delta": {
+      const listeners = deltaListeners.get(msg.session_id);
+      if (listeners) {
+        for (const fn of listeners) {
+          fn(msg.text);
+        }
+      }
       break;
     }
     case "subscribed":
-    case "unsubscribed":
+    case "unsubscribed": {
       // Confirmations -- no-op
       break;
+    }
     case "control_ack": {
       const pending = pendingControls.get(msg.data.id);
       if (pending) {
@@ -91,14 +119,20 @@ function handleMessage(event: MessageEvent) {
       }
       break;
     }
-    case "error":
+    case "error": {
       console.warn("[ws] server error:", msg.message);
       break;
+    }
+    default: {
+      break;
+    }
   }
 }
 
 function connect() {
-  if (closed) return;
+  if (closed) {
+    return;
+  }
   setStatus("connecting");
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -174,9 +208,7 @@ export function unsubscribeSession(sessionId: string) {
  * Send a control command over WebSocket with ack correlation.
  */
 export function sendWSControl(cmd: ControlCommand): Promise<ControlAck> {
-  const id =
-    cmd.id ||
-    `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = cmd.id || `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const cmdWithId = { ...cmd, id };
 
   return new Promise<ControlAck>((resolve, reject) => {
@@ -189,7 +221,7 @@ export function sendWSControl(cmd: ControlCommand): Promise<ControlAck> {
         pendingControls.delete(id);
         reject(new Error("control command timed out"));
       }
-    }, 10000);
+    }, 10_000);
   });
 }
 

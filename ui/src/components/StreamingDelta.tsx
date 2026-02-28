@@ -11,15 +11,12 @@ import {
   CODE_BLOCK,
   CODE_FENCE,
   CODE_INLINE,
-  LANG,
 } from "streaming-markdown";
-import type { Default_Renderer_Data, Token, Attr } from "streaming-markdown";
-import { highlightCode, getScopeFromLang } from "./CodeHighlight";
+import type { Default_Renderer_Data, Token, Attr, Parser } from "streaming-markdown";
+import { subscribeDelta } from "~/client";
 
 function createRenderer(root: HTMLElement) {
   const base = default_renderer(root);
-
-  let currentLang = "";
 
   return {
     ...base,
@@ -31,56 +28,64 @@ function createRenderer(root: HTMLElement) {
       }
       if (type === CODE_BLOCK || type === CODE_FENCE) {
         node.className = "code-block";
-        currentLang = "";
       } else if (type === CODE_INLINE) {
         node.className = "code-inline";
       }
     },
     end_token(data: Default_Renderer_Data) {
-      const node = data.nodes[data.index];
       default_end_token(data);
-      if (node && (node.tagName === "PRE" || node.classList?.contains("code-block"))) {
-        const codeEl = node.querySelector("code") ?? node;
-        const raw = codeEl.textContent ?? "";
-        if (currentLang && getScopeFromLang(currentLang)) {
-          void highlightCode(raw, currentLang).then((html) => {
-            codeEl.innerHTML = html;
-            return html;
-          });
-        }
-        currentLang = "";
-      }
     },
     add_text(data: Default_Renderer_Data, text: string) {
       default_add_text(data, text);
     },
     set_attr(data: Default_Renderer_Data, type: Attr, value: string) {
       default_set_attr(data, type, value);
-      if (type === LANG) {
-        currentLang = value;
-      }
     },
   };
 }
 
-export function MarkdownBody({ text }: { text: string }) {
+export function StreamingDelta({ sessionId }: { sessionId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const renderedTextRef = useRef("");
+  const parserRef = useRef<Parser | null>(null);
+  const hasContentRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || text === renderedTextRef.current) {
+    if (!el) {
       return;
     }
 
     el.innerHTML = "";
-    renderedTextRef.current = text;
+    hasContentRef.current = false;
 
     const renderer = createRenderer(el);
     const p = parser(renderer);
-    parser_write(p, text);
-    parser_end(p);
-  }, [text]);
+    parserRef.current = p;
 
-  return <div ref={containerRef} className="msg-body msg-markdown" />;
+    const unsub = subscribeDelta(sessionId, (text) => {
+      parser_write(p, text);
+      if (!hasContentRef.current && text.trim()) {
+        hasContentRef.current = true;
+        el.style.display = "";
+      }
+    });
+
+    return () => {
+      unsub();
+      parser_end(p);
+      parserRef.current = null;
+    };
+  }, [sessionId]);
+
+  return (
+    <div className="message-row type-system">
+      <div className="msg-avatar">TH</div>
+      <div>
+        <div className="msg-meta">
+          <span className="msg-badge">Think</span>
+        </div>
+        <div ref={containerRef} className="msg-body msg-markdown" style={{ display: "none" }} />
+      </div>
+    </div>
+  );
 }

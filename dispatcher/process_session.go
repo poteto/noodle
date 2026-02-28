@@ -209,6 +209,15 @@ func (s *processSession) consumeCanonicalLine(line []byte) {
 		return
 	}
 
+	// Deltas are ephemeral — route directly to sink, skip event log and
+	// in-memory channel.
+	if ce.Type == parse.EventDelta {
+		if s.sink != nil {
+			s.sink.PublishSessionDelta(s.id, ce.Message, ce.Timestamp)
+		}
+		return
+	}
+
 	s.writeHeartbeat(ce.Timestamp)
 
 	// Notify the controller of turn-boundary events so it can track state

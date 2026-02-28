@@ -11,6 +11,7 @@ const (
 	EventResult   EventType = "result"
 	EventError    EventType = "error"
 	EventComplete EventType = "complete"
+	EventDelta    EventType = "delta"
 )
 
 // CanonicalEvent is the provider-agnostic event schema.

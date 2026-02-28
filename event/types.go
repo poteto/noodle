@@ -15,6 +15,7 @@ const (
 	EventCost        EventType = "cost"
 	EventStateChange EventType = "state_change"
 	EventExited      EventType = "exited"
+	EventDelta       EventType = "delta"
 
 	// Cook lifecycle events.
 	EventCookStarted   EventType = "cook_started"

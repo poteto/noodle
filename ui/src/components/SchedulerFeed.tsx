@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
+import { StreamingDelta } from "./StreamingDelta";
 
 function findSchedulerSession(sessions: Session[]): Session | undefined {
   return sessions.find((s) => s.task_key?.toLowerCase().trim() === "schedule");
@@ -26,14 +27,18 @@ export function SchedulerFeed() {
 
   function handleScroll() {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     setAutoScroll(atBottom);
   }
 
   function handleSubmit() {
     const prompt = input.trim();
-    if (!prompt) return;
+    if (!prompt) {
+      return;
+    }
     send({ action: "steer", target: "schedule", prompt });
     setInput("");
   }
@@ -57,12 +62,16 @@ export function SchedulerFeed() {
         <div className="feed-title">
           Scheduler
           <span className="feed-badge badge-task">{snapshot.loop_state}</span>
-          {schedulerSession && (
-            <span className="feed-badge">{schedulerSession.model}</span>
-          )}
+          {schedulerSession && <span className="feed-badge">{schedulerSession.model}</span>}
         </div>
         <div className="feed-actions">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              color: "var(--color-text-tertiary)",
+            }}
+          >
             {formatCost(snapshot.total_cost_usd)}
           </span>
           {schedulerSession?.status === "running" && (
@@ -73,19 +82,28 @@ export function SchedulerFeed() {
         </div>
       </header>
 
-      <div
-        ref={containerRef}
-        className="feed-content"
-        onScroll={handleScroll}
-      >
+      <div ref={containerRef} className="feed-content" onScroll={handleScroll}>
         {events.length === 0 && (
-          <div style={{ textAlign: "center", paddingTop: 40, color: "var(--color-text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
-            {schedulerSession ? "No events yet." : "No scheduler session found. Send a prompt to start."}
+          <div
+            style={{
+              textAlign: "center",
+              paddingTop: 40,
+              color: "var(--color-text-tertiary)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+            }}
+          >
+            {schedulerSession
+              ? "No events yet."
+              : "No scheduler session found. Send a prompt to start."}
           </div>
         )}
         {events.map((event) => (
           <MessageRow key={event.at} event={event} />
         ))}
+        {schedulerSession?.status === "running" && schedulerSession.id && (
+          <StreamingDelta sessionId={schedulerSession.id} />
+        )}
       </div>
 
       {!autoScroll && (
@@ -98,7 +116,13 @@ export function SchedulerFeed() {
             setAutoScroll(true);
           }}
           className="btn-new-order"
-          style={{ position: "absolute", bottom: 100, left: "50%", transform: "translateX(-50%)", zIndex: 20 }}
+          style={{
+            position: "absolute",
+            bottom: 100,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 20,
+          }}
         >
           New messages
         </button>

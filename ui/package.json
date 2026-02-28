@@ -23,7 +23,6 @@
     "d3": "^7.9.0",
     "hast-util-to-html": "^9.0.5",
     "lucide-react": "^0.575.0",
-    "marked": "^17.0.3",
     "react": "^19",
     "react-dom": "^19",
     "streaming-markdown": "^0.2.15",

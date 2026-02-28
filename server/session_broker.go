@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/snapshot"
@@ -75,9 +76,26 @@ func (b *SessionEventBroker) PublishSessionEvent(sessionID string, ev event.Even
 	if err != nil {
 		return
 	}
+	b.fanout(sessionID, msg)
+}
+
+// PublishSessionDelta broadcasts an ephemeral text delta to subscribers.
+func (b *SessionEventBroker) PublishSessionDelta(sessionID string, text string, ts time.Time) {
+	msg, err := json.Marshal(map[string]any{
+		"type":       "session_delta",
+		"session_id": sessionID,
+		"text":       text,
+		"at":         ts.Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return
+	}
+	b.fanout(sessionID, msg)
+}
+
+func (b *SessionEventBroker) fanout(sessionID string, msg []byte) {
 	b.mu.RLock()
 	subs := b.subscribers[sessionID]
-	// Copy slice under read lock to avoid holding lock during Send.
 	targets := make([]Subscriber, 0, len(subs))
 	for sub := range subs {
 		targets = append(targets, sub)
@@ -86,7 +104,6 @@ func (b *SessionEventBroker) PublishSessionEvent(sessionID string, ev event.Even
 
 	for _, sub := range targets {
 		if !sub.Send(msg) {
-			// Slow client — disconnect, don't silently drop.
 			b.Unsubscribe(sessionID, sub)
 			sub.Close()
 		}

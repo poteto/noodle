@@ -206,6 +206,15 @@ func (s *spritesSession) consumeCanonicalLine(line []byte) {
 		return
 	}
 
+	// Deltas are ephemeral — route directly to sink, skip event log and
+	// in-memory channel.
+	if ce.Type == parse.EventDelta {
+		if s.sink != nil {
+			s.sink.PublishSessionDelta(s.id, ce.Message, ce.Timestamp)
+		}
+		return
+	}
+
 	if ce.CostUSD > 0 {
 		s.mu.Lock()
 		s.costUSD += ce.CostUSD

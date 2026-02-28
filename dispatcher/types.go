@@ -95,6 +95,7 @@ type Session interface {
 // SessionEventSink receives real-time session events for broadcasting.
 type SessionEventSink interface {
 	PublishSessionEvent(sessionID string, ev event.Event)
+	PublishSessionDelta(sessionID string, text string, ts time.Time)
 }
 
 // Dispatcher starts sessions from requests.
