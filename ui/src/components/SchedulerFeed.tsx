@@ -98,8 +98,8 @@ export function SchedulerFeed() {
               : "No scheduler session found. Send a prompt to start."}
           </div>
         )}
-        {events.map((event) => (
-          <MessageRow key={event.at} event={event} />
+        {events.map((event, i) => (
+          <MessageRow key={`${event.at}:${i}`} event={event} />
         ))}
         {schedulerSession?.status === "running" && schedulerSession.id && (
           <StreamingDelta sessionId={schedulerSession.id} />

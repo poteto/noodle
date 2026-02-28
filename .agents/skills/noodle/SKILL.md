@@ -111,6 +111,7 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 | `noodle mise` | Build and print the current mise brief |
 | `noodle event` | Manage loop events |
 | `noodle event emit` | Emit an external event |
+| `noodle reset` | Clear all runtime state |
 
 ### Flags
 

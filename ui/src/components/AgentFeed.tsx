@@ -125,8 +125,8 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
             No events yet.
           </div>
         )}
-        {events.map((event) => (
-          <MessageRow key={event.at} event={event} />
+        {events.map((event, i) => (
+          <MessageRow key={`${event.at}:${i}`} event={event} />
         ))}
         {session.status === "running" && <StreamingDelta sessionId={sessionId} />}
       </div>

@@ -1,17 +1,60 @@
-import { useRef, useEffect, useCallback } from "react";
-import { createRoot } from "react-dom/client";
+import { useRef, useEffect } from "react";
 import * as d3 from "d3";
-import { useSuspenseSnapshot } from "~/client";
+import { useSuspenseSnapshot, formatCost } from "~/client";
 import type { Snapshot } from "~/client";
 import { snapshotToHierarchy } from "./tree-utils";
 import type { TreeNodeData } from "./tree-utils";
-import { TreeNodeCard } from "./TreeNode";
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 70;
 const MARGIN = { top: 40, left: 40 };
 
 type PointNode = d3.HierarchyPointNode<TreeNodeData>;
+
+const statusDotColors: Record<string, string> = {
+  active: "var(--color-accent)",
+  running: "var(--color-green)",
+  completed: "var(--color-green)",
+  failed: "var(--color-red)",
+  pending: "var(--color-border-subtle)",
+  paused: "var(--color-accent)",
+};
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function nodeHTML(data: TreeNodeData): string {
+  const isActive = data.status === "active" || data.status === "running";
+  const borderColor = isActive ? "var(--color-accent)" : "var(--color-border-subtle)";
+  const dotColor = statusDotColors[data.status] ?? "var(--color-border-subtle)";
+
+  let detail = "";
+  if (data.currentAction) {
+    detail = `<div class="tree-node-detail">${esc(data.currentAction)}</div>`;
+  } else if (data.model) {
+    detail = `<div class="tree-node-detail">${esc(data.model)}</div>`;
+  }
+
+  const costLine =
+    data.cost != null
+      ? `<div class="tree-node-detail" style="margin-top:2px">${formatCost(data.cost)}</div>`
+      : "";
+
+  return `<div xmlns="http://www.w3.org/1999/xhtml" class="tree-node-card" style="border-color:${borderColor}"><div class="tree-node-header"><span class="tree-node-dot" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${detail}${costLine}</div>`;
+}
+
+function nodeKey(d: d3.HierarchyNode<TreeNodeData>): string {
+  return d
+    .ancestors()
+    .reverse()
+    .map((a) => a.data.name)
+    .join("/");
+}
 
 function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
   const root = d3.hierarchy(snapshotToHierarchy(snapshot));
@@ -38,11 +81,8 @@ function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
     svg.call(zoom.transform, t);
   }
 
-  // Clear and redraw.
-  g.selectAll("*").remove();
-
-  // Edges.
-  g.selectAll("path.link")
+  // Edges — join by index (stateless paths, no identity needed).
+  g.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNodeData>>("path.link")
     .data(root.links())
     .join("path")
     .attr("class", "link")
@@ -59,46 +99,40 @@ function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
         : "var(--color-border-subtle)";
     })
     .attr("stroke-width", 1.5)
-    .attr("stroke-dasharray", (d) => {
-      return (d.target as PointNode).data.status === "pending" ? "4 4" : "none";
-    });
+    .attr("stroke-dasharray", (d) =>
+      (d.target as PointNode).data.status === "pending" ? "4 4" : "none",
+    );
 
-  // Nodes via foreignObject.
-  const nodes = g
-    .selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
-    .data(root.descendants())
-    .join("foreignObject")
-    .attr("class", "node")
+  // Nodes — join by path key so D3 reuses existing foreignObjects.
+  g.selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
+    .data(root.descendants(), nodeKey)
+    .join(
+      (enter) =>
+        enter
+          .append("foreignObject")
+          .attr("class", "node")
+          .attr("width", NODE_WIDTH)
+          .attr("height", NODE_HEIGHT)
+          .attr("overflow", "visible"),
+      (update) => update,
+      (exit) => exit.remove(),
+    )
     .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
     .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
-    .attr("width", NODE_WIDTH)
-    .attr("height", NODE_HEIGHT)
-    .attr("overflow", "visible");
-
-  nodes.each(function (d) {
-    const fo = d3.select(this);
-    fo.selectAll("*").remove();
-    const div = fo.append("xhtml:div").attr("class", "react-root");
-    const el = div.node() as HTMLDivElement | null;
-    if (el) {
-      createRoot(el).render(<TreeNodeCard data={d.data} />);
-    }
-  });
+    .each(function (d) {
+      this.innerHTML = nodeHTML(d.data);
+    });
 }
 
 export function TreeView() {
   const { data: snapshot } = useSuspenseSnapshot();
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const doRender = useCallback(() => {
+  useEffect(() => {
     if (svgRef.current) {
       renderTree(svgRef.current, snapshot);
     }
   }, [snapshot]);
-
-  useEffect(() => {
-    doRender();
-  }, [doRender]);
 
   return (
     <div
