@@ -5,10 +5,10 @@ import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
-  pending: { symbol: "○", cls: "stage-pending" },
+  pending: { symbol: "□", cls: "stage-pending" },
   completed: { symbol: "✓", cls: "stage-done" },
   failed: { symbol: "✗", cls: "stage-done" },
-  cancelled: { symbol: "○", cls: "stage-pending" },
+  cancelled: { symbol: "□", cls: "stage-pending" },
 };
 
 function DashboardIcon() {

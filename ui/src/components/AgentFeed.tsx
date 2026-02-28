@@ -15,7 +15,7 @@ function statusColor(status: string): string {
   return "var(--color-text-secondary)";
 }
 
-function AgentHeader({ session, onStop }: { session: Session; onStop: () => void }) {
+function AgentHeader({ session, onStopAll }: { session: Session; onStopAll: () => void }) {
   const color = statusColor(session.status);
   return (
     <header className="feed-header">
@@ -37,8 +37,8 @@ function AgentHeader({ session, onStop }: { session: Session; onStop: () => void
         >
           {formatCost(session.total_cost_usd)}
         </span>
-        <button type="button" className="feed-action-btn stop-btn" onClick={onStop}>
-          Stop
+        <button type="button" className="feed-action-btn stop-btn" onClick={onStopAll}>
+          Stop All
         </button>
       </div>
     </header>
@@ -87,6 +87,10 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
     }
   }
 
+  function handleStopAll() {
+    send({ action: "stop-all" });
+  }
+
   function handleStop() {
     send({ action: "stop", name: sessionId });
   }
@@ -109,7 +113,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <AgentHeader session={session} onStop={handleStop} />
+      <AgentHeader session={session} onStopAll={handleStopAll} />
 
       <div ref={containerRef} className="feed-content" onScroll={handleScroll}>
         {events.length === 0 && (
@@ -168,14 +172,21 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
             <div className="input-hint">
               <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline
             </div>
-            <button
-              type="button"
-              className="btn-submit"
-              onClick={handleSubmit}
-              disabled={!input.trim()}
-            >
-              SEND
-            </button>
+            <div style={{ display: "flex", gap: 6 }}>
+              {session.status === "running" && (
+                <button type="button" className="btn-stop" onClick={handleStop}>
+                  STOP
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-submit"
+                onClick={handleSubmit}
+                disabled={!input.trim()}
+              >
+                SEND
+              </button>
+            </div>
           </div>
         </div>
       </div>

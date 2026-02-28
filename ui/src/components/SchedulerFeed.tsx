@@ -50,6 +50,10 @@ export function SchedulerFeed() {
     }
   }
 
+  function handleStopAll() {
+    send({ action: "stop-all" });
+  }
+
   function handleStop() {
     if (schedulerSession) {
       send({ action: "stop", name: schedulerSession.id });
@@ -74,11 +78,9 @@ export function SchedulerFeed() {
           >
             {formatCost(snapshot.total_cost_usd)}
           </span>
-          {schedulerSession?.status === "running" && (
-            <button type="button" className="feed-action-btn stop-btn" onClick={handleStop}>
-              Stop
-            </button>
-          )}
+          <button type="button" className="feed-action-btn stop-btn" onClick={handleStopAll}>
+            Stop All
+          </button>
         </div>
       </header>
 
@@ -141,14 +143,21 @@ export function SchedulerFeed() {
             <div className="input-hint">
               <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline
             </div>
-            <button
-              type="button"
-              className="btn-submit"
-              onClick={handleSubmit}
-              disabled={isPending || !input.trim()}
-            >
-              SEND
-            </button>
+            <div style={{ display: "flex", gap: 6 }}>
+              {schedulerSession?.status === "running" && (
+                <button type="button" className="btn-stop" onClick={handleStop}>
+                  STOP
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-submit"
+                onClick={handleSubmit}
+                disabled={isPending || !input.trim()}
+              >
+                SEND
+              </button>
+            </div>
           </div>
         </div>
       </div>

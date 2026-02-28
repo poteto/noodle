@@ -403,7 +403,8 @@
 
 .feed-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
 }
 .feed-action-btn {
   font-family: var(--font-mono);
@@ -611,6 +612,7 @@
 .msg-markdown ol {
   padding-left: 20px;
   margin: 4px 0;
+  list-style-type: square;
 }
 .msg-markdown li {
   margin: 2px 0;
@@ -822,6 +824,24 @@
 .btn-submit:hover { opacity: 0.9; }
 .btn-submit:disabled { opacity: 0.4; cursor: default; }
 
+.btn-stop {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.12s;
+}
+.btn-stop:hover {
+  border-color: var(--color-red);
+  color: var(--color-red);
+}
+
 /* ============================================================
    CONTEXT PANEL — right sidebar
    ============================================================ */
@@ -915,7 +935,7 @@
 .stage-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0;
   flex-shrink: 0;
 }
 .stage-dot.done { background: var(--color-green); }
