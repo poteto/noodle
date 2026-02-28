@@ -46,7 +46,7 @@ Invoke `go-best-practices` before starting.
 ## Add
 
 - `event/types.go` — add `EventStageMessage EventType = "stage_message"` to session event types
-- `loop/cook_completion.go` — in `handleCompletion`, after stage completes: read session events for `stage_message`. If found, forward to scheduler via steer and don't advance. If not found, auto-advance.
+- `loop/cook_completion.go` — in `handleCompletion`, after stage completes: read session events for `stage_message`. If none found, auto-advance. If found and `blocking: true`, forward to scheduler via steer and don't advance. If found and `blocking: false`, auto-advance AND forward message to scheduler (informational).
 - `loop/event_payloads.go` — add `Message *string` field to `StageCompletedPayload` so the feed event carries the agent's message
 
 ## Modify
@@ -86,10 +86,49 @@ Also populate `FeedEvent.task_type` (currently always empty).
 - Don't add a `"review"` stage status — the scheduler parks reviews via the existing `pending_reviews` mechanism
 - Don't touch ticket protocol events — they're orthogonal
 
+## Stage message schema
+
+The `stage_message` event payload. Create a reference doc at `.agents/skills/references/stage-message-schema.md` so any skill can reference it.
+
+```json
+{
+  "message": "string — content for the scheduler, natural language",
+  "blocking": "boolean — if true, scheduler must decide before stage advances. Default: true"
+}
+```
+
+- **`blocking: true`** — loop forwards message to scheduler, does NOT auto-advance. Scheduler must issue a control command (advance, add stage, etc.) before the pipeline continues.
+- **`blocking: false`** — loop auto-advances AND forwards the message to the scheduler for information. The scheduler sees it but doesn't need to act.
+
+Examples:
+- Quality accept: `{ "message": "All checks pass. Tests green, scope clean.", "blocking": false }`
+- Quality reject: `{ "message": "Rejected: 3 high issues. [1] Missing test for edge case in handleCompletion. [2] Scope violation: modified cook_merge.go outside plan phase scope. [3] Error message uses expectation form ('must exist') instead of failure state ('not found').", "blocking": true }`
+- Execute complete: `{ "message": "Implementation complete. 3 files changed, 2 new tests added. Ready for review.", "blocking": true }`
+
+Go type in `event/types.go`:
+```go
+type StageMessagePayload struct {
+    Message  string `json:"message"`
+    Blocking bool   `json:"blocking"`
+}
+```
+
+### Quality skill update
+
+Update `.agents/skills/quality/SKILL.md`:
+- Remove: "Write verdict to `.noodle/quality/<session-id>.json`"
+- Add: "Emit a `stage_message` event with your assessment"
+- Accept → emit `{ "message": "<summary>", "blocking": false }` — pipeline continues, scheduler sees the green light
+- Reject → emit `{ "message": "<detailed findings>", "blocking": true }` — scheduler reads findings and decides (retry, add oops stage, or abort)
+- The message content replaces the verdict JSON. Write it as natural language the scheduler can act on, not structured JSON. Include specific file paths, line context, and principle violations so the scheduler can brief the retry cook.
+
+Update `.agents/skills/quality/references/verdict-schema.md` → rename to `stage-message-schema.md`, replace content with the generic schema above.
+
 ## Data Structures
 
-- `EventStageMessage` — new session event type, payload: `{ "message": "string" }`
-- `StageCompletedPayload.Message` — optional message field on the existing payload
+- `EventStageMessage EventType = "stage_message"` — new session event type
+- `StageMessagePayload` — the event payload (message + blocking)
+- `StageCompletedPayload.Message` — optional message field on the loop event payload
 - Remove `QualityVerdict`, `QualityWrittenPayload`
 
 ## Verification
