@@ -1,0 +1,42 @@
+# Phase 4: Runtime Capability Contract
+
+Back to [[plans/82-backend-v2-first-principles/overview]]
+
+## Goal
+
+Unify runtime handling under one capability contract so process/sprites/cursor behavior is explicit and consistent.
+
+## Changes
+
+- Define runtime capabilities surfaced by each runtime implementation
+- Standardize recovery, interruption, terminal cleanup, and heartbeat semantics
+- Replace runtime-name branch logic with capability checks
+- Ensure launch metadata needed for recovery is persisted atomically
+
+## Data Structures
+
+- `RuntimeCapabilities`
+- `RuntimeSessionHandle`
+- `RecoveredAttempt`
+- `LaunchMetadata`
+
+## Routing
+
+| Phase type | Provider | Model | Why |
+|------------|----------|-------|-----|
+| Architecture / judgment | `claude` | `claude-opus-4-6` | Runtime contract and behavior semantics |
+| Implementation | `codex` | `gpt-5.3-codex` | Mechanical adapter migration |
+
+## Verification
+
+### Static
+
+- Runtime adapters conform to one interface contract
+- Capability checks replace string branching in dispatch/recovery paths
+- `go test ./... && go vet ./...`
+
+### Runtime
+
+- Per-runtime contract tests for dispatch/recover/stop/delete
+- Restart recovery tests with in-flight process and remote sessions
+- Edge cases: terminal API errors (401/403/404/410), retryable API errors (429/5xx)
