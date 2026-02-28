@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createElement, createContext, useContext, useEffect, useState } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY } from "./sse";
 import type { SSEStatus } from "./sse";
@@ -64,9 +64,22 @@ export function useReviewDiff(itemId: string) {
   });
 }
 
-export function useActiveChannel() {
+interface ActiveChannelContextValue {
+  activeChannel: ChannelId;
+  setActiveChannel: (channel: ChannelId) => void;
+}
+
+const ActiveChannelContext = createContext<ActiveChannelContextValue | null>(null);
+
+export function ActiveChannelProvider({ children }: { children: React.ReactNode }) {
   const [activeChannel, setActiveChannel] = useState<ChannelId>({ type: "scheduler" });
-  return { activeChannel, setActiveChannel } as const;
+  return createElement(ActiveChannelContext.Provider, { value: { activeChannel, setActiveChannel } }, children);
+}
+
+export function useActiveChannel() {
+  const ctx = useContext(ActiveChannelContext);
+  if (!ctx) throw new Error("useActiveChannel used outside ActiveChannelProvider");
+  return ctx;
 }
 
 export function useSendControl() {
