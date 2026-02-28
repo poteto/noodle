@@ -19,10 +19,6 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "$CLAUDE_PROJECT_DIR/.agents/hooks/approve-codex-worker.sh"
-    - matcher: "Bash"
-      hooks:
-        - type: command
           command: "go run -C $CLAUDE_PROJECT_DIR/old_noodle . worktree hook"
   Stop: []
 ---

@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "go run -C $CLAUDE_PROJECT_DIR . worktree hook"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.agents/hooks/block-sleep.sh"
           }
         ]
       }
