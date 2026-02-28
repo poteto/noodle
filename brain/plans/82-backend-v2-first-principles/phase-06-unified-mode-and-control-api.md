@@ -28,6 +28,7 @@ Chosen: **(2)** for operator clarity and deterministic gate evaluation.
 - Add `mode_epoch` to canonical state.
 - Effects are stamped with creation `mode_epoch`.
 - Executor revalidates epoch before commit; mismatches emit deterministic cancellation/defer events.
+- Implementation note: comparison representation for `mode_epoch` (monotonic integer vs. comparable token) is decided during implementation, but the invariant is fixed: epochs must be strictly ordered and unambiguous across restarts.
 
 ## Data Structures
 

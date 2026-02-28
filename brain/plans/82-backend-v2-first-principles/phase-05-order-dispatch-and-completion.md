@@ -17,7 +17,7 @@ Drive dispatch, completion, retry, and failure routing entirely from canonical o
 ### Sub-phase split
 
 - **5a** dispatch planner + capacity/busy gating
-- **5b** completion advancement and terminal routing
+- **5b** completion advancement and terminal routing (must end with golden-path integration scenario pass)
 - **5c** retry/failure routing and reconciliation edge cases
 
 ## Data Structures

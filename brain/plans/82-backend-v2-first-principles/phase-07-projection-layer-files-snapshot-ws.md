@@ -19,7 +19,7 @@ Project all external views from canonical state so files, snapshot API, and webs
 
 - **7a** file projections and atomic write semantics
 - **7b** snapshot projection + hash/version derivation
-- **7c** websocket replay/backfill with version cursor contract
+- **7c** websocket replay/backfill with version cursor contract (depends on 7b version cursor + hash contract being complete)
 
 ## Data Structures
 

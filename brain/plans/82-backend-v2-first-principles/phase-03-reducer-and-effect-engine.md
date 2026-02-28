@@ -19,7 +19,7 @@ Split pure state transitions from side effects so loop behavior becomes determin
 - `Effect`
 - `EffectDispatch`, `EffectMerge`, `EffectWriteProjection`, `EffectAck`
 - `EffectResult`
-- `EffectLedgerRecord` (`pending`, `running`, `done`, `failed`)
+- `EffectLedgerRecord` (`pending`, `running`, `done`, `failed`, `cancelled`, `deferred`)
 
 ### Concurrency Model (Required)
 
@@ -32,8 +32,8 @@ Split pure state transitions from side effects so loop behavior becomes determin
 
 1. Persist ingested event with sequence.
 2. Reduce event to next state and effect set.
-3. Persist state snapshot + effect ledger updates atomically.
-4. Execute effects with deterministic `effect_id` idempotency key.
+3. Persist canonical state snapshot + embedded effect ledger in a single file atomically (`write temp` + `rename`).
+4. Execute effects with deterministic `effect_id` idempotency key. For launch effects, this step depends on Phase 4's two-phase launch contract (`launching` -> `launched`) and must not be implemented independently.
 5. Persist effect result.
 6. Emit ack/projection updates after durable commit.
 
