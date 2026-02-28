@@ -78,14 +78,14 @@ func TestProcessSessionWritesEventLog(t *testing.T) {
 		Type:      parse.EventAction,
 		Message:   "apply patch",
 		Timestamp: time.Date(2026, 2, 27, 20, 0, 0, 0, time.UTC),
-	}))
+	}), nil)
 	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
 		Type:      parse.EventResult,
 		CostUSD:   0.12,
 		TokensIn:  100,
 		TokensOut: 50,
 		Timestamp: time.Date(2026, 2, 27, 20, 0, 1, 0, time.UTC),
-	}))
+	}), nil)
 
 	reader := event.NewEventReader(runtimeDir)
 	records, err := reader.ReadSession("session-a", event.EventFilter{})
@@ -126,7 +126,7 @@ func TestProcessSessionWritesHeartbeat(t *testing.T) {
 		Type:      parse.EventAction,
 		Message:   "check status",
 		Timestamp: ts,
-	}))
+	}), session.processHook)
 
 	data, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
 	if err != nil {
@@ -242,12 +242,12 @@ func TestProcessSessionCostAccumulation(t *testing.T) {
 		Type:      parse.EventResult,
 		CostUSD:   0.10,
 		Timestamp: time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC),
-	}))
+	}), nil)
 	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
 		Type:      parse.EventResult,
 		CostUSD:   0.25,
 		Timestamp: time.Date(2026, 2, 27, 0, 0, 1, 0, time.UTC),
-	}))
+	}), nil)
 
 	if got := session.TotalCost(); got != 0.35 {
 		t.Fatalf("TotalCost = %f, want 0.35", got)
@@ -284,7 +284,7 @@ func TestProcessSessionEmitsPromptOnInit(t *testing.T) {
 		Type:      parse.EventInit,
 		Message:   "session started",
 		Timestamp: ts,
-	}))
+	}), nil)
 
 	reader := event.NewEventReader(runtimeDir)
 	records, err := reader.ReadSession("session-a", event.EventFilter{})
