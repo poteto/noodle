@@ -64,12 +64,16 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 			continue
 		}
 		totalCost += cook.session.TotalCost()
+		runtime := cook.dispatchedRuntime
+		if runtime == "" {
+			runtime = cook.stage.Runtime
+		}
 		activeCooks = append(activeCooks, CookSummary{
 			SessionID:    cook.session.ID(),
 			OrderID:      cook.orderID,
 			TaskKey:      cook.stage.TaskKey,
 			Skill:        cook.stage.Skill,
-			Runtime:      cook.stage.Runtime,
+			Runtime:      runtime,
 			Provider:     cook.stage.Provider,
 			Model:        cook.stage.Model,
 			StartedAt:    cook.startedAt,

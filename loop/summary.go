@@ -26,7 +26,10 @@ func (l *Loop) trackCookStarted(cook *cookHandle) {
 	if taskKey == "" {
 		taskKey = "unknown"
 	}
-	runtimeName := strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+	runtimeName := strings.ToLower(strings.TrimSpace(cook.dispatchedRuntime))
+	if runtimeName == "" {
+		runtimeName = strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+	}
 	if runtimeName == "" {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
 	}
@@ -49,7 +52,10 @@ func (l *Loop) trackCookCompleted(cook *cookHandle, result StageResult) {
 	if taskKey == "" {
 		taskKey = "unknown"
 	}
-	runtimeName := strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+	runtimeName := strings.ToLower(strings.TrimSpace(cook.dispatchedRuntime))
+	if runtimeName == "" {
+		runtimeName = strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+	}
 	if runtimeName == "" {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
 	}

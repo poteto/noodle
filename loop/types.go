@@ -105,14 +105,15 @@ type cookIdentity struct {
 
 type cookHandle struct {
 	cookIdentity
-	orderStatus  orderx.OrderStatus
-	session      loopruntime.SessionHandle
-	worktreeName string
-	worktreePath string
-	attempt      int
-	generation   uint64
-	startedAt    time.Time
-	displayName  string // stable kitchen name, preserved across retries
+	orderStatus       orderx.OrderStatus
+	session           loopruntime.SessionHandle
+	worktreeName      string
+	worktreePath      string
+	attempt           int
+	generation        uint64
+	startedAt         time.Time
+	displayName       string // stable kitchen name, preserved across retries
+	dispatchedRuntime string // actual runtime used (may differ from stage.Runtime after fallback)
 }
 
 // pendingReviewCook is a completed cook waiting for human merge/reject.

@@ -28,6 +28,11 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		if status == "" {
 			status = "running"
 		}
+		runtime := strings.ToLower(strings.TrimSpace(cook.Runtime))
+		var remoteHost string
+		if runtime != "" && runtime != "process" {
+			remoteHost = runtime
+		}
 		session := Session{
 			ID:              cook.SessionID,
 			DisplayName:     cook.DisplayName,
@@ -39,6 +44,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			TaskKey:         cook.TaskKey,
 			TotalCostUSD:    cook.TotalCostUSD,
 			DurationSeconds: int64(now.Sub(cook.StartedAt).Seconds()),
+			RemoteHost:      remoteHost,
 		}
 		enrichActiveSession(reader, cook.SessionID, &session)
 		sessions = append(sessions, session)

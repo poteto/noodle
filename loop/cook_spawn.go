@@ -127,13 +127,14 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 			stage:      stage,
 			plan:       order.Plan,
 		},
-		orderStatus:  order.Status,
-		session:      session,
-		worktreeName: name,
-		worktreePath: req.WorktreePath,
-		attempt:      opts.attempt,
-		generation:   l.nextDispatchGeneration(),
-		displayName:  displayName,
+		orderStatus:       order.Status,
+		session:           session,
+		worktreeName:      name,
+		worktreePath:      req.WorktreePath,
+		attempt:           opts.attempt,
+		generation:        l.nextDispatchGeneration(),
+		displayName:       displayName,
+		dispatchedRuntime: req.Runtime, // captures actual runtime after potential fallback
 	}
 	l.trackCookStarted(cook)
 	l.cooks.activeCooksByOrder[cand.OrderID] = cook
