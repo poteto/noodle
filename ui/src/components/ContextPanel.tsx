@@ -2,7 +2,6 @@ import { useActiveChannel, useSuspenseSnapshot, useSessionEvents, formatCost, fo
 import type { Snapshot, Session, Order, EventLine } from "~/client";
 import { MetricCard } from "./MetricCard";
 import { StageRail } from "./StageRail";
-import { LoopState } from "./LoopState";
 
 interface FileTouched {
   path: string;
@@ -67,7 +66,7 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
       <div className="p-4 border-b border-border-subtle">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wider text-neutral-500">Loop</span>
-          <LoopState state={snapshot.loop_state} />
+          <span className="text-xs font-mono text-accent uppercase">{snapshot.loop_state}</span>
         </div>
       </div>
 
