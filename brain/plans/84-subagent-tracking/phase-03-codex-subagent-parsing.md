@@ -20,7 +20,7 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
    When `source` is a string (`"cli"`, `"exec"`), this is a root session -- emit the existing `EventInit` as before (no agent metadata).
 
-2. **`function_call` items in `response_item`** (extend `parseCodexItem()` for `function_call` type):
+2. **`function_call` items in `response_item`** (extend `parseCodexResponseItem()` for `function_call` type):
    Codex sub-agent orchestration uses `response_item` events containing `function_call` with specific function names. Real NDJSON uses this pattern — NOT `collab_tool_call` (which has zero matches in actual session logs):
    - `function_call` with `name: "spawn_agent"` -> `EventAgentSpawn` with `AgentName` from arguments summary; arguments: `{agent_type, message}`
    - `function_call` with `name: "send_input"` -> `EventAgentProgress` on the target agent; arguments: `{id, message}` where `id` is the child thread ID
@@ -36,7 +36,7 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 - `codexSessionMeta` struct: `{ID, Source json.RawMessage, AgentNickname, AgentRole string}`
 - `codexSubagentSource` struct: `{Subagent struct{ ThreadSpawn struct{ ParentThreadID, AgentNickname, AgentRole string, Depth int }}}`
 - `codexFunctionCall` struct: `{Name string, Arguments json.RawMessage, CallID string}`
-- Extend existing `codexItem` -- already has `AgentsStates`, `Tool` fields
+- Extend existing `codexItem` with function_call name dispatch
 
 ## Routing
 

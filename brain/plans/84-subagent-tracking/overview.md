@@ -42,7 +42,7 @@ The goal: parse sub-agent lifecycle into canonical events, track agent trees in 
 
 ## Alternatives Considered
 
-1. **Extend CanonicalEvent with agent fields (chosen)** -- Add `AgentID`, `ParentAgentID`, `AgentName`, `AgentRole` optional fields to `CanonicalEvent`. Add new `EventType` variants (`EventAgentSpawn`, `EventAgentProgress`, `EventAgentComplete`). Parsers emit these alongside existing events. Minimal new plumbing.
+1. **Extend CanonicalEvent with agent fields (chosen)** -- Add `AgentID`, `ParentAgentID`, `AgentName`, `AgentType` optional fields to `CanonicalEvent`. Add new `EventType` variants (`EventAgentSpawn`, `EventAgentProgress`, `EventAgentComplete`). Parsers emit these alongside existing events. Minimal new plumbing.
 
 2. **Separate AgentEvent type** -- Create a parallel event type with its own pipeline. More isolated but doubles the plumbing (writer, reader, broker, WebSocket message type, React Query cache). Not worth it for what amounts to a few extra fields.
 

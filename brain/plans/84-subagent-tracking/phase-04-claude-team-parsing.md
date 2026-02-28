@@ -58,4 +58,4 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about what tea
 
 ### Runtime
 - Round-trip: construct fixture NDJSON, parse, verify events
-- ParseTeamInbox: read fixture inbox JSON file, verify message extraction
+- Inbox file parsing is out-of-band (Phase 5 wires the discovery/ingestion)

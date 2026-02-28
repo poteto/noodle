@@ -37,7 +37,7 @@ Two things: (1) a new message type in the parent chat showing "agent spawned sub
 
 ## Data Structures
 
-- Extend `EventLine` type with optional `agent_id`, `agent_name`, `agent_type` fields
+- `EventLine` already has `agent_id`, `agent_name`, `agent_type` from Phase 5
 - Navigation state: `{view: 'session' | 'agent', agentId?: string}`
 
 ## Routing

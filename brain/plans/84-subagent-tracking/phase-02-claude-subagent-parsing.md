@@ -35,7 +35,7 @@ All Claude sub-agents are non-steerable (`Steerable: false`) — they run to com
 ## Data Structures
 
 - `claudeProgressData` struct: `{Type string, AgentID string, Prompt string, Message json.RawMessage}`
-- `tool_use_id` -> `agentId` reconciliation map (built during parse, not persisted)
+- `tool_use_id` -> `agentId` reconciliation map (built during parse, not persisted). Note: `ClaudeAdapter` is currently stateless (`Parse()` is a pure function). This phase requires making the adapter stateful — add a map field to the struct to track in-flight agent tool_use correlations.
 - Reuse existing `claudeMessage` / `claudeContent` for parsing the inner agent message
 
 ## Routing
