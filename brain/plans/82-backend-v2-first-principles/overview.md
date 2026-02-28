@@ -112,20 +112,7 @@ Reason: (1) keeps known structural debt alive; (3) adds operational complexity t
 
 - Default rule: end-of-phase `pnpm test:smoke` **must pass**.
 - Smoke tests are a **living end-to-end contract** and must be updated in the same phase when behavior/contracts change.
-- Exception rule: a smoke failure is allowed only if the phase explicitly declares an **Expected Smoke Failure Contract** in its runtime verification section.
-- Any undeclared smoke failure fails the phase.
-- If phase behavior changes but smoke tests were not updated to reflect that behavior, the phase fails verification.
-
-### Expected Smoke Failure Contract
-
-When a phase allows smoke breakage, it must include all of:
-
-1. Exact failing test ID/name.
-2. Exact failure signature/error text expected.
-3. Why failure is expected in this phase.
-4. Expiry phase where the failure must be gone.
-5. Compensating checks proving the intended path still works.
-6. Explicit smoke-test update task and target phase where the updated smoke assertion lands.
+- If smoke fails, failure must be expected and explained in the phase brief with explicit compensating checks; unexpected smoke failures fail the phase.
 
 ## Verification
 

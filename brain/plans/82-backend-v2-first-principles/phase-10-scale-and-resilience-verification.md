@@ -36,9 +36,6 @@ Prove at runtime that the redesign holds under scale, crashes, retries, and cont
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
-- If this phase changes externally observable behavior, update smoke assertions in this same phase.
-- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
-- Expected Smoke Failure Contract (default): none for this phase.
 - 100+ simulated session scale run with mixed runtimes
 - End-to-end black-box harness: `orders-next.json` + `control.ndjson` + runtime terminal events -> projections + websocket outputs
 - Crash-in-window scenarios:

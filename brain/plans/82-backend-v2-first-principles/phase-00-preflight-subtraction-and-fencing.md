@@ -35,9 +35,6 @@ Remove dead/vestigial paths early and establish process/schema fencing before re
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
-- If this phase changes externally observable behavior, update smoke assertions in this same phase.
-- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
-- Expected Smoke Failure Contract (default): none for this phase.
 - Dual-process startup test: second process fails with explicit failure-state message
 - Schema marker round-trip test
 - Edge cases: stale lock recovery, interrupted schema write

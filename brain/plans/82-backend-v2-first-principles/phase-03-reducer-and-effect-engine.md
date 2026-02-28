@@ -55,9 +55,6 @@ Split pure state transitions from side effects so loop behavior becomes determin
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
-- If this phase changes externally observable behavior, update smoke assertions in this same phase.
-- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
-- Expected Smoke Failure Contract (default): none for this phase.
 - Table-driven reducer tests for all lifecycle transitions
 - Effect retry tests proving no double-merge/double-dispatch
 - Crash-window tests between each protocol step above
