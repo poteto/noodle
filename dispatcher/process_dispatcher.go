@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/filex"
 	"github.com/poteto/noodle/skill"
 	wt "github.com/poteto/noodle/worktree"
 )
@@ -101,14 +102,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 		return nil, fmt.Errorf("create event writer: %w", err)
 	}
 
-	var skillBundle loadedSkill
-	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
-		skillBundle = loadedSkill{SystemPrompt: sp}
-	} else if req.DomainSkill != "" {
-		skillBundle, err = loadExecuteBundle(d.skillResolver, req.Provider, req.Skill, req.DomainSkill)
-	} else {
-		skillBundle, err = loadSkillBundle(d.skillResolver, req.Provider, req.Skill)
-	}
+	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
 	if err != nil {
 		return nil, err
 	}
@@ -116,17 +110,8 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	preamble := buildSessionPreamble()
 	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 
-	// prompt.txt: user-facing prompt (shown in TUI, debugging).
-	if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o644); err != nil {
-		return nil, fmt.Errorf("write prompt file: %w", err)
-	}
-
-	// input.txt: written as debug artifact even when prompt goes over stdin.
-	if composedPrompt != req.Prompt {
-		debugPath := inputPath(sessionDir)
-		if err := os.WriteFile(debugPath, []byte(composedPrompt), 0o644); err != nil {
-			return nil, fmt.Errorf("write input file: %w", err)
-		}
+	if _, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt); err != nil {
+		return nil, err
 	}
 
 	cmd, err := d.buildCmd(req, systemPrompt)
@@ -232,7 +217,7 @@ func (d *ProcessDispatcher) resolveAgentBinary(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "codex":
 		if path := strings.TrimSpace(d.providerConfigs.Codex.Path); path != "" {
-			candidate := filepath.Join(expandHomePath(path), "codex")
+			candidate := filepath.Join(filex.ExpandHome(path), "codex")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}
@@ -240,7 +225,7 @@ func (d *ProcessDispatcher) resolveAgentBinary(provider string) string {
 		return "codex"
 	default:
 		if path := strings.TrimSpace(d.providerConfigs.Claude.Path); path != "" {
-			candidate := filepath.Join(expandHomePath(path), "claude")
+			candidate := filepath.Join(filex.ExpandHome(path), "claude")
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}

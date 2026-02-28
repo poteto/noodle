@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 // ErrNotFound is returned when a skill cannot be found in any search path.
@@ -121,17 +123,7 @@ func resolveSearchPath(raw string) (string, bool) {
 	if path == "" {
 		return "", false
 	}
-	if strings.HasPrefix(path, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", false
-		}
-		if path == "~" {
-			path = homeDir
-		} else if strings.HasPrefix(path, "~/") {
-			path = filepath.Join(homeDir, strings.TrimPrefix(path, "~/"))
-		}
-	}
+	path = filex.ExpandHome(path)
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", false

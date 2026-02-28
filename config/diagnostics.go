@@ -5,29 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/poteto/noodle/internal/filex"
 )
 
 var statPath = os.Stat
-
-func expandHomePath(path string) (string, error) {
-	path = strings.TrimSpace(path)
-	if path == "" || !strings.HasPrefix(path, "~") {
-		return path, nil
-	}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	if path == "~" {
-		return homeDir, nil
-	}
-	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, "~\\") {
-		return filepath.Join(homeDir, strings.TrimPrefix(strings.TrimPrefix(path, "~/"), "~\\")), nil
-	}
-	// "~user" style paths are not supported; keep as-is.
-	return path, nil
-}
 
 // Validate classifies repairable and fatal runtime diagnostics.
 func Validate(config Config) ValidationResult {
@@ -74,10 +56,7 @@ func Validate(config Config) ValidationResult {
 		if value == "" {
 			return
 		}
-		resolvedPath := value
-		if expanded, err := expandHomePath(value); err == nil {
-			resolvedPath = expanded
-		}
+		resolvedPath := filex.ExpandHome(value)
 		info, err := statPath(resolvedPath)
 		if err == nil && info.IsDir() {
 			return

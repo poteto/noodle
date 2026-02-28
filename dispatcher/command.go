@@ -89,24 +89,6 @@ func resolveTemplateVars(tmpl string, vars map[string]string) string {
 	return result
 }
 
-func expandHomePath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" || !strings.HasPrefix(path, "~") {
-		return path
-	}
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-	if path == "~" {
-		return homeDir
-	}
-	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, "~\\") {
-		return filepath.Join(homeDir, strings.TrimPrefix(strings.TrimPrefix(path, "~/"), "~\\"))
-	}
-	return path
-}
-
 func buildDispatchEnv(req DispatchRequest) []string {
 	env := make([]string, 0, len(os.Environ())+len(req.EnvVars)+4)
 	for _, entry := range os.Environ() {
