@@ -32,7 +32,7 @@ type SkillData struct {
 
 // fieldDescriptions maps TOML paths to human-readable descriptions.
 var fieldDescriptions = map[string]string{
-	"autonomy":                  "Run mode governing loop behavior: auto (full automation), supervised (human approves merges/retries), or manual (human triggers everything). Maps to the V2 mode contract (auto|supervised|manual)",
+	"mode":                      "Run mode governing schedule/dispatch/retry/merge gates: auto (full automation), supervised (human approves merges/retries), or manual (human triggers everything)",
 	"routing.defaults.provider": "Default LLM provider for cook sessions (claude or codex)",
 	"routing.defaults.model":    "Default model name for cook sessions",
 	"routing.tags":              "Per-tag model overrides keyed by tag name",
@@ -238,7 +238,7 @@ noodle:
 
 When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves parked worktrees before they are merged.
 
-The global ` + "`" + `autonomy` + "`" + ` config controls the run mode and overrides per-skill merge permissions. In ` + "`" + `supervised` + "`" + ` or ` + "`" + `manual` + "`" + ` mode, all worktrees are parked for human approval regardless of the skill's ` + "`" + `permissions.merge` + "`" + ` value. See the **Mode Contract** section below for the full gate matrix.
+The global ` + "`" + `mode` + "`" + ` config controls the run mode and overrides per-skill merge permissions. In ` + "`" + `supervised` + "`" + ` or ` + "`" + `manual` + "`" + ` mode, all worktrees are parked for human approval regardless of the skill's ` + "`" + `permissions.merge` + "`" + ` value. See the **Mode Contract** section below for the full gate matrix.
 
 ## Config Reference
 
@@ -253,7 +253,7 @@ Noodle reads ` + "`" + `.noodle.toml` + "`" + ` at project root. If missing, ` +
 ### Minimal config
 
 ` + "```" + `toml
-autonomy = "auto"  # run mode: auto | supervised | manual
+mode = "auto"  # run mode: auto | supervised | manual
 
 [routing.defaults]
 provider = "claude"
@@ -267,7 +267,7 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 
 ## Mode Contract
 
-The ` + "`" + `autonomy` + "`" + ` config field sets the run mode. Three modes are supported:
+The ` + "`" + `mode` + "`" + ` config field sets the run mode. Three modes are supported:
 
 | Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
 |------|----------|----------|------------|------------|

@@ -183,7 +183,7 @@ func TestSmokeInvalidRuntimeFallback(t *testing.T) {
 	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
 
 	// Config with invalid runtime.default = "tmux".
-	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `mode = "auto"
 
 [routing.defaults]
 provider = "codex"

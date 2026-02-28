@@ -158,9 +158,9 @@ echo "edit: $@" >&2
 	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
 	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
 
-	// .noodle.toml — codex provider, auto autonomy, max_cooks=1.
+	// .noodle.toml — codex provider, auto mode, max_cooks=1.
 	// Server enabled on a fixed port so Playwright can hit the UI.
-	writeFile(t, filepath.Join(dir, ".noodle.toml"), `autonomy = "auto"
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `mode = "auto"
 
 [routing.defaults]
 provider = "codex"

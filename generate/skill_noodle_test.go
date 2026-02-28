@@ -25,7 +25,7 @@ func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
 	}
 
 	requiredFields := []string{
-		"autonomy",
+		"mode",
 		"routing.defaults.provider",
 		"routing.defaults.model",
 		"skills.paths",
