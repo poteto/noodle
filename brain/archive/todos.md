@@ -5,3 +5,5 @@
 51. [x] Feed timeline — superseded by #75 channel UI redesign
 54. [x] Skill registry browser — superseded by #75 channel UI redesign
 55. [x] Health & stuck detection UI — superseded by #75 channel UI redesign
+32. [x] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
+33. [x] Instance lock via flock — `noodle start` acquires an advisory file lock on `.noodle/noodle.lock`. Kernel releases the lock automatically on process exit (no stale lockfiles).
