@@ -44,6 +44,9 @@ Drive dispatch, completion, retry, and failure routing entirely from canonical o
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
+- If this phase changes externally observable behavior, update smoke assertions in this same phase.
+- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
+- Expected Smoke Failure Contract (default): none for this phase.
 - Golden-path integration scenario: one order complete through full pipeline
 - Integration fixtures for sequential stages and grouped stages
 - Retry exhaustion tests and failure routing tests

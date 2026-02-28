@@ -47,6 +47,9 @@ Normalize all external inputs into canonical events with deterministic idempoten
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
+- If this phase changes externally observable behavior, update smoke assertions in this same phase.
+- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
+- Expected Smoke Failure Contract (default): none for this phase.
 - Replay tests: same input stream twice converges to identical state
 - Duplicate command tests: repeated `control.ndjson` lines apply once with explicit dedup reason
 - Crash-replay tests around ingest/ack boundaries

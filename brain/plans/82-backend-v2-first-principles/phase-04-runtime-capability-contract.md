@@ -40,6 +40,9 @@ Unify runtime handling under one capability contract so process/sprites/cursor b
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
+- If this phase changes externally observable behavior, update smoke assertions in this same phase.
+- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
+- Expected Smoke Failure Contract (default): none for this phase.
 - Per-runtime contract tests for dispatch/recover/stop/delete
 - Restart recovery tests with in-flight process and remote sessions
 - Launch-gap crash tests: crash after remote launch but before `launched` persistence

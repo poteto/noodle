@@ -54,6 +54,9 @@ Chosen: **(2)** for operator clarity and deterministic gate evaluation.
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
+- If this phase changes externally observable behavior, update smoke assertions in this same phase.
+- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
+- Expected Smoke Failure Contract (default): none for this phase.
 - Mode matrix integration tests:
   - auto: full automation with per-skill merge permissions
   - supervised: auto schedule/dispatch with mandatory review parking

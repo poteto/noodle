@@ -47,6 +47,9 @@ Project all external views from canonical state so files, snapshot API, and webs
 ### Runtime
 
 - End-of-phase e2e smoke test: `pnpm test:smoke`
+- If this phase changes externally observable behavior, update smoke assertions in this same phase.
+- Smoke gate: pass required unless an Expected Smoke Failure Contract is declared below.
+- Expected Smoke Failure Contract (default): none for this phase.
 - Golden projection tests for canonical scenarios
 - Websocket tests for initial snapshot, incremental updates, subscribe/backfill ordering
 - Sequence-cursor replay tests proving no missing/duplicate deltas on reconnect
