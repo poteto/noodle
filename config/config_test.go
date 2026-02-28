@@ -679,6 +679,72 @@ default = "tmux"
 	}
 }
 
+func TestValidateNoBacklogAdapterDiagnostic(t *testing.T) {
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	// Parsed config with no adapters section — adapters is nil.
+	result := Validate(cfg)
+	found := false
+	for _, d := range result.Repairables() {
+		if d.Code == DiagnosticCodeNoBacklogAdapter {
+			found = true
+			if d.FieldPath != "adapters.backlog" {
+				t.Fatalf("field path = %q, want adapters.backlog", d.FieldPath)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected no_backlog_adapter diagnostic when adapters is nil")
+	}
+	// Should still be spawnable (repairable, not fatal).
+	if !result.CanSpawn() {
+		t.Fatal("no backlog adapter should be repairable, not fatal")
+	}
+}
+
+func TestValidateNoBacklogAdapterWithOtherAdapters(t *testing.T) {
+	cfg, err := Parse([]byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[adapters.custom]
+skill = "custom"
+
+[adapters.custom.scripts]
+sync = "echo hello"
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	result := Validate(cfg)
+	found := false
+	for _, d := range result.Repairables() {
+		if d.Code == DiagnosticCodeNoBacklogAdapter {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected no_backlog_adapter diagnostic when backlog adapter missing from map")
+	}
+}
+
+func TestValidateBacklogAdapterPresentNoNoDiagnostic(t *testing.T) {
+	cfg := DefaultConfig()
+	result := Validate(cfg)
+	for _, d := range result.Diagnostics {
+		if d.Code == DiagnosticCodeNoBacklogAdapter {
+			t.Fatal("no_backlog_adapter diagnostic should not fire when backlog adapter is present")
+		}
+	}
+}
+
 func TestMaxConcurrentForLookup(t *testing.T) {
 	rc := RuntimeConfig{
 		Process:    ProcessConfig{MaxConcurrent: 4},

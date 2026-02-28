@@ -171,6 +171,7 @@ const (
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
 	DiagnosticCodeProviderUnknown        = "provider_unknown"
 	DiagnosticCodeRuntimeDefaultUnknown  = "runtime_default_unknown"
+	DiagnosticCodeNoBacklogAdapter       = "no_backlog_adapter"
 )
 
 type ValidationResult struct {
@@ -601,6 +602,16 @@ func Validate(config Config) ValidationResult {
 	}
 	appendAgentDirDiagnostic("agents.claude.path", config.Agents.Claude.Path)
 	appendAgentDirDiagnostic("agents.codex.path", config.Agents.Codex.Path)
+
+	if _, hasBacklog := config.Adapters["backlog"]; !hasBacklog {
+		result.Diagnostics = append(result.Diagnostics, ConfigDiagnostic{
+			FieldPath: "adapters.backlog",
+			Message:   "no backlog adapter configured",
+			Severity:  DiagnosticSeverityRepairable,
+			Fix:       "Add [adapters.backlog] to .noodle.toml with adapter scripts.",
+			Code:      DiagnosticCodeNoBacklogAdapter,
+		})
+	}
 
 	for adapterName, adapter := range config.Adapters {
 		if adapter.Skill == "" {

@@ -37,10 +37,13 @@ type repairSessionLauncher func(
 	prompt string,
 ) (repairLaunchResult, error)
 
+type workSourcePromptFn func(input io.Reader, w io.Writer) (source string, selected bool, err error)
+
 var (
 	repairSelectionPromptFunc repairSelectionPrompt = promptRepairSelection
 	repairSessionLauncherFunc repairSessionLauncher = startRepairSession
 	terminalInteractiveCheck                        = isInteractiveTerminal
+	workSourcePromptFunc      workSourcePromptFn    = promptWorkSource
 )
 
 func main() {
@@ -63,6 +66,7 @@ func reportConfigDiagnostics(
 	}
 
 	missingScripts, passthrough := splitMissingScriptDiagnostics(validation.Diagnostics)
+	hasNoBacklog, passthrough := extractNoBacklogDiagnostic(passthrough)
 	for _, diagnostic := range passthrough {
 		line := fmt.Sprintf(
 			"config %s: %s: %s",
@@ -100,6 +104,30 @@ func reportConfigDiagnostics(
 				)
 				return fmt.Errorf("repair session started; rerun `noodle start` after repair completes")
 			}
+		}
+	}
+
+	if hasNoBacklog && commandName == "start" && len(validation.Fatals()) == 0 && terminalInteractiveCheck() {
+		source, selected, err := workSourcePromptFunc(input, w)
+		if err != nil {
+			return fmt.Errorf("read work source selection: %w", err)
+		}
+		if selected {
+			prompt := buildBacklogBootstrapPrompt(source)
+			writeRepairPromptBlock(w, prompt)
+			provider := app.Config.Routing.Defaults.Provider
+			result, err := repairSessionLauncherFunc(ctx, app, provider, prompt)
+			if err != nil {
+				return fmt.Errorf("start backlog bootstrap session: %w", err)
+			}
+			fmt.Fprintf(
+				w,
+				"backlog bootstrap: started %s session %s in %s\n",
+				provider,
+				result.SessionID,
+				result.WorktreePath,
+			)
+			return fmt.Errorf("backlog bootstrap started; rerun `noodle start` after setup completes")
 		}
 	}
 
@@ -330,4 +358,93 @@ func fileLooksInteractive(file *os.File) bool {
 		return false
 	}
 	return info.Mode()&os.ModeCharDevice != 0
+}
+
+func extractNoBacklogDiagnostic(
+	diagnostics []config.ConfigDiagnostic,
+) (bool, []config.ConfigDiagnostic) {
+	found := false
+	remaining := make([]config.ConfigDiagnostic, 0, len(diagnostics))
+	for _, d := range diagnostics {
+		if d.Code == config.DiagnosticCodeNoBacklogAdapter {
+			found = true
+			continue
+		}
+		remaining = append(remaining, d)
+	}
+	return found, remaining
+}
+
+func promptWorkSource(input io.Reader, w io.Writer) (string, bool, error) {
+	if input == nil {
+		return "", false, nil
+	}
+	reader := bufio.NewReader(input)
+	for attempts := 0; attempts < 3; attempts++ {
+		fmt.Fprintln(w, "No backlog adapter configured. Where does your work live?")
+		fmt.Fprintln(w, "  1) GitHub Issues")
+		fmt.Fprintln(w, "  2) Linear")
+		fmt.Fprintln(w, "  3) Markdown file (e.g., todos.md)")
+		fmt.Fprintln(w, "  4) Skip")
+		fmt.Fprint(w, "Select [1-4]: ")
+
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", false, err
+		}
+		choice := strings.ToLower(strings.TrimSpace(line))
+		switch choice {
+		case "1", "github":
+			return "github-issues", true, nil
+		case "2", "linear":
+			return "linear", true, nil
+		case "3", "markdown", "md":
+			return "markdown", true, nil
+		case "", "4", "skip", "s":
+			return "", false, nil
+		default:
+			fmt.Fprintf(w, "Invalid selection %q. Please choose 1-4.\n", choice)
+		}
+		if err == io.EOF {
+			return "", false, nil
+		}
+	}
+	return "", false, nil
+}
+
+func buildBacklogBootstrapPrompt(workSource string) string {
+	var builder strings.Builder
+	builder.WriteString("Create a backlog adapter for Noodle so `noodle start` can sync work items.\n\n")
+
+	switch workSource {
+	case "github-issues":
+		builder.WriteString("The user's work lives in GitHub Issues.\n")
+		builder.WriteString("Create adapter scripts that use the `gh` CLI to sync, add, edit, and close issues.\n")
+	case "linear":
+		builder.WriteString("The user's work lives in Linear.\n")
+		builder.WriteString("Create adapter scripts that use the Linear CLI or API to sync, add, edit, and complete issues.\n")
+	case "markdown":
+		builder.WriteString("The user's work lives in a markdown file (e.g., brain/todos.md).\n")
+		builder.WriteString("Create adapter scripts that parse the markdown file for work items.\n")
+		builder.WriteString("Use the default backlog-sync script at defaults/adapters/backlog-sync as a reference.\n")
+	}
+
+	builder.WriteString("\nRequired adapter scripts in .noodle/adapters/ (must be executable, POSIX shell):\n")
+	builder.WriteString("- backlog-sync: Output NDJSON lines with {id, title, status, tags?, plan?} fields\n")
+	builder.WriteString("- backlog-add: Read JSON from stdin ({title, ...}), create a new work item\n")
+	builder.WriteString("- backlog-done <id>: Mark work item as done\n")
+	builder.WriteString("- backlog-edit <id>: Read JSON from stdin ({title?, ...}), update work item\n")
+	builder.WriteString("\nAlso add [adapters.backlog] to .noodle.toml:\n")
+	builder.WriteString("  [adapters.backlog]\n")
+	builder.WriteString("  skill = \"backlog\"\n")
+	builder.WriteString("  [adapters.backlog.scripts]\n")
+	builder.WriteString("  sync = \".noodle/adapters/backlog-sync\"\n")
+	builder.WriteString("  add = \".noodle/adapters/backlog-add\"\n")
+	builder.WriteString("  done = \".noodle/adapters/backlog-done\"\n")
+	builder.WriteString("  edit = \".noodle/adapters/backlog-edit\"\n")
+	builder.WriteString("\nRequired verification:\n")
+	builder.WriteString("- Run each adapter script to confirm valid output.\n")
+	builder.WriteString("- Re-run `noodle start` and confirm the backlog adapter is detected.\n")
+	builder.WriteString("\nReturn a short summary of files changed and the verification results.")
+	return builder.String()
 }

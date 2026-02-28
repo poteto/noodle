@@ -106,7 +106,8 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 }
 
 // TestScaffoldedConfigValidation verifies the scaffolded config produces
-// no diagnostics at all (no fatals, no repairables).
+// no unexpected diagnostics. The no-backlog-adapter diagnostic is expected
+// for freshly scaffolded projects — the backlog bootstrap prompt handles it.
 func TestScaffoldedConfigValidation(t *testing.T) {
 	dir := t.TempDir()
 	var buf strings.Builder
@@ -125,10 +126,11 @@ func TestScaffoldedConfigValidation(t *testing.T) {
 		t.Fatalf("config.Load: %v", err)
 	}
 
-	if len(validation.Diagnostics) > 0 {
-		for _, d := range validation.Diagnostics {
-			t.Errorf("unexpected diagnostic [%s] %s: %s", d.Severity, d.FieldPath, d.Message)
+	for _, d := range validation.Diagnostics {
+		if d.Code == config.DiagnosticCodeNoBacklogAdapter {
+			continue
 		}
+		t.Errorf("unexpected diagnostic [%s] %s: %s", d.Severity, d.FieldPath, d.Message)
 	}
 }
 
