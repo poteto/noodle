@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 80 -->
+<!-- next-id: 81 -->
 
 ## Bootstrap Skill Fixes
 
@@ -15,6 +15,9 @@
 77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
 78. [ ] Configure vite-plugin-react to install babel-plugin-react-compiler
 
+## Server
+
+80. [ ] Add charmbracelet/log (https://github.com/charmbracelet/log) for styled API logs on `noodle start`
 
 ## Modes
 
