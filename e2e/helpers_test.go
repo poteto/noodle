@@ -16,24 +16,52 @@ import (
 )
 
 // noodleBinary is the path to the compiled noodle binary, built once per test run.
+// The binary lives in an os.MkdirTemp directory (not t.TempDir) so it survives
+// across tests — t.TempDir is scoped to the creating test and would be cleaned
+// up before later tests can use the cached binary.
 var (
 	noodleBinaryOnce sync.Once
 	noodleBinaryPath string
 	noodleBinaryErr  error
 )
 
-// buildNoodle compiles the noodle binary and returns its path.
-// Uses sync.Once so the binary is built at most once per process.
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if noodleBinaryPath != "" {
+		os.RemoveAll(filepath.Dir(noodleBinaryPath))
+	}
+	os.Exit(code)
+}
+
+// buildNoodle compiles the noodle binary (and UI assets if missing) and returns
+// its path. Uses sync.Once so the build runs at most once per process.
 func buildNoodle(t *testing.T) string {
 	t.Helper()
 	noodleBinaryOnce.Do(func() {
-		dir := t.TempDir()
+		root := repoRoot(t)
+
+		// Build UI assets if missing so the embedded SPA is functional.
+		uiIndex := filepath.Join(root, "ui", "dist", "client", "index.html")
+		if _, err := os.Stat(uiIndex); err != nil {
+			build := exec.Command("pnpm", "build")
+			build.Dir = filepath.Join(root, "ui")
+			if out, err := build.CombinedOutput(); err != nil {
+				noodleBinaryErr = fmt.Errorf("build ui: %s: %w", string(out), err)
+				return
+			}
+		}
+
+		dir, err := os.MkdirTemp("", "noodle-e2e-*")
+		if err != nil {
+			noodleBinaryErr = fmt.Errorf("create temp dir: %w", err)
+			return
+		}
 		noodleBinaryPath = filepath.Join(dir, "noodle")
 		cmd := exec.Command("go", "build", "-o", noodleBinaryPath, ".")
-		cmd.Dir = repoRoot(t)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			noodleBinaryErr = fmt.Errorf("build noodle: %s: %w", string(out), err)
+		cmd.Dir = root
+		out, buildErr := cmd.CombinedOutput()
+		if buildErr != nil {
+			noodleBinaryErr = fmt.Errorf("build noodle: %s: %w", string(out), buildErr)
 		}
 	})
 	if noodleBinaryErr != nil {
