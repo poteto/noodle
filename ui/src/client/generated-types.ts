@@ -98,7 +98,6 @@ export interface Order {
   rationale?: string;
   stages: Stage[];
   status: string;
-  on_failure?: Stage[];
 }
 /**
  * Stage is a unit of work within an order in the snapshot.

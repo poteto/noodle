@@ -45,10 +45,9 @@ export interface Stage extends Omit<RawStage, "status"> {
   status: StageStatus;
 }
 
-export interface Order extends Omit<RawOrder, "status" | "stages" | "on_failure"> {
+export interface Order extends Omit<RawOrder, "status" | "stages"> {
   stages: Stage[];
   status: OrderStatus;
-  on_failure?: Stage[];
 }
 
 export interface DiffResponse {

@@ -23,10 +23,6 @@ Each stage has a `task_key` (must match a registered task type) and runs one at 
 
 A typical order pipeline: execute, then quality, then reflect — all as stages of one order.
 
-### On-Failure Stages
-
-Orders may include `on_failure` stages. When any main stage fails, the loop cancels remaining main stages and runs the `on_failure` pipeline instead. Use this for recovery work (e.g. debugging after a failed execute).
-
 ## Task Types
 
 Read `task_types` from mise to discover every schedulable task type and its `schedule` hint. Any registered task type can be a stage within an order. Use `task_key` on each stage to bind it to a task type.
@@ -70,7 +66,7 @@ These are emitted automatically by the loop:
 | `stage.completed` | A stage finished successfully (includes order ID, task key) |
 | `stage.failed` | A stage failed (includes reason) |
 | `order.completed` | All stages in an order finished — the order is done |
-| `order.failed` | An order failed terminally (no more retries or on_failure stages) |
+| `order.failed` | An order failed terminally |
 | `order.dropped` | An order was removed because its task type is no longer registered |
 | `order.requeued` | A failed order was reset and re-queued for another attempt |
 | `worktree.merged` | A cook's worktree was merged back to main |
@@ -162,28 +158,6 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
         {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"},
         {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
-      ]
-    }
-  ]
-}
-```
-
-### Example: Order with on_failure
-
-```json
-{
-  "orders": [
-    {
-      "id": "38",
-      "title": "migrate auth module",
-      "rationale": "dependency for login flow",
-      "status": "active",
-      "stages": [
-        {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
-        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
-      ],
-      "on_failure": [
-        {"task_key": "debugging", "provider": "claude", "model": "claude-opus-4-6", "runtime": "tmux", "status": "pending"}
       ]
     }
   ]

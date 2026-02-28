@@ -36,7 +36,6 @@ function normalizeOrder(order: Snapshot["orders"][number]): Snapshot["orders"][n
   return {
     ...order,
     stages: order.stages ?? [],
-    on_failure: order.on_failure ?? [],
     plan: order.plan ?? [],
   };
 }

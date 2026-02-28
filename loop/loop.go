@@ -387,6 +387,10 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	promoted, emptyPromotion, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
 		l.logger.Warn("orders-next promotion failed", "error", err)
+		// Mark promoted so the schedule order can complete and a new
+		// schedule can be spawned. Without this, the schedule order
+		// stays active forever and the loop deadlocks.
+		l.schedulePromoted = true
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
 		l.schedulePromoted = true
