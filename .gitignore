@@ -24,8 +24,6 @@ Thumbs.db
 
 # Noodle runtime state (not tracked)
 .noodle/*
-!.noodle/adapters/
-.noodle/reference-path
 
 # Obsidian
 brain/.obsidian/

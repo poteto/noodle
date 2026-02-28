@@ -31,10 +31,10 @@ path = "~/.codex"
 skill = "todo"
 
 [adapters.backlog.scripts]
-sync = "go run .noodle/adapters/main.go backlog-sync"
-add = "go run .noodle/adapters/main.go backlog-add"
-done = "go run .noodle/adapters/main.go backlog-done"
-edit = "go run .noodle/adapters/main.go backlog-edit"
+sync = "go run adapters/main.go backlog-sync"
+add = "go run adapters/main.go backlog-add"
+done = "go run adapters/main.go backlog-done"
+edit = "go run adapters/main.go backlog-edit"
 
 [concurrency]
 max_cooks = 1
