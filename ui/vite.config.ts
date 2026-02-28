@@ -7,7 +7,11 @@ import viteTsConfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [
     TanStackRouterVite({ routesDirectory: "src/routes" }),
-    react(),
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
     tailwindcss(),
     viteTsConfigPaths(),
   ],
