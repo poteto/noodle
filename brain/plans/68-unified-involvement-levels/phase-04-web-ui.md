@@ -13,11 +13,10 @@ Update the web UI to display current mode and let users change it. Add a dispatc
   - `ControlAction` union: replace `"autonomy"` with `"mode"`, add `"dispatch"`
   - `ConfigDefaults`: `autonomy: string` → `mode: string`
 - **ui/src/client/api.ts**: Update config response type if needed
-- **ui/src/components/Board.tsx**: Display current mode as a label or badge in the header. Add a dropdown to switch between auto/supervised/manual — sends `{ action: "mode", value: "..." }` via the control API. Add a "Dispatch" button visible in manual mode — sends `{ action: "dispatch" }` via the control API.
+- **ui/src/components/Dashboard.tsx**: Display current mode as a label or badge in the header. Add a dropdown to switch between auto/supervised/manual — sends `{ action: "mode", value: "..." }` via the control API. Add a "Dispatch" button visible in manual mode — sends `{ action: "dispatch" }` via the control API.
 - **ui/src/test-utils.ts**: `buildSnapshot()` — `autonomy: "supervised"` → `mode: "supervised"`
 - **ui/src/client/api.test.ts**: Update `fetchConfig` test data
 - **ui/src/client/types.test.ts**: `emptySnapshot()` — `autonomy` → `mode`
-- **ui/src/components/Board.test.tsx**: Update any `applyOptimistic` tests if the autonomy action was tested
 - **ui/src/components/TaskEditor.test.tsx**: Update `autonomy` references
 
 ## Data Structures

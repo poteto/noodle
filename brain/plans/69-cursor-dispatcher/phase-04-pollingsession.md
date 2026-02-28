@@ -10,8 +10,8 @@ Implement `pollingSession` — a `Session` implementation that polls a `PollingB
 
 ## Data structures
 
-- `pollingSession` struct — holds `PollingBackend`, remote ID, target branch (from `LaunchResult`), poll interval, runtime dir, session ID; channels for events/done/nudge; mutex-guarded status; event writer for persistence
-- `pollingSessionConfig` struct — constructor input (backend, LaunchResult, interval, runtime dir, session ID, event writer)
+- `pollingSession` struct — holds `PollingBackend`, remote ID, target branch (from `LaunchResult`), poll interval, runtime dir, session ID; channels for events/done/nudge; mutex-guarded status; event writer for persistence; `SessionEventSink` for real-time WebSocket broadcasting (same pattern as `processSession` and `spritesSession`)
+- `pollingSessionConfig` struct — constructor input (backend, LaunchResult, interval, runtime dir, session ID, event writer, sink)
 - `pollingRegistry` struct — mutex-protected `map[string]*pollingSession` for remoteID → session lookup. Supports `Register`, `Unregister`, `Nudge(remoteID)`. Owned by PollingDispatcher, exposed via interface for webhook notifier.
 
 ## Changes

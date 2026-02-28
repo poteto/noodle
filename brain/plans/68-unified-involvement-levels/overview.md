@@ -62,23 +62,30 @@ Neither field controls dispatch. The user has no way to say "I want to drive eve
 
 | File | Usage |
 |------|-------|
-| `config/config.go` | Constants, field, PendingApproval(), ScheduleConfig, validation, defaults |
-| `loop/cook_completion.go` | `PendingApproval()` merge gate |
-| `loop/control.go` | `controlAutonomy()`, `"autonomy"` action case |
+| `config/types_defaults.go` | Constants, field, `PendingApproval()`, `ScheduleConfig`, defaults |
+| `config/parse.go` | Validation for `autonomy` and `schedule.run` |
+| `loop/cook_completion.go` | Merge gating via `canMergeStage()` — mode hook point (see note below) |
+| `loop/cook_merge.go` | `canMergeStage()`, `resolveMergeMode()`, `parkPendingReview()` |
+| `loop/control.go` | `"autonomy"` action case dispatches to `controlAutonomy()` |
+| `loop/control_orders.go` | `controlAutonomy()` definition |
+| `loop/control_review.go` | Merge-related code for pending reviews |
 | `loop/state_snapshot.go` | `LoopState.Autonomy` field |
 | `loop/stamp_status.go` | stamps `Autonomy` into status.json |
 | `internal/statusfile/statusfile.go` | `Status.Autonomy` field |
 | `internal/schemadoc/specs.go` | `"autonomy"` field doc |
 | `internal/snapshot/types.go` | `Snapshot.Autonomy` field |
-| `internal/snapshot/snapshot.go` | maps state → snapshot |
+| `internal/snapshot/snapshot_builder.go` | maps state → snapshot |
 | `internal/snapshot/fixture_test.go` | `state.Autonomy` in test fixtures |
 | `internal/snapshot/testdata/*/expected.md` | golden files containing `"autonomy"` |
-| `server/server.go` | `handleConfig()` response, `validActions` |
+| `server/server.go` | `handleConfig()` response |
+| `server/ws_hub.go` | `validActions` map (includes `"autonomy"`) |
 | `startup/firstrun.go` | scaffolded `.noodle.toml` template |
 | `generate/skill_noodle.go` | generated docs table — `"autonomy"` and `"schedule.run"` rows |
 | `scripts/sandbox.sh` | example config |
 | **Tests**: `config_test.go`, `loop_test.go`, `log_test.go`, `control_test.go`, `snapshot_test.go`, `integration_test.go`, `firstrun_test.go`, `smoke_test.go`, `helpers_test.go`, `skill_noodle_test.go`, `fixture_test.go` | |
-| **UI**: `generated-types.ts` (auto-generated — regenerate, don't hand-edit), `types.ts`, `api.ts`, `api.test.ts`, `types.test.ts`, `test-utils.ts`, `Board.tsx`, `Board.test.tsx`, `TaskEditor.test.tsx` | |
+| **UI**: `generated-types.ts` (auto-generated — regenerate, don't hand-edit), `types.ts`, `api.ts`, `api.test.ts`, `types.test.ts`, `test-utils.ts`, `Dashboard.tsx`, `TaskEditor.test.tsx` | |
+
+**Note — merge gating flow has changed:** `PendingApproval()` is defined on `Config` but **never called from loop code**. The merge flow now works through `canMergeStage()` (per-task-type via skill registry) → `resolveMergeMode()` → merge queue or `parkPendingReview()`. For supervised/manual modes to park all merges, the mode check must hook into `cook_completion.go` where `canMerge` is evaluated (around line 139), NOT replace a `PendingApproval()` call.
 
 ## Applicable Skills
 

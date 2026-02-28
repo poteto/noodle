@@ -20,14 +20,14 @@ Wire the Cursor dispatcher into Noodle's runtime system. Add `CursorRuntime` wit
   - Transient errors during recovery polls (429/5xx) — treat as "still alive" and adopt for continued polling, rather than failing the session based on a temporary API error.
 - Wraps `PollingDispatcher` via `DispatcherRuntime` for dispatch, adds recovery on top.
 
-**`config/config.go`**
+**`config/types_defaults.go`**
 - `AvailableRuntimes()` — add cursor when `cursorDefined` and `APIKey()` is non-empty and `Repository` is non-empty (both required for functional cursor runtime)
 - Add `WebhookSecretEnv string` to `CursorConfig` (follows env-key pattern like `APIKeyEnv`)
 - Add `WebhookSecret()` accessor method (reads env var, defaults to `CURSOR_WEBHOOK_SECRET`)
 - Add config validation in `Validate()`: warn if cursor is defined but repository is empty
 
 **`loop/reconcile.go`**
-- `refreshAdoptedTargets` currently checks `SessionPIDAlive` to determine if adopted sessions are still live. This is PID-specific — remote polling sessions have no local PID. Add runtime-aware liveness: if `spawn.json` has `runtime: "cursor"` (or any non-process runtime), check heartbeat recency instead of PID liveness. This prevents recovered cursor sessions from being pruned and re-dispatched while the remote agent is still running.
+- `refreshAdoptedTargets` (line 253) currently checks TWO things: (1) `meta.json` contains `"status":"running"`, and (2) `SessionPIDAlive` returns true. Both are process-specific — remote polling sessions have no `meta.json` with running status and no local PID. Add runtime-aware liveness: read `spawn.json` to determine runtime; for non-process runtimes, check heartbeat recency instead of PID liveness and skip the `meta.json` status check. This prevents recovered cursor sessions from being pruned and re-dispatched while the remote agent is still running.
 
 **`dispatcher/dispatch_metadata.go`**
 - Persist `order_id` in `spawn.json` at dispatch time (already has `session_id`, `runtime`, `remote_id`). This enables `CursorRuntime.Recover` to populate `RecoveredSession.OrderID`.

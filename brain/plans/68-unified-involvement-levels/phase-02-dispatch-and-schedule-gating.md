@@ -11,9 +11,9 @@ Wire the new mode-derived gates for dispatch, retries, and schedule injection. A
 - **loop/loop.go**:
   - In `planCycleSpawns()`: early-return with no candidates when `!l.config.AutoDispatch()`. Log "dispatch suppressed (manual mode)".
   - Guard the two schedule injection points (~lines 455, 470) with `l.config.AutoSchedule()`. Log when suppressed.
-- **loop/cook_retry.go**: Gate `processPendingRetries()` and `retryCook()` with `l.config.AutoDispatch()`. In manual mode, retries queue but don't auto-spawn.
+- **loop/loop.go** and **loop/loop_cycle_pipeline.go**: Gate `processPendingRetries()` and `retryCook()` with `l.config.AutoDispatch()`. In manual mode, retries queue but don't auto-spawn. (Note: these functions are in loop.go and loop_cycle_pipeline.go, not a separate cook_retry.go.)
 - **loop/control.go**: Add `case "dispatch":` — runs one pass of dispatch logic ignoring the mode gate, spawns the first candidate. No order targeting — just dispatch the next eligible order.
-- **server/server.go**: Add `"dispatch"` to `validActions`.
+- **server/ws_hub.go**: Add `"dispatch"` to `validActions` map (line 329).
 - **loop/loop_test.go** or new test file: Behavior matrix integration test covering the 5 behaviors × 3 modes from the overview. Assert that each mode produces the correct combination of dispatch/schedule/retry/merge/quality behavior.
 
 ## Data Structures
