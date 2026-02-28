@@ -65,7 +65,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   function handleSubmit() {
     const prompt = input.trim();
     if (!prompt) return;
-    send({ action: "steer", name: sessionId, prompt });
+    send({ action: "steer", target: sessionId, prompt });
     setInput("");
   }
 

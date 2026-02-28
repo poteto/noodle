@@ -48,7 +48,7 @@ describe("SchedulerFeed", () => {
     await user.click(screen.getByText("SEND"));
     expect(mockSend).toHaveBeenCalledWith({
       action: "steer",
-      name: "schedule",
+      target: "schedule",
       prompt: "deploy to staging",
     });
   });
@@ -60,7 +60,7 @@ describe("SchedulerFeed", () => {
     await user.type(textarea, "run tests{Enter}");
     expect(mockSend).toHaveBeenCalledWith({
       action: "steer",
-      name: "schedule",
+      target: "schedule",
       prompt: "run tests",
     });
   });

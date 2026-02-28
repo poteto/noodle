@@ -34,7 +34,7 @@ export function SchedulerFeed() {
   function handleSubmit() {
     const prompt = input.trim();
     if (!prompt) return;
-    send({ action: "steer", name: "schedule", prompt });
+    send({ action: "steer", target: "schedule", prompt });
     setInput("");
   }
 
