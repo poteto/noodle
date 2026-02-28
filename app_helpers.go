@@ -10,6 +10,9 @@ import (
 )
 
 func (a *App) ProjectDir() (string, error) {
+	if a.projectDir != "" {
+		return a.projectDir, nil
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get current directory: %w", err)
