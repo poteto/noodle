@@ -11,7 +11,7 @@
 
 32. [ ] `--project-dir` flag — `app.ProjectDir()` uses `os.Getwd()` as the only mechanism. Add a `--project-dir` flag (and/or `NOODLE_PROJECT_DIR` env var) so the binary can target a project without `cd`ing into it.
 33. [ ] PID file and stale process detection — no guard against multiple noodle processes running against the same project. Write a PID file to `.noodle/noodle.pid`, check it on startup, warn or exit if another instance is alive.
-50. [ ] Reschedule button in web UI — add a dedicated button that spawns a reschedule agent at the top of the queue. Currently reschedule is only triggerable via steer; a visible button makes it discoverable. Reduced priority: #66 events enable reactive scheduling, but a manual button is still useful for DX.
+50. [x] Reschedule button in web UI — superseded by #75 channel UI redesign
 
 ## Remote Dispatchers
 
@@ -19,9 +19,9 @@
 
 ## Web UI
 
-51. [ ] Feed timeline — render `snapshot.feed_events` as a chronological activity stream. Cross-agent visibility: session starts, completions, failures, merges, brain writes. Data already exists server-side, just needs a UI component.
-54. [ ] Skill registry browser — page or panel showing installed skills, their frontmatter (name, description, schedule, permissions), and which are registered as task types. Makes the system legible without filesystem access.
-55. [ ] Health & stuck detection UI — visually differentiate `Session.health` (green/yellow/red) on agent cards. Surface `dispatch_warning` and idle-vs-stuck state. Make problems visible before opening the chat panel.
+51. [x] Feed timeline — superseded by #75 channel UI redesign
+54. [x] Skill registry browser — superseded by #75 channel UI redesign
+55. [x] Health & stuck detection UI — superseded by #75 channel UI redesign
 
 ## Agent Conversations UI
 
