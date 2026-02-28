@@ -20,15 +20,15 @@ export type {
 } from "./types";
 export { useActiveChannel, ActiveChannelProvider } from "./hooks";
 export { fetchSnapshot, normalizeSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
-export { connectSSE, SNAPSHOT_KEY } from "./sse";
-export type { SSEStatus } from "./sse";
+export { connectWS, SNAPSHOT_KEY, subscribeSession, unsubscribeSession, sendWSControl } from "./ws";
+export type { WSStatus } from "./ws";
 export {
   useSnapshot,
   useSuspenseSnapshot,
   useSessionEvents,
   useReviewDiff,
   useSendControl,
-  useSSEStatus,
+  useWSStatus,
 } from "./hooks";
 export { useConfig } from "./config";
 export { middleTruncate, formatCost, formatDuration } from "./format";

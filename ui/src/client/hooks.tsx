@@ -1,32 +1,32 @@
 import { createElement, createContext, useContext, useEffect } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY } from "./sse";
-import type { SSEStatus } from "./sse";
-import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
+import { connectWS, SNAPSHOT_KEY, WS_STATUS_KEY, subscribeSession, unsubscribeSession, sendWSControl } from "./ws";
+import type { WSStatus } from "./ws";
+import { fetchSnapshot, sendControl, fetchReviewDiff } from "./api";
 import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse, ChannelId } from "./types";
 
-// Connects SSE on mount, seeds cache with initial fetch, and keeps
-// snapshot data live via server-sent events.
+// Connects WS on mount, seeds cache with initial fetch, and keeps
+// snapshot data live via WebSocket.
 export function useSnapshot() {
   const queryClient = useQueryClient();
 
-  useEffect(() => connectSSE(queryClient), [queryClient]);
+  useEffect(() => connectWS(queryClient), [queryClient]);
 
   return useQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
     queryFn: fetchSnapshot,
-    // SSE handles updates; only fetch once for initial seed.
+    // WS handles updates; only fetch once for initial seed.
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
 }
 
-// Suspense variant — throws until the initial snapshot arrives.
+// Suspense variant -- throws until the initial snapshot arrives.
 // The component calling this must be wrapped in a <Suspense> boundary.
 export function useSuspenseSnapshot() {
   const queryClient = useQueryClient();
 
-  useEffect(() => connectSSE(queryClient), [queryClient]);
+  useEffect(() => connectWS(queryClient), [queryClient]);
 
   return useSuspenseQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
@@ -37,19 +37,27 @@ export function useSuspenseSnapshot() {
 }
 
 export function useSessionEvents(sessionId: string | undefined) {
+  useEffect(() => {
+    if (!sessionId) return;
+    subscribeSession(sessionId);
+    return () => unsubscribeSession(sessionId);
+  }, [sessionId]);
+
   return useQuery<EventLine[]>({
     queryKey: ["sessionEvents", sessionId],
-    queryFn: () => fetchSessionEvents(sessionId ?? ""),
+    queryFn: () => [],
     enabled: Boolean(sessionId),
-    refetchInterval: 3000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }
 
-export function useSSEStatus(): SSEStatus {
+export function useWSStatus(): WSStatus {
   const queryClient = useQueryClient();
-  const { data } = useQuery<SSEStatus>({
-    queryKey: SSE_STATUS_KEY,
-    queryFn: () => queryClient.getQueryData(SSE_STATUS_KEY) ?? "connecting",
+  const { data } = useQuery<WSStatus>({
+    queryKey: WS_STATUS_KEY,
+    queryFn: () => queryClient.getQueryData(WS_STATUS_KEY) ?? "connecting",
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -96,9 +104,14 @@ export function useActiveChannel() {
 export function useSendControl() {
   const queryClient = useQueryClient();
   return useMutation<ControlAck, Error, ControlCommand>({
-    mutationFn: sendControl,
+    mutationFn: async (cmd) => {
+      try {
+        return await sendWSControl(cmd);
+      } catch {
+        return sendControl(cmd);
+      }
+    },
     onSuccess: () => {
-      // Invalidate snapshot so next SSE or refetch picks up changes.
       queryClient.invalidateQueries({ queryKey: SNAPSHOT_KEY });
     },
   });

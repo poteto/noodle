@@ -1,9 +1,9 @@
 import type { LoopState as LoopStateType } from "~/client";
-import { useSSEStatus } from "~/client";
+import { useWSStatus } from "~/client";
 
 export function LoopState({ state }: { state: LoopStateType }) {
-  const sseStatus = useSSEStatus();
-  const disconnected = sseStatus === "disconnected";
+  const wsStatus = useWSStatus();
+  const disconnected = wsStatus === "disconnected";
   const label = disconnected ? "disconnected" : state;
 
   return (

@@ -16,7 +16,7 @@ vi.mock("~/client", async () => {
   return {
     ...actual,
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
-    useSSEStatus: () => "connected" as const,
+    useWSStatus: () => "connected" as const,
     useActiveChannel: () => ({
       activeChannel: mockActiveChannel,
       setActiveChannel: mockSetActiveChannel,

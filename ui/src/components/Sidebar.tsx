@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useActiveChannel, useSuspenseSnapshot, useSSEStatus, formatCost } from "~/client";
+import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
 import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 
@@ -40,8 +40,8 @@ function TreeIcon() {
   );
 }
 
-function SSEDot() {
-  const status = useSSEStatus();
+function ConnectionDot() {
+  const status = useWSStatus();
   const cls = status === "connected" ? "active" : status === "connecting" ? "thinking" : "idle";
   return <div className={`status-dot ${cls}`} />;
 }
@@ -99,15 +99,15 @@ export function Sidebar() {
   const schedulerChannel: ChannelId = { type: "scheduler" };
   const isSchedulerActive = channelEq(activeChannel, schedulerChannel);
   const isFeedRoute = pathname === "/" || pathname.startsWith("/actor/");
-  const sseStatus = useSSEStatus();
-  const statusLabel = sseStatus === "connected" ? "running" : sseStatus === "connecting" ? "connecting" : "offline";
+  const wsStatus = useWSStatus();
+  const statusLabel = wsStatus === "connected" ? "running" : wsStatus === "connecting" ? "connecting" : "offline";
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-mark" />
         <span>NOODLE</span>
-        <span className="header-status"><SSEDot /> {statusLabel}</span>
+        <span className="header-status"><ConnectionDot /> {statusLabel}</span>
       </div>
 
       <nav className="sidebar-nav">
@@ -127,7 +127,7 @@ export function Sidebar() {
             <span className="agent-name">Manager</span>
             <span className="agent-meta-line">SCHEDULER · LLM</span>
           </div>
-          <div className={`status-dot ${sseStatus === "connected" ? "active" : "idle"}`} />
+          <div className={`status-dot ${wsStatus === "connected" ? "active" : "idle"}`} />
         </li>
       </ul>
 

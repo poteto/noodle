@@ -8,7 +8,7 @@ vi.mock("~/client", async () => {
   return {
     ...actual,
     useSuspenseSnapshot: () => ({ data: buildSnapshot() }),
-    useSSEStatus: () => "connected" as const,
+    useWSStatus: () => "connected" as const,
     useSendControl: () => ({ mutate: vi.fn(), isPending: false }),
     useActiveChannel: () => ({
       activeChannel: { type: "scheduler" },
