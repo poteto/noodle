@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -232,18 +233,23 @@ func readFailedTargets(path string) (map[string]string, error) {
 }
 
 func countAckLines(path string) (int, error) {
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("read control ack log: %w", err)
 	}
+	defer f.Close()
 	count := 0
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) != "" {
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) != "" {
 			count++
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("read control ack log: %w", err)
 	}
 	return count, nil
 }

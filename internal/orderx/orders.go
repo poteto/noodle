@@ -153,16 +153,12 @@ func NormalizeAndValidateOrders(
 			return of, false, fmt.Errorf("order %q has terminal status %q", id, orders[i].Status)
 		}
 
-		// Truncate extra_prompt on all stages.
+		// Truncate extra_prompt, validate, and filter stages in a single pass.
+		validStages := make([]Stage, 0, len(orders[i].Stages))
 		for j := range orders[i].Stages {
 			if truncateExtraPrompt(&orders[i].Stages[j]) {
 				changed = true
 			}
-		}
-
-		// Validate and filter main stages.
-		validStages := make([]Stage, 0, len(orders[i].Stages))
-		for j := range orders[i].Stages {
 			if err := ValidateStageStatus(orders[i].Stages[j].Status); err != nil {
 				return of, false, fmt.Errorf("order %q stage %d: %w", id, j, err)
 			}
