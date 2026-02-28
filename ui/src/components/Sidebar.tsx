@@ -41,6 +41,15 @@ function TreeIcon() {
   );
 }
 
+function ReviewIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 1L2 4v5c0 4.4 3 7.5 7 9 4-1.5 7-4.6 7-9V4L9 1z" />
+      <path d="M6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
 function ConnectionDot() {
   const status = useWSStatus();
   const cls = status === "connected" ? "active" : status === "connecting" ? "thinking" : "idle";
@@ -126,6 +135,12 @@ export function Sidebar() {
         <NavLink to="/dashboard" label="Dashboard" active={pathname === "/dashboard"} icon={<DashboardIcon />} />
         <NavLink to="/" label="Live Feed" active={isFeedRoute} icon={<FeedIcon />} />
         <NavLink to="/tree" label="Tree" active={pathname === "/tree"} icon={<TreeIcon />} />
+        <NavLink
+          to="/review"
+          label={`Review${snapshot.pending_review_count ? ` (${snapshot.pending_review_count})` : ""}`}
+          active={pathname === "/review"}
+          icon={<ReviewIcon />}
+        />
       </nav>
 
       <div className="section-label">Agents</div>
