@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 76 -->
+<!-- next-id: 78 -->
 
 ## Bootstrap Skill Fixes
 
@@ -9,6 +9,11 @@
 ## Remote Dispatchers
 
 69. [ ] Cursor dispatcher — implement CursorBackend (real HTTP client replacing stub), PollingDispatcher + pollingSession (deferred from plan 27 phase 4), webhook receiver endpoint on Noodle's HTTP server for status change notifications, factory wiring in loop/defaults.go. Flow: push worktree branch → launch Cursor Cloud Agent via API → agent pushes to target branch (no PR) → detect completion via webhook or polling → pull target branch back to worktree. [[plans/69-cursor-dispatcher/overview]]
+
+## UI
+
+76. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
+77. [ ] Configure vite-plugin-react to install babel-plugin-react-compiler
 
 ## Modes
 
