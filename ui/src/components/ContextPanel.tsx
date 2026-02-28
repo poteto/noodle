@@ -1,7 +1,8 @@
-import { useActiveChannel, useSuspenseSnapshot, useSessionEvents, formatCost, formatDuration } from "~/client";
-import type { Snapshot, Session, Order, EventLine } from "~/client";
+import { useActiveChannel, useSuspenseSnapshot, useSessionEvents, useReviewDiff, formatCost, formatDuration } from "~/client";
+import type { Snapshot, Session, Order, EventLine, PendingReviewItem } from "~/client";
 import { MetricCard } from "./MetricCard";
 import { StageRail } from "./StageRail";
+import { DiffViewer } from "./DiffViewer";
 
 interface FileTouched {
   path: string;
@@ -201,6 +202,22 @@ function AgentContext({
   );
 }
 
+function ReviewDiffPanel({ review }: { review: PendingReviewItem }) {
+  const { data, isLoading, error } = useReviewDiff(review.order_id);
+
+  return (
+    <>
+      <SectionHeader>Review Diff</SectionHeader>
+      <DiffViewer
+        diff={data?.diff ?? ""}
+        stat={data?.stat ?? ""}
+        isLoading={isLoading}
+        error={error?.message}
+      />
+    </>
+  );
+}
+
 export function ContextPanel() {
   const { activeChannel } = useActiveChannel();
   const { data: snapshot } = useSuspenseSnapshot();
@@ -210,11 +227,20 @@ export function ContextPanel() {
       ? snapshot.sessions.find((s) => s.id === activeChannel.sessionId)
       : undefined;
 
+  const pendingReview =
+    activeChannel.type === "agent"
+      ? snapshot.pending_reviews?.find(
+          (r) => r.session_id === activeChannel.sessionId,
+        )
+      : undefined;
+
   return (
     <aside className="flex flex-col border-l border-border-subtle bg-bg-surface h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         {activeChannel.type === "scheduler" ? (
           <SchedulerContext snapshot={snapshot} />
+        ) : pendingReview ? (
+          <ReviewDiffPanel review={pendingReview} />
         ) : session ? (
           <AgentContext session={session} snapshot={snapshot} />
         ) : (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
+import { ReviewBanner } from "./ReviewBanner";
 
 function AgentHeader({ session, onStop }: { session: Session; onStop: () => void }) {
   return (
@@ -55,6 +56,9 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const [autoScroll, setAutoScroll] = useState(true);
 
   const session = snapshot.sessions.find((s) => s.id === sessionId);
+  const pendingReview = snapshot.pending_reviews?.find(
+    (r) => r.session_id === sessionId,
+  );
 
   useEffect(() => {
     if (autoScroll && containerRef.current) {
@@ -113,6 +117,8 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
           <MessageRow key={event.at} event={event} />
         ))}
       </div>
+
+      {pendingReview && <ReviewBanner review={pendingReview} />}
 
       <div className="p-4 border-t border-border-subtle">
         <div className="flex gap-2">
