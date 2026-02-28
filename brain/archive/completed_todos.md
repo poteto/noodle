@@ -1,5 +1,7 @@
 # Completed Todos
 
+80. [x] Add charmbracelet/log (https://github.com/charmbracelet/log) for styled API logs on `noodle start` — done. `cmd_start` now injects a charm logger-backed slog handler for loop output and emits high-signal startup/server lifecycle logs; runtime dispatch fallback now logs when non-process runtimes degrade to `process`.
+
 7. [x] ~~`go install` support~~ — superseded by Homebrew distribution (`brew install poteto/tap/noodle`).
 
 73. [x] ~~Testing strategy — typesafe Go↔TS API boundary (subsumes #71), UI unit tests (Vitest + Testing Library), UI component tests, expanded Go fixture coverage (21 new fixtures across snapshot and loop), E2E agent smoke test with Codex. [[archive/plans/73-testing-strategy/overview]]~~ — done.

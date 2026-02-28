@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 
+	charmlog "github.com/charmbracelet/log"
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/lockfile"
@@ -75,11 +79,23 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	defer lock.Close()
 
 	broker := server.NewSessionEventBroker()
+	apiLogger := newAPILogger(os.Stderr)
 
 	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config, loop.Dependencies{
 		EventSink: broker,
+		Logger:    slog.New(apiLogger),
 	})
+	interactive := isInteractiveTerminal()
+	startServer := shouldStartServer(app.Config.Server, interactive)
+
+	apiLogger.Info("start initialized",
+		"project", cwd,
+		"runtime_dir", runtimeDir,
+		"once", opts.once,
+		"server_enabled", startServer,
+	)
 	if opts.once {
+		apiLogger.Info("running single scheduling cycle")
 		return runtimeLoop.Cycle(ctx)
 	}
 
@@ -92,9 +108,14 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 		warnings = append(warnings, w.Message)
 	}
 
-	interactive := isInteractiveTerminal()
-	if shouldStartServer(app.Config.Server, interactive) {
-		go func() { _ = runWebServer(ctx, runtimeDir, app.Config, runtimeLoop, warnings, broker) }()
+	if startServer {
+		go func() {
+			if err := runWebServer(ctx, runtimeDir, app.Config, runtimeLoop, warnings, broker, apiLogger.With("component", "server")); err != nil {
+				apiLogger.Error("web server exited", "error", err)
+			}
+		}()
+	} else {
+		apiLogger.Info("web server disabled", "interactive", interactive)
 	}
 	return runtimeLoop.Run(ctx)
 }
@@ -112,7 +133,15 @@ func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
 	return interactive
 }
 
-func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, provider server.LoopStateProvider, warnings []string, broker *server.SessionEventBroker) error {
+func runWebServer(
+	ctx context.Context,
+	runtimeDir string,
+	cfg config.Config,
+	provider server.LoopStateProvider,
+	warnings []string,
+	broker *server.SessionEventBroker,
+	logger *charmlog.Logger,
+) error {
 	port := cfg.Server.Port
 	if port == 0 {
 		port = 3000
@@ -137,15 +166,29 @@ func runWebServer(ctx context.Context, runtimeDir string, cfg config.Config, pro
 	}()
 
 	srv.WaitReady()
+	logger.Info("listening", "addr", srv.Addr())
+
+	url := "http://" + srv.Addr()
+	if devURL := os.Getenv("NOODLE_BROWSER_URL"); devURL != "" {
+		url = devURL
+	}
 	if os.Getenv("NOODLE_NO_BROWSER") != "1" {
-		url := "http://" + srv.Addr()
-		if devURL := os.Getenv("NOODLE_BROWSER_URL"); devURL != "" {
-			url = devURL
-		}
+		logger.Info("opening browser", "url", url)
 		openBrowserFunc(url)
+	} else {
+		logger.Info("browser launch skipped", "reason", "NOODLE_NO_BROWSER=1", "url", url)
 	}
 
 	return <-errCh
+}
+
+func newAPILogger(w io.Writer) *charmlog.Logger {
+	return charmlog.NewWithOptions(w, charmlog.Options{
+		Level:           charmlog.InfoLevel,
+		Prefix:          "api",
+		ReportTimestamp: true,
+		TimeFormat:      time.RFC3339Nano,
+	})
 }
 
 func openBrowser(url string) {

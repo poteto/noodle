@@ -171,6 +171,7 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	}
 	if runtimeName != "process" {
 		if fallback := l.deps.Runtimes["process"]; fallback != nil {
+			l.logger.Warn("runtime dispatch failed, falling back to process", "runtime", runtimeName, "error", err)
 			req.Runtime = "process"
 			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
 			return fallback.Dispatch(ctx, req)

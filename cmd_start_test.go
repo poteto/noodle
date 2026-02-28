@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/poteto/noodle/config"
@@ -50,8 +53,10 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalDir) })
 
 	fakeLoop := &fakeStartLoop{}
+	var capturedDeps loop.Dependencies
 	originalFactory := newStartRuntimeLoop
-	newStartRuntimeLoop = func(string, string, config.Config, loop.Dependencies) startRuntimeLoop {
+	newStartRuntimeLoop = func(_ string, _ string, _ config.Config, deps loop.Dependencies) startRuntimeLoop {
+		capturedDeps = deps
 		return fakeLoop
 	}
 	t.Cleanup(func() { newStartRuntimeLoop = originalFactory })
@@ -65,6 +70,9 @@ func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	}
 	if fakeLoop.runs != 0 {
 		t.Fatalf("run calls = %d, want 0", fakeLoop.runs)
+	}
+	if capturedDeps.Logger == nil {
+		t.Fatal("expected runStart to inject a logger dependency")
 	}
 }
 
@@ -98,5 +106,23 @@ func TestShouldStartServer(t *testing.T) {
 				t.Fatalf("shouldStartServer(%v, %v) = %v, want %v", tt.enabled, tt.interactive, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNewAPILogger(t *testing.T) {
+	var buf bytes.Buffer
+	logger := newAPILogger(&buf)
+
+	if got := logger.GetPrefix(); got != "api" {
+		t.Fatalf("prefix = %q, want api", got)
+	}
+
+	slog.New(logger).Info("orders-next promoted", "order", "80")
+	out := buf.String()
+	if !strings.Contains(out, "orders-next promoted") {
+		t.Fatalf("log output missing message: %q", out)
+	}
+	if !strings.Contains(out, "order=80") {
+		t.Fatalf("log output missing attr: %q", out)
 	}
 }

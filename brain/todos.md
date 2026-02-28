@@ -14,10 +14,6 @@
 
 77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
 
-## Server
-
-80. [ ] Add charmbracelet/log (https://github.com/charmbracelet/log) for styled API logs on `noodle start`
-
 ## Modes
 
 68. [ ] Unified involvement levels — replace `autonomy` and `schedule.run` with a single `mode` field that sets sensible defaults for scheduling, dispatch, and merge gating. Three levels: `auto` (Noodle runs the kitchen, respect per-skill `permissions.merge`), `supervised` (auto-schedule, auto-dispatch, human approves all merges), `manual` (user drives scheduling and dispatch, human approves all merges). Per-skill `permissions.merge` still works as a fine-grained override. Subsumes current `autonomy` (auto/approve) and `schedule.run` (after-each/after-n/manual) into one dial. [[plans/68-unified-involvement-levels/overview]]

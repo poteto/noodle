@@ -30,6 +30,7 @@
 - [[codebase/control-api-snake-camel-compat]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
+- [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]

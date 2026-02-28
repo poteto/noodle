@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -479,5 +480,31 @@ func TestLogResumeStateTransition(t *testing.T) {
 	}
 	if !foundResume {
 		t.Fatalf("missing paused→running transition, got %v", transitions)
+	}
+}
+
+func TestLogRuntimeDispatchFallback(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger)
+
+	remoteRuntime := newMockRuntime()
+	remoteRuntime.dispatchErr = errors.New("remote runtime unavailable")
+	tc.loop.deps.Runtimes["sprites"] = remoteRuntime
+
+	req := loopruntime.DispatchRequest{
+		Name:    "fallback-test",
+		Prompt:  "do something",
+		Runtime: "sprites",
+	}
+	if _, err := tc.loop.dispatchSession(context.Background(), req); err != nil {
+		t.Fatalf("dispatchSession: %v", err)
+	}
+
+	entry, ok := handler.findEntry("runtime dispatch failed, falling back to process")
+	if !ok {
+		t.Fatal("expected runtime fallback warning log")
+	}
+	if entry.Attrs["runtime"] != "sprites" {
+		t.Fatalf("runtime attr = %v, want sprites", entry.Attrs["runtime"])
 	}
 }
