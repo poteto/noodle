@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { connectSSE, SNAPSHOT_KEY, SSE_STATUS_KEY } from "./sse";
 import type { SSEStatus } from "./sse";
 import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
-import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse } from "./types";
+import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse, ChannelId } from "./types";
 
 // Connects SSE on mount, seeds cache with initial fetch, and keeps
 // snapshot data live via server-sent events.
@@ -62,6 +62,11 @@ export function useReviewDiff(itemId: string) {
     queryFn: () => fetchReviewDiff(itemId),
     staleTime: Infinity,
   });
+}
+
+export function useActiveChannel() {
+  const [activeChannel, setActiveChannel] = useState<ChannelId>({ type: "scheduler" });
+  return { activeChannel, setActiveChannel } as const;
 }
 
 export function useSendControl() {

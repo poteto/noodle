@@ -13,12 +13,12 @@ export type {
   ControlAck,
   ConfigDefaults,
   DiffResponse,
-  KanbanColumns,
+  ChannelId,
   TraceFilter,
   LoopState,
   Health,
 } from "./types";
-export { deriveKanbanColumns } from "./types";
+export { useActiveChannel } from "./hooks";
 export { fetchSnapshot, normalizeSnapshot, fetchSessionEvents, sendControl, fetchConfig } from "./api";
 export { connectSSE, SNAPSHOT_KEY } from "./sse";
 export type { SSEStatus } from "./sse";

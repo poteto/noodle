@@ -1,61 +1,17 @@
 @import "tailwindcss";
 @import "./starry-night-theme.css";
 
-/* Poster theme — yellow screams, black anchors, white card cutouts. */
-
 @theme {
-  --font-display: "Outfit", system-ui, sans-serif;
-  --font-body: "DM Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
-
-  --color-bg-0: #fbbf24;
-  --color-bg-1: #fff;
-  --color-bg-2: #f5eed8;
-  --color-bg-3: #e8dfc0;
-  --color-bg-hover: #f0e8c8;
-  --color-bg-selected: #fff3c0;
-
-  --color-accent: #1a1400;
-  --color-accent-dim: #3a3020;
-  --color-accent-glow: rgba(26, 20, 0, 0.08);
-  --color-accent-on: #fbbf24;
-
-  --color-border-DEFAULT: #1a1400;
-  --color-border-subtle: #d4c090;
-
-  --color-text-0: #1a1400;
-  --color-text-1: #4a4020;
-  --color-text-2: #7a6830;
-  --color-text-3: #b0a060;
-
-  --color-ngreen: #1a7a3a;
-  --color-ngreen-dim: #c8ecd0;
-  --color-ngreen-bg: rgba(26, 122, 58, 0.1);
-  --color-nyellow: #8a6800;
-  --color-nyellow-dim: #f0e0a0;
-  --color-nyellow-bg: rgba(138, 104, 0, 0.08);
-  --color-norange: #b85a20;
-  --color-norange-bg: rgba(184, 90, 32, 0.08);
-  --color-nred: #a82020;
-  --color-nred-dim: #f0c8c8;
-  --color-nblue: #1858a0;
-  --color-nblue-dim: #c8d8f0;
-  --color-nblue-bg: rgba(24, 88, 160, 0.08);
-  --color-npink: #a04070;
-  --color-npink-bg: rgba(160, 64, 112, 0.08);
-  --color-npurple: #5830a0;
-  --color-npurple-bg: rgba(88, 48, 160, 0.06);
-
-  --shadow-poster-sm: 3px 3px 0 #1a1400;
-  --shadow-poster-md: 5px 5px 0 #1a1400;
-  --shadow-poster-lg: 7px 7px 0 #1a1400;
-  --shadow-card: 4px 4px 0 #1a1400;
-  --shadow-card-hover: 6px 8px 0 #1a1400;
-  --shadow-btn: 3px 3px 0 rgba(0, 0, 0, 0.2);
-  --shadow-btn-hover: 5px 5px 0 rgba(0, 0, 0, 0.3);
-  --shadow-btn-active: 1px 1px 0 rgba(0, 0, 0, 0.2);
-  --shadow-chat: -8px 0 0 #1a1400;
-  --shadow-modal: 8px 8px 0 #1a1400;
+  --color-bg-depth: #030303;
+  --color-bg-surface: #0A0A0A;
+  --color-border-subtle: #1A1A1A;
+  --color-text-primary: #E0E0E0;
+  --color-accent: #FBDB24;
+  --color-green: #4ADE80;
+  --color-red: #F87171;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
 
   --animate-pulse-dot: pulse-dot 1.5s ease-in-out infinite;
   --animate-skeleton: skeleton-pulse 1.2s ease-in-out infinite;
@@ -124,8 +80,8 @@
     height: 100%;
     font-family: var(--font-body);
     font-size: 0.9375rem;
-    color: var(--color-text-0);
-    background: var(--color-bg-0);
+    color: var(--color-text-primary);
+    background: var(--color-bg-depth);
     -webkit-font-smoothing: antialiased;
   }
 
@@ -136,22 +92,22 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-bg-3);
+    background: var(--color-border-subtle);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-3);
+    background: var(--color-text-primary);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-nyellow);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
   button:focus-visible,
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    outline: 2px solid var(--color-nyellow);
+    outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
 

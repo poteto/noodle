@@ -10,7 +10,6 @@ import type {
   EventLine as RawEventLine,
 } from "./generated-types";
 export type { FeedEvent } from "./generated-types";
-import type { PendingReviewItem } from "./generated-loop-types";
 export type { PendingReviewItem } from "./generated-loop-types";
 
 export type {
@@ -105,20 +104,6 @@ export interface ConfigDefaults {
   task_types: string[];
 }
 
-// Kanban column derivation from flat snapshot.
-export interface KanbanColumns {
-  queued: Order[];
-  cooking: Session[];
-  review: PendingReviewItem[];
-  done: Session[];
-}
-
-export function deriveKanbanColumns(snapshot: Snapshot): KanbanColumns {
-  const activeSet = new Set(snapshot.active_order_ids);
-  return {
-    queued: snapshot.orders.filter((order) => !activeSet.has(order.id)),
-    cooking: snapshot.active,
-    review: snapshot.pending_reviews,
-    done: snapshot.recent,
-  };
-}
+export type ChannelId =
+  | { type: "scheduler" }
+  | { type: "agent"; sessionId: string };
