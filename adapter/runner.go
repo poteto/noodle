@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/poteto/noodle/config"
@@ -105,9 +104,3 @@ func commandWithArgs(command string, args []string) string {
 	return b.String()
 }
 
-func runtimeDir(projectDir string) string {
-	if strings.TrimSpace(projectDir) == "" {
-		return ".noodle"
-	}
-	return filepath.Join(projectDir, ".noodle")
-}

@@ -249,11 +249,8 @@ model = "y"
 }
 
 func TestValidationClassification(t *testing.T) {
-	oldLookPath := lookPath
-	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
 	oldStatPath := statPath
 	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
-	t.Cleanup(func() { lookPath = oldLookPath })
 	t.Cleanup(func() { statPath = oldStatPath })
 
 	config := DefaultConfig()
@@ -305,11 +302,8 @@ func TestValidationClassification(t *testing.T) {
 }
 
 func TestValidationRepairablesOnlyCanSpawn(t *testing.T) {
-	oldLookPath := lookPath
-	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
 	oldStatPath := statPath
 	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
-	t.Cleanup(func() { lookPath = oldLookPath })
 	t.Cleanup(func() { statPath = oldStatPath })
 
 	config := DefaultConfig()
@@ -334,10 +328,6 @@ func TestValidateExpandsHomeInAgentPath(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(homeDir, ".claude"), 0o755); err != nil {
 		t.Fatalf("mkdir ~/.claude: %v", err)
 	}
-
-	oldLookPath := lookPath
-	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
-	t.Cleanup(func() { lookPath = oldLookPath })
 
 	config := DefaultConfig()
 	config.Agents.Claude.Path = "~/.claude"
@@ -379,11 +369,8 @@ skill = "custom-backlog"
 }
 
 func TestValidateAdapterScriptCommandVsPathChecks(t *testing.T) {
-	oldLookPath := lookPath
-	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
 	oldStatPath := statPath
 	statPath = func(name string) (os.FileInfo, error) { return nil, os.ErrNotExist }
-	t.Cleanup(func() { lookPath = oldLookPath })
 	t.Cleanup(func() { statPath = oldStatPath })
 
 	config := DefaultConfig()

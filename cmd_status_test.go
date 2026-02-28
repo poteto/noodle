@@ -32,9 +32,6 @@ func TestRunStatusNoActiveCooks(t *testing.T) {
 	if !strings.Contains(output, "orders=0") {
 		t.Fatalf("expected orders depth output, got: %q", output)
 	}
-	if !strings.Contains(output, "cost=$0.00") {
-		t.Fatalf("expected total cost output, got: %q", output)
-	}
 }
 
 func TestRunStatusReadsSessionsAndOrders(t *testing.T) {
@@ -81,9 +78,6 @@ func TestRunStatusReadsSessionsAndOrders(t *testing.T) {
 	}
 	if !strings.Contains(output, "orders=3") {
 		t.Fatalf("expected orders depth, got: %q", output)
-	}
-	if !strings.Contains(output, "cost=$0.00") {
-		t.Fatalf("expected total cost, got: %q", output)
 	}
 	if !strings.Contains(output, "loop=draining") {
 		t.Fatalf("expected loop state, got: %q", output)

@@ -14,8 +14,7 @@ import (
 
 type statusSummary struct {
 	ActiveCooks int
-	OrdersDepth  int
-	TotalCost   float64
+	OrdersDepth int
 	LoopState   string
 }
 
@@ -43,9 +42,8 @@ func runStatus(app *App) error {
 	if summary.ActiveCooks == 0 {
 		fmt.Fprintf(
 			os.Stdout,
-			"no active cooks | orders=%d | cost=$%.2f | loop=%s\n",
+			"no active cooks | orders=%d | loop=%s\n",
 			summary.OrdersDepth,
-			summary.TotalCost,
 			summary.LoopState,
 		)
 		return nil
@@ -53,17 +51,16 @@ func runStatus(app *App) error {
 
 	fmt.Fprintf(
 		os.Stdout,
-		"active cooks=%d | orders=%d | cost=$%.2f | loop=%s\n",
+		"active cooks=%d | orders=%d | loop=%s\n",
 		summary.ActiveCooks,
 		summary.OrdersDepth,
-		summary.TotalCost,
 		summary.LoopState,
 	)
 	return nil
 }
 
 func readStatusSummary(runtimeDir string) (statusSummary, error) {
-	active, cost, loopState, err := readSessionSummary(runtimeDir)
+	active, loopState, err := readSessionSummary(runtimeDir)
 	if err != nil {
 		return statusSummary{}, err
 	}
@@ -73,23 +70,22 @@ func readStatusSummary(runtimeDir string) (statusSummary, error) {
 	}
 	return statusSummary{
 		ActiveCooks: active,
-		OrdersDepth:  ordersDepth,
-		TotalCost:   cost,
+		OrdersDepth: ordersDepth,
 		LoopState:   loopState,
 	}, nil
 }
 
-func readSessionSummary(runtimeDir string) (active int, totalCost float64, loopState string, _ error) {
+func readSessionSummary(runtimeDir string) (active int, loopState string, _ error) {
 	status, err := statusfile.Read(filepath.Join(runtimeDir, "status.json"))
 	if err != nil {
-		return 0, 0, "", err
+		return 0, "", err
 	}
 	active = len(status.Active)
 	loopState = normalizeLoopState(status.LoopState)
 	if loopState == "" {
 		loopState = "running"
 	}
-	return active, totalCost, loopState, nil
+	return active, loopState, nil
 }
 
 func normalizeLoopState(value string) string {

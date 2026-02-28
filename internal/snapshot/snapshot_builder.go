@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -213,36 +212,3 @@ func nonNilReviews(s []loop.PendingReviewItem) []loop.PendingReviewItem {
 	return append([]loop.PendingReviewItem(nil), s...)
 }
 
-// InferTaskType extracts a task type from session/worktree naming conventions.
-// Format: order-id-stageIndex-task-key (dasherized)
-func InferTaskType(value string) string {
-	lower := strings.ToLower(strings.TrimSpace(value))
-	if lower == "" {
-		return ""
-	}
-
-	known := []string{"execute", "plan", "review", "reflect", "schedule", "quality", "debugging", "meditate", "oops", "bootstrap", "repair", "request-changes"}
-
-	// Dasherized format: find the stage index segment and read the trailing task key.
-	if dashParts := strings.Split(lower, "-"); len(dashParts) >= 3 {
-		for i := len(dashParts) - 2; i >= 0; i-- {
-			if _, err := strconv.Atoi(dashParts[i]); err != nil {
-				continue
-			}
-			taskCandidate := strings.Join(dashParts[i+1:], "-")
-			for _, key := range known {
-				if taskCandidate == key || strings.HasPrefix(taskCandidate, key+"-") {
-					return key
-				}
-			}
-		}
-	}
-
-	// Older prefix-based session IDs (e.g., "execute-...").
-	for _, prefix := range known {
-		if strings.HasPrefix(lower, prefix) {
-			return prefix
-		}
-	}
-	return ""
-}

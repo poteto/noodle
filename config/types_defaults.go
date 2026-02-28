@@ -151,8 +151,7 @@ type ConfigDiagnostic struct {
 
 const (
 	DiagnosticCodeRoutingDefaultsMissing = "routing_defaults_missing"
-	DiagnosticCodeRuntimeProcessMissing  = "runtime_process_missing"
-	DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
+DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
 	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"

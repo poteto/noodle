@@ -360,14 +360,6 @@ func mkdirAll(t *testing.T, path string) {
 	}
 }
 
-// symlink creates a symbolic link.
-func symlink(t *testing.T, target, link string) {
-	t.Helper()
-	if err := os.Symlink(target, link); err != nil {
-		t.Fatalf("symlink %s -> %s: %v", link, target, err)
-	}
-}
-
 // chmodExec marks a file as executable.
 func chmodExec(t *testing.T, path string) {
 	t.Helper()

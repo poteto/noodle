@@ -399,13 +399,6 @@ func TestSnapshotPendingReviewIncludesReason(t *testing.T) {
 	}
 }
 
-func TestInferTaskTypeDasherizedCookName(t *testing.T) {
-	got := InferTaskType("plan-49-phase-10-2-request-changes")
-	if got != "request-changes" {
-		t.Fatalf("InferTaskType() = %q, want %q", got, "request-changes")
-	}
-}
-
 func TestLoadSnapshotFromLoopState(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Date(2026, 2, 26, 12, 0, 0, 0, time.UTC)

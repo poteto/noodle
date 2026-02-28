@@ -3,15 +3,11 @@ package config
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-var (
-	lookPath = exec.LookPath
-	statPath = os.Stat
-)
+var statPath = os.Stat
 
 func expandHomePath(path string) (string, error) {
 	path = strings.TrimSpace(path)
