@@ -4,7 +4,7 @@ Back to [[plans/75-channel-ui-redesign/overview]]
 
 ## Goal
 
-Mechanical stages (schedule, quality, etc.) should auto-advance when they complete — no human intervention needed. Execute stages require explicit dismiss (human reviews and merges/rejects). This distinction partially exists today but is incomplete and inconsistent.
+Mechanical stages (schedule, quality, etc.) should auto-advance when they complete — no human intervention needed. Execute stages require explicit dismiss (human reviews and merges/rejects). This distinction partially exists today but is incomplete: ALL non-schedule stages get parked in approve mode, even non-mergeable ones like quality/reflect.
 
 ## Skills
 
@@ -13,7 +13,7 @@ Invoke `go-best-practices` before starting.
 ## Routing
 
 - **Provider:** `claude` | **Model:** `claude-opus-4-6`
-- Lifecycle policy change, needs judgment on classification and merge flow
+- Lifecycle policy change, needs judgment on classification and flow
 
 ## What already exists (do NOT reimplement)
 
@@ -22,38 +22,52 @@ Invoke `go-best-practices` before starting.
 - In auto mode, mergeable stages go through merge metadata + merge (inline or queued) before advancing (`cook_completion.go:162-173`)
 - Non-mergeable stages advance directly in auto mode (`cook_completion.go:157`)
 - The approve-mode quality gate also runs in `controlMerge` (`control.go:275`), not just `handleCompletion`
-- `CanMerge` is already resolved from skill frontmatter via registry metadata (`cook_merge.go:97`, `taskreg/registry.go`)
+- `CanMerge` is resolved from skill frontmatter via registry metadata (`cook_merge.go:97`, `taskreg/registry.go`)
+- **`pending_reviews` already exists** — `pending_review.go` tracks parked cooks in `pending-review.json`, snapshot exposes them as `pending_reviews` and `pending_review_count`
 
 ## Key insight from review
 
-**Stage classification should NOT be a hardcoded key list.** Task keys are registry-driven — any skill with `noodle:` frontmatter becomes a task type (`taskreg/registry.go:32`). Beyond `schedule/quality/reflect/execute`, there are also `debate`, `oops`, `meditate`, and potentially user-defined keys. Hardcoding a list of "mechanical" keys is fragile and wrong.
+**Stage classification comes from `canMerge` metadata — but the default matters.** `skill/frontmatter.go:33` defaults `CanMerge()` to `true` when `permissions.merge` is omitted. Currently, schedule/quality/reflect all omit this field, so they resolve as mergeable — which is wrong. They don't produce worktrees that need review.
 
-Instead, derive the classification from existing registry metadata:
-- **Mechanical:** stages where `CanMerge = false` (no worktree to review) AND the task is not `execute`-type. Schedule already has its own special case.
-- **Interactive:** stages where `CanMerge = true` (has a worktree that needs review) OR the task is explicitly `execute`-type.
+**Fix the data, not the logic.** Add explicit `permissions.merge: false` to schedule, quality, and reflect skill frontmatter. This is the correct fix per fix-root-causes: the problem is missing metadata, not missing classification logic.
 
-Actually, the simplest redesign: **the only stages that need human review are mergeable ones in approve mode.** Everything else auto-advances. This is nearly what the code does today — the gap is that ALL non-schedule stages get parked in approve mode, even non-mergeable ones like quality/reflect.
+**Don't add a `"review"` stage status.** Three independent reviewers confirmed this cascades into 6+ call sites: `ValidateStageStatus` (`orderx/types.go:74`), `advanceOrder` (`orders.go:127` — only advances `active|merging|pending`), `busyTargets` (`orders.go:73`), `dispatchableStages` (`orders.go:293`), and the frontend `StageStatus` enum (`ui/src/client/enums.ts:9`). The existing `pending_reviews` mechanism already solves this — the channel UI derives review state from the snapshot's `pending_reviews` field.
 
 ## Changes
 
 ### Modify
+- `.agents/skills/schedule/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
+- `.agents/skills/quality/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
+- `.agents/skills/reflect/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
 - `loop/cook_completion.go` — in `handleCompletion`, change the approve-mode path: instead of parking ALL non-schedule stages, only park stages where `canMerge = true`. Non-mergeable stages auto-advance even in approve mode. This is a small change to the existing conditional.
-- `loop/pending_review.go` — add a `"review"` status to the stage when it's parked for review, so the UI has an explicit state instead of inferring from a side file. This makes the channel UI's review banner unambiguous.
+
+### Feed events
+
+`readLoopEvents` in `internal/snapshot/snapshot.go:458` currently maps only 5 loop event types and drops the rest. The channel UI needs lifecycle transitions in the scheduler feed. Map ALL defined loop event types from `event/loop_event.go:17`:
+
+- `stage.completed` — label: "Completed", category: "stage_lifecycle"
+- `stage.failed` — label: "Failed", category: "stage_lifecycle"
+- `order.completed` — label: "Completed", category: "order_lifecycle"
+- `order.failed` — label: "Failed", category: "order_lifecycle"
+- `order.requeued` — label: "Requeued", category: "order_lifecycle"
+- `quality.written` — label: "Quality", category: "quality"
+- `schedule.completed` — label: "Scheduled", category: "schedule"
+- `worktree.merged` — label: "Merged", category: "merge"
+- `merge.conflict` — label: "Conflict", category: "merge"
+
+Also: populate `FeedEvent.task_type` (currently always empty per `snapshot.go` constructors) and normalize scheduler feed identity — steer events use `session_id="chef"`, loop events use `session_id="loop"`. Pick one canonical scheduler channel ID.
 
 ### What NOT to change
-- Don't add a `StageKind` type or hardcoded key-to-kind mapping — use existing `canMerge` metadata
+- Don't add a `StageKind` type or hardcoded key-to-kind mapping
+- Don't add a `"review"` stage status — use existing `pending_reviews`
 - Don't touch the `controlMerge` path — it already handles approve-mode quality gating correctly
 - Don't touch the schedule special case — it already works
-- `advanceOrder` — no changes needed, it already handles the relevant stage statuses
-
-## Feed events gap
-
-`readLoopEvents` in `internal/snapshot/snapshot.go:431` currently maps only 4 loop event types (`order.dropped`, `registry.rebuilt`, `bootstrap.*`, `sync.degraded`) and drops the rest. The channel UI needs `stage.completed`, `order.completed`, `stage.failed`, `order.failed`, `quality.written`, and `schedule.completed` mapped to feed events. Add these mappings so the scheduler feed timeline shows lifecycle transitions.
+- Don't touch `advanceOrder` — it already handles the relevant stage statuses
 
 ## Data Structures
 
-- `Stage.Status` — add `"review"` as a valid status (alongside pending/active/merging/completed/failed/cancelled)
-- No new types — classification derived from existing `canMerge` boolean
+- No new types or statuses
+- Skill frontmatter gains explicit `permissions.merge: false` where appropriate
 
 ## Verification
 
@@ -61,10 +75,12 @@ Actually, the simplest redesign: **the only stages that need human review are me
 - `go test ./...` passes (including new tests)
 
 ### Tests
-- Unit test: non-mergeable stage auto-advances in approve mode (not parked for review)
-- Unit test: mergeable stage is parked for review in approve mode
+- Unit test: non-mergeable stage (`canMerge=false`) auto-advances in approve mode (not parked for review)
+- Unit test: mergeable stage (`canMerge=true`) is parked for review in approve mode
 - Unit test: all stages auto-advance in auto mode (existing behavior preserved)
-- Unit test: `readLoopEvents` maps `stage.completed`, `order.completed` etc. to feed events
+- Unit test: schedule, quality, reflect skills resolve `CanMerge() = false` after frontmatter fix
+- Unit test: `readLoopEvents` maps all defined loop event types to feed events
+- Unit test: `FeedEvent.task_type` is populated
 
 ### Runtime
 - Submit an order with schedule → execute → quality pipeline in approve mode
