@@ -1,6 +1,6 @@
 Back to [[plans/81-stage-groups/overview]]
 
-# Phase 2 — Group-aware dispatch
+# Phase 3 — Group-aware dispatch
 
 **Routing:** claude / claude-opus-4-6
 
@@ -21,18 +21,20 @@ Current logic: iterates stages, breaks after finding the first pending stage. Ne
 
 ### `loop/orders.go` — `busyTargets`
 
-Current logic: order is busy if any stage is active. New logic: order is busy if all stages in the current group are either active/merging (nothing left to dispatch in this group). An order with 3 group-0 stages where 1 is active and 2 are pending is NOT fully busy — it has dispatchable work.
-
-Actually, `busyTargets` is used to skip orders in `dispatchableStages`. The cleaner approach: remove `busyTargets` from the dispatch path and fold the logic directly into `dispatchableStages`, which already handles the per-stage status check. Keep `busyTargets` only for its other callers (if any).
+`busyTargets` has exactly one caller: `planCycleSpawns` at `loop_cycle_pipeline.go:139`. Remove `busyTargets` entirely and fold the group-aware busy logic into `dispatchableStages`. Update `planCycleSpawns` to no longer call `busyTargets` — the busy-set construction from `activeCooksByOrder` keys (line 161) already uses composite keys (Phase 2), so extract orderIDs from values instead.
 
 ### `loop/orders.go` — `activeStageForOrder`
 
-This function returns a single stage. With groups, it needs to return all active/pending stages in the current group. Rename to `activeStagesForOrder` returning `[]int` (stage indices). Update all callers.
+This function returns a single stage. With groups, it needs to return all active/pending stages in the current group. Rename to `activeStagesForOrder` returning `[]int` (stage indices). Update all callers:
+- `adopted_helpers.go:39` — `buildAdoptedCook`
+- `control_orders.go:77` — `controlEditItem`
+- `schedule.go:84` — `spawnSchedule`
+- `control_scheduler.go:25` — `controlScheduler` order scan
+- `control_scheduler.go:121` — `controlParkReview`
 
 ## Verification
 
 - Write unit tests for `dispatchableStages` with group scenarios:
-  - Single group (backward compat): returns one stage at a time
   - Two stages in group 0: returns both
   - Group 0 complete, group 1 pending: returns group 1 stages
   - Group 0 has 1 active + 1 pending: returns the pending one

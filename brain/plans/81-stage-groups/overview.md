@@ -43,8 +43,8 @@ The `activeCooksByOrder` map in `loop/types.go` currently maps `orderID → *coo
 ## Phases
 
 1. [[plans/81-stage-groups/phase-01-types]] — Add Group field to Stage, update schema
-2. [[plans/81-stage-groups/phase-02-dispatch]] — Group-aware dispatch in dispatchableStages
-3. [[plans/81-stage-groups/phase-03-tracking]] — Multi-cook tracking per order
+2. [[plans/81-stage-groups/phase-02-tracking]] — Multi-cook tracking per order
+3. [[plans/81-stage-groups/phase-03-dispatch]] — Group-aware dispatch in dispatchableStages
 4. [[plans/81-stage-groups/phase-04-completion]] — Group-aware advancement and failure
 5. [[plans/81-stage-groups/phase-05-reconcile]] — Crash recovery with parallel groups
 6. [[plans/81-stage-groups/phase-06-skill]] — Update schedule skill and control commands
