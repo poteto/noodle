@@ -264,6 +264,9 @@ func (c Config) AvailableRuntimes() []string {
 	if c.Runtime.spritesDefined && c.Runtime.Sprites.Token() != "" {
 		available = append(available, "sprites")
 	}
+	if c.Runtime.cursorDefined && c.Runtime.Cursor.APIKey() != "" {
+		available = append(available, "cursor")
+	}
 	return available
 }
 
