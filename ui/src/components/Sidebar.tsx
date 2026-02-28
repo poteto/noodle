@@ -101,6 +101,9 @@ export function Sidebar() {
   const isFeedRoute = pathname === "/" || pathname.startsWith("/actor/");
   const wsStatus = useWSStatus();
   const statusLabel = wsStatus === "connected" ? "running" : wsStatus === "connecting" ? "connecting" : "offline";
+  const schedulerRunning = snapshot.sessions.some(
+    (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
+  );
 
   return (
     <aside className="sidebar">
@@ -125,7 +128,7 @@ export function Sidebar() {
           <div className="agent-avatar">M</div>
           <div className="agent-info">
             <span className="agent-name">Manager</span>
-            <span className="agent-meta-line">SCHEDULER · LLM</span>
+            <span className="agent-meta-line">{schedulerRunning ? "MONITORING THE SITUATION" : "IDLE"}</span>
           </div>
           <div className={`status-dot ${wsStatus === "connected" ? "active" : "idle"}`} />
         </li>
