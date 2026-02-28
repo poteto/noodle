@@ -671,6 +671,123 @@ func TestNormalizeAndValidateOrdersDropsOnlyOnFailureStages(t *testing.T) {
 	}
 }
 
+func TestNormalizeAndValidateOrdersTruncatesExtraPrompt(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := ordersTestRegistry()
+
+	tests := []struct {
+		name       string
+		input      string
+		wantLen    int
+		wantChange bool
+	}{
+		{
+			name:       "under limit unchanged",
+			input:      "short prompt",
+			wantLen:    len("short prompt"),
+			wantChange: false,
+		},
+		{
+			name:       "exactly 1000 unchanged",
+			input:      strings.Repeat("a", 1000),
+			wantLen:    1000,
+			wantChange: false,
+		},
+		{
+			name:       "over limit word boundary",
+			input:      strings.Repeat("word ", 250), // 1250 chars, spaces at every 5th pos
+			wantChange: true,
+		},
+		{
+			name:       "over limit no spaces hard truncate",
+			input:      strings.Repeat("x", 1500),
+			wantLen:    1000,
+			wantChange: true,
+		},
+		{
+			name:       "over limit last space before 80pct fallback",
+			input:      strings.Repeat("x", 100) + " " + strings.Repeat("y", 1400), // space at pos 100, well below 800
+			wantLen:    1000,
+			wantChange: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			of := OrdersFile{
+				Orders: []Order{
+					{
+						ID:     "1",
+						Status: OrderStatusActive,
+						Stages: []Stage{
+							{
+								TaskKey:     "execute",
+								Provider:    "claude",
+								Model:       "claude-opus-4-6",
+								Status:      StageStatusPending,
+								ExtraPrompt: tt.input,
+							},
+						},
+					},
+				},
+			}
+
+			got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if changed != tt.wantChange {
+				t.Errorf("changed = %v, want %v", changed, tt.wantChange)
+			}
+			result := got.Orders[0].Stages[0].ExtraPrompt
+			resultRunes := []rune(result)
+			if tt.wantLen > 0 && len(resultRunes) != tt.wantLen {
+				t.Errorf("len(result) = %d runes, want %d", len(resultRunes), tt.wantLen)
+			}
+			if tt.wantChange && len(resultRunes) > 1000 {
+				t.Errorf("truncated result has %d runes, should be <= 1000", len(resultRunes))
+			}
+		})
+	}
+}
+
+func TestNormalizeAndValidateOrdersTruncatesOnFailureExtraPrompt(t *testing.T) {
+	cfg := config.DefaultConfig()
+	reg := ordersTestRegistry()
+	of := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     "1",
+				Status: OrderStatusFailing,
+				Stages: []Stage{
+					{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusFailed},
+				},
+				OnFailure: []Stage{
+					{
+						TaskKey:     "execute",
+						Provider:    "claude",
+						Model:       "claude-opus-4-6",
+						Status:      StageStatusPending,
+						ExtraPrompt: strings.Repeat("z", 1500),
+					},
+				},
+			},
+		},
+	}
+
+	got, changed, err := NormalizeAndValidateOrders(of, reg, cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected changed for OnFailure extra_prompt truncation")
+	}
+	result := got.Orders[0].OnFailure[0].ExtraPrompt
+	if len([]rune(result)) > 1000 {
+		t.Errorf("OnFailure extra_prompt has %d runes, should be <= 1000", len([]rune(result)))
+	}
+}
+
 // jsonEqual compares two json.RawMessage values semantically.
 func jsonEqual(t *testing.T, a, b json.RawMessage) bool {
 	t.Helper()

@@ -207,6 +207,53 @@ func TestOrderxOrderOnFailureNilAndEmpty(t *testing.T) {
 	})
 }
 
+func TestOrderxExtraPromptJSONRoundTrip(t *testing.T) {
+	t.Run("populated", func(t *testing.T) {
+		stage := Stage{
+			Provider:    "claude",
+			Model:       "claude-opus-4-6",
+			Status:      StageStatusPending,
+			ExtraPrompt: "Run tests before committing",
+		}
+		data, err := json.Marshal(stage)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		var decoded Stage
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if decoded.ExtraPrompt != stage.ExtraPrompt {
+			t.Errorf("ExtraPrompt = %q, want %q", decoded.ExtraPrompt, stage.ExtraPrompt)
+		}
+	})
+
+	t.Run("omitempty", func(t *testing.T) {
+		stage := Stage{
+			Provider: "claude",
+			Model:    "claude-opus-4-6",
+			Status:   StageStatusPending,
+		}
+		data, err := json.Marshal(stage)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		raw := string(data)
+		if contains(raw, "extra_prompt") {
+			t.Errorf("expected extra_prompt omitted from JSON, got: %s", raw)
+		}
+	})
+}
+
+func contains(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
 func TestOrderxStageStatusConstants(t *testing.T) {
 	tests := []struct {
 		got  StageStatus
