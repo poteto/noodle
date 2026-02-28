@@ -103,19 +103,36 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
     <div className="flex flex-col h-full">
       <AgentHeader session={session} onStop={handleStop} />
 
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-auto py-3"
-        onScroll={handleScroll}
-      >
-        {events.length === 0 && (
-          <div className="text-neutral-600 text-sm font-body text-center pt-10">
-            No events yet.
-          </div>
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          className="h-full overflow-y-auto py-3 scroll-smooth"
+          onScroll={handleScroll}
+        >
+          {events.length === 0 && (
+            <div className="text-neutral-600 text-sm font-body text-center pt-10">
+              No events yet.
+            </div>
+          )}
+          {events.map((event) => (
+            <MessageRow key={event.at} event={event} />
+          ))}
+        </div>
+
+        {!autoScroll && (
+          <button
+            type="button"
+            onClick={() => {
+              if (containerRef.current) {
+                containerRef.current.scrollTop = containerRef.current.scrollHeight;
+              }
+              setAutoScroll(true);
+            }}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-accent text-black font-body text-xs font-bold uppercase tracking-wider px-3 py-1.5 animate-fade-in"
+          >
+            New messages
+          </button>
         )}
-        {events.map((event) => (
-          <MessageRow key={event.at} event={event} />
-        ))}
       </div>
 
       {pendingReview && <ReviewBanner review={pendingReview} />}

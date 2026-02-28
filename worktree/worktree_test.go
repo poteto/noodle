@@ -556,7 +556,7 @@ func TestMergeLockAcquiredAndReleased(t *testing.T) {
 	}
 }
 
-func TestMergeLockReleasedOnFailure(t *testing.T) {
+func TestMergeLockReleasedOnError(t *testing.T) {
 	t.Parallel()
 	skipWorktreeIntegrationShort(t)
 

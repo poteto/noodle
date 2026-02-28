@@ -250,6 +250,21 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 			ack.Status = "error"
 			ack.Message = err.Error()
 		}
+	case "advance":
+		if err := l.controlAdvance(cmd.OrderID); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "add-stage":
+		if err := l.controlAddStage(cmd); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
+	case "park-review":
+		if err := l.controlParkReview(cmd.OrderID, cmd.Prompt); err != nil {
+			ack.Status = "error"
+			ack.Message = err.Error()
+		}
 	default:
 		ack.Status = "error"
 		ack.Message = "unsupported action"

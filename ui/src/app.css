@@ -75,6 +75,12 @@
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    border-radius: 0;
+  }
+
   html,
   body {
     height: 100%;
@@ -93,7 +99,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: var(--color-border-subtle);
-    border-radius: 3px;
+    border-radius: 0;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-primary);

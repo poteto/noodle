@@ -31,7 +31,7 @@ export function SchedulerFeed() {
       </div>
 
       {/* Order summary list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto scroll-smooth p-4 space-y-3">
         {snapshot.orders.length === 0 && (
           <p className="text-sm text-neutral-600">No orders yet. Send a prompt to start.</p>
         )}

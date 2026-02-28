@@ -28,7 +28,7 @@ func TestRunnerRunSuccessWithArgs(t *testing.T) {
 	}
 }
 
-func TestRunnerRunCapturesStderrOnFailure(t *testing.T) {
+func TestRunnerRunCapturesStderrOnError(t *testing.T) {
 	runner := NewRunner(t.TempDir(), config.Config{
 		Adapters: map[string]config.AdapterConfig{
 			"backlog": {

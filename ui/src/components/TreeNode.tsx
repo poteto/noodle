@@ -20,14 +20,13 @@ export function TreeNodeCard({ data }: { data: TreeNodeData }) {
       style={{
         background: "var(--color-bg-surface)",
         border: `1px solid ${isActive ? "var(--color-accent)" : "var(--color-border-subtle)"}`,
-        borderRadius: "4px",
         padding: "8px 10px",
         width: "160px",
         color: "var(--color-text-primary)",
       }}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        <span className={`inline-block w-2 h-2 rounded-sm shrink-0 ${dotColor}`} />
+        <span className={`inline-block w-2 h-2 shrink-0 ${dotColor}`} />
         <span className="truncate font-medium">{data.name}</span>
       </div>
       {data.currentAction && (
