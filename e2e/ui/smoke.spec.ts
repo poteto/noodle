@@ -1,16 +1,58 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Noodle UI smoke", () => {
-  test("board loads with columns", async ({ page }) => {
+  test("channel layout loads with sidebar, feed, and context panel", async ({ page }) => {
     await page.goto("/");
 
-    // Header renders with the app name
-    await expect(page.getByText("noodle")).toBeVisible();
+    // NOODLE header visible in sidebar
+    await expect(page.getByText("NOODLE")).toBeVisible();
 
-    // Four kanban columns render with their exact title text
-    for (const col of ["Queued", "Cooking", "Review", "Done"]) {
-      await expect(page.getByText(col, { exact: true })).toBeVisible();
-    }
+    // Nav links visible
+    await expect(page.getByText("DASHBOARD")).toBeVisible();
+    await expect(page.getByText("LIVE FEED")).toBeVisible();
+    await expect(page.getByText("TREE")).toBeVisible();
+
+    // SCHEDULER section visible
+    await expect(page.getByText("SCHEDULER").first()).toBeVisible();
+
+    // Three-column layout present (grid with sidebar, feed, context)
+    const grid = page.locator(".grid");
+    await expect(grid).toBeVisible();
+  });
+
+  test("sidebar shows scheduler channel", async ({ page }) => {
+    await page.goto("/");
+
+    // Manager channel item exists under SCHEDULER
+    await expect(page.getByText("Manager")).toBeVisible();
+    await expect(page.getByText("LLM")).toBeVisible();
+  });
+
+  test("dashboard route loads", async ({ page }) => {
+    await page.goto("/dashboard");
+
+    // Dashboard header and stats bar render
+    await expect(page.getByText("DASHBOARD")).toBeVisible();
+    await expect(page.getByTestId("stats-bar")).toBeVisible();
+  });
+
+  test("tree route loads", async ({ page }) => {
+    await page.goto("/tree");
+
+    // SVG container renders
+    const svg = page.locator("svg");
+    await expect(svg).toBeVisible();
+  });
+
+  test("steer input is functional", async ({ page }) => {
+    await page.goto("/");
+
+    // Textarea and SEND button exist in the feed area
+    const textarea = page.locator("textarea");
+    await expect(textarea).toBeVisible();
+
+    const sendButton = page.getByRole("button", { name: "SEND" });
+    await expect(sendButton).toBeVisible();
   });
 
   test("snapshot API returns valid data", async ({ request }) => {
