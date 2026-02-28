@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>noodle — quality review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── CSS Variables (canonical) ─────────────────────────── */
+    :root {
+      --bg-depth: #030303;
+      --bg-surface: #0A0A0A;
+      --bg-surface-hover: #111111;
+      --bg-surface-active: #151515;
+
+      --border-subtle: #1A1A1A;
+      --border-active: #333333;
+
+      --text-primary: #E0E0E0;
+      --text-secondary: #888888;
+      --text-tertiary: #666666;
+
+      --accent: #FBDB24;
+      --accent-dim: rgba(251, 219, 36, 0.12);
+      --accent-subtle: rgba(251, 219, 36, 0.06);
+
+      --green: #4ADE80;
+      --green-glow: rgba(74, 222, 128, 0.10);
+      --yellow: #FBDB24;
+      --red: #F87171;
+      --red-dim: rgba(248, 113, 113, 0.10);
+      --blue: #60A5FA;
+      --purple: #C084FC;
+      --orange: #FB923C;
+      --string-green: #86EFAC;
+
+      --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    }
+
+    /* ── Reset ────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-depth);
+      color: var(--text-primary);
+      font-family: var(--font-stack);
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App Layout: 3-Column Grid ───────────────────────── */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr 300px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────── */
+    .sidebar {
+      background: var(--bg-depth);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 18px;
+      height: 18px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .logo-mark::before, .logo-mark::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .logo-mark::before { width: 2px; height: 100%; }
+    .logo-mark::after { width: 100%; height: 2px; }
+
+    .header-status {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-dim);
+    }
+
+    /* Sidebar nav */
+    .sidebar-nav {
+      list-style: none;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 3px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .sidebar-nav a:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .sidebar-nav a.active {
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    /* Section label */
+    .section-label {
+      padding: 20px 20px 8px;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+    }
+
+    /* History list */
+    .history-list {
+      list-style: none;
+      padding: 0 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .history-list li a {
+      display: block;
+      padding: 8px 12px;
+      border-radius: 3px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      font-weight: 400;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .history-list li a:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .history-list li a.current {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+
+    .history-id {
+      color: var(--text-tertiary);
+    }
+
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .footer-value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ── Main Report Panel ────────────────────────────────── */
+    .report-panel {
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .report-panel::-webkit-scrollbar { width: 4px; }
+    .report-panel::-webkit-scrollbar-track { background: transparent; }
+    .report-panel::-webkit-scrollbar-thumb {
+      background: var(--bg-surface-active);
+      border-radius: 2px;
+    }
+
+    /* Feed header */
+    .feed-header {
+      padding: 28px 36px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .feed-header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .feed-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .feed-title .session-name {
+      color: var(--accent);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 2px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .badge-passed {
+      background: var(--green-glow);
+      color: var(--green);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .feed-subtitle {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    /* Report sections */
+    .report-section {
+      padding: 28px 36px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .report-section:last-child {
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Decision Log Table ───────────────────────────────── */
+    .decision-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .decision-table thead th {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      text-align: left;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--border-active);
+    }
+
+    .decision-table thead th:last-child {
+      text-align: right;
+      width: 90px;
+    }
+
+    .decision-table tbody td {
+      padding: 14px 0;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .decision-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .decision-table td:first-child {
+      width: 140px;
+      padding-right: 16px;
+    }
+
+    .decision-table td:last-child {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .agent-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+
+    .agent-chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .agent-chip-dot.scheduler { background: var(--purple); }
+    .agent-chip-dot.worker { background: var(--accent); }
+    .agent-chip-dot.quality { background: var(--green); }
+
+    .decision-text {
+      color: var(--text-secondary);
+    }
+
+    .confidence-high { color: var(--green); }
+    .confidence-mid { color: var(--accent); }
+
+    /* ── Files Changed: Comparison Grid ──────────────────── */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .comparison-card {
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .comparison-card.after {
+      border-left: 3px solid var(--accent);
+    }
+
+    .comparison-label {
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .comparison-preview {
+      padding: 20px;
+      background: var(--bg-surface-hover);
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Mock wireframe elements */
+    .wireframe-bar {
+      height: 10px;
+      border-radius: 2px;
+      background: var(--border-subtle);
+    }
+
+    .wireframe-bar.w-full { width: 100%; }
+    .wireframe-bar.w-3-4 { width: 75%; }
+    .wireframe-bar.w-half { width: 50%; }
+    .wireframe-bar.w-1-3 { width: 33%; }
+
+    .wireframe-rect {
+      width: 100%;
+      height: 50px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border-subtle);
+      background: transparent;
+    }
+
+    .wireframe-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .wireframe-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .wireframe-stack {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Dark variant wireframe overrides */
+    .comparison-card.after .comparison-preview {
+      background: var(--bg-depth);
+    }
+
+    .comparison-card.after .wireframe-bar {
+      background: var(--bg-surface-active);
+    }
+
+    .comparison-card.after .wireframe-rect {
+      border-color: var(--bg-surface-active);
+    }
+
+    .comparison-card.after .wireframe-circle {
+      border-color: var(--bg-surface-active);
+    }
+
+    .light-mock-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 4px;
+    }
+
+    .light-mock-header .wireframe-bar { height: 8px; }
+
+    /* ── Generated Diff ──────────────────────────────────── */
+    .diff-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+    }
+
+    .diff-header {
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      background: var(--bg-surface-hover);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .diff-body {
+      padding: 0;
+      overflow-x: auto;
+    }
+
+    .diff-line {
+      display: flex;
+      padding: 0 16px;
+      white-space: pre;
+    }
+
+    .diff-line-number {
+      width: 44px;
+      text-align: right;
+      padding-right: 16px;
+      color: var(--text-tertiary);
+      user-select: none;
+      flex-shrink: 0;
+      opacity: 0.5;
+    }
+
+    .diff-line-content {
+      flex: 1;
+      color: var(--text-secondary);
+    }
+
+    .diff-line.added {
+      background: rgba(74, 222, 128, 0.06);
+    }
+
+    .diff-line.added .diff-line-content {
+      color: var(--text-primary);
+    }
+
+    .diff-line.removed {
+      background: rgba(248, 113, 113, 0.06);
+    }
+
+    .diff-line.removed .diff-line-content {
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .diff-line.context .diff-line-content {
+      color: var(--text-tertiary);
+    }
+
+    .diff-prefix {
+      user-select: none;
+      margin-right: 8px;
+    }
+
+    .diff-line.added .diff-prefix { color: var(--green); }
+    .diff-line.removed .diff-prefix { color: var(--red); }
+    .diff-line.context .diff-prefix { color: transparent; }
+
+    /* Syntax colors */
+    .keyword { color: var(--purple); }
+    .string { color: var(--string-green); }
+    .attr { color: var(--orange); }
+    .comment { color: var(--text-tertiary); font-style: italic; }
+    .punctuation { color: var(--text-tertiary); }
+
+    /* ── Context / Metrics Panel ─────────────────────────── */
+    .context-panel {
+      background: var(--bg-depth);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .context-header {
+      height: 56px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+    }
+
+    .metrics-grid {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      line-height: 1.2;
+    }
+
+    .stat-value .stat-unit {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      margin-left: 2px;
+    }
+
+    .stat-detail {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    .metrics-divider {
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
+    /* Agent breakdown */
+    .agent-breakdown {
+      padding: 0 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .agent-breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border-radius: 3px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .agent-breakdown-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .agent-breakdown-name {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .agent-breakdown-role {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* Context panel spacer + actions */
+    .context-spacer { flex: 1; }
+
+    .action-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+      font-family: var(--font-stack);
+    }
+
+    .btn:hover { opacity: 0.88; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-depth);
+      border-color: var(--accent);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: var(--border-subtle);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-surface);
+      border-color: var(--border-active);
+      color: var(--text-primary);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border-color: var(--red-dim);
+    }
+
+    .btn-danger:hover {
+      background: var(--red-dim);
+      border-color: var(--red);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-row .btn { flex: 1; }
+  </style>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-mark"></div>
+      <span>NOODLE</span>
+      <span class="header-status"><span class="status-dot active"></span> running</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/history.html">Dashboard</a>
+      <a href="/">Live Feed</a>
+      <a href="/tree.html">Tree</a>
+      <a href="#" class="active">Quality Review</a>
+    </nav>
+
+    <div class="section-label">History</div>
+    <ul class="history-list">
+      <li><a href="#" class="current"><span class="history-id">#12</span> · dark-mode</a></li>
+      <li><a href="#"><span class="history-id">#11</span> · auth-fix</a></li>
+      <li><a href="#"><span class="history-id">#10</span> · readme-links</a></li>
+    </ul>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <span class="footer-label">Session Cost</span>
+      <span class="footer-value">$0.89</span>
+    </div>
+  </aside>
+
+  <!-- ── Main Report ──────────────────────────────────── -->
+  <main class="report-panel">
+
+    <div class="feed-header">
+      <div class="feed-header-row">
+        <h1 class="feed-title">Quality Review: <span class="session-name">copper-sage</span></h1>
+        <span class="badge badge-passed"><span class="badge-dot"></span> Passed</span>
+      </div>
+      <p class="feed-subtitle">Add dark mode toggle</p>
+    </div>
+
+    <!-- Section 1: Agent Decision Log -->
+    <section class="report-section">
+      <h2 class="section-title">Agent Decision Log</h2>
+      <table class="decision-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Decision / Outcome</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="agent-chip">
+                <span class="agent-chip-dot scheduler"></span>
+                scheduler
+              </span>
+            </td>
+            <td class="decision-text">Assigned dark-mode toggle to copper-sage based on skill match and file ownership</td>
+            <td class="confidence-high">98%</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="agent-chip">
+                <span class="agent-chip-dot worker"></span>
+                copper-sage
+              </span>
+            </td>
+            <td class="decision-text">Created ThemeToggle component, added dark variant to tokens.ts, persisted to localStorage</td>
+            <td class="confidence-high">100%</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="agent-chip">
+                <span class="agent-chip-dot quality"></span>
+                quality
+              </span>
+            </td>
+            <td class="decision-text">All tests passing. No regressions. Code follows existing patterns.</td>
+            <td class="confidence-mid">96%</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Section 2: Files Changed -->
+    <section class="report-section">
+      <h2 class="section-title">Files Changed</h2>
+      <div class="comparison-grid">
+        <div class="comparison-card before">
+          <div class="comparison-label">Before</div>
+          <div class="comparison-preview">
+            <div class="light-mock-header">
+              <div class="wireframe-bar w-1-3" style="background:#d1d5db"></div>
+              <div style="flex:1"></div>
+              <div class="wireframe-bar" style="width:24px;background:#d1d5db"></div>
+            </div>
+            <div class="wireframe-bar w-3-4" style="background:#d1d5db"></div>
+            <div class="wireframe-bar w-full" style="background:#d1d5db"></div>
+            <div class="wireframe-rect" style="border-color:#d1d5db;background:rgba(209,213,219,0.06)"></div>
+            <div class="wireframe-row">
+              <div class="wireframe-circle" style="border-color:#d1d5db"></div>
+              <div class="wireframe-stack">
+                <div class="wireframe-bar w-half" style="background:#d1d5db"></div>
+                <div class="wireframe-bar w-3-4" style="background:#d1d5db;opacity:0.5"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-card after">
+          <div class="comparison-label">After</div>
+          <div class="comparison-preview">
+            <div class="light-mock-header">
+              <div class="wireframe-bar w-1-3"></div>
+              <div style="flex:1"></div>
+              <div class="wireframe-bar" style="width:24px"></div>
+            </div>
+            <div class="wireframe-bar w-3-4"></div>
+            <div class="wireframe-bar w-full"></div>
+            <div class="wireframe-rect"></div>
+            <div class="wireframe-row">
+              <div class="wireframe-circle"></div>
+              <div class="wireframe-stack">
+                <div class="wireframe-bar w-half"></div>
+                <div class="wireframe-bar w-3-4" style="opacity:0.5"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Generated Diff -->
+    <section class="report-section">
+      <h2 class="section-title">Generated Diff</h2>
+      <div class="diff-container">
+        <div class="diff-header">src/styles/tokens.ts</div>
+        <div class="diff-body">
+          <div class="diff-line context"><span class="diff-line-number">14</span><span class="diff-line-content"><span class="diff-prefix"> </span><span class="keyword">export const</span> <span class="attr">colors</span> <span class="punctuation">= {</span></span></div>
+          <div class="diff-line context"><span class="diff-line-number">15</span><span class="diff-line-content"><span class="diff-prefix"> </span>  <span class="attr">background</span><span class="punctuation">:</span> <span class="string">'#FFFFFF'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line context"><span class="diff-line-number">16</span><span class="diff-line-content"><span class="diff-prefix"> </span>  <span class="attr">surface</span><span class="punctuation">:</span> <span class="string">'#F8FAFC'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line removed"><span class="diff-line-number">17</span><span class="diff-line-content"><span class="diff-prefix">−</span>  <span class="attr">text</span><span class="punctuation">:</span> <span class="string">'#1A1A2E'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">17</span><span class="diff-line-content"><span class="diff-prefix">+</span>  <span class="attr">text</span><span class="punctuation">:</span> <span class="string">'#1A1A2E'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">18</span><span class="diff-line-content"><span class="diff-prefix">+</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">19</span><span class="diff-line-content"><span class="diff-prefix">+</span>  <span class="comment">/* Dark theme overrides */</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">20</span><span class="diff-line-content"><span class="diff-prefix">+</span>  <span class="attr">dark</span><span class="punctuation">: {</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">21</span><span class="diff-line-content"><span class="diff-prefix">+</span>    <span class="attr">background</span><span class="punctuation">:</span> <span class="string">'#0B0D10'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">22</span><span class="diff-line-content"><span class="diff-prefix">+</span>    <span class="attr">surface</span><span class="punctuation">:</span> <span class="string">'#14171C'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">23</span><span class="diff-line-content"><span class="diff-prefix">+</span>    <span class="attr">text</span><span class="punctuation">:</span> <span class="string">'#E8EAED'</span><span class="punctuation">,</span></span></div>
+          <div class="diff-line added"><span class="diff-line-number">24</span><span class="diff-line-content"><span class="diff-prefix">+</span>  <span class="punctuation">},</span></span></div>
+          <div class="diff-line context"><span class="diff-line-number">25</span><span class="diff-line-content"><span class="diff-prefix"> </span><span class="punctuation">};</span></span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Context / Metrics Panel ──────────────────────── -->
+  <aside class="context-panel">
+
+    <div class="context-header">Session Metrics</div>
+
+    <div class="metrics-grid">
+      <div class="metric-item">
+        <span class="stat-label">Total Tokens</span>
+        <span class="stat-value">18,420</span>
+      </div>
+      <div class="metric-item">
+        <span class="stat-label">Total Cost</span>
+        <span class="stat-value">$0.89</span>
+      </div>
+      <div class="metric-item">
+        <span class="stat-label">Elapsed Time</span>
+        <span class="stat-value">4m 12s</span>
+      </div>
+      <div class="metrics-divider"></div>
+      <div class="metric-item">
+        <span class="stat-label">Agents Engaged</span>
+        <span class="stat-value">2</span>
+      </div>
+    </div>
+
+    <div class="section-label" style="padding-left:24px;padding-right:24px">Agent Breakdown</div>
+    <div class="agent-breakdown">
+      <div class="agent-breakdown-item">
+        <span class="agent-breakdown-dot" style="background:var(--purple)"></span>
+        <span class="agent-breakdown-name">scheduler</span>
+        <span class="agent-breakdown-role">router</span>
+      </div>
+      <div class="agent-breakdown-item">
+        <span class="agent-breakdown-dot" style="background:var(--accent)"></span>
+        <span class="agent-breakdown-name">copper-sage</span>
+        <span class="agent-breakdown-role">worker</span>
+      </div>
+    </div>
+
+    <div class="context-spacer"></div>
+
+    <div class="action-footer">
+      <button class="btn btn-primary" onclick="location.href='/history.html'" style="cursor:pointer">Approve &amp; Merge</button>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="location.href='/'" style="cursor:pointer">Request Changes</button>
+        <button class="btn btn-danger" onclick="location.href='/history.html'" style="cursor:pointer">Dismiss Order</button>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+</body>
+</html>

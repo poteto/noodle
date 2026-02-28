@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>noodle — create order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-depth: #030303;
+      --bg-surface: #0A0A0A;
+      --bg-surface-hover: #111111;
+      --bg-surface-active: #151515;
+
+      --border-subtle: #1A1A1A;
+      --border-active: #333333;
+
+      --text-primary: #E0E0E0;
+      --text-secondary: #888888;
+      --text-tertiary: #666666;
+
+      --accent: #FBDB24;
+      --accent-dim: rgba(251, 219, 36, 0.12);
+      --accent-subtle: rgba(251, 219, 36, 0.06);
+
+      --green: #4ADE80;
+      --red: #F87171;
+      --blue: #60A5FA;
+
+      --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-depth);
+      color: var(--text-primary);
+      font-family: var(--font-stack);
+      font-size: 14px;
+      line-height: 1.55;
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================================================
+       BACKGROUND — three-column layout (blurred behind modal)
+       ============================================================ */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr 320px;
+      width: 100%;
+      height: 100%;
+      filter: blur(6px);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* --- Sidebar --- */
+    .sidebar {
+      background: var(--bg-depth);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 18px;
+      height: 18px;
+      position: relative;
+    }
+    .logo-mark::before, .logo-mark::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+    .logo-mark::before { width: 2px; height: 100%; }
+    .logo-mark::after { width: 100%; height: 2px; }
+
+    .header-status {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+    .status-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-dim);
+    }
+
+    .section-label {
+      padding: 20px 20px 8px;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-count {
+      font-size: 10px;
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      padding: 1px 6px;
+      border-radius: 2px;
+      font-weight: 600;
+    }
+
+    .agent-list {
+      list-style: none;
+      padding: 0 10px;
+    }
+    .agent-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 1px;
+      border: 1px solid transparent;
+      gap: 12px;
+    }
+    .agent-item.active {
+      background: var(--accent-subtle);
+      border-color: rgba(251, 219, 36, 0.2);
+    }
+    .agent-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+    }
+    .agent-item.manager .agent-avatar {
+      background: var(--accent);
+      color: var(--bg-depth);
+      border-color: var(--accent);
+    }
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .agent-status-text {
+      display: block;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 1px;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .footer-value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* --- Feed area --- */
+    .feed-container {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-depth);
+      position: relative;
+      overflow: hidden;
+    }
+    .feed-header {
+      height: 56px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .feed-content {
+      flex: 1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .feed-placeholder {
+      background: var(--bg-surface);
+      border-radius: 4px;
+      height: 48px;
+      border: 1px solid var(--border-subtle);
+    }
+    .feed-placeholder.short { width: 60%; }
+    .feed-placeholder.medium { width: 85%; }
+
+    /* --- Context panel --- */
+    .context-panel {
+      border-left: 1px solid var(--border-subtle);
+      background: var(--bg-depth);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .context-header {
+      height: 56px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+    }
+    .context-body {
+      padding: 20px;
+      flex: 1;
+    }
+    .context-placeholder {
+      background: var(--bg-surface);
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      height: 80px;
+      margin-bottom: 12px;
+    }
+
+    /* ============================================================
+       MODAL OVERLAY
+       ============================================================ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      width: 520px;
+      max-height: 90vh;
+      background: var(--bg-depth);
+      border: 1px solid var(--border-active);
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 24px 80px rgba(0, 0, 0, 0.7),
+        0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* --- Modal header --- */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .modal-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      color: var(--text-tertiary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.12s;
+      line-height: 1;
+    }
+    .modal-close:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
+    }
+
+    /* --- Modal body --- */
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .modal-body::-webkit-scrollbar { width: 4px; }
+    .modal-body::-webkit-scrollbar-track { background: transparent; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--bg-surface-active); border-radius: 2px; }
+
+    /* --- Form groups --- */
+    .form-group {}
+
+    .form-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-tertiary);
+      margin-bottom: 10px;
+    }
+
+    /* Text input */
+    .form-input {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: var(--font-stack);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus {
+      border-color: rgba(251, 219, 36, 0.35);
+    }
+    .form-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    /* Select / dropdown */
+    .form-select {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: var(--font-stack);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23484F58' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .form-select:focus {
+      border-color: rgba(251, 219, 36, 0.35);
+    }
+
+    /* --- Stage pipeline grid --- */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stage-option {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .stage-option:hover {
+      background: var(--bg-surface-hover);
+    }
+    .stage-option.selected {
+      border-color: var(--accent);
+      background: rgba(251, 219, 36, 0.08);
+    }
+
+    .stage-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: var(--bg-depth);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .stage-option.selected .stage-icon {
+      color: var(--accent);
+      border-color: rgba(251, 219, 36, 0.3);
+    }
+    .stage-icon.dashed {
+      border-style: dashed;
+    }
+
+    .stage-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .stage-option:not(.selected) .stage-label {
+      color: var(--text-secondary);
+    }
+
+    /* --- Options list --- */
+    .options-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+    }
+    .option-row + .option-row {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .option-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .option-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .option-desc {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 32px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-depth);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      transition: all 0.2s;
+    }
+    .toggle input:checked + .toggle-track {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .toggle input:checked + .toggle-track::after {
+      background: var(--bg-depth);
+      transform: translateX(14px);
+    }
+
+    /* --- Modal footer --- */
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .btn {
+      font-family: var(--font-stack);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 9px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-active);
+      color: var(--text-secondary);
+    }
+    .btn-outline:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: var(--bg-depth);
+    }
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background: blurred 3-column layout -->
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-mark"></div>
+      <span>NOODLE</span>
+      <span class="header-status"><span class="status-dot active"></span> running</span>
+    </div>
+
+    <div class="section-label">Scheduler</div>
+    <ul class="agent-list">
+      <li class="agent-item manager active">
+        <div class="agent-avatar">S</div>
+        <div class="agent-info">
+          <span class="agent-name">Scheduler</span>
+          <span class="agent-status-text">orchestrating</span>
+        </div>
+        <span class="status-dot active"></span>
+      </li>
+    </ul>
+
+    <div class="section-label">Active Agents <span class="section-count">2</span></div>
+    <ul class="agent-list">
+      <li class="agent-item">
+        <div class="agent-avatar">01</div>
+        <div class="agent-info">
+          <span class="agent-name">frontend-design</span>
+          <span class="agent-status-text">executing</span>
+        </div>
+        <span class="status-dot active"></span>
+      </li>
+      <li class="agent-item">
+        <div class="agent-avatar">02</div>
+        <div class="agent-info">
+          <span class="agent-name">go-best-practices</span>
+          <span class="agent-status-text">quality check</span>
+        </div>
+        <span class="status-dot active"></span>
+      </li>
+    </ul>
+
+    <div class="section-label">Queue <span class="section-count">1</span></div>
+    <ul class="agent-list">
+      <li class="agent-item">
+        <div class="agent-avatar">03</div>
+        <div class="agent-info">
+          <span class="agent-name">testing</span>
+          <span class="agent-status-text">waiting</span>
+        </div>
+      </li>
+    </ul>
+
+    <div class="section-label">Done <span class="section-count">0</span></div>
+    <ul class="agent-list"></ul>
+
+    <div class="sidebar-footer">
+      <span class="footer-label">Session Cost</span>
+      <span class="footer-value">$2.37</span>
+    </div>
+  </aside>
+
+  <!-- Feed area -->
+  <main class="feed-container">
+    <div class="feed-header">Scheduler</div>
+    <div class="feed-content">
+      <div class="feed-placeholder medium"></div>
+      <div class="feed-placeholder short"></div>
+      <div class="feed-placeholder medium"></div>
+      <div class="feed-placeholder short"></div>
+      <div class="feed-placeholder medium"></div>
+    </div>
+  </main>
+
+  <!-- Context panel -->
+  <aside class="context-panel">
+    <div class="context-header">System Status</div>
+    <div class="context-body">
+      <div class="context-placeholder"></div>
+      <div class="context-placeholder"></div>
+      <div class="context-placeholder"></div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Modal overlay -->
+<div class="modal-overlay">
+  <div class="modal">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <span class="modal-title">Create New Order</span>
+      <button class="modal-close" onclick="location.href='/history.html'" style="cursor:pointer">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- 1. Task Description -->
+      <div class="form-group">
+        <label class="form-label">Task Description</label>
+        <input type="text" class="form-input" value="Add dark mode toggle" />
+      </div>
+
+      <!-- 2. Stage Pipeline -->
+      <div class="form-group">
+        <label class="form-label">Stage Pipeline</label>
+        <div class="stage-grid">
+          <div class="stage-option selected">
+            <div class="stage-icon">E</div>
+            <span class="stage-label">Execute</span>
+          </div>
+          <div class="stage-option selected">
+            <div class="stage-icon">Q</div>
+            <span class="stage-label">Quality</span>
+          </div>
+          <div class="stage-option">
+            <div class="stage-icon">R</div>
+            <span class="stage-label">Reflect</span>
+          </div>
+          <div class="stage-option">
+            <div class="stage-icon dashed">&midast;</div>
+            <span class="stage-label">Custom</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Skill Assignment -->
+      <div class="form-group">
+        <label class="form-label">Skill Assignment</label>
+        <select class="form-select">
+          <option selected>auto-detect (Recommended)</option>
+          <option>frontend-design</option>
+          <option>go-best-practices</option>
+          <option>testing</option>
+        </select>
+      </div>
+
+      <!-- 4. Options -->
+      <div class="form-group">
+        <label class="form-label">Options</label>
+        <div class="options-container">
+          <div class="option-row">
+            <div class="option-text">
+              <span class="option-name">Parallel Execution</span>
+              <span class="option-desc">Run alongside other active orders</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="option-row">
+            <div class="option-text">
+              <span class="option-name">Auto-advance</span>
+              <span class="option-desc">Skip approval between mechanical stages</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="option-row">
+            <div class="option-text">
+              <span class="option-name">Live Steering</span>
+              <span class="option-desc">Keep session alive for user redirection</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Priority Level -->
+      <div class="form-group">
+        <label class="form-label">Priority Level</label>
+        <select class="form-select">
+          <option>Standard</option>
+          <option selected>High</option>
+          <option>Critical</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="location.href='/history.html'" style="cursor:pointer">Cancel</button>
+      <button class="btn btn-primary" onclick="location.href='/'" style="cursor:pointer">Create Order</button>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

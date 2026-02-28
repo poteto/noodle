@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>noodle — execution tree</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-depth: #030303;
+      --bg-surface: #0A0A0A;
+      --bg-surface-hover: #111111;
+      --bg-surface-active: #151515;
+      --border-subtle: #1A1A1A;
+      --border-active: #333333;
+      --text-primary: #E0E0E0;
+      --text-secondary: #888888;
+      --text-tertiary: #666666;
+      --accent: #FBDB24;
+      --accent-dim: rgba(251, 219, 36, 0.12);
+      --accent-subtle: rgba(251, 219, 36, 0.06);
+      --green: #4ADE80;
+      --green-glow: rgba(74, 222, 128, 0.10);
+      --yellow: #FBDB24;
+      --yellow-glow: rgba(251, 219, 36, 0.10);
+      --red: #F87171;
+      --blue: #60A5FA;
+      --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+      --sidebar-width: 260px;
+    }
+
+    @keyframes flow {
+      from { stroke-dashoffset: 100; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes data-move {
+      0% { offset-distance: 0%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { offset-distance: 100%; opacity: 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      border-radius: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: var(--font-stack);
+      background: var(--bg-depth);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      min-height: 100vh;
+    }
+
+    /* ---- Sidebar ---- */
+    .sidebar {
+      background: var(--bg-depth);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-family: var(--font-stack);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 18px;
+      height: 18px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .logo-mark::before,
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .logo-mark::before {
+      width: 2px;
+      height: 100%;
+    }
+
+    .logo-mark::after {
+      width: 100%;
+      height: 2px;
+    }
+
+    .header-status {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+
+    .status-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-dim);
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      font-family: var(--font-stack);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border-color: var(--border-subtle);
+    }
+
+    .nav-item.active {
+      background: rgba(251, 219, 36, 0.04);
+      border-color: var(--accent);
+      border-left: 3px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+
+    .nav-item.active .nav-icon {
+      opacity: 0.9;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-label {
+      font-family: var(--font-stack);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .footer-value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .session-info {
+      padding: 0 20px;
+      margin-top: 8px;
+    }
+
+    .session-info-label {
+      font-family: var(--font-stack);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .session-info-value {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .session-info-sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    /* ---- Graph canvas ---- */
+    .graph-area {
+      background: var(--bg-depth);
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: linear-gradient(to bottom, var(--bg-depth) 60%, transparent);
+      z-index: 10;
+    }
+
+    .breadcrumb {
+      font-family: var(--font-stack);
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .breadcrumb-active {
+      color: var(--text-secondary);
+    }
+
+    .graph-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .sync-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .btn-ghost {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 6px 14px;
+      background: transparent;
+      color: var(--text-tertiary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text-secondary);
+      border-color: var(--border-active);
+    }
+
+    .btn-new-order {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--bg-depth);
+      background: var(--accent);
+      padding: 4px 10px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.12s;
+    }
+    .btn-new-order:hover {
+      opacity: 0.85;
+    }
+
+    /* ---- SVG connections ---- */
+    .connections-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .connection-pending {
+      stroke: var(--text-tertiary);
+      stroke-width: 1.5;
+      stroke-dasharray: 4;
+      fill: none;
+      animation: flow 20s linear infinite;
+    }
+
+    .connection-active {
+      stroke: var(--green);
+      stroke-width: 1.5;
+      fill: none;
+      filter: url(#glow);
+    }
+
+    .connection-completed {
+      stroke: var(--green);
+      stroke-width: 1.5;
+      fill: none;
+      filter: url(#glow);
+    }
+
+    /* ---- Data packets ---- */
+    .data-packet {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 0 8px var(--green);
+      animation: data-move 3s linear infinite;
+      z-index: 2;
+    }
+
+    /* ---- Node cards ---- */
+    .node {
+      position: absolute;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      width: 240px;
+      z-index: 5;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .node:hover {
+      border-color: var(--border-active);
+    }
+
+    .node-hoverable {
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .node-hoverable:hover {
+      transform: translateY(-2px);
+    }
+
+    .node-centered {
+      transform: translateX(-50%);
+    }
+
+    .node-centered:hover {
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    .node-wide {
+      width: 280px;
+    }
+
+    .node-wider {
+      width: 320px;
+    }
+
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 0;
+    }
+
+    .node-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+      background: var(--bg-surface-active);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .node-avatar-yellow {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .node-avatar-dotted {
+      border: 1.5px dashed var(--text-tertiary);
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 14px;
+    }
+
+    .node-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .node-title {
+      font-family: var(--font-stack);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .node-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      width: fit-content;
+    }
+
+    .badge-generating {
+      background: var(--accent-dim);
+      color: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    .badge-planning {
+      background: var(--accent-dim);
+      color: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    .badge-idle {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-tertiary);
+    }
+
+    .badge-complete {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .badge-pending {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-tertiary);
+    }
+
+    .node-content {
+      padding: 10px 16px;
+      margin: 10px 16px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      border-left: 2px solid var(--text-tertiary);
+      white-space: pre-line;
+    }
+
+    .node-content-active {
+      border-left-color: var(--accent);
+    }
+
+    .node-content-dimmed {
+      color: var(--text-tertiary);
+    }
+
+    .node-content-tertiary {
+      color: var(--text-tertiary);
+    }
+
+    .node-metrics {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 16px 14px;
+      margin-top: 6px;
+    }
+
+    .metric {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.02em;
+    }
+
+    .metric-value {
+      color: var(--text-secondary);
+    }
+
+    /* ---- Controls overlay ---- */
+    .controls {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .ctrl-btn:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-pause {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 8px 18px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-left: 4px;
+    }
+
+    .btn-pause:hover {
+      opacity: 0.88;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-mark"></div>
+        <span>NOODLE</span>
+        <span class="header-status"><span class="status-dot active"></span> running</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/history.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="1" width="6" height="6" rx="1"/>
+            <rect x="11" y="1" width="6" height="6" rx="1"/>
+            <rect x="1" y="11" width="6" height="6" rx="1"/>
+            <rect x="11" y="11" width="6" height="6" rx="1"/>
+          </svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="5" r="3"/>
+            <path d="M2 16c0-3.3 3.1-6 7-6s7 2.7 7 6"/>
+          </svg>
+          Live Feed
+        </a>
+        <a href="/tree.html" class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="2.5"/>
+            <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4"/>
+          </svg>
+          Tree
+        </a>
+      </nav>
+
+      <div class="session-info">
+        <div class="session-info-label">Active Session</div>
+        <div class="session-info-value">copper-sage</div>
+        <div class="session-info-sub">dark-mode</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="footer-label">Session Cost</span>
+        <span class="footer-value">$1.14</span>
+      </div>
+    </aside>
+
+    <!-- Graph canvas -->
+    <div class="graph-area">
+      <!-- Header bar -->
+      <div class="graph-header">
+        <div class="breadcrumb">
+          Sessions / copper-sage / <span class="breadcrumb-active">Tree</span>
+        </div>
+        <div class="graph-header-right">
+          <div class="sync-indicator">
+            <div class="sync-dot"></div>
+            Real-time Sync
+          </div>
+          <button class="btn-ghost">RESET VIEW</button>
+          <a href="/deploy.html" class="btn-new-order">+ ORDER</a>
+        </div>
+      </div>
+
+      <!-- SVG connection lines -->
+      <svg class="connections-layer" viewBox="0 0 1000 850" preserveAspectRatio="none">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- Schedule → copper-sage (active) -->
+        <path class="connection-active" d="M 500 235 C 500 278, 275 278, 275 320"/>
+
+        <!-- Schedule → quality (pending) -->
+        <path class="connection-pending" d="M 500 235 C 500 278, 500 278, 500 320"/>
+
+        <!-- Schedule → golden-thyme (completed) -->
+        <path class="connection-completed" d="M 500 235 C 500 278, 775 278, 775 320"/>
+
+        <!-- copper-sage → merge (pending) -->
+        <path class="connection-pending" d="M 275 480 C 275 520, 500 520, 500 560"/>
+
+        <!-- quality → merge (pending) -->
+        <path class="connection-pending" d="M 500 480 C 500 520, 500 520, 500 560"/>
+
+        <!-- golden-thyme → merge (pending) -->
+        <path class="connection-pending" d="M 775 480 C 775 520, 500 520, 500 560"/>
+      </svg>
+
+      <!-- Data packets traveling along active/completed paths -->
+      <div class="data-packet" style="offset-path: path('M 500 235 C 500 278, 275 278, 275 320'); animation-delay: 0s;"></div>
+      <div class="data-packet" style="offset-path: path('M 500 235 C 500 278, 275 278, 275 320'); animation-delay: 1.5s;"></div>
+      <div class="data-packet" style="offset-path: path('M 500 235 C 500 278, 775 278, 775 320'); animation-delay: 0.8s;"></div>
+
+      <!-- Node: Scheduler (Manager) — top center -->
+      <div class="node node-wide node-centered" style="top: 100px; left: 50%;">
+        <div class="node-header">
+          <div class="node-avatar node-avatar-yellow">M</div>
+          <div class="node-title-group">
+            <div class="node-title">Scheduler</div>
+            <div class="node-badge badge-planning">PLANNING</div>
+          </div>
+        </div>
+        <div class="node-content node-content-active">&gt; Order: dark-mode-toggle
+&gt; Pipeline: execute &rarr; quality
+&gt; Assigned: copper-sage</div>
+        <div class="node-metrics">
+          <span class="metric">Up: <span class="metric-value">8m 12s</span></span>
+          <span class="metric">Cost: <span class="metric-value">$0.53</span></span>
+        </div>
+      </div>
+
+      <!-- Node: copper-sage (Execute) — middle left -->
+      <div class="node node-hoverable" style="top: 320px; left: 15%;">
+        <div class="node-header">
+          <div class="node-avatar">CS</div>
+          <div class="node-title-group">
+            <div class="node-title">copper-sage</div>
+            <div class="node-badge badge-generating">GENERATING</div>
+          </div>
+        </div>
+        <div class="node-content node-content-active">Editing: src/theme/tokens.ts
+Creating: ThemeToggle.tsx
+Step: 6/8</div>
+        <div class="node-metrics">
+          <span class="metric">Tokens: <span class="metric-value">4.2k</span></span>
+          <span class="metric">Cost: <span class="metric-value">$0.89</span></span>
+        </div>
+      </div>
+
+      <!-- Node: Quality Gate — middle center -->
+      <div class="node node-centered" style="top: 320px; left: 50%;">
+        <div class="node-header">
+          <div class="node-avatar">Q</div>
+          <div class="node-title-group">
+            <div class="node-title">Quality Agent</div>
+            <div class="node-badge badge-idle">IDLE</div>
+          </div>
+        </div>
+        <div class="node-content node-content-dimmed">Waiting for execute stage...</div>
+        <div class="node-metrics">
+          <span class="metric">Queue: <span class="metric-value">1</span></span>
+          <span class="metric">Ready</span>
+        </div>
+      </div>
+
+      <!-- Node: golden-thyme — middle right -->
+      <div class="node node-hoverable" style="top: 320px; right: 10%;">
+        <div class="node-header">
+          <div class="node-avatar">GT</div>
+          <div class="node-title-group">
+            <div class="node-title">golden-thyme</div>
+            <div class="node-badge badge-complete">COMPLETE</div>
+          </div>
+        </div>
+        <div class="node-content">[DONE] Fix auth redirect loop
+All tests passing</div>
+        <div class="node-metrics">
+          <span class="metric">Lat: <span class="metric-value">0.8s</span></span>
+          <span class="metric">Cost: <span class="metric-value">$0.42</span></span>
+        </div>
+      </div>
+
+      <!-- Node: Deployment Target — bottom center -->
+      <div class="node node-wider node-centered" style="top: 560px; left: 50%;">
+        <div class="node-header">
+          <div class="node-avatar node-avatar-dotted">&#9873;</div>
+          <div class="node-title-group">
+            <div class="node-title">Merge &amp; Reflect</div>
+            <div class="node-badge badge-pending">PENDING</div>
+          </div>
+        </div>
+        <div class="node-content node-content-tertiary">Awaiting quality approval and human review</div>
+        <div class="node-metrics">
+          <span class="metric">Blocked</span>
+        </div>
+      </div>
+
+      <!-- Controls overlay — bottom right -->
+      <div class="controls">
+        <button class="ctrl-btn">+</button>
+        <button class="ctrl-btn">&minus;</button>
+        <button class="ctrl-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="4.5"/>
+            <path d="M9.5 9.5L13 13"/>
+          </svg>
+        </button>
+        <button class="btn-pause">PAUSE TREE</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
