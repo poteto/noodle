@@ -10,18 +10,23 @@ Ensure the reconcile logic handles crash recovery when multiple stages in a grou
 
 ## Changes
 
-### `loop/reconcile.go`
+### `loop/reconcile.go` — `adoptedTargets` map
 
-Current `reconcileMergingStages`: iterates all orders and stages, handles stuck `merging` and `active` stages. With parallel groups, multiple stages per order could be in `active` or `merging` state simultaneously.
+`adoptedTargets` is currently `map[string]string` keyed by bare `orderID`. With parallel groups, a crashed loop may have had multiple sessions for the same order. Last-write-wins means only one session gets tracked; the others are orphaned.
 
-Review the reconcile logic:
-- If it already iterates all stages (not just the first active), it may work unchanged
-- If it breaks after finding one active stage, update to handle all active stages in a group
-- Ensure it doesn't try to adopt the same worktree twice or create conflicting session names
+Change `adoptedTargets` to use composite keys: `map[string]string` keyed by `cookKey(orderID, stageIndex)`. This requires the runtime's `RecoveredSession` to carry `StageIndex` alongside `OrderID` — update the recovery path to extract it from the session metadata.
 
-### `loop/cook_spawn.go` — `spawnOptions.adopted`
+### `loop/reconcile.go` — `reconcileMergingStages`
 
-The adopt path (reconciling a session from a previous loop instance) needs to handle multiple adopted sessions for the same order. Verify `adoptedTargets` tracking works with composite keys.
+The adopted check at line 118 uses `adoptedTargets[ms.order.ID]` (bare orderID). With composite keys, update to `adoptedTargets[cookKey(ms.order.ID, ms.stageIdx)]`. Without this fix, if only one of two crashed sessions is recovered, the other merging stage gets incorrectly reset to `active` with no corresponding session.
+
+### `loop/adopted_helpers.go` — `buildAdoptedCook`
+
+`buildAdoptedCook` calls `activeStageForOrder(order)` which returns the first active/pending stage. With parallel groups, this returns the wrong stage. Update to accept and use a specific `stageIndex` parameter, derived from the composite key in `adoptedTargets`.
+
+### `loop/reconcile.go` — `advanceAndPersist` in reconcile path
+
+`reconcileMergingStages` at line 144 builds a synthetic `cookHandle` and calls `advanceAndPersist`. After Phase 4 changes `advanceOrder` to accept `stageIndex`, this path already passes `ms.stageIdx` via `cook.stageIndex` — verify it flows through correctly.
 
 ## Verification
 

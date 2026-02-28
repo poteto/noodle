@@ -23,7 +23,7 @@ Update the constraint from "Each order is a pipeline of stages executed sequenti
 ### `internal/orderx/types.go` — helper functions
 
 Add two helpers on Order:
-- `CurrentGroup() int` — returns the group number of the first non-completed stage, or -1 if all done
+- `CurrentGroup() int` — returns the group number of the first stage with status `pending`, `active`, or `merging`. Returns -1 if all stages are `completed`, `failed`, or `cancelled`.
 - `StagesInGroup(group int) []int` — returns stage indices belonging to a group
 
 ## Verification

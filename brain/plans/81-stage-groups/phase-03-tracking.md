@@ -30,12 +30,30 @@ Update `atMaxConcurrency()` — currently counts `len(activeCooksByOrder)`. This
 
 Update cook lookup on completion to use the composite key. The `cookHandle` already stores `orderID` and `stageIndex`, so the key can be reconstructed.
 
-### All other callers of `activeCooksByOrder`
+### All callers of `activeCooksByOrder` — exhaustive list
 
-Grep for `activeCooksByOrder` and update each site. Common patterns:
-- Lookup by orderID → use `cooksByOrder(orderID)`
-- Delete by orderID → delete by composite key
-- Iteration → unchanged (flat map iteration still works)
+Every site that reads or writes the map must be updated. Key-based lookups and deletes break silently with composite keys if missed.
+
+**Lookup by orderID → use `cooksByOrder(orderID)`:**
+- `control_orders.go:59` — `controlEditItem` busy check
+- `control_scheduler.go:134` — `controlParkReview` session/worktree lookup
+
+**Delete by `cook.orderID` → delete by `cookKey(cook.orderID, cook.stageIndex)`:**
+- `cook_completion.go:78` — `applyStageResult` delete after processing
+- `control.go:323` — `controlStopKill` delete after kill
+- `cook_steer.go:122` — `steerRespawn` delete before re-spawn
+
+**Lookup by `result.OrderID` → use `cookKey(result.OrderID, result.StageIndex)`:**
+- `cook_completion.go:70` — `applyStageResult` lookup
+
+**Key iteration → extract orderID from composite key or iterate values:**
+- `loop_cycle_pipeline.go:161` — `planCycleSpawns` populates `busySet` from map keys. Must extract the orderID portion, not use the raw composite key.
+- `stamp_status.go:14-15` — builds `active[]` array for `status.json`. Must deduplicate by orderID, not emit composite keys.
+
+**Value iteration → unchanged:**
+- `loop.go:166` — `Shutdown` kill-all
+- `cook_completion.go:254` — `forwardToScheduler` scan
+- `loop.go:354` — shutdown drain
 
 ## Verification
 

@@ -20,8 +20,6 @@ Orders contain stages that execute sequentially. The scheduler cannot express "r
 - Advance to the next group only when all stages in the current group complete
 - Track multiple active cooks per order
 - Update schema docs and schedule skill
-- Backward compatible: orders without `group` fields work exactly as today
-
 **Out of scope:**
 - DAG-style `depends_on` between individual stages
 - Partial group advancement (one stage done → start next group early)
@@ -34,7 +32,7 @@ The `activeCooksByOrder` map in `loop/types.go` currently maps `orderID → *coo
 
 **Approach chosen: composite key map.** Change the map to `map[string]*cookHandle` keyed by `orderID:stageIndex` (e.g., `"68:0"`, `"68:1"`). This preserves the flat map structure while allowing multiple cooks per order. Alternative considered: `map[string][]*cookHandle` (order → slice of cooks), but requires more complex lookups and doesn't improve readability.
 
-**Group failure policy:** When any stage in a group fails, the entire order fails (current behavior — `failStage` removes the order). Remaining active stages in the group are cancelled. This is simple and matches user expectations.
+**Group failure policy:** When any stage in a group fails, the entire order fails (current behavior — `failStage` removes the order). Remaining active stages in the group get their sessions killed and are set to `cancelled`.
 
 ## Applicable skills
 

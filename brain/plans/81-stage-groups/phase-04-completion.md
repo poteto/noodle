@@ -27,6 +27,21 @@ Current: fails first active/pending stage, removes order. New:
 2. Cancel all other pending/active stages in the same group (set to `cancelled`)
 3. Remove the order (order failed) — same as current behavior
 
+### `loop/cook_completion.go` — `handleCompletion` failure path
+
+When a stage fails, kill all sibling cook sessions before removing the order. Without this, watcher goroutines for sibling stages remain alive and complete into a removed order, causing `advanceOrder` to return "order not found" errors.
+
+1. Use `cooksByOrder(cook.orderID)` to find all active cooks for the order
+2. Call `Kill()` on each sibling's session (skip the failing cook itself)
+3. Delete each sibling from `activeCooksByOrder`
+4. Then call `failStage` and remove the order
+
+### `loop/orders.go` — `advanceOrder` return values
+
+Add `groupComplete bool` to the return signature alongside `removed bool`. This lets `advanceAndPersist` distinguish "stage done, group still running" from "group done, order continues" for event emission and logging.
+
+Group is complete when all stages in the group have status `completed` (not `active`, not `merging`, not `pending`).
+
 ### `loop/cook_completion.go` — `handleCompletion`
 
 Update to pass `cook.stageIndex` to `advanceOrder` and `failStage`.

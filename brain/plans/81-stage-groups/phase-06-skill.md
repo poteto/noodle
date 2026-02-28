@@ -31,6 +31,16 @@ Review `pauseOrder`, `cancelOrder`, `retryOrder` (or equivalent control handlers
 
 Use `cooksByOrder(orderID)` helper from Phase 3 to find all cooks.
 
+### `loop/control_orders.go` — `controlEditItem`
+
+The busy check at line 59 (`activeCooksByOrder[orderID]`) uses a bare orderID — always misses with composite keys. Update to use `cooksByOrder(orderID)` and check `len() > 0`.
+
+The `activeStageForOrder` call at line 77 returns only the first active stage. With parallel groups, clarify which stage is being edited (or reject edits when multiple stages are active).
+
+### `loop/control_scheduler.go` — `controlParkReview`
+
+The session/worktree lookup at line 134 uses bare `activeCooksByOrder[orderID]`. Update to use `cooksByOrder(orderID)` — for park-review, any active cook's session info is valid.
+
 ### `.agents/skills/schedule/SKILL.md` — fix stale content
 
 While updating, fix known discrepancies discovered during audit:
