@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "~/components/AppLayout";
-import { BoardError } from "~/components/BoardError";
+import { AppError } from "~/components/AppError";
 
 export const Route = createFileRoute("/")({
   component: AppLayout,
-  errorComponent: BoardError,
+  errorComponent: AppError,
 });

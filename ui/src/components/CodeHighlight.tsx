@@ -103,7 +103,7 @@ export function HighlightedCode({ code, lang }: { code: string; lang?: string })
 
   if (html === null) {
     return (
-      <pre className="my-2 px-3 py-2 bg-[#f5eed8] border-l-2 border-[#e8dfc0] overflow-x-auto text-xs font-mono rounded-sm leading-relaxed">
+      <pre className="my-2 px-3 py-2 bg-[#1a1a1a] border-l-2 border-[#333] overflow-x-auto text-xs font-mono leading-relaxed">
         {code}
       </pre>
     );
@@ -111,7 +111,7 @@ export function HighlightedCode({ code, lang }: { code: string; lang?: string })
 
   return (
     <pre
-      className="my-2 px-3 py-2 bg-[#f5eed8] border-l-2 border-[#e8dfc0] overflow-x-auto text-xs font-mono rounded-sm leading-relaxed"
+      className="my-2 px-3 py-2 bg-[#1a1a1a] border-l-2 border-[#333] overflow-x-auto text-xs font-mono leading-relaxed"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

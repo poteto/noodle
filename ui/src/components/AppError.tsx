@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
 
-export function BoardError({ error, reset }: ErrorComponentProps) {
+export function AppError({ error, reset }: ErrorComponentProps) {
   const [retrying, setRetrying] = useState(false);
 
   function handleRetry() {
