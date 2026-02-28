@@ -8,9 +8,9 @@ test.describe("Noodle UI smoke", () => {
     await expect(page.getByText("NOODLE")).toBeVisible();
 
     // Nav links visible
-    await expect(page.getByText("DASHBOARD")).toBeVisible();
-    await expect(page.getByText("LIVE FEED")).toBeVisible();
-    await expect(page.getByText("TREE")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Live Feed" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Tree" })).toBeVisible();
 
     // SCHEDULER section visible
     await expect(page.getByText("SCHEDULER").first()).toBeVisible();
@@ -32,15 +32,15 @@ test.describe("Noodle UI smoke", () => {
     await page.goto("/dashboard");
 
     // Dashboard header and stats bar render
-    await expect(page.getByText("DASHBOARD")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "DASHBOARD" })).toBeVisible();
     await expect(page.getByTestId("stats-bar")).toBeVisible();
   });
 
   test("tree route loads", async ({ page }) => {
     await page.goto("/tree");
 
-    // SVG container renders
-    const svg = page.locator("svg");
+    // Tree visualization SVG renders (the large one, not nav icons)
+    const svg = page.locator("svg.w-full");
     await expect(svg).toBeVisible();
   });
 
