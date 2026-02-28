@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -168,51 +167,3 @@ func (h *sseHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provi
 	h.broadcast(msg)
 }
 
-// handleSSE is the HTTP handler for GET /api/events.
-func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
-	client := &sseClient{
-		ch:     make(chan []byte, 16),
-		closed: make(chan struct{}),
-	}
-	s.sse.addClient(client)
-	defer s.sse.removeClient(client)
-
-	// Send current snapshot immediately.
-	snap, err := s.loadSnapshot()
-	if err == nil {
-		snap.Warnings = s.warnings
-		data, err := json.Marshal(snap)
-		if err == nil {
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			flusher.Flush()
-		}
-	}
-
-	ctx := r.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-s.sse.done:
-			return
-		case msg := <-client.ch:
-			_, err := w.Write(msg)
-			if err != nil {
-				return
-			}
-			flusher.Flush()
-		}
-	}
-}

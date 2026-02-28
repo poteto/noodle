@@ -32,6 +32,7 @@ type Options struct {
 	Config            *config.Config // project config; nil = zero config
 	LoopStateProvider LoopStateProvider
 	Warnings          []string
+	Broker            *SessionEventBroker
 }
 
 type LoopStateProvider interface {
@@ -44,7 +45,7 @@ type Server struct {
 	now        func() time.Time
 	httpServer *http.Server
 	listener   net.Listener
-	sse        *sseHub
+	ws         *wsHub
 	config     config.Config
 	provider   LoopStateProvider
 	warnings   []string
@@ -71,10 +72,15 @@ func New(opts Options) *Server {
 		cfg = *opts.Config
 	}
 
+	broker := opts.Broker
+	if broker == nil {
+		broker = NewSessionEventBroker()
+	}
+
 	s := &Server{
 		runtimeDir: runtimeDir,
 		now:        now,
-		sse:        newSSEHub(),
+		ws:         newWSHub(broker),
 		config:     cfg,
 		provider:   opts.LoopStateProvider,
 		warnings:   opts.Warnings,
@@ -82,7 +88,7 @@ func New(opts Options) *Server {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/events", s.handleSSE)
+	mux.HandleFunc("GET /api/ws", s.handleWS)
 	mux.HandleFunc("GET /api/snapshot", s.handleSnapshot)
 	mux.HandleFunc("GET /api/sessions/{id}/events", s.handleSessionEvents)
 	mux.HandleFunc("POST /api/control", s.handleControl)
@@ -123,7 +129,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.listener = ln
 	close(s.ready)
 
-	go s.sse.watchAndBroadcast(ctx, s.runtimeDir, s.now, s.provider, s.warnings)
+	go s.ws.watchAndBroadcast(ctx, s.runtimeDir, s.now, s.provider, s.warnings)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -138,10 +144,10 @@ func (s *Server) Start(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = s.httpServer.Shutdown(shutdownCtx)
-		s.sse.close()
+		s.ws.Close()
 		return nil
 	case err := <-errCh:
-		s.sse.close()
+		s.ws.Close()
 		return err
 	}
 }
@@ -226,50 +232,39 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
+
+	result, err := s.processControl(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// processControl validates and appends a control command. Shared by REST and WS.
+func (s *Server) processControl(req controlRequest) (map[string]any, error) {
 	action := strings.TrimSpace(req.Action)
 	if action == "" {
-		http.Error(w, "action required", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("action required")
 	}
 
-	validActions := map[string]bool{
-		"pause": true, "resume": true, "drain": true, "skip": true,
-		"kill": true, "steer": true, "merge": true, "reject": true,
-		"request-changes": true, "autonomy": true, "enqueue": true,
-		"stop-all": true, "requeue": true, "edit-item": true,
-		"reorder": true, "stop": true, "set-max-cooks": true,
+	cmd, err := parseControlRequest(action, req)
+	if err != nil {
+		return nil, err
 	}
-	if !validActions[action] {
-		http.Error(w, "unknown action: "+action, http.StatusBadRequest)
-		return
-	}
-
-	cmd := loop.ControlCommand{
-		Action:   action,
-		OrderID:  strings.TrimSpace(req.OrderID),
-		Name:     strings.TrimSpace(req.Name),
-		Target:   strings.TrimSpace(req.Target),
-		Prompt:   strings.TrimSpace(req.Prompt),
-		Value:    strings.TrimSpace(req.Value),
-		TaskKey:  strings.TrimSpace(req.TaskKey),
-		Provider: strings.TrimSpace(req.Provider),
-		Model:    strings.TrimSpace(req.Model),
-		Skill:    strings.TrimSpace(req.Skill),
-		At:       s.now().UTC(),
-	}
+	cmd.At = s.now().UTC()
 	cmd.ID = fmt.Sprintf("web-%d", cmd.At.UnixNano())
 
 	if err := appendControlCommand(s.runtimeDir, cmd); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	return map[string]any{
 		"id":     cmd.ID,
 		"action": cmd.Action,
 		"status": "ok",
 		"at":     cmd.At,
-	})
+	}, nil
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
