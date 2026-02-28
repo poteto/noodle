@@ -7,4 +7,4 @@
 - [ ] [[plans/68-unified-involvement-levels/overview]]
 - [ ] [[plans/69-cursor-dispatcher/overview]]
 - [x] ~~[[archive/plans/75-channel-ui-redesign/overview]]~~
-- [ ] [[plans/76-websocket-streaming/overview]]
+- [x] ~~[[plans/76-websocket-streaming/overview]]~~
