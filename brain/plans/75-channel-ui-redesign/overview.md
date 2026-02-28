@@ -12,7 +12,7 @@ The current web UI is a kanban board (Queued → Cooking → Review → Done). T
 
 The prototype in `prototype/` demonstrates a Slack/Discord-style channel layout: the scheduler is the user's main conversation partner (like a DM), each active cook is a channel in the sidebar, and the user switches between conversations. This is a fundamentally better fit for an agent orchestrator where the primary activity is reading agent output and steering work.
 
-This plan replaces the existing React kanban UI with the channel layout, adds a D3-powered tree view, and makes backend changes so orders advance without waiting for process exit.
+This plan replaces the existing React kanban UI with the channel layout, adds a D3-powered tree view, and moves judgment from hardcoded Go logic to the scheduler agent — failures, retries, quality gates, and merge conflicts all become visible conversations in the scheduler chat.
 
 ## Scope
 
@@ -25,6 +25,7 @@ This plan replaces the existing React kanban UI with the channel layout, adds a 
 - Session history dashboard
 - Backend: stage-to-scheduler messages via session event system, auto-advance by default
 - Backend: remove quality verdict mechanism (quality sends a message like any other agent)
+- Backend: move failure handling, merge conflict resolution, and retry decisions to scheduler
 - Brutalist dark theme matching prototype aesthetic
 
 **Out of scope:**
@@ -59,7 +60,7 @@ Every frontend phase must invoke these skills:
 - `interaction-design` — micro-interactions, motion design, transitions, feedback patterns
 
 Additionally:
-- `go-best-practices` — backend phase (8)
+- `go-best-practices` — backend phases (8, 9)
 - `frontend-design` — brutalist theme execution (phase 10)
 
 ## Styling
@@ -76,8 +77,9 @@ Use **Tailwind CSS** (already installed as Tailwind v4.2 via Vite plugin) for al
 6. [[plans/75-channel-ui-redesign/phase-06-d3-tree-view]]
 7. [[plans/75-channel-ui-redesign/phase-07-dashboard-history-page]]
 8. [[plans/75-channel-ui-redesign/phase-09-backend-auto-advance-and-dismiss]]
-9. [[plans/75-channel-ui-redesign/phase-10-brutalist-theme-and-visual-polish]]
-10. [[plans/75-channel-ui-redesign/phase-11-verification-and-smoke-tests]]
+9. [[plans/75-channel-ui-redesign/phase-09a-backend-scheduler-owns-judgment]]
+10. [[plans/75-channel-ui-redesign/phase-10-brutalist-theme-and-visual-polish]]
+11. [[plans/75-channel-ui-redesign/phase-11-verification-and-smoke-tests]]
 
 ## Verification
 
