@@ -36,9 +36,6 @@ add = "go run adapters/main.go backlog-add"
 done = "go run adapters/main.go backlog-done"
 edit = "go run adapters/main.go backlog-edit"
 
-[concurrency]
-max_cooks = 1
-
 [monitor]
 stuck_threshold = "120s"
 ticket_stale = "30m"
