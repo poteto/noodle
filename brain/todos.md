@@ -1,6 +1,6 @@
 # Todos
 
-<!-- next-id: 78 -->
+<!-- next-id: 79 -->
 
 ## Bootstrap Skill Fixes
 
@@ -14,6 +14,7 @@
 
 76. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
 77. [ ] Configure vite-plugin-react to install babel-plugin-react-compiler
+78. [ ] Replace SSE with WebSocket for real-time streaming — single WS connection at /api/ws, in-memory event sink from dispatcher to broker, per-session subscriptions, delete SSE code [[plans/76-websocket-streaming/overview]]
 
 ## Modes
 
