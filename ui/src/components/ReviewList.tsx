@@ -8,15 +8,13 @@ function ReviewReport({ review }: { review: PendingReviewItem }) {
 
   return (
     <main className="review-report">
-      <div className="review-report-header">
-        <div className="review-report-title-row">
-          <h1 className="review-report-title">
-            Quality Review: <span className="review-session-name">{review.session_id || review.order_id}</span>
-          </h1>
+      <header className="feed-header">
+        <div className="feed-title">
+          Quality Review: <span className="review-session-name">{review.session_id || review.order_id}</span>
           {review.task_key && <span className="feed-badge badge-task">{review.task_key}</span>}
         </div>
-        {review.reason && <p className="review-report-subtitle">{review.reason}</p>}
-      </div>
+        {review.reason && <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>{review.reason}</span>}
+      </header>
 
       <section className="review-section">
         <h2 className="review-section-title">Generated Diff</h2>
@@ -118,9 +116,9 @@ function EmptyReviews() {
   return (
     <>
       <main className="review-report">
-        <div className="review-report-header">
-          <h1 className="review-report-title">Reviews</h1>
-        </div>
+        <header className="feed-header">
+          <div className="feed-title">Reviews</div>
+        </header>
         <div className="review-empty">No pending reviews</div>
       </main>
       <aside className="context-panel">

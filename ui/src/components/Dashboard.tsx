@@ -95,13 +95,14 @@ export function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-bg-depth text-text-primary">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-bg-surface">
-        <h1 className="font-display font-bold text-lg tracking-wider uppercase">DASHBOARD</h1>
+      <header className="feed-header">
+        <div className="feed-title">Dashboard</div>
         <button
           onClick={() => navigate({ to: "/" })}
-          className="px-4 py-2 bg-accent text-bg-depth font-mono font-bold text-sm uppercase tracking-wider hover:opacity-90 active:scale-[0.96] transition-[opacity,transform] duration-100"
+          className="feed-action-btn"
+          style={{ background: "var(--color-accent)", color: "var(--color-bg-depth)", fontWeight: 700 }}
         >
-          NEW ORDER
+          New Order
         </button>
       </header>
 
