@@ -66,6 +66,7 @@ func NewRootCmd() *cobra.Command {
 		newDispatchCmd(&app),
 		newMiseCmd(&app),
 		newEventCmd(&app),
+		newResetCmd(&app),
 	)
 
 	return root

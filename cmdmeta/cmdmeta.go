@@ -69,6 +69,7 @@ func Commands() []Command {
 				{Name: "payload", Type: "string", Desc: "Event payload as JSON"},
 			}},
 		}},
+		{Name: "reset", Short: "Clear all runtime state"},
 	}
 }
 
