@@ -2,16 +2,13 @@ package runtime
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/procx"
 )
 
 // processRuntime adds PID-based session recovery to the base DispatcherRuntime.
@@ -48,7 +45,7 @@ func (p *processRuntime) Recover(_ context.Context) ([]RecoveredSession, error) 
 		sessionID := entry.Name()
 		sessionDir := filepath.Join(sessionsDir, sessionID)
 
-		pid, err := readRecoverPID(sessionDir)
+		pid, err := procx.ReadPIDFile(filepath.Join(sessionDir, "process.json"))
 		if err != nil {
 			// No process.json — skip.
 			continue
@@ -63,7 +60,7 @@ func (p *processRuntime) Recover(_ context.Context) ([]RecoveredSession, error) 
 			continue
 		}
 
-		if !recoverPIDAlive(pid) {
+		if !procx.IsPIDAlive(pid) {
 			// Dead process — update meta.json status.
 			updated := strings.Replace(string(data), `"status":"running"`, `"status":"exited"`, 1)
 			_ = os.WriteFile(metaPath, []byte(updated), 0o644)
@@ -80,39 +77,6 @@ func (p *processRuntime) Recover(_ context.Context) ([]RecoveredSession, error) 
 	}
 
 	return recovered, nil
-}
-
-// readRecoverPID reads the PID from a session's process.json.
-func readRecoverPID(sessionDir string) (int, error) {
-	data, err := os.ReadFile(filepath.Join(sessionDir, "process.json"))
-	if err != nil {
-		return 0, err
-	}
-	var meta struct {
-		PID int `json:"pid"`
-	}
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return 0, fmt.Errorf("parse process.json: %w", err)
-	}
-	if meta.PID <= 0 {
-		return 0, fmt.Errorf("invalid PID %d", meta.PID)
-	}
-	return meta.PID, nil
-}
-
-// recoverPIDAlive checks whether a process is alive using kill(pid, 0).
-func recoverPIDAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	err := syscall.Kill(pid, 0)
-	if err == nil {
-		return true
-	}
-	if errors.Is(err, syscall.EPERM) {
-		return true
-	}
-	return false
 }
 
 // recoveredSessionHandle represents a session discovered during crash recovery.

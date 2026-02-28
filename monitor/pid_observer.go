@@ -1,13 +1,12 @@
 package monitor
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/poteto/noodle/internal/procx"
 )
 
 // PidObserver checks session liveness by reading the PID from process.json
@@ -35,69 +34,37 @@ func (o *PidObserver) Observe(sessionID string) (Observation, error) {
 		return Observation{}, err
 	}
 
-	pid, err := readProcessPID(o.runtimeDir, sessionID)
+	pidPath := filepath.Join(o.runtimeDir, "sessions", sessionID, "process.json")
+	pid, err := procx.ReadPIDFile(pidPath)
 	if err != nil {
 		// No process.json — can't determine liveness, leave Alive=false.
 		return obs, nil
 	}
 
-	obs.Alive = isPIDAlive(pid)
+	obs.Alive = procx.IsPIDAlive(pid)
 	return obs, nil
-}
-
-// readProcessPID reads the PID from a session's process.json file.
-func readProcessPID(runtimeDir, sessionID string) (int, error) {
-	path := filepath.Join(runtimeDir, "sessions", sessionID, "process.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return 0, err
-	}
-	var meta struct {
-		PID int `json:"pid"`
-	}
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return 0, fmt.Errorf("parse process.json: %w", err)
-	}
-	if meta.PID <= 0 {
-		return 0, fmt.Errorf("invalid PID %d", meta.PID)
-	}
-	return meta.PID, nil
-}
-
-// isPIDAlive checks whether a process is alive using kill(pid, 0).
-// Returns true on success or EPERM (process exists but owned by another user).
-func isPIDAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	err := syscall.Kill(pid, 0)
-	if err == nil {
-		return true
-	}
-	if errors.Is(err, syscall.EPERM) {
-		return true
-	}
-	return false
 }
 
 // SessionPIDAlive returns true if the session's process.json PID is alive.
 // Returns false if process.json is missing or the PID is dead.
 func SessionPIDAlive(runtimeDir, sessionID string) bool {
-	pid, err := readProcessPID(runtimeDir, sessionID)
+	pidPath := filepath.Join(runtimeDir, "sessions", sessionID, "process.json")
+	pid, err := procx.ReadPIDFile(pidPath)
 	if err != nil {
 		return false
 	}
-	return isPIDAlive(pid)
+	return procx.IsPIDAlive(pid)
 }
 
 // KillSessionByPID reads the PID from a session's process.json and sends
 // SIGTERM to the process group. Used by loop.Shutdown to kill adopted sessions.
 func KillSessionByPID(runtimeDir, sessionID string) {
-	pid, err := readProcessPID(runtimeDir, sessionID)
+	pidPath := filepath.Join(runtimeDir, "sessions", sessionID, "process.json")
+	pid, err := procx.ReadPIDFile(pidPath)
 	if err != nil {
 		return
 	}
-	if !isPIDAlive(pid) {
+	if !procx.IsPIDAlive(pid) {
 		return
 	}
 	// Try SIGTERM to the process group first.

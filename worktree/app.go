@@ -35,14 +35,7 @@ func (a *App) integrationBranch() string {
 	if a.IntegrationBranch != "" {
 		return a.IntegrationBranch
 	}
-	// Auto-discover from remote HEAD (fast, no network).
-	if ref, err := a.gitOutput("symbolic-ref", "refs/remotes/origin/HEAD"); err == nil {
-		// ref looks like "refs/remotes/origin/develop" — extract the branch name.
-		if name := strings.TrimPrefix(ref, "refs/remotes/origin/"); name != ref {
-			return name
-		}
-	}
-	return "main"
+	return discoverBaseBranch(a.Root)
 }
 
 // ExitError represents a process exit with a specific code.
@@ -130,9 +123,7 @@ func (a *App) git(args ...string) *exec.Cmd {
 
 // gitOutput runs a git command and returns trimmed stdout.
 func (a *App) gitOutput(args ...string) (string, error) {
-	cmd := a.git(args...)
-	out, err := cmd.Output()
-	return strings.TrimSpace(string(out)), err
+	return gitOutput(a.Root, args...)
 }
 
 // gitRun runs a git command with stdout/stderr connected to the terminal.
