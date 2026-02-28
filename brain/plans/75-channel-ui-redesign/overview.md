@@ -23,7 +23,6 @@ This plan replaces the existing React kanban UI with the channel layout, adds a 
 - Review flow integrated into channel view (not a separate panel)
 - D3 tree visualization of order execution graph
 - Session history dashboard
-- Backend: EventResult canonical event → order completion (no process exit dependency)
 - Backend: auto-advance for mechanical stages, explicit dismiss for execute stages
 - Brutalist dark theme matching prototype aesthetic
 
@@ -59,7 +58,7 @@ Every frontend phase must invoke these skills:
 - `interaction-design` — micro-interactions, motion design, transitions, feedback patterns
 
 Additionally:
-- `go-best-practices` — backend phases (8, 9)
+- `go-best-practices` — backend phase (8)
 - `frontend-design` — brutalist theme execution (phase 10)
 
 ## Styling
@@ -75,10 +74,9 @@ Use **Tailwind CSS** (already installed as Tailwind v4.2 via Vite plugin) for al
 5. [[plans/75-channel-ui-redesign/phase-05-review-flow-inline]]
 6. [[plans/75-channel-ui-redesign/phase-06-d3-tree-view]]
 7. [[plans/75-channel-ui-redesign/phase-07-dashboard-history-page]]
-8. [[plans/75-channel-ui-redesign/phase-08-backend-eventresult-completion-signal]]
-9. [[plans/75-channel-ui-redesign/phase-09-backend-auto-advance-and-dismiss]]
-10. [[plans/75-channel-ui-redesign/phase-10-brutalist-theme-and-visual-polish]]
-11. [[plans/75-channel-ui-redesign/phase-11-verification-and-smoke-tests]]
+8. [[plans/75-channel-ui-redesign/phase-09-backend-auto-advance-and-dismiss]]
+9. [[plans/75-channel-ui-redesign/phase-10-brutalist-theme-and-visual-polish]]
+10. [[plans/75-channel-ui-redesign/phase-11-verification-and-smoke-tests]]
 
 ## Verification
 

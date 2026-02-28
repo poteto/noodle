@@ -40,6 +40,7 @@ Invoke `go-best-practices` before starting.
 - `.agents/skills/quality/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
 - `.agents/skills/reflect/SKILL.md` — add `permissions.merge: false` to noodle frontmatter
 - `loop/cook_completion.go` — in `handleCompletion`, change the approve-mode path: instead of parking ALL non-schedule stages, only park stages where `canMerge = true`. Non-mergeable stages auto-advance even in approve mode. This is a small change to the existing conditional.
+- `loop/cook_completion.go` — `handleCompletion` currently re-derives status from `cook.session.Status()`. Use `StageResult.Status` instead — the result already carries the correct status from when the stage completed. (Folded from deleted phase 8.)
 
 ### Feed events
 
