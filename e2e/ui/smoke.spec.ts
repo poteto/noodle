@@ -14,8 +14,8 @@ test.describe("Noodle UI smoke", () => {
     await expect(sidebar.getByRole("link", { name: "Live Feed" })).toBeVisible();
     await expect(sidebar.getByRole("link", { name: "Tree" })).toBeVisible();
 
-    // SCHEDULER section visible
-    await expect(sidebar.getByText("SCHEDULER")).toBeVisible();
+    // Agents section visible
+    await expect(sidebar.getByText("Agents")).toBeVisible();
 
     // Three-column layout present (grid with sidebar, feed, context)
     const grid = page.locator(".grid");
@@ -26,17 +26,16 @@ test.describe("Noodle UI smoke", () => {
     await page.goto("/");
     const sidebar = page.locator("aside.sidebar");
 
-    // Manager channel item exists under SCHEDULER
+    // Manager channel item exists under Agents
     await expect(sidebar.getByText("Manager", { exact: true })).toBeVisible();
-    await expect(sidebar.locator(".agent-meta-line")).toContainText("SCHEDULER");
-    await expect(sidebar.locator(".agent-meta-line")).toContainText("LLM");
+    await expect(sidebar.locator(".agent-meta-line")).toContainText(/IDLE|MONITORING THE SITUATION/);
   });
 
   test("dashboard route loads", async ({ page }) => {
     await page.goto("/dashboard");
 
     // Dashboard header and stats bar render
-    await expect(page.getByRole("heading", { name: "DASHBOARD" })).toBeVisible();
+    await expect(page.locator(".feed-title")).toContainText("Dashboard");
     await expect(page.getByTestId("stats-bar")).toBeVisible();
   });
 
