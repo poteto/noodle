@@ -2,7 +2,6 @@ package parse
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -53,17 +52,6 @@ func parseTimestampField(raw json.RawMessage) string {
 	var text string
 	if err := json.Unmarshal(raw, &text); err == nil {
 		return strings.TrimSpace(text)
-	}
-
-	// Some providers may emit numbers/null here; we ignore non-RFC3339 values.
-	var number json.Number
-	if err := json.Unmarshal(raw, &number); err == nil {
-		return strings.TrimSpace(number.String())
-	}
-
-	var anyValue any
-	if err := json.Unmarshal(raw, &anyValue); err == nil {
-		return strings.TrimSpace(fmt.Sprint(anyValue))
 	}
 
 	return ""

@@ -13,6 +13,8 @@ import (
 	"github.com/poteto/noodle/loop"
 )
 
+const defaultContextWindowTokens = 200_000
+
 // LoadSnapshot builds a Snapshot from in-memory LoopState. Session data comes
 // from the loop's active cook tracking and recent history — no directory
 // scanning or bulk event reading.
@@ -154,7 +156,7 @@ func enrichActiveSession(reader *event.EventReader, sessionID string, session *S
 		}
 	}
 
-	pct := float64(totalTokensIn) / 200_000 * 100
+	pct := float64(totalTokensIn) / defaultContextWindowTokens * 100
 	if pct > 100 {
 		pct = 100
 	}

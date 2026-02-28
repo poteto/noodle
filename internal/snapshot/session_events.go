@@ -60,7 +60,7 @@ func FormatSingleEvent(ev event.Event) (EventLine, bool) {
 		line.Category = TraceFilterAll
 		line.Body = formatStateChange(ev.Payload)
 	default:
-		line.Label = strings.Title(strings.ReplaceAll(string(ev.Type), "_", " "))
+		line.Label = titleCase(strings.ReplaceAll(string(ev.Type), "_", " "))
 		line.Body = summarizePayload(ev.Payload)
 		line.Category = TraceFilterAll
 	}
@@ -195,6 +195,13 @@ func summarizePayload(payload json.RawMessage) string {
 		return ""
 	}
 	return stringx.MiddleTruncate(value, 80)
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 func shortInt(v int) string {

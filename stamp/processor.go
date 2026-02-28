@@ -63,7 +63,7 @@ func (p *Processor) Process(
 		}
 
 		// Skip non-JSON lines (e.g., codex "Reading prompt from stdin..." banner).
-		if len(rawLine) == 0 || rawLine[0] != '{' {
+		if rawLine[0] != '{' {
 			continue
 		}
 
