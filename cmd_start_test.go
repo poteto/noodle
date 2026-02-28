@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/poteto/noodle/config"
@@ -36,6 +37,9 @@ func (f *fakeStartLoop) State() loop.LoopState { return loop.LoopState{} }
 
 func TestRunStartOnceUsesLoopCycle(t *testing.T) {
 	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle"), 0o755); err != nil {
+		t.Fatalf("mkdir .noodle: %v", err)
+	}
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)

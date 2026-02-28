@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 
 	"github.com/poteto/noodle/cmdmeta"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/lockfile"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/server"
 	"github.com/spf13/cobra"
@@ -59,6 +63,16 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 	if err != nil {
 		return err
 	}
+
+	lock, err := lockfile.TryLock(filepath.Join(runtimeDir, "noodle.lock"))
+	if err != nil {
+		var locked *lockfile.AlreadyLockedError
+		if errors.As(err, &locked) {
+			return fmt.Errorf("another noodle instance is running on this project (PID %d)", locked.HolderPID)
+		}
+		return err
+	}
+	defer lock.Close()
 
 	runtimeLoop := newStartRuntimeLoop(cwd, noodleBin, app.Config)
 	if opts.once {
