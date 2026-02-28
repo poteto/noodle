@@ -106,7 +106,6 @@ const scheduleOrderID = "schedule"
 // Prompt parsing patterns for extracting order IDs from session prompts.
 var (
 	promptOrderRegexp    = regexp.MustCompile(`(?im)^\[order:([^\]]+)\]`)
-	promptItemRegexp     = regexp.MustCompile(`(?im)^work backlog item\s+([^\r\n]+)$`)
 	schedulePromptRegexp = regexp.MustCompile(`(?im)^\s*use skill\([^)]+\)\s+to refresh .+from \.noodle/mise\.json\.`)
 )
 
@@ -117,16 +116,9 @@ func ReadSessionTarget(promptPath string) string {
 		return ""
 	}
 
-	// Try new format first: [order:ID]
 	orderMatches := promptOrderRegexp.FindStringSubmatch(string(data))
 	if len(orderMatches) == 2 {
 		return strings.TrimSpace(orderMatches[1])
-	}
-
-	// Old format: Work backlog item <id>
-	matches := promptItemRegexp.FindStringSubmatch(string(data))
-	if len(matches) == 2 {
-		return strings.TrimSpace(matches[1])
 	}
 
 	if schedulePromptRegexp.Match(data) {

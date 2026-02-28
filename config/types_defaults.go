@@ -18,7 +18,6 @@ const (
 // Config is the top-level .noodle.toml contract for runtime wiring.
 type Config struct {
 	Adapters    map[string]AdapterConfig `toml:"adapters"`
-	Schedule    ScheduleConfig           `toml:"schedule"`
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
 	Autonomy    string                   `toml:"autonomy"`
@@ -33,11 +32,6 @@ type Config struct {
 type AdapterConfig struct {
 	Skill   string            `toml:"skill"`
 	Scripts map[string]string `toml:"scripts"`
-}
-
-type ScheduleConfig struct {
-	Run   string `toml:"run"`
-	Model string `toml:"model"`
 }
 
 type RoutingConfig struct {
@@ -151,7 +145,7 @@ type ConfigDiagnostic struct {
 
 const (
 	DiagnosticCodeRoutingDefaultsMissing = "routing_defaults_missing"
-DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
+	DiagnosticCodeAgentDirMissing        = "agent_dir_missing"
 	DiagnosticCodeAdapterSkillMissing    = "adapter_skill_missing"
 	DiagnosticCodeAdapterScriptEmpty     = "adapter_script_empty"
 	DiagnosticCodeAdapterScriptMissing   = "adapter_script_missing"
@@ -194,10 +188,6 @@ func filterDiagnostics(in []ConfigDiagnostic, severity DiagnosticSeverity) []Con
 func DefaultConfig() Config {
 	return Config{
 		Adapters: defaultAdapters(),
-		Schedule: ScheduleConfig{
-			Run:   "after-each",
-			Model: "claude-sonnet",
-		},
 		Routing: RoutingConfig{
 			Defaults: ModelPolicy{
 				Provider: "claude",
@@ -252,11 +242,6 @@ func defaultAdapters() map[string]AdapterConfig {
 
 func defaultSkillPaths() []string {
 	return []string{".agents/skills"}
-}
-
-// PendingApproval returns whether successful cooks need human approval to merge.
-func (c Config) PendingApproval() bool {
-	return c.Autonomy == AutonomyApprove
 }
 
 func (c Config) AvailableRuntimes() []string {

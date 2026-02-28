@@ -63,7 +63,7 @@ func (l *Loop) steer(target string, prompt string) error {
 }
 
 // steerLive interrupts a steerable session and sends a new prompt.
-// Runs in a goroutine. Falls back to kill+respawn if interrupt fails.
+// Runs in a goroutine.
 func (l *Loop) steerLive(sessionID string, controller interface {
 	Interrupt(ctx context.Context) error
 	SendMessage(ctx context.Context, prompt string) error
@@ -79,7 +79,6 @@ func (l *Loop) steerLive(sessionID string, controller interface {
 	if err := controller.Interrupt(ctx); err != nil {
 		l.logger.Warn("steer interrupt failed, falling back to respawn",
 			"session", sessionID, "error", err)
-		l.steerFallbackRespawn(sessionID, prompt)
 		return
 	}
 
@@ -90,17 +89,6 @@ func (l *Loop) steerLive(sessionID string, controller interface {
 	}
 
 	l.logger.Info("steered session", "session", sessionID)
-}
-
-// steerFallbackRespawn is called from a goroutine when live interrupt fails.
-// It performs the same kill+respawn as steerRespawn but must look up the cook
-// again since it runs asynchronously.
-func (l *Loop) steerFallbackRespawn(sessionID string, prompt string) {
-	// The loop state is not protected by a mutex — steer fallback cannot
-	// safely mutate cook maps from a goroutine. Log the failure so the
-	// operator can manually re-steer or kill+enqueue.
-	l.logger.Warn("steer fallback: live interrupt failed, session may need manual re-steer",
-		"session", sessionID)
 }
 
 // steerRespawn is the original kill+respawn steer path for non-steerable sessions.

@@ -703,7 +703,7 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 
 func TestReadSessionTargetAcceptsRichIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "prompt.txt")
-	content := "Work backlog item plan/phase_02-ticket.7\n\nContext: test"
+	content := "[order:plan/phase_02-ticket.7]\n\nContext: test"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write prompt: %v", err)
 	}

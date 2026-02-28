@@ -48,13 +48,6 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Skills.Paths = defaultSkillPaths()
 	}
 
-	if !metadata.IsDefined("schedule", "run") {
-		config.Schedule.Run = "after-each"
-	}
-	if !metadata.IsDefined("schedule", "model") {
-		config.Schedule.Model = "claude-sonnet"
-	}
-
 	if !metadata.IsDefined("routing", "defaults", "provider") {
 		config.Routing.Defaults.Provider = "claude"
 	}
@@ -166,15 +159,6 @@ func validateParsedValues(config Config) error {
 		if err := validateProvider(field, policy.Provider); err != nil {
 			return err
 		}
-	}
-
-	switch config.Schedule.Run {
-	case "after-each", "after-n", "manual":
-	default:
-		return fmt.Errorf(
-			"schedule.run: unsupported value %q (expected after-each, after-n, manual)",
-			config.Schedule.Run,
-		)
 	}
 
 	if config.Recovery.MaxRetries < 0 {

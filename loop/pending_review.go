@@ -2,7 +2,6 @@ package loop
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -49,23 +48,6 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 
 	var payload pendingReviewFile
 	if err := json.Unmarshal(data, &payload); err != nil {
-		// Old-format file — attempt to extract worktree path for manual resolution.
-		var raw map[string]json.RawMessage
-		if jsonErr := json.Unmarshal(data, &raw); jsonErr == nil {
-			if itemsRaw, ok := raw["items"]; ok {
-				var items []json.RawMessage
-				if arrErr := json.Unmarshal(itemsRaw, &items); arrErr == nil {
-					for _, itemRaw := range items {
-						var partial struct {
-							WorktreePath string `json:"worktree_path"`
-						}
-						if pErr := json.Unmarshal(itemRaw, &partial); pErr == nil && partial.WorktreePath != "" {
-							logWarnf("pending review file has old format — worktree at %s needs manual merge or cleanup", partial.WorktreePath)
-						}
-					}
-				}
-			}
-		}
 		return []PendingReviewItem{}, nil
 	}
 	if payload.Items == nil {
@@ -187,9 +169,4 @@ func (l *Loop) reconcilePendingReview() error {
 		return l.writePendingReview()
 	}
 	return nil
-}
-
-// logWarnf logs a warning to stderr. Used for degraded parse situations.
-func logWarnf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", args...)
 }

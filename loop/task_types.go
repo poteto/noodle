@@ -1,8 +1,6 @@
 package loop
 
 import (
-	"strings"
-
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 )
@@ -13,10 +11,6 @@ type TaskType = taskreg.TaskType
 // ScheduleTaskKey returns the canonical steer target for the scheduler.
 func ScheduleTaskKey() string {
 	return "schedule"
-}
-
-func isScheduleTarget(value string) bool {
-	return strings.EqualFold(strings.TrimSpace(value), ScheduleTaskKey())
 }
 
 // RepairTaskSkill returns the skill name for runtime repair sessions.

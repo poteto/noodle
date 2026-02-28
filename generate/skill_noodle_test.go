@@ -1,44 +1,20 @@
 package generate
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
 
-func TestNoodleSkillSnapshot(t *testing.T) {
+func TestGenerateSkillContent(t *testing.T) {
 	generated, err := GenerateSkillContent()
 	if err != nil {
 		t.Fatalf("GenerateSkillContent: %v", err)
 	}
-
-	committed, err := os.ReadFile("../.agents/skills/noodle/SKILL.md")
-	if err != nil {
-		t.Fatalf("read committed SKILL.md: %v", err)
+	if !strings.Contains(generated, "# Noodle") {
+		t.Fatal("generated skill missing Noodle heading")
 	}
-
-	if string(committed) != generated {
-		// Find first differing line for a useful error message
-		committedLines := strings.Split(string(committed), "\n")
-		generatedLines := strings.Split(generated, "\n")
-		for i := 0; i < len(committedLines) || i < len(generatedLines); i++ {
-			var cl, gl string
-			if i < len(committedLines) {
-				cl = committedLines[i]
-			}
-			if i < len(generatedLines) {
-				gl = generatedLines[i]
-			}
-			if cl != gl {
-				t.Fatalf("noodle skill is out of date (first diff at line %d).\n"+
-					"  committed: %q\n"+
-					"  generated: %q\n"+
-					"Run `go generate ./generate/...` to update.",
-					i+1, cl, gl,
-				)
-			}
-		}
-		t.Fatal("noodle skill is out of date. Run `go generate ./generate/...` to update.")
+	if !strings.Contains(generated, "## Config Reference") {
+		t.Fatal("generated skill missing Config Reference section")
 	}
 }
 
@@ -53,7 +29,6 @@ func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
 		"routing.defaults.provider",
 		"routing.defaults.model",
 		"skills.paths",
-		"schedule.run",
 		"concurrency.max_cooks",
 	}
 

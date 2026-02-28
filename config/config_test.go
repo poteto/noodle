@@ -13,12 +13,6 @@ func TestDefaultConfigValues(t *testing.T) {
 	if got := strings.Join(config.Skills.Paths, ","); got != ".agents/skills" {
 		t.Fatalf("skills.paths default = %q", got)
 	}
-	if config.Schedule.Run != "after-each" {
-		t.Fatalf("schedule.run default = %q", config.Schedule.Run)
-	}
-	if config.Schedule.Model != "claude-sonnet" {
-		t.Fatalf("schedule.model default = %q", config.Schedule.Model)
-	}
 	if config.Routing.Defaults.Provider != "claude" {
 		t.Fatalf("routing.defaults.provider default = %q", config.Routing.Defaults.Provider)
 	}
@@ -76,9 +70,6 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load missing config: %v", err)
 	}
-	if config.Schedule.Run != "after-each" {
-		t.Fatalf("expected default schedule run, got %q", config.Schedule.Run)
-	}
 	if _, ok := config.Adapters["backlog"]; !ok {
 		t.Fatal("expected default backlog adapter when config file is missing")
 	}
@@ -86,10 +77,6 @@ func TestLoadMissingFileUsesDefaults(t *testing.T) {
 
 func TestParseConfigRoundTrip(t *testing.T) {
 	tomlPayload := `
-[schedule]
-run = "manual"
-model = "claude-sonnet"
-
 [routing.defaults]
 provider = "codex"
 model = "gpt-5.3-codex"
@@ -128,9 +115,6 @@ edit = "gh issue edit"
 		t.Fatalf("Parse config: %v", err)
 	}
 
-	if config.Schedule.Run != "manual" {
-		t.Fatalf("schedule.run = %q", config.Schedule.Run)
-	}
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
 	}
@@ -158,9 +142,6 @@ model = "claude-sonnet-4-6"
 		t.Fatalf("Parse minimal config: %v", err)
 	}
 
-	if config.Schedule.Run != "after-each" {
-		t.Fatalf("expected default schedule.run, got %q", config.Schedule.Run)
-	}
 	if config.Autonomy != "auto" {
 		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
 	}
@@ -183,18 +164,6 @@ provider = ""
 model = "x"
 `,
 			wantErr: "routing.defaults.provider",
-		},
-		{
-			name: "invalid run frequency",
-			payload: `
-[routing.defaults]
-provider = "claude"
-model = "x"
-
-[schedule]
-run = "sometimes"
-`,
-			wantErr: "schedule.run",
 		},
 		{
 			name: "invalid duration",
@@ -460,18 +429,6 @@ model = "claude-sonnet-4-6"
 	}
 }
 
-func TestPendingApprovalHelper(t *testing.T) {
-	cfg := DefaultConfig()
-	cfg.Autonomy = "approve"
-	if !cfg.PendingApproval() {
-		t.Fatal("approve autonomy should require pending approval")
-	}
-	cfg.Autonomy = "auto"
-	if cfg.PendingApproval() {
-		t.Fatal("auto autonomy should not require pending approval")
-	}
-}
-
 func TestLoadParsesFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "noodle.toml")
@@ -711,7 +668,7 @@ func TestValidateBacklogAdapterPresentNoNoDiagnostic(t *testing.T) {
 
 func TestMaxConcurrentForLookup(t *testing.T) {
 	rc := RuntimeConfig{
-		Process:    ProcessConfig{MaxConcurrent: 4},
+		Process: ProcessConfig{MaxConcurrent: 4},
 		Sprites: SpritesConfig{MaxConcurrent: 50},
 		Cursor:  CursorConfig{MaxConcurrent: 10},
 	}
