@@ -20,7 +20,8 @@ Add optional fields to `CanonicalEvent`:
 - `ParentAgentID string` -- parent's agent ID (empty for root)
 - `AgentName string` -- human-readable name (slug, nickname)
 - `AgentType string` -- role/type (Explore, worker, awaiter, team member name)
-- `Steerable bool` -- whether the agent accepts user messages
+- `TeamName string` -- team name for team agents (empty for non-team agents)
+- `Steerable bool` -- whether the agent accepts user messages (set by parser based on agent type, carried through the full pipeline)
 
 **`event/types.go`** -- Add corresponding event types:
 - `EventAgentSpawned`
@@ -34,7 +35,7 @@ Add optional fields to `CanonicalEvent`:
 
 ## Data Structures
 
-- `CanonicalEvent` gains 5 fields (AgentID, ParentAgentID, AgentName, AgentType string + Steerable bool) -- all `omitempty`
+- `CanonicalEvent` gains 6 fields (AgentID, ParentAgentID, AgentName, AgentType, TeamName string + Steerable bool) -- all `omitempty`
 - `AgentNode` struct with 9 fields (ID, ParentID, Name, Type, Status, CurrentAction, SpawnedAt, CompletedAt, Steerable)
 - New `EventType` constants (3 values)
 - Agent payload shape: `{agent_id, parent_agent_id, agent_name, agent_type, message, steerable}`

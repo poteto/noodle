@@ -20,18 +20,19 @@ End-to-end tests using fixture NDJSON files that exercise the full agent trackin
    - Both complete
 
 2. `claude_team.ndjson` -- A Claude session that creates a team:
-   - TeamCreate tool_use
-   - Agent tool_use with team_name (spawning teammate)
-   - SendMessage tool_use (type: message)
+   - TeamCreate tool_use (with team_name, description)
+   - Agent tool_use with team_name (spawning teammate, Steerable=true)
+   - SendMessage tool_use (type: message) -> EventAgentProgress
+   - `<teammate-message>` user message (XML wrapper with teammate_id, color, summary)
    - SendMessage tool_use (type: shutdown_request)
-   - Agent tool_result (teammate completed)
+   - Agent tool_result (teammate completed, agent_id: name@team)
 
 3. `codex_subagent.ndjson` -- A Codex parent session with collab:
-   - session_meta with source: "cli" (root)
-   - response_item with function_call name: "spawn_agent"
-   - item.completed with agents_states
-   - response_item with function_call name: "send_input"
-   - response_item with function_call name: "close_agent"
+   - session_meta with source: "exec" (root)
+   - response_item with function_call name: "spawn_agent" (arguments: {agent_type, message})
+   - function_call_output from spawn_agent (child thread ID)
+   - response_item with function_call name: "send_input" (arguments: {id, message})
+   - response_item with function_call name: "close_agent" (arguments: {id})
 
 4. `codex_subagent_child.ndjson` -- A Codex sub-agent session file:
    - session_meta with source.subagent.thread_spawn (depth 1, nickname, role)

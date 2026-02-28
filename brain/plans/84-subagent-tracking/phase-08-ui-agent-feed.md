@@ -32,8 +32,8 @@ Two things: (1) a new message type in the parent chat showing "agent spawned sub
 - URL structure: `/sessions/{id}/agents/{agentId}` or similar (or just component state if no deep linking needed yet)
 
 **`ui/src/client/hooks.tsx`** -- Add `useAgentEvents(sessionId, agentId)`:
-- Filters `useSessionEvents(sessionId)` by `data.agent_id === agentId`
-- Returns filtered event list
+- Filters `useSessionEvents(sessionId)` by `event.agent_id === agentId`
+- Returns filtered event list (EventLine already has `agent_id` from Phase 5)
 
 ## Data Structures
 

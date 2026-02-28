@@ -15,15 +15,22 @@ Parse Claude team lifecycle (TeamCreate, SendMessage, teammate inbox messages) i
    - `AgentName` from `input.team_name`
    - Message includes `input.description`
 
-2. **SendMessage tool_use**: Emit `EventAgentMessage` with:
+2. **SendMessage tool_use**: Emit `EventAgentProgress` with:
    - `AgentName` from `input.recipient`
    - Message from `input.content`
    - `AgentType` from `input.type` (message, broadcast, shutdown_request)
 
+   Note: `EventAgentMessage` is deferred. Team communication is tracked via `EventAgentProgress` for now — it shows activity without requiring a separate event pipeline.
+
 3. **Agent tool_use with `team_name`**: When `input.team_name` is set, the Agent tool is spawning a teammate. Emit `EventAgentSpawn` with:
    - `AgentName` from `input.name`
-   - `AgentType` from `input.subagent_type` + marker that this is a team member
-   - Extra metadata: `team_name`
+   - `AgentType` from `input.subagent_type`
+   - `TeamName` from `input.team_name`
+   - `Steerable` = `true`
+
+4. **Teammate messages in NDJSON**: Team inbox traffic appears in the parent's NDJSON as `type: "user"` messages with `teamName` field and `<teammate-message teammate_id="..." color="..." summary="...">` XML wrappers in `message.content`. Parse the wrapper attributes to extract teammate identity and summary, then emit `EventAgentProgress`.
+
+   Note: `input.agent_type` on TeamCreate is typically null in practice — fall back to `"team_lead"` when absent.
 
 **Note on teams and steerability:** Claude team members spawned via `Agent` with `team_name` are steerable (`Steerable: true`). Regular Claude sub-agents (no team) are non-steerable.
 
@@ -43,11 +50,11 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about what tea
 ### Static
 - `go test ./parse/...`
 - Test cases:
-  - TeamCreate tool_use -> EventAgentSpawn
-  - SendMessage tool_use (type: message) -> EventAgentMessage
-  - SendMessage tool_use (type: shutdown_request) -> EventAgentMessage
-  - Agent tool_use with team_name set -> EventAgentSpawn with team metadata
-  - ParseTeamInbox with mixed messages and idle_notification JSON
+  - TeamCreate tool_use -> EventAgentSpawn with team_name
+  - SendMessage tool_use (type: message) -> EventAgentProgress
+  - SendMessage tool_use (type: shutdown_request) -> EventAgentProgress
+  - Agent tool_use with team_name set -> EventAgentSpawn with Steerable=true and TeamName
+  - `<teammate-message>` NDJSON entries -> EventAgentProgress with teammate identity
 
 ### Runtime
 - Round-trip: construct fixture NDJSON, parse, verify events

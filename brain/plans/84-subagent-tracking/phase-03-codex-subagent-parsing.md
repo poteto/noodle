@@ -22,12 +22,10 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
 2. **`function_call` items in `response_item`** (extend `parseCodexItem()` for `function_call` type):
    Codex sub-agent orchestration uses `response_item` events containing `function_call` with specific function names. Real NDJSON uses this pattern — NOT `collab_tool_call` (which has zero matches in actual session logs):
-   - `function_call` with `name: "spawn_agent"` -> `EventAgentSpawn` with `AgentName` from arguments summary
-   - `function_call` with `name: "send_input"` -> `EventAgentProgress` on the target agent (track via `receiver_thread_ids` in arguments)
+   - `function_call` with `name: "spawn_agent"` -> `EventAgentSpawn` with `AgentName` from arguments summary; arguments: `{agent_type, message}`
+   - `function_call` with `name: "send_input"` -> `EventAgentProgress` on the target agent; arguments: `{id, message}` where `id` is the child thread ID
    - `function_call` with `name: "wait"` -> no event (blocking call)
-   - `function_call` with `name: "close_agent"` -> `EventAgentComplete`
-
-   The `item.completed` events for these function_calls carry `agents_states` maps showing current agent status — use these to reconcile agent state.
+   - `function_call` with `name: "close_agent"` -> `EventAgentComplete`; arguments: `{id}` where `id` is the child thread ID
 
    Preserve the existing error handling for failed/error/cancelled status in `parseCodexItem()`.
 
@@ -52,8 +50,9 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical parsing with clear field
   - `session_meta` with `source: "cli"` (root, no agent events)
   - `session_meta` with `source.subagent.thread_spawn` (sub-agent spawn)
   - `response_item` with `function_call` name `spawn_agent` -> EventAgentSpawn
-  - `item.completed` with `agents_states` showing running/completed/errored
+  - `response_item` with `function_call` name `send_input` -> EventAgentProgress
   - `response_item` with `function_call` name `close_agent` -> EventAgentComplete
+  - `function_call_output` from `spawn_agent` (contains child thread ID)
 
 ### Runtime
 - Feed fixture lines through `CodexAdapter.Parse()`, verify correct event types and agent metadata

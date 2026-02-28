@@ -8,23 +8,31 @@ Wire the new agent canonical events through the full pipeline: event storage, se
 
 ## Changes
 
-**`dispatcher/session_helpers.go`** -- `eventFromCanonical()` already handles the existing event types. Add cases for the 3 new types:
-- `parse.EventAgentSpawn` -> `event.EventAgentSpawned` with payload `{agent_id, parent_agent_id, agent_name, agent_type, steerable, message}`
-- `parse.EventAgentProgress` -> `event.EventAgentProgress` with payload `{agent_id, agent_name, message, tool, summary}`
-- `parse.EventAgentComplete` -> `event.EventAgentExited` with payload `{agent_id, agent_name, outcome, message}`
+**`dispatcher/session_helpers.go`** -- `eventFromCanonical()` already handles the existing event types. Two changes:
 
-**`dispatcher/session_base.go`** -- `consumeCanonicalLine()` already routes all canonical events through `eventFromCanonical()` and publishes via sink. No changes needed here -- the existing pipeline handles new event types automatically.
+1. Add cases for the 3 new event types:
+   - `parse.EventAgentSpawn` -> `event.EventAgentSpawned` with payload `{agent_id, parent_agent_id, agent_name, agent_type, team_name, steerable, message}`
+   - `parse.EventAgentProgress` -> `event.EventAgentProgress` with payload `{agent_id, agent_name, message, tool, summary}`
+   - `parse.EventAgentComplete` -> `event.EventAgentExited` with payload `{agent_id, agent_name, outcome, message}`
+
+2. For ALL existing event types (EventAction, EventError, etc.): when `CanonicalEvent.AgentID` is non-empty, include `agent_id` in the event payload. This ensures inner agent actions (tool calls, text output parsed from agent_progress) carry the agent's identity through to the UI.
+
+**`dispatcher/session_base.go`** -- No changes needed. The existing pipeline handles new event types automatically.
 
 **`server/session_broker.go`** -- No changes needed. The broker fans out all `event.Event` objects regardless of type.
 
 **`server/ws_hub.go`** -- Use `session_event` with agent fields in the data payload. The UI filters by `agent_id`. No new WebSocket message type needed.
 
-**`ui/src/client/types.ts`** -- Extend `EventLine` with optional agent fields:
-- `agent_id?: string` — which agent produced this event (empty = root agent)
-- `agent_name?: string` — human-readable name
-- `agent_type?: string` — role/type
+**`internal/snapshot/types.go`** -- Extend Go `EventLine` struct with optional agent fields:
+- `AgentID string json:"agent_id,omitempty"`
+- `AgentName string json:"agent_name,omitempty"`
+- `AgentType string json:"agent_type,omitempty"`
 
-Without these fields, agent metadata is dropped before reaching the UI (EventLine currently only has `{at, label, body, category}`). The UI needs `agent_id` to filter events per-agent in Phase 8.
+This is the source of truth — `ui/src/client/generated-types.ts` is generated from this via tygo.
+
+**`internal/snapshot/session_events.go`** -- `FormatSingleEvent()` must extract agent fields from the event payload and populate the new EventLine fields. All event types (not just EventAgent*) may carry `agent_id` in their payload.
+
+Without these changes, agent metadata is lost at the Go -> JSON -> WebSocket boundary. The UI needs `agent_id` on every EventLine to filter events per-agent in Phase 8.
 
 **Out-of-band file discovery:** Two agent sources live outside the parent's NDJSON stream:
 1. **Codex sub-agent session files** — when the parent parser sees a `spawn_agent` function_call with a child thread ID, the session manager starts tailing the corresponding child NDJSON file at `~/.codex/sessions/YYYY/MM/DD/{thread_id}.jsonl`. Child events are tagged with the agent's ID and fed into the same event pipeline.
@@ -36,7 +44,7 @@ The session manager needs a method like `discoverSubAgentFiles(parentSessionID)`
 
 - Agent event payload: `{agent_id, parent_agent_id, agent_name, agent_type, steerable, message, tool, summary, outcome}`
 - All fields optional/omitempty -- each event type populates the relevant subset
-- Extended `EventLine`: `{at, label, body, category, agent_id?, agent_name?, agent_type?}`
+- Extended Go `EventLine` struct: `{At, Label, Body, Category, AgentID, AgentName, AgentType}` (generated to TS via tygo)
 
 ## Routing
 

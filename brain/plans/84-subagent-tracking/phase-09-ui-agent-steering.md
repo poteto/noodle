@@ -11,7 +11,7 @@ Let users send messages to steerable agents (Claude team members, Codex collab a
 | Agent Type | Steerable | Mechanism |
 |---|---|---|
 | Claude team member (TeamCreate + Agent with team_name) | Yes | Write to inbox file |
-| Codex sub-agent (collab spawn_agent) | Yes | `codex exec resume {session_id} "message"` or stdin |
+| Codex sub-agent (collab spawn_agent) | Yes | Parent session `send_input` function_call (via stdin to parent or `codex exec resume` on parent session) |
 | Claude sub-agent (Agent tool, no team) | No | Runs to completion, no input channel |
 | Claude sub-agent (background, no team) | No | Same as above |
 
@@ -31,7 +31,7 @@ Dispatch logic:
 3. **Claude team member**: Read agent's team config from `~/.claude/teams/{team}/config.json` to find the inbox path. Append message to inbox JSON array with `{from: "user", text, summary, timestamp, read: false}`. Use atomic write (write to temp file, rename) to avoid corrupting the inbox if multiple writers race.
 4. **Codex sub-agent**: The live steering mechanism is `send_input` — a function_call the parent agent makes to deliver input to a running sub-agent. Noodle triggers this by writing to the parent's stdin or invoking `codex exec resume` on the parent session with a prompt that tells it to send_input to the target child thread ID.
 
-**`server/routes.go`** -- Register the new endpoint.
+**`server/server.go`** -- Register the new endpoint in the existing `mux` route table (there is no separate routes.go).
 
 **`ui/src/components/AgentChat.tsx`** -- The message input (from phase 8):
 - Enabled when `agent.steerable === true` and `agent.status === "running"`
