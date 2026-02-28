@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import * as d3 from "d3";
 import { useSuspenseSnapshot, formatCost } from "~/client";
 import type { Snapshot } from "~/client";
@@ -7,7 +7,6 @@ import type { TreeNodeData } from "./tree-utils";
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 70;
-const MARGIN = { top: 40, left: 40 };
 
 type PointNode = d3.HierarchyPointNode<TreeNodeData>;
 
@@ -19,6 +18,9 @@ const statusDotColors: Record<string, string> = {
   pending: "var(--color-border-subtle)",
   paused: "var(--color-accent)",
 };
+
+// Persist zoom transform across route navigations.
+let savedTransform: d3.ZoomTransform | null = null;
 
 function esc(s: string): string {
   return s
@@ -56,7 +58,11 @@ function nodeKey(d: d3.HierarchyNode<TreeNodeData>): string {
     .join("/");
 }
 
-function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
+function renderTree(
+  svgEl: SVGSVGElement,
+  snapshot: Snapshot,
+  zoomRef: React.MutableRefObject<d3.ZoomBehavior<SVGSVGElement, unknown> | null>,
+) {
   const root = d3.hierarchy(snapshotToHierarchy(snapshot));
   const treeLayout = d3.tree<TreeNodeData>().nodeSize([NODE_WIDTH + 40, NODE_HEIGHT + 60]);
   treeLayout(root);
@@ -73,12 +79,21 @@ function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
       .scaleExtent([0.2, 3])
       .on("zoom", (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr("transform", event.transform.toString());
+        savedTransform = event.transform;
       });
     svg.call(zoom);
+    zoomRef.current = zoom;
 
-    const width = svgEl.clientWidth || 800;
-    const t = d3.zoomIdentity.translate(width / 2 + MARGIN.left, MARGIN.top);
-    svg.call(zoom.transform, t);
+    if (savedTransform) {
+      // Restore previous position.
+      svg.call(zoom.transform, savedTransform);
+    } else {
+      // Center on the scheduler (root) node.
+      const width = svgEl.clientWidth || 800;
+      const height = svgEl.clientHeight || 600;
+      const t = d3.zoomIdentity.translate(width / 2, height / 2);
+      svg.call(zoom.transform, t);
+    }
   }
 
   // Edges — join by index (stateless paths, no identity needed).
@@ -127,12 +142,25 @@ function renderTree(svgEl: SVGSVGElement, snapshot: Snapshot) {
 export function TreeView() {
   const { data: snapshot } = useSuspenseSnapshot();
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   useEffect(() => {
     if (svgRef.current) {
-      renderTree(svgRef.current, snapshot);
+      renderTree(svgRef.current, snapshot, zoomRef);
     }
   }, [snapshot]);
+
+  const handleZoomIn = useCallback(() => {
+    if (svgRef.current && zoomRef.current) {
+      d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (svgRef.current && zoomRef.current) {
+      d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1 / 1.4);
+    }
+  }, []);
 
   return (
     <div
@@ -149,6 +177,10 @@ export function TreeView() {
         className="w-full h-full"
         style={{ display: "block" }}
       />
+      <div className="tree-zoom-controls">
+        <button type="button" onClick={handleZoomIn}>+</button>
+        <button type="button" onClick={handleZoomOut}>&minus;</button>
+      </div>
     </div>
   );
 }
