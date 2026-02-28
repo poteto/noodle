@@ -5,7 +5,7 @@
 ## Bootstrap Skill Fixes
 
 20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.
-29. [ ] Backlog-only scheduling — simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. Context passthrough (extra_prompt) addressed by #66 events. [[plans/29-queue-item-context-passthrough/overview]]
+29. [x] Backlog-only scheduling — simplify to backlog-only scheduling: remove native plan reader from mise, backlog adapter is the single integration point, plans become optional context on backlog items, first-run bootstrap prompts to create adapter. Context passthrough (extra_prompt) addressed by #66 events. [[plans/29-queue-item-context-passthrough/overview]]
 
 ## Loop Observability & DX
 
