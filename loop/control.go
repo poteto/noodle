@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/filex"
@@ -633,22 +634,43 @@ func (l *Loop) controlStop(name string) error {
 	if name == "" {
 		return fmt.Errorf("stop requires name")
 	}
-	for orderID, cook := range l.cooks.activeCooksByOrder {
-		if cook.worktreeName == name || cook.session.ID() == name {
-			_ = cook.session.Kill()
-			l.trackCookCompleted(cook, StageResult{
-				SessionID:   cook.session.ID(),
-				Status:      StageResultCancelled,
-				CompletedAt: l.deps.Now(),
-			})
-			delete(l.cooks.activeCooksByOrder, orderID)
-			if cook.worktreeName != "" {
-				_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
-			}
-			return nil
+	for _, cook := range l.cooks.activeCooksByOrder {
+		if cook.worktreeName != name && cook.session.ID() != name {
+			continue
 		}
+		controller := cook.session.Controller()
+		if !controller.Steerable() {
+			return l.controlStopKill(cook)
+		}
+		// Interrupt gracefully — the session stays alive.
+		sessionID := cook.session.ID()
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := controller.Interrupt(ctx); err != nil {
+				l.logger.Warn("stop interrupt failed",
+					"session", sessionID, "error", err)
+			}
+		}()
+		return nil
 	}
 	return fmt.Errorf("session not found")
+}
+
+// controlStopKill is the fallback for non-steerable sessions: kill the process
+// and clean up the cook.
+func (l *Loop) controlStopKill(cook *cookHandle) error {
+	_ = cook.session.Kill()
+	l.trackCookCompleted(cook, StageResult{
+		SessionID:   cook.session.ID(),
+		Status:      StageResultCancelled,
+		CompletedAt: l.deps.Now(),
+	})
+	delete(l.cooks.activeCooksByOrder, cook.orderID)
+	if cook.worktreeName != "" {
+		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+	}
+	return nil
 }
 
 func (l *Loop) writeLastAppliedSeq() error {
