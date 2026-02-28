@@ -16,12 +16,11 @@ Use Skill(skill-creator) to help write the skill file.
 
 2. Inspect the project to understand its shape:
    - Read ` + "`brain/todos.md`" + ` if it exists (backlog items)
-   - Read files in ` + "`brain/plans/`" + ` if the directory exists (implementation plans)
    - Read conversation history from {{history_dirs}} to understand what the project does
    - Read ` + "`.noodle.toml`" + ` for project configuration
    - Skim the top-level directory structure
 
-3. Create ` + "`.agents/skills/schedule/SKILL.md`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and scheduling criteria to match this specific project's backlog shape, plan structure, and conventions you discovered.
+3. Create ` + "`.agents/skills/schedule/SKILL.md`" + ` with appropriate content. Use the example below as a starting template, but customize the scheduling rules and scheduling criteria to match this specific project's backlog shape and conventions you discovered.
 
 4. Run ` + "`git add .agents/skills/schedule/SKILL.md`" + ` and commit with message ` + "`feat: bootstrap schedule skill`" + `.
 

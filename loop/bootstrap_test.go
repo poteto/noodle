@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/taskreg"
-	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -29,12 +30,12 @@ func testRegistryWithoutSchedule() taskreg.Registry {
 	})
 }
 
-// bootstrapMise returns a mise brief with a plan so the loop bootstraps
+// bootstrapMise returns a mise brief with a backlog item so the loop bootstraps
 // a schedule queue instead of going idle.
 func bootstrapMise() *fakeMise {
 	return &fakeMise{
 		brief: mise.Brief{
-			Plans: []mise.PlanSummary{{ID: 1, Title: "test plan", Status: "active"}},
+			Backlog: []adapter.BacklogItem{{ID: "1", Title: "test plan", Status: "open"}},
 		},
 	}
 }

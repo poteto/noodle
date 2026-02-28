@@ -341,18 +341,22 @@ func writeOrdersAtomic(path string, of OrdersFile) error {
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
 //
+// Returns (promoted, emptyPromotion, error). emptyPromotion is true when the
+// incoming orders array was empty — the schedule agent ran but found nothing
+// actionable.
+//
 // Reads and validates orders-next.json, merges into existing orders.json via
 // WriteOrdersAtomic, THEN deletes orders-next.json. If the loop crashes after
 // writing orders.json but before deleting orders-next.json, the next cycle
 // re-promotes idempotently — duplicate order IDs across the two files are
 // skipped (not rejected).
-func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
+func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 	nextData, err := os.ReadFile(nextPath)
 	if os.IsNotExist(err) {
-		return false, nil
+		return false, false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("read orders-next: %w", err)
+		return false, false, fmt.Errorf("read orders-next: %w", err)
 	}
 
 	incoming, err := orderx.ParseOrdersStrict(nextData)
@@ -360,13 +364,15 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 		// Rename invalid proposal so it doesn't block future cycles.
 		// Preserve the file for debugging rather than deleting it.
 		_ = os.Rename(nextPath, nextPath+".bad")
-		return false, fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
+		return false, false, fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
 	}
+
+	emptyPromotion := len(incoming.Orders) == 0
 
 	// Read existing orders.
 	existing, err := orderx.ReadOrders(ordersPath)
 	if err != nil {
-		return false, fmt.Errorf("read existing orders: %w", err)
+		return false, false, fmt.Errorf("read existing orders: %w", err)
 	}
 
 	// Build set of existing order IDs for dedup.
@@ -386,15 +392,15 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, error) {
 
 	// Write merged orders atomically.
 	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
-		return false, fmt.Errorf("promote orders-next.json: %w", err)
+		return false, false, fmt.Errorf("promote orders-next.json: %w", err)
 	}
 
 	// Only delete after successful write — crash safety.
 	if err := os.Remove(nextPath); err != nil && !os.IsNotExist(err) {
-		return true, fmt.Errorf("remove orders-next.json: %w", err)
+		return true, emptyPromotion, fmt.Errorf("remove orders-next.json: %w", err)
 	}
 
-	return true, nil
+	return true, emptyPromotion, nil
 }
 
 // NormalizeAndValidateOrders delegates to orderx.

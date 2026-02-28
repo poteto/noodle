@@ -20,7 +20,7 @@ var (
 	reTodoLine       = regexp.MustCompile(`^([0-9]+)\. \[([ xX])\] (.*)$`)
 	reTag            = regexp.MustCompile(`#[A-Za-z0-9_-]+`)
 	reEstimate       = regexp.MustCompile(`~(small|medium|large)`)
-	rePlanRef        = regexp.MustCompile(`\[\[plans/([0-9]+)-[^\]]*/overview\]\]`)
+	rePlanRef        = regexp.MustCompile(`\[\[plans/([0-9]+-[^/]+)/overview\]\]`)
 	reSpaces         = regexp.MustCompile(`\s+`)
 	rePlansIndexRef  = regexp.MustCompile(`\[\[(plans/[0-9][0-9]-[^/]+/overview)\]\]`)
 	rePlanDir        = regexp.MustCompile(`^[0-9][0-9]-`)
@@ -137,7 +137,7 @@ func backlogSync() error {
 
 		plan := ""
 		if pm := rePlanRef.FindStringSubmatch(raw); len(pm) == 2 {
-			plan = pm[1]
+			plan = "brain/plans/" + pm[1] + "/overview.md"
 		}
 
 		title := raw

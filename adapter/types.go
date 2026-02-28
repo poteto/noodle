@@ -26,6 +26,7 @@ type BacklogItem struct {
 	Status      BacklogStatus `json:"status"`
 	Tags        []string      `json:"tags,omitempty"`
 	Estimate    Estimate      `json:"estimate,omitempty"`
+	Plan        string        `json:"plan,omitempty"`
 }
 
 func isValidBacklogStatus(status BacklogStatus) bool {

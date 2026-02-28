@@ -47,6 +47,9 @@ func TestDefaultBacklogSyncParsesTodos(t *testing.T) {
 	if item["id"] != "1" || item["status"] != "open" {
 		t.Fatalf("unexpected item: %#v", item)
 	}
+	if item["plan"] != "brain/plans/03-auth-refactor/overview.md" {
+		t.Fatalf("plan = %v, want brain/plans/03-auth-refactor/overview.md", item["plan"])
+	}
 }
 
 func TestDefaultBacklogAddDoneEditRoundTrip(t *testing.T) {

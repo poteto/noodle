@@ -215,12 +215,6 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := watcher.Add(l.runtimeDir); err != nil {
 		return fmt.Errorf("watch runtime directory: %w", err)
 	}
-	plansDir := filepath.Join(l.projectDir, "brain", "plans")
-	if info, err := os.Stat(plansDir); err == nil && info.IsDir() {
-		if err := watcher.Add(plansDir); err != nil {
-			return fmt.Errorf("watch plans directory: %w", err)
-		}
-	}
 
 	ticker := time.NewTicker(l.pollInterval())
 	defer ticker.Stop()
@@ -249,14 +243,6 @@ func (l *Loop) Run(ctx context.Context) error {
 			}
 		case ev := <-watcher.Events:
 			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
-				if err := l.Cycle(ctx); err != nil {
-					return err
-				}
-			}
-			if strings.Contains(ev.Name, filepath.Join("brain", "plans")) {
-				if l.state == StateIdle {
-					l.setState(StateRunning)
-				}
 				if err := l.Cycle(ctx); err != nil {
 					return err
 				}
@@ -402,15 +388,26 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 
 func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
 	// Consume orders-next.json if the schedule session wrote one.
-	promoted, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
+	promoted, emptyPromotion, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
 		l.logger.Warn("orders-next promotion failed", "error", err)
 	} else if promoted {
 		l.logger.Info("orders-next promoted")
 		l.schedulePromoted = true
+		if emptyPromotion {
+			l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
+			l.logger.Info("schedule produced no orders, entering cooldown")
+		} else {
+			l.scheduleNothingUntil = time.Time{}
+		}
 		if err := l.loadOrdersState(); err != nil {
 			return OrdersFile{}, false, err
 		}
+	}
+
+	// Reset cooldown when backlog changes (mise content changed).
+	if miseChanged {
+		l.scheduleNothingUntil = time.Time{}
 	}
 
 	orders, err := l.currentOrders()
@@ -454,7 +451,7 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	// Simplified filtering (#60): check for non-schedule orders.
 	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 {
 		if !hasNonScheduleOrders(orders) {
-			if len(brief.Plans) == 0 {
+			if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
 				l.setState(StateIdle)
 				return OrdersFile{}, false, nil
 			}

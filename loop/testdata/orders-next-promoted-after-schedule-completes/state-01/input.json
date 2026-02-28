@@ -1,1 +1,1 @@
-{"mise_result":{"backlog":[],"plans":[{"id":42,"status":"open","title":"Feature X","directory":"test"}]}}
+{"mise_result":{"backlog":[{"id":"1","title":"test","status":"open"}]}}

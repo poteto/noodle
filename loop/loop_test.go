@@ -340,7 +340,7 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -444,8 +444,8 @@ func TestCycleIdleWakesWhenPlansAppear(t *testing.T) {
 		t.Fatalf("state after cycle 1 = %s, want idle", l.state)
 	}
 
-	// Simulate new plans appearing
-	fm.brief = mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	// Simulate new backlog items appearing
+	fm.brief = mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 
 	// Second cycle: idle → running, bootstraps schedule
 	if err := l.Cycle(context.Background()); err != nil {
@@ -472,7 +472,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -610,7 +610,7 @@ func TestRetryLimitMarksFailedAndPreventsRespawn(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "42", Title: "test", Status: "open"}}}
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	l := New(projectDir, "noodle", cfg, Dependencies{
@@ -673,7 +673,7 @@ func TestExitedStatusCountsAsFailureForSchedule(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Recovery.MaxRetries = 0
 
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
@@ -993,7 +993,7 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "42", Title: "test", Status: "open"}}}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
@@ -1121,7 +1121,7 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 42, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "42", Title: "test", Status: "open"}}}
 	rt := newMockRuntime()
 	wt := &fakeWorktree{
 		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
@@ -1189,7 +1189,7 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -1236,7 +1236,7 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -1295,7 +1295,7 @@ func TestApprovalApproveCanMergeTrueParks(t *testing.T) {
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -1349,7 +1349,7 @@ func TestApprovalApproveCanMergeFalseParks(t *testing.T) {
 
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
@@ -1432,7 +1432,7 @@ func TestRetryCookRespectsMaxCooks(t *testing.T) {
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 29, Status: "open", Title: "Test", Directory: "test"}}}},
+		Mise:       &fakeMise{brief: mise.Brief{Backlog: []adapter.BacklogItem{{ID: "29", Title: "test", Status: "open"}}}},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,
@@ -1546,7 +1546,7 @@ func TestNoDoubleSpawnAfterFailedRetry(t *testing.T) {
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{brief: mise.Brief{Plans: []mise.PlanSummary{{ID: 37, Status: "open", Title: "Test", Directory: "test"}}}},
+		Mise:       &fakeMise{brief: mise.Brief{Backlog: []adapter.BacklogItem{{ID: "37", Title: "test", Status: "open"}}}},
 		Monitor:    fakeMonitor{},
 		Registry:   testLoopRegistry(),
 		Now:        time.Now,

@@ -99,7 +99,7 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestConsumeOrdersNextMissingReturnsNoop(t *testing.T) {
 	ordersPath := filepath.Join(dir, "orders.json")
 	nextPath := filepath.Join(dir, "orders-next.json")
 
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 	}
 
 	// Re-run: should be idempotent.
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestConsumeOrdersNextInvalidNextJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -296,7 +296,7 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	promoted, err := consumeOrdersNext(nextPath, ordersPath)
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}

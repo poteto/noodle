@@ -51,16 +51,13 @@ func TestRenderPromptJSONOrders(t *testing.T) {
 	}
 }
 
-func TestRenderPromptJSONMiseIncludesPlanRoutingHints(t *testing.T) {
+func TestRenderPromptJSONMiseIncludesBacklogPlan(t *testing.T) {
 	out, err := RenderPromptJSON("mise")
 	if err != nil {
 		t.Fatalf("render mise prompt schema: %v", err)
 	}
-	if !strings.Contains(out, `"provider": "string (optional) - optional plan-level provider hint"`) {
-		t.Fatalf("missing plans[].provider hint in mise prompt schema: %q", out)
-	}
-	if !strings.Contains(out, `"model": "string (optional) - optional plan-level model hint"`) {
-		t.Fatalf("missing plans[].model hint in mise prompt schema: %q", out)
+	if !strings.Contains(out, `"plan"`) {
+		t.Fatalf("missing backlog[].plan in mise prompt schema: %q", out)
 	}
 	if !strings.Contains(out, `"available_runtimes": [`) {
 		t.Fatalf("missing routing.available_runtimes in mise prompt schema: %q", out)

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -175,7 +176,7 @@ func TestLogDispatchCook(t *testing.T) {
 func TestLogDispatchSchedule(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
-		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 		o.brief = &brief
 	})
 
@@ -191,7 +192,7 @@ func TestLogDispatchSchedule(t *testing.T) {
 
 func TestLogCompletionMerge(t *testing.T) {
 	logger, handler := newTestLogger()
-	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		o.brief = &brief
 	})
@@ -224,7 +225,7 @@ func TestLogCompletionMerge(t *testing.T) {
 
 func TestLogCompletionParkForReview(t *testing.T) {
 	logger, handler := newTestLogger()
-	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		o.brief = &brief
 	})
@@ -254,7 +255,7 @@ func TestLogCompletionParkForReview(t *testing.T) {
 
 func TestLogScheduleCompleted(t *testing.T) {
 	logger, handler := newTestLogger()
-	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		o.brief = &brief
 	})
@@ -281,7 +282,7 @@ func TestLogScheduleCompleted(t *testing.T) {
 func TestLogRetryAndFailure(t *testing.T) {
 	logger, handler := newTestLogger()
 	maxRetries := 1
-	brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		o.maxRetries = &maxRetries
 		o.brief = &brief
@@ -415,7 +416,7 @@ func TestLogControlCommandFailed(t *testing.T) {
 func TestLogBootstrapSchedule(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
-		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 		o.brief = &brief
 	})
 
@@ -472,7 +473,7 @@ func TestLogIdleTransition(t *testing.T) {
 func TestLogOrdersNextPromoted(t *testing.T) {
 	logger, handler := newTestLogger()
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
-		brief := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+		brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 		o.brief = &brief
 	})
 

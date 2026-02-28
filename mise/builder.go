@@ -14,7 +14,6 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/plan"
 )
 
 type Builder struct {
@@ -41,8 +40,6 @@ func NewBuilder(projectDir string, cfg config.Config) *Builder {
 func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, bool, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
-	plans := make([]PlanSummary, 0)
-	nativePlans := make([]plan.Plan, 0)
 
 	if _, ok := b.config.Adapters["backlog"]; ok {
 		if strings.TrimSpace(b.config.Adapters["backlog"].Scripts["sync"]) == "" {
@@ -59,16 +56,6 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 				backlog = filterActiveBacklog(items)
 			}
 		}
-	}
-
-	// Plans: native reader (replaces adapter sync)
-	plansDir := filepath.Join(b.projectDir, "brain", "plans")
-	readPlans, planErr := plan.ReadAll(plansDir)
-	if planErr != nil {
-		warnings = append(warnings, "plan reading failed: "+planErr.Error())
-	} else {
-		nativePlans = readPlans
-		plans = toPlanSummaries(nativePlans)
 	}
 
 	tickets, err := b.readTickets()
@@ -115,7 +102,6 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 	brief := Brief{
 		GeneratedAt:   b.now().UTC(),
 		Backlog:       backlog,
-		Plans:         plans,
 		ActiveSummary: activeSummary,
 		Tickets:       tickets,
 		Resources:     resources,
@@ -152,31 +138,6 @@ func filterActiveBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {
 		filtered = append(filtered, item)
 	}
 	return filtered
-}
-
-func toPlanSummaries(plans []plan.Plan) []PlanSummary {
-	summaries := make([]PlanSummary, 0, len(plans))
-	for _, p := range plans {
-		phases := make([]PhaseSummary, 0, len(p.Phases))
-		for _, ph := range p.Phases {
-			phases = append(phases, PhaseSummary{
-				Name:     ph.Name,
-				Filename: ph.Filename,
-				Status:   ph.Status,
-			})
-		}
-		summaries = append(summaries, PlanSummary{
-			ID:        p.Meta.ID,
-			Title:     p.Title,
-			Status:    p.Meta.Status,
-			Provider:  p.Meta.Provider,
-			Model:     p.Meta.Model,
-			Backlog:   p.Meta.Backlog,
-			Directory: p.Slug,
-			Phases:    phases,
-		})
-	}
-	return summaries
 }
 
 func (b *Builder) readTickets() ([]event.Ticket, error) {

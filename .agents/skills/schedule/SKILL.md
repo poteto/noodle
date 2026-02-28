@@ -33,11 +33,13 @@ Read `task_types` from mise to discover every schedulable task type and its `sch
 
 ### Execute Tasks
 
-Read the `plans` array from mise to find active plans. Use the plan ID (as a string) as the order `id`. Look up plan details (title, directory, phases) in the `plans` array. Cross-reference with `backlog` to determine which plans have open work items.
+Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID (as a string) as the order `id`.
 
-When a plan's phases need different providers (per routing info in mise), split into separate orders per provider group. Group same-provider phases into one order. Preserve phase ordering.
+**Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Determine the next unfinished phase (first unchecked `- [ ]` item). Schedule an execute stage for that phase. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
 
-Note any open backlog items without linked plans in `action_needed`.
+**Items without plans:** Schedule as a simple execute task using the backlog item's title and description as the prompt.
+
+**Nothing to schedule:** When no backlog items are actionable (all blocked, all in-progress, all done, etc.), still write `orders-next.json` with an empty orders array (`{"orders":[]}`). This signals to the loop that scheduling ran but found nothing — preventing hot-loop re-spawns.
 
 ### Follow-Up Stages
 
@@ -100,8 +102,9 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 |---------|--------|
 | Empty orders | Full survey of mise — schedule from scratch |
 | Quality rejection | Rescope the rejected item for retry with feedback |
-| New plans | Create orders respecting workflow stage order |
-| Unplanned items | Skip, add to `action_needed` |
+| New backlog items | Create orders respecting workflow stage order |
+| Items without plans | Schedule as simple execute tasks |
+| All items blocked/done | Write empty orders array, let loop cooldown |
 | All items blocked | Schedule reflect or meditate to use the slot productively |
 
 ## Scheduling Heuristics

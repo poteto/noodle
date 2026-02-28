@@ -204,7 +204,8 @@ type Loop struct {
 
 	orders           OrdersFile
 	ordersLoaded     bool
-	schedulePromoted bool // set when consumeOrdersNext promotes after a schedule dispatch
+	schedulePromoted       bool      // set when consumeOrdersNext promotes after a schedule dispatch
+	scheduleNothingUntil   time.Time // cooldown: suppress schedule re-spawn until this time
 
 	activeSummary  mise.ActiveSummary
 	recentHistory  []mise.HistoryItem

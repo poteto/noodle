@@ -7,25 +7,6 @@ import (
 	"github.com/poteto/noodle/event"
 )
 
-// PlanSummary is the plan entry in the mise brief (replaces adapter.PlanItem).
-type PlanSummary struct {
-	ID        int            `json:"id"`
-	Title     string         `json:"title"`
-	Status    string         `json:"status"`
-	Provider  string         `json:"provider,omitempty"`
-	Model     string         `json:"model,omitempty"`
-	Backlog   string         `json:"backlog,omitempty"`
-	Directory string         `json:"directory"` // slug
-	Phases    []PhaseSummary `json:"phases"`
-}
-
-// PhaseSummary describes one phase within a plan summary.
-type PhaseSummary struct {
-	Name     string `json:"name"`
-	Filename string `json:"filename"`
-	Status   string `json:"status"`
-}
-
 type ActiveSummary struct {
 	Total     int            `json:"total"`
 	ByTaskKey map[string]int `json:"by_task_key,omitempty"`
@@ -78,7 +59,6 @@ type RecentEvent struct {
 type Brief struct {
 	GeneratedAt   time.Time             `json:"generated_at"`
 	Backlog       []adapter.BacklogItem `json:"backlog"`
-	Plans         []PlanSummary         `json:"plans"`
 	ActiveSummary ActiveSummary         `json:"active_summary"`
 	Tickets       []event.Ticket        `json:"tickets"`
 	Resources     ResourceSnapshot      `json:"resources"`

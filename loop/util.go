@@ -123,6 +123,10 @@ func truncateToken(token string, maxLen int) string {
 	return strings.Trim(token, "-")
 }
 
+func (l *Loop) scheduleNothingCooldownActive() bool {
+	return !l.scheduleNothingUntil.IsZero() && l.deps.Now().Before(l.scheduleNothingUntil)
+}
+
 func (l *Loop) pollInterval() time.Duration {
 	interval := strings.TrimSpace(l.config.Monitor.PollInterval)
 	if interval == "" {

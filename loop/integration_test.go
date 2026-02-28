@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/mise"
@@ -77,7 +78,7 @@ func newIntegrationEnv(t *testing.T, orders OrdersFile, opts ...integrationOpt) 
 		wt.mergeErr = ic.mergeErr
 	}
 	ar := &fakeAdapterRunner{}
-	briefWithPlans := mise.Brief{Plans: []mise.PlanSummary{{ID: 1, Status: "open"}}}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 
 	l := New(projectDir, "noodle", ic.cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},

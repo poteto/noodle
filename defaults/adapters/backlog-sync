@@ -32,6 +32,8 @@ while IFS= read -r line || [ -n "$line" ]; do
     tags=$(printf '%s\n' "$raw" | grep -oE '#[A-Za-z0-9_-]+' 2>/dev/null | sed 's/^#//' | tr '\n' ',' | sed 's/,$//' || true)
     estimate=$(printf '%s\n' "$raw" | sed -nE 's/.*~(small|medium|large).*/\1/p' | head -n1)
 
+    plan=$(printf '%s\n' "$raw" | sed -nE 's/.*\[\[plans\/([0-9]+-[^/]+)\/overview\]\].*/brain\/plans\/\1\/overview.md/p' | head -n1)
+
     title=$(printf '%s\n' "$raw" \
       | sed -E 's/#[A-Za-z0-9_-]+//g; s/~(small|medium|large)//g; s/\[\[plans\/[^]]+\]\]//g; s/[[:space:]]+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')
 
@@ -59,6 +61,10 @@ while IFS= read -r line || [ -n "$line" ]; do
 
     if [ -n "$estimate" ]; then
       printf ',"estimate":"%s"' "$(json_escape "$estimate")"
+    fi
+
+    if [ -n "$plan" ]; then
+      printf ',"plan":"%s"' "$(json_escape "$plan")"
     fi
 
     printf '}\n'
