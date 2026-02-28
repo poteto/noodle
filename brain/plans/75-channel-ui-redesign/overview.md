@@ -23,7 +23,8 @@ This plan replaces the existing React kanban UI with the channel layout, adds a 
 - Review flow integrated into channel view (not a separate panel)
 - D3 tree visualization of order execution graph
 - Session history dashboard
-- Backend: auto-advance for mechanical stages, explicit dismiss for execute stages
+- Backend: stage-to-scheduler messages via session event system, auto-advance by default
+- Backend: remove quality verdict mechanism (quality sends a message like any other agent)
 - Brutalist dark theme matching prototype aesthetic
 
 **Out of scope:**

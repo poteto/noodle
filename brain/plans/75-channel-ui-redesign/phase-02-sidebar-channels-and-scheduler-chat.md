@@ -28,7 +28,7 @@ Invoke `react-best-practices`, `ts-best-practices`, `interaction-design` before 
 - `ui/src/client/hooks.ts` — add `useActiveChannel` hook, derive channel list from snapshot
 
 ### Create
-- `ui/src/components/SchedulerFeed.tsx` — feed view for scheduler: shows steer history from feed_events, input area at bottom for sending steer commands (which become new orders)
+- `ui/src/components/SchedulerFeed.tsx` — feed view for scheduler: shows steer history from feed_events, input area at bottom for sending steer commands (which become new orders). **Stage completion messages** (from phase 8) appear as feed events with the agent's message content — e.g., quality agent reports findings, execute agent reports work done. These render inline in the scheduler's conversation so the user sees what agents reported.
 
 ## Data Structures
 
