@@ -46,6 +46,7 @@ function createRenderer(root: HTMLElement) {
 
 export function StreamingDelta({ sessionId }: { sessionId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const parserRef = useRef<Parser | null>(null);
   const hasContentRef = useRef(false);
 
@@ -66,7 +67,9 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
       parser_write(p, text);
       if (!hasContentRef.current && text.trim()) {
         hasContentRef.current = true;
-        el.style.display = "";
+        if (wrapperRef.current) {
+          wrapperRef.current.style.display = "";
+        }
       }
     });
 
@@ -78,13 +81,13 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <div className="message-row type-system">
+    <div ref={wrapperRef} className="message-row type-system" style={{ display: "none" }}>
       <div className="msg-avatar">TH</div>
       <div>
         <div className="msg-meta">
           <span className="msg-badge">Think</span>
         </div>
-        <div ref={containerRef} className="msg-body msg-markdown" style={{ display: "none" }} />
+        <div ref={containerRef} className="msg-body msg-markdown" />
       </div>
     </div>
   );
