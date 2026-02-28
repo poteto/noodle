@@ -40,10 +40,6 @@ func EnsureProjectStructure(projectDir string, w io.Writer) error {
 			content: "# Principles\n",
 		},
 		{
-			path:    filepath.Join(projectDir, "brain", "plans", "index.md"),
-			content: "# Plans\n",
-		},
-		{
 			path: filepath.Join(projectDir, ".noodle.toml"),
 			content: `autonomy = "auto"
 

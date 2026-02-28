@@ -34,7 +34,6 @@ type Config struct {
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
 	Agents      AgentsConfig             `toml:"agents"`
 	Runtime     RuntimeConfig            `toml:"runtime"`
-	Plans       PlansConfig              `toml:"plans"`
 	Server      ServerConfig             `toml:"server"`
 }
 
@@ -132,11 +131,6 @@ type CursorConfig struct {
 	BaseURL       string `toml:"base_url"`
 	Repository    string `toml:"repository"`
 	MaxConcurrent int    `toml:"max_concurrent"`
-}
-
-// PlansConfig controls plan lifecycle behavior.
-type PlansConfig struct {
-	OnDone string `toml:"on_done"` // "keep" | "remove"
 }
 
 // ServerConfig controls the web UI server.
@@ -243,9 +237,6 @@ func DefaultConfig() Config {
 			Process: ProcessConfig{MaxConcurrent: 4},
 			Sprites: SpritesConfig{MaxConcurrent: 50},
 			Cursor:  CursorConfig{MaxConcurrent: 10},
-		},
-		Plans: PlansConfig{
-			OnDone: "keep",
 		},
 		Server: ServerConfig{
 			Port: 3000,
@@ -367,10 +358,6 @@ func applyDefaultsFromMetadata(config *Config, metadata toml.MetaData) {
 		config.Runtime.Cursor.MaxConcurrent = 10
 	}
 
-	if !metadata.IsDefined("plans", "on_done") {
-		config.Plans.OnDone = "keep"
-	}
-
 	if !metadata.IsDefined("server", "port") {
 		config.Server.Port = 3000
 	}
@@ -466,15 +453,6 @@ func validateParsedValues(config Config) error {
 	}
 	if config.Runtime.Cursor.MaxConcurrent < 0 {
 		return fmt.Errorf("runtime.cursor.max_concurrent: must be greater than or equal to 0")
-	}
-
-	switch config.Plans.OnDone {
-	case "keep", "remove":
-	default:
-		return fmt.Errorf(
-			"plans.on_done: unsupported value %q (expected keep, remove)",
-			config.Plans.OnDone,
-		)
 	}
 
 	if config.Server.Port < 0 || config.Server.Port > 65535 {

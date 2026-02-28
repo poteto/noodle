@@ -50,7 +50,6 @@ var fieldDescriptions = map[string]string{
 	"agents.codex.path":             "Custom path to Codex CLI binary",
 	"agents.codex.args":             "Extra CLI arguments for Codex CLI",
 	"runtime.default":               "Default runtime command template for spawning cooks",
-	"plans.on_done":                 "What to do with completed plans: keep or remove",
 }
 
 // GenerateSkillContent produces the full SKILL.md content.

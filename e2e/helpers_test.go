@@ -108,27 +108,8 @@ func main() {
 	run(t, dir, "git", "add", "go.mod", "main.go")
 	run(t, dir, "git", "commit", "-m", "add project files")
 
-	// Brain scaffolding with a minimal plan so the scheduler triggers.
-	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
+	// Brain scaffolding.
 	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n\n- [[plans/1-hello/overview]]\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "1-hello", "overview.md"), `---
-id: 1
-status: ready
----
-
-# Hello
-
-Create a hello.txt file containing "hello world".
-`)
-	// Symlink extensionless path so codex can find plan via wikilink reference.
-	symlink(t,
-		"overview.md",
-		filepath.Join(dir, "brain", "plans", "1-hello", "overview"),
-	)
-	// Root-level plans → brain/plans symlink for codex which sometimes
-	// omits the brain/ prefix when resolving plan references.
-	symlink(t, filepath.Join("brain", "plans"), filepath.Join(dir, "plans"))
 
 	// Todos with a trivial item.
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos

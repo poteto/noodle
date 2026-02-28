@@ -51,7 +51,6 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
 | `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
 | `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |
-| `plans.on_done` | string | "keep" | What to do with completed plans: keep or remove |
 | `recovery.max_retries` | integer | 3 | Maximum retry attempts for failed cooks |
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
@@ -107,12 +106,6 @@ For adapter config and routing tags, see [references/adapters.md](references/ada
 | `noodle worktree list` | List all worktrees with merge status |
 | `noodle worktree prune` | Remove merged and patch-equivalent worktrees |
 | `noodle worktree hook` | Run worktree session hook |
-| `noodle plan` | Manage plans (create, done, phase-add, list) |
-| `noodle plan create` | Create a plan from a todo |
-| `noodle plan activate` | Mark a plan as active |
-| `noodle plan done` | Mark a plan as done |
-| `noodle plan phase-add` | Add a phase to a plan |
-| `noodle plan list` | List all plans |
 | `noodle stamp` | Stamp NDJSON logs and emit canonical sidecar events |
 | `noodle dispatch` | Dispatch a cook session as a child process |
 | `noodle mise` | Build and print the current mise brief |

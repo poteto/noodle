@@ -55,7 +55,6 @@ func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
 		"skills.paths",
 		"schedule.run",
 		"concurrency.max_cooks",
-		"plans.on_done",
 	}
 
 	for _, field := range requiredFields {
@@ -77,7 +76,6 @@ func TestGeneratedSkillContainsAllCommands(t *testing.T) {
 		"noodle debug",
 		"noodle skills",
 		"noodle worktree",
-		"noodle plan",
 		"noodle mise",
 		"noodle stamp",
 		"noodle dispatch",

@@ -46,9 +46,6 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Agents.Claude.Path != "" || config.Agents.Codex.Path != "" {
 		t.Fatalf("agent path defaults should be empty: %#v", config.Agents)
 	}
-	if config.Plans.OnDone != "keep" {
-		t.Fatalf("plans.on_done default = %q, want keep", config.Plans.OnDone)
-	}
 	if config.Runtime.Default != "process" {
 		t.Fatalf("runtime.default = %q, want process", config.Runtime.Default)
 	}
@@ -124,8 +121,6 @@ add = "gh issue create"
 done = "gh issue close"
 edit = "gh issue edit"
 
-[plans]
-on_done = "remove"
 `
 
 	config, err := Parse([]byte(tomlPayload))
@@ -151,9 +146,6 @@ on_done = "remove"
 	if config.Concurrency.MaxCooks != 2 {
 		t.Fatalf("concurrency.max_cooks = %d", config.Concurrency.MaxCooks)
 	}
-	if config.Plans.OnDone != "remove" {
-		t.Fatalf("plans.on_done = %q, want remove", config.Plans.OnDone)
-	}
 }
 
 func TestParseMissingOptionalUsesDefaults(t *testing.T) {
@@ -171,9 +163,6 @@ model = "claude-sonnet-4-6"
 	}
 	if config.Autonomy != "auto" {
 		t.Fatalf("expected default autonomy=auto, got %q", config.Autonomy)
-	}
-	if config.Plans.OnDone != "keep" {
-		t.Fatalf("plans.on_done default = %q, want keep", config.Plans.OnDone)
 	}
 	if config.Adapters != nil {
 		t.Fatal("adapters should remain unset when omitted from an existing config file")
@@ -243,18 +232,6 @@ provider = ""
 model = "y"
 `,
 			wantErr: "routing.tags.frontend.provider",
-		},
-		{
-			name: "invalid on_done value",
-			payload: `
-[routing.defaults]
-provider = "claude"
-model = "x"
-
-[plans]
-on_done = "bad"
-`,
-			wantErr: "plans.on_done",
 		},
 	}
 

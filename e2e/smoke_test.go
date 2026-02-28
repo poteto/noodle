@@ -158,13 +158,8 @@ func TestSmokeInvalidRuntimeFallback(t *testing.T) {
 	run(t, dir, "git", "add", "-A")
 	run(t, dir, "git", "commit", "-m", "init")
 
-	// Brain scaffolding — minimal plan for scheduling.
-	mkdirAll(t, filepath.Join(dir, "brain", "plans", "1-hello"))
+	// Brain scaffolding.
 	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "index.md"), "# Plans\n\n- [[plans/1-hello/overview]]\n")
-	writeFile(t, filepath.Join(dir, "brain", "plans", "1-hello", "overview.md"), "---\nid: 1\nstatus: ready\n---\n\n# Hello\n\nCreate hello.txt.\n")
-	symlink(t, "overview.md", filepath.Join(dir, "brain", "plans", "1-hello", "overview"))
-	symlink(t, filepath.Join("brain", "plans"), filepath.Join(dir, "plans"))
 
 	writeFile(t, filepath.Join(dir, "brain", "todos.md"), "# Todos\n\n<!-- next-id: 2 -->\n\n## Tasks\n\n1. [ ] Create hello.txt ~small\n")
 

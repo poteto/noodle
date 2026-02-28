@@ -65,7 +65,6 @@ func NewRootCmd() *cobra.Command {
 		newStampCmd(&app),
 		newDispatchCmd(&app),
 		newMiseCmd(&app),
-		newPlanCmd(&app),
 		newEventCmd(&app),
 	)
 

@@ -58,7 +58,6 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 		"brain/index.md",
 		"brain/todos.md",
 		"brain/principles.md",
-		"brain/plans/index.md",
 		".noodle",
 		".noodle.toml",
 	} {

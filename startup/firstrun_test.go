@@ -34,7 +34,6 @@ func TestEnsureProjectStructureFreshDirectory(t *testing.T) {
 		"brain/index.md":       "# Brain",
 		"brain/todos.md":       "<!-- next-id: 1 -->",
 		"brain/principles.md":  "# Principles",
-		"brain/plans/index.md": "# Plans",
 		".noodle.toml":         `autonomy = "auto"`,
 	}
 	for relPath, wantContent := range wantFiles {

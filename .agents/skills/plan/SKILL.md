@@ -83,17 +83,15 @@ If the plan touches a domain **not covered** by the table above, use the `find-s
 
 ## Step 5 — Write the Plan
 
-Scaffold the plan structure using the CLI, then fill in content:
+Create the plan structure directly using file tools:
 
-```bash
-# Create the plan directory, overview with frontmatter, update index and todo
-noodle plan create TODO-ID slug-name
+1. Create the plan directory: `brain/plans/NN-slug-name/`
+2. Write `brain/plans/NN-slug-name/overview.md` with YAML frontmatter (`id`, `created`, `status: active`)
+3. Write each phase file: `brain/plans/NN-slug-name/phase-01-name.md`, `phase-02-name.md`, etc.
+4. Append `- [[plans/NN-slug-name/overview]]` to `brain/plans/index.md`
+5. Add the plan wikilink `[[plans/NN-slug-name/overview]]` to the todo item in `brain/todos.md`
 
-# Create each phase file (auto-numbered)
-noodle plan phase-add TODO-ID "Phase Name"
-```
-
-The CLI creates `brain/plans/NN-slug-name/overview.md` with YAML frontmatter (id, created, status), appends to `brain/plans/index.md`, and adds the plan wikilink to the todo item. After scaffolding, fill in the overview and phase file content using Edit tools.
+Fill in the overview and phase file content using Edit tools.
 
 ### Phase sizing
 
@@ -189,10 +187,10 @@ If verification requires launching the app or manual testing, the plan is not as
 
 ## Step 7 — Update Plans Index and Todos
 
-The `noodle plan create` command (Step 5) already handles both updates:
+Step 5 creates both entries. Verify they exist:
 
-1. **Plans index** — the CLI appends `- [[plans/NN-plan-name/overview]]` to `brain/plans/index.md`.
-2. **Todo entry** — the CLI appends the plan wikilink to the todo item's description.
+1. **Plans index** — `brain/plans/index.md` has `- [[plans/NN-plan-name/overview]]`
+2. **Todo entry** — the todo item in `brain/todos.md` has the plan wikilink
 
 If the todo item doesn't exist yet, create it by editing `brain/todos.md` directly:
 

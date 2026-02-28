@@ -47,13 +47,6 @@ func Commands() []Command {
 			{Name: "prune", Short: "Remove merged and patch-equivalent worktrees"},
 			{Name: "hook", Short: "Run worktree session hook"},
 		}},
-		{Name: "plan", Short: "Manage plans (create, done, phase-add, list)", Subcommands: []Command{
-			{Name: "create", Short: "Create a plan from a todo"},
-			{Name: "activate", Short: "Mark a plan as active"},
-			{Name: "done", Short: "Mark a plan as done"},
-			{Name: "phase-add", Short: "Add a phase to a plan"},
-			{Name: "list", Short: "List all plans"},
-		}},
 		{Name: "stamp", Short: "Stamp NDJSON logs and emit canonical sidecar events", Flags: []Flag{
 			{Name: "output", Short: "o", Type: "string", Desc: "Output path for stamped NDJSON"},
 			{Name: "events", Type: "string", Desc: "Output path for canonical sidecar events"},

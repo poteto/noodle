@@ -13,7 +13,7 @@ func TestRootCommandRegistersAllSubcommands(t *testing.T) {
 
 	expected := []string{
 		"start", "skills", "schema", "status", "debug",
-		"worktree", "stamp", "dispatch", "mise", "plan",
+		"worktree", "stamp", "dispatch", "mise",
 	}
 
 	found := map[string]bool{}
@@ -50,30 +50,6 @@ func TestWorktreeCommandRegistersSubcommands(t *testing.T) {
 	}
 	for name := range expected {
 		t.Fatalf("worktree %q subcommand not registered", name)
-	}
-}
-
-func TestPlanCommandRegistersSubcommands(t *testing.T) {
-	root := NewRootCmd()
-	var pl *cobra.Command
-	for _, cmd := range root.Commands() {
-		if cmd.Name() == "plan" {
-			pl = cmd
-			break
-		}
-	}
-	if pl == nil {
-		t.Fatal("plan command not registered")
-	}
-
-	expected := map[string]bool{
-		"create": true, "done": true, "phase-add": true, "list": true,
-	}
-	for _, cmd := range pl.Commands() {
-		delete(expected, cmd.Name())
-	}
-	for name := range expected {
-		t.Fatalf("plan %q subcommand not registered", name)
 	}
 }
 

@@ -61,7 +61,3 @@ sprite_name = "noodle-dev"
 # api_key_env = "CURSOR_API_KEY"
 # base_url = ""
 # repository = ""
-
-[plans]
-# "keep" | "remove"
-on_done = "keep"
