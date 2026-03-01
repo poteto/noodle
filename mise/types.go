@@ -43,7 +43,6 @@ type RoutingPolicy struct {
 // TaskTypeSummary describes a schedulable task type discovered from skill frontmatter.
 type TaskTypeSummary struct {
 	Key      string `json:"key"`
-	CanMerge bool   `json:"can_merge"`
 	Schedule string `json:"schedule"`
 }
 

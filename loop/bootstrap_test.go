@@ -23,9 +23,7 @@ func testRegistryWithoutSchedule() taskreg.Registry {
 		{
 			Name: "execute",
 			Path: "/skills/execute",
-			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{Schedule: "When a planned item is ready"},
-			},
+			Frontmatter: skill.Frontmatter{Schedule: "When a planned item is ready"},
 		},
 	})
 }

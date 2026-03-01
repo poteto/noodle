@@ -373,12 +373,12 @@ func TestEnsureSkillFreshMissingSkill(t *testing.T) {
 
 func TestDiffRegistryKeys(t *testing.T) {
 	old := taskreg.NewFromSkills([]skill.SkillMeta{
-		{Name: "execute", Path: "/skills/execute", Frontmatter: skill.Frontmatter{Noodle: &skill.NoodleMeta{Schedule: "x"}}},
-		{Name: "deploy", Path: "/skills/deploy", Frontmatter: skill.Frontmatter{Noodle: &skill.NoodleMeta{Schedule: "x"}}},
+		{Name: "execute", Path: "/skills/execute", Frontmatter: skill.Frontmatter{Schedule: "x"}},
+		{Name: "deploy", Path: "/skills/deploy", Frontmatter: skill.Frontmatter{Schedule: "x"}},
 	})
 	new := taskreg.NewFromSkills([]skill.SkillMeta{
-		{Name: "execute", Path: "/skills/execute", Frontmatter: skill.Frontmatter{Noodle: &skill.NoodleMeta{Schedule: "x"}}},
-		{Name: "staging", Path: "/skills/staging", Frontmatter: skill.Frontmatter{Noodle: &skill.NoodleMeta{Schedule: "x"}}},
+		{Name: "execute", Path: "/skills/execute", Frontmatter: skill.Frontmatter{Schedule: "x"}},
+		{Name: "staging", Path: "/skills/staging", Frontmatter: skill.Frontmatter{Schedule: "x"}},
 	})
 
 	diff := diffRegistryKeys(old, new)

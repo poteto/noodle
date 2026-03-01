@@ -9,10 +9,7 @@ func TestParseFrontmatterComplete(t *testing.T) {
 	content := []byte(`---
 name: deploy
 description: Deploy to production
-noodle:
-  permissions:
-    merge: false
-  schedule: "After successful execute on main branch"
+schedule: "After successful execute on main branch"
 ---
 # Deploy Skill
 
@@ -31,18 +28,15 @@ Instructions here.
 	if !fm.IsTaskType() {
 		t.Fatal("expected IsTaskType() == true")
 	}
-	if fm.Noodle.Permissions.CanMerge() {
-		t.Fatal("expected canMerge == false")
-	}
-	if fm.Noodle.Schedule != "After successful execute on main branch" {
-		t.Fatalf("schedule = %q", fm.Noodle.Schedule)
+	if fm.Schedule != "After successful execute on main branch" {
+		t.Fatalf("schedule = %q", fm.Schedule)
 	}
 	if !strings.Contains(string(body), "# Deploy Skill") {
 		t.Fatalf("body = %q", string(body))
 	}
 }
 
-func TestParseFrontmatterWithoutNoodle(t *testing.T) {
+func TestParseFrontmatterWithoutSchedule(t *testing.T) {
 	content := []byte(`---
 name: debugging
 description: Systematic debugging methodology
@@ -61,19 +55,18 @@ Body text.
 	if fm.IsTaskType() {
 		t.Fatal("expected IsTaskType() == false")
 	}
-	if fm.Noodle != nil {
-		t.Fatal("expected Noodle == nil")
+	if fm.Schedule != "" {
+		t.Fatalf("expected empty schedule, got %q", fm.Schedule)
 	}
 	if !strings.Contains(string(body), "# Debugging") {
 		t.Fatalf("body = %q", string(body))
 	}
 }
 
-func TestParseFrontmatterPartialNoodle(t *testing.T) {
+func TestParseFrontmatterScheduleOnly(t *testing.T) {
 	content := []byte(`---
 name: reflect
-noodle:
-  schedule: "After a cook session completes"
+schedule: "After a cook session completes"
 ---
 Body.
 `)
@@ -84,45 +77,23 @@ Body.
 	if !fm.IsTaskType() {
 		t.Fatal("expected IsTaskType() == true")
 	}
-	if !fm.Noodle.Permissions.CanMerge() {
-		t.Fatal("expected canMerge to default to true")
+	if fm.Schedule != "After a cook session completes" {
+		t.Fatalf("schedule = %q", fm.Schedule)
 	}
 }
 
-func TestParseFrontmatterMergePermissionTrue(t *testing.T) {
+func TestParseFrontmatterNoScheduleDoesNotError(t *testing.T) {
 	content := []byte(`---
-name: execute
-noodle:
-  permissions:
-    merge: true
-  schedule: "When ready"
+name: bad
 ---
 Body.
 `)
 	fm, _, err := ParseFrontmatter(content)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("expected no error when schedule is absent, got: %v", err)
 	}
-	if !fm.Noodle.Permissions.CanMerge() {
-		t.Fatal("expected canMerge == true")
-	}
-}
-
-func TestParseFrontmatterMissingSchedule(t *testing.T) {
-	content := []byte(`---
-name: bad
-noodle:
-  permissions:
-    merge: false
----
-Body.
-`)
-	_, _, err := ParseFrontmatter(content)
-	if err == nil {
-		t.Fatal("expected error for missing schedule")
-	}
-	if !strings.Contains(err.Error(), "schedule is required") {
-		t.Fatalf("error = %q", err.Error())
+	if fm.IsTaskType() {
+		t.Fatal("expected IsTaskType() == false when schedule is absent")
 	}
 }
 
@@ -160,8 +131,7 @@ func TestStripFrontmatter(t *testing.T) {
 	content := []byte(`---
 name: test
 description: Test skill
-noodle:
-  schedule: "Always"
+schedule: "Always"
 ---
 # Skill Body
 
@@ -181,45 +151,6 @@ func TestStripFrontmatterNoFrontmatter(t *testing.T) {
 	body := StripFrontmatter(content)
 	if string(body) != string(content) {
 		t.Fatal("content should be unchanged")
-	}
-}
-
-func TestParseFrontmatterDomainSkillPresent(t *testing.T) {
-	content := []byte(`---
-name: execute
-description: Execute tasks
-noodle:
-  domain_skill: backlog
-  schedule: "When ready"
----
-Body.
-`)
-	fm, _, err := ParseFrontmatter(content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !fm.IsTaskType() {
-		t.Fatal("expected IsTaskType() == true")
-	}
-	if fm.Noodle.DomainSkill != "backlog" {
-		t.Fatalf("domain_skill = %q, want %q", fm.Noodle.DomainSkill, "backlog")
-	}
-}
-
-func TestParseFrontmatterDomainSkillAbsent(t *testing.T) {
-	content := []byte(`---
-name: reflect
-noodle:
-  schedule: "After a cook session completes"
----
-Body.
-`)
-	fm, _, err := ParseFrontmatter(content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fm.Noodle.DomainSkill != "" {
-		t.Fatalf("domain_skill = %q, want empty", fm.Noodle.DomainSkill)
 	}
 }
 

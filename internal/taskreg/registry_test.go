@@ -12,30 +12,21 @@ func testSkills() []skill.SkillMeta {
 			Name: "schedule",
 			Path: "/skills/schedule",
 			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{
-					Permissions: skill.Permissions{
-						Merge: boolPtr(false),
-					},
-					Schedule: "When the queue is empty",
-				},
+				Schedule: "When the queue is empty",
 			},
 		},
 		{
 			Name: "execute",
 			Path: "/skills/execute",
 			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{
-					Schedule: "When a planned item is ready",
-				},
+				Schedule: "When a planned item is ready",
 			},
 		},
 		{
 			Name: "reflect",
 			Path: "/skills/reflect",
 			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{
-					Schedule: "After a cook session completes",
-				},
+				Schedule: "After a cook session completes",
 			},
 		},
 		{
@@ -67,9 +58,6 @@ func TestByKey(t *testing.T) {
 	}
 	if tt.Key != "schedule" {
 		t.Fatalf("key = %q", tt.Key)
-	}
-	if tt.CanMerge {
-		t.Fatal("expected canMerge == false")
 	}
 }
 
@@ -109,8 +97,4 @@ func TestResolveStageByExactID(t *testing.T) {
 	if !ok || tt.Key != "reflect" {
 		t.Fatalf("resolve by exact id = %+v, %v", tt, ok)
 	}
-}
-
-func boolPtr(v bool) *bool {
-	return &v
 }

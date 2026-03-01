@@ -160,7 +160,7 @@ func TestAutoMergeWithLocalChanges(t *testing.T) {
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	// execute task type has CanMerge=true (no Merge override in registry)
+	// fakeWorktree defaults to HasUnmergedCommits=true, triggering merge
 	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	if err := writeOrdersAtomic(ordersPath, orders); err != nil {

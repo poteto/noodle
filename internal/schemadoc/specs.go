@@ -81,7 +81,6 @@ var schemaTargets = []targetSpec{
 			"routing.tags{}.provider":       {Description: "tag-specific provider override"},
 			"routing.tags{}.model":          {Description: "tag-specific model override"},
 			"task_types[].key":              {Description: "task type key"},
-			"task_types[].can_merge":        {Type: "boolean", Description: "whether successful runs can auto-merge"},
 			"task_types[].schedule":         {Description: "when this task type is normally scheduled"},
 			"warnings[]":                    {Description: "operational warning message"},
 		},

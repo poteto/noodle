@@ -9,33 +9,14 @@ import (
 
 // Frontmatter is the parsed YAML header from a SKILL.md file.
 type Frontmatter struct {
-	Name        string      `yaml:"name"`
-	Description string      `yaml:"description"`
-	Model       string      `yaml:"model,omitempty"`
-	Noodle      *NoodleMeta `yaml:"noodle,omitempty"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Model       string `yaml:"model,omitempty"`
+	Schedule    string `yaml:"schedule,omitempty"`
 }
 
-// IsTaskType returns true if this skill has noodle: frontmatter.
-func (f Frontmatter) IsTaskType() bool { return f.Noodle != nil }
-
-// NoodleMeta is the noodle-specific scheduling metadata nested under noodle:.
-// Schedule is required. Permissions are optional.
-type NoodleMeta struct {
-	Permissions Permissions `yaml:"permissions"`
-	Schedule    string      `yaml:"schedule"`
-	DomainSkill string      `yaml:"domain_skill,omitempty"`
-}
-
-type Permissions struct {
-	Merge *bool `yaml:"merge,omitempty"`
-}
-
-func (p Permissions) CanMerge() bool {
-	if p.Merge == nil {
-		return true
-	}
-	return *p.Merge
-}
+// IsTaskType returns true if this skill has schedule frontmatter.
+func (f Frontmatter) IsTaskType() bool { return f.Schedule != "" }
 
 var frontmatterSep = []byte("---")
 
@@ -75,10 +56,6 @@ func ParseFrontmatter(content []byte) (Frontmatter, []byte, error) {
 	var fm Frontmatter
 	if err := yaml.Unmarshal(yamlBlock, &fm); err != nil {
 		return Frontmatter{}, nil, fmt.Errorf("parse frontmatter: %w", err)
-	}
-
-	if fm.Noodle != nil && fm.Noodle.Schedule == "" {
-		return Frontmatter{}, nil, fmt.Errorf("parse frontmatter: noodle.schedule is required for task types")
 	}
 
 	return fm, body, nil

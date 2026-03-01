@@ -213,20 +213,17 @@ func TestListIgnoresDirectoryWithoutSkillFile(t *testing.T) {
 func TestDiscoverTaskTypesFiltersCorrectly(t *testing.T) {
 	dir := t.TempDir()
 
-	// Task type skill (has noodle: block)
+	// Task type skill (has top-level schedule)
 	mustMkdirAll(t, filepath.Join(dir, "schedule"))
 	mustWriteFile(t, filepath.Join(dir, "schedule", "SKILL.md"), `---
 name: schedule
 description: Queue scheduler
-noodle:
-  permissions:
-    merge: false
-  schedule: "When the queue is empty"
+schedule: "When the queue is empty"
 ---
 # Schedule
 `)
 
-	// Utility skill (no noodle: block)
+	// Utility skill (no schedule field)
 	mustMkdirAll(t, filepath.Join(dir, "debugging"))
 	mustWriteFile(t, filepath.Join(dir, "debugging", "SKILL.md"), `---
 name: debugging
@@ -240,8 +237,7 @@ description: Systematic debugging
 	mustWriteFile(t, filepath.Join(dir, "execute", "SKILL.md"), `---
 name: execute
 description: Implementation
-noodle:
-  schedule: "When a planned item is ready"
+schedule: "When a planned item is ready"
 ---
 # Execute
 `)
@@ -268,16 +264,13 @@ noodle:
 	}
 }
 
-func TestResolveWithMetaParsesNoodleFrontmatter(t *testing.T) {
+func TestResolveWithMetaParsesScheduleFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	mustMkdirAll(t, filepath.Join(dir, "deploy"))
 	mustWriteFile(t, filepath.Join(dir, "deploy", "SKILL.md"), `---
 name: deploy
 description: Deploy to production
-noodle:
-  permissions:
-    merge: true
-  schedule: "After successful execute"
+schedule: "After successful execute"
 ---
 # Deploy
 `)
@@ -293,8 +286,8 @@ noodle:
 	if !meta.Frontmatter.IsTaskType() {
 		t.Fatal("expected task type")
 	}
-	if meta.Frontmatter.Noodle.Schedule != "After successful execute" {
-		t.Fatalf("schedule = %q", meta.Frontmatter.Noodle.Schedule)
+	if meta.Frontmatter.Schedule != "After successful execute" {
+		t.Fatalf("schedule = %q", meta.Frontmatter.Schedule)
 	}
 }
 
@@ -304,8 +297,7 @@ func TestListWithMetaIncludesAllSkills(t *testing.T) {
 	mustMkdirAll(t, filepath.Join(dir, "task-skill"))
 	mustWriteFile(t, filepath.Join(dir, "task-skill", "SKILL.md"), `---
 name: task-skill
-noodle:
-  schedule: "Always"
+schedule: "Always"
 ---
 # Task
 `)

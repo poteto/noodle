@@ -24,7 +24,6 @@ func registryToTaskTypeSummaries(reg taskreg.Registry) []mise.TaskTypeSummary {
 	for i, tt := range all {
 		summaries[i] = mise.TaskTypeSummary{
 			Key:      tt.Key,
-			CanMerge: tt.CanMerge,
 			Schedule: tt.Schedule,
 		}
 	}

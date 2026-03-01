@@ -19,8 +19,7 @@ func TestDiscoverRegistryExpandsHomeSkillPath(t *testing.T) {
 	content := `---
 name: deploy
 description: Deployment flow
-noodle:
-  schedule: "After execute succeeds"
+schedule: "After execute succeeds"
 ---
 # Deploy
 `

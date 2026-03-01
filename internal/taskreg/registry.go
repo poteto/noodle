@@ -8,7 +8,6 @@ import (
 // TaskType is one schedulable task kind, discovered from skill frontmatter.
 type TaskType struct {
 	Key       string // skill name (e.g., "schedule", "execute", "deploy")
-	CanMerge  bool
 	Schedule  string // one-line guidance for schedule skill
 	SkillPath string // absolute path to skill directory
 }
@@ -28,7 +27,7 @@ type Registry struct {
 }
 
 // NewFromSkills builds a registry from discovered skill metadata.
-// Only skills with noodle: frontmatter are included.
+// Only skills with schedule frontmatter are included.
 func NewFromSkills(skills []skill.SkillMeta) Registry {
 	types := make([]TaskType, 0, len(skills))
 	for _, s := range skills {
@@ -37,8 +36,7 @@ func NewFromSkills(skills []skill.SkillMeta) Registry {
 		}
 		types = append(types, TaskType{
 			Key:       s.Name,
-			CanMerge:  s.Frontmatter.Noodle.Permissions.CanMerge(),
-			Schedule:  s.Frontmatter.Noodle.Schedule,
+			Schedule:  s.Frontmatter.Schedule,
 			SkillPath: s.Path,
 		})
 	}
