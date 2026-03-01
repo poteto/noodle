@@ -262,14 +262,26 @@ func TestCycleSpawnFailureDoesNotCleanupReusedWorktree(t *testing.T) {
 		Now:      time.Now,
 	})
 
-	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
-		t.Fatalf("expected spawn error, got %v", err)
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
 	}
 	for _, name := range wt.cleaned {
 		if name == "42-0-execute" {
 			t.Fatalf("expected no cleanup for reused worktree, got %#v", wt.cleaned)
 		}
+	}
+	got, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, OrderStatusFailed)
+	}
+	if status := got.Orders[0].Stages[0].Status; status != StageStatusFailed {
+		t.Fatalf("stage status = %q, want %q", status, StageStatusFailed)
 	}
 }
 
@@ -298,9 +310,8 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 		Now:      time.Now,
 	})
 
-	err := l.Cycle(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "spawn failed") {
-		t.Fatalf("expected spawn error, got %v", err)
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
 	}
 	created42 := false
 	for _, name := range wt.created {
@@ -321,6 +332,19 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 	if !cleaned42 {
 		t.Fatalf("expected cleanup for newly created worktree, got %#v", wt.cleaned)
+	}
+	got, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, OrderStatusFailed)
+	}
+	if status := got.Orders[0].Stages[0].Status; status != StageStatusFailed {
+		t.Fatalf("stage status = %q, want %q", status, StageStatusFailed)
 	}
 }
 
@@ -431,22 +455,24 @@ func TestCycleMergeFailureForwardsToSchedulerWithoutCrashing(t *testing.T) {
 		t.Fatalf("completion cycle should not crash on merge failure: %v", err)
 	}
 
-	reason, ok := l.cooks.failedTargets["42"]
-	if !ok {
-		t.Fatal("expected failed target entry for order 42")
-	}
-	if !strings.Contains(reason, "root checkout has uncommitted changes") {
-		t.Fatalf("failed reason = %q, want root-cleanliness error", reason)
-	}
-
 	updatedOrders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders after merge failure: %v", err)
 	}
+	found := false
 	for _, order := range updatedOrders.Orders {
 		if order.ID == "42" {
-			t.Fatal("order 42 should have been removed after merge failure")
+			found = true
+			if order.Status != OrderStatusFailed {
+				t.Fatalf("order status = %q, want %q", order.Status, OrderStatusFailed)
+			}
+			if got := order.Stages[0].Status; got != StageStatusFailed {
+				t.Fatalf("stage status = %q, want %q", got, StageStatusFailed)
+			}
 		}
+	}
+	if !found {
+		t.Fatal("order 42 should remain in orders.json after merge failure")
 	}
 	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("non-conflict merge failure should not park pending review")
@@ -770,7 +796,6 @@ func TestCycleRegistryErrorBlocksAfterThreeFailures(t *testing.T) {
 		cooks: cookTracker{
 			activeCooksByOrder: map[string]*cookHandle{},
 			adoptedTargets:     map[string]string{},
-			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
 		},
 		cmds: cmdProcessor{

@@ -415,9 +415,14 @@ func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("currentOrders: %v", err)
 	}
-	// Order should have been removed (terminal failure).
-	if len(got.Orders) != 0 {
-		t.Errorf("expected order removed, got %d orders", len(got.Orders))
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].Status != OrderStatusFailed {
+		t.Errorf("order status = %q, want %q", got.Orders[0].Status, OrderStatusFailed)
+	}
+	if gotStage := got.Orders[0].Stages[0].Status; gotStage != StageStatusFailed {
+		t.Errorf("stage status = %q, want %q", gotStage, StageStatusFailed)
 	}
 }
 

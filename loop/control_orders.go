@@ -150,27 +150,30 @@ func (l *Loop) controlRequeue(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("requeue requires order_id")
 	}
-	if _, ok := l.cooks.failedTargets[orderID]; !ok {
-		return fmt.Errorf("order %q not in failed state", orderID)
-	}
 
-	// If order still exists in orders.json, reset all failed/cancelled stages
-	// to "pending", set Order.Status to "active".
-	// Write orders BEFORE mutating in-memory failedTargets to avoid divergence
-	// on I/O errors.
+	// Reset failed/cancelled stages to pending and reactivate the order.
 	orders, err := l.currentOrders()
 	if err != nil {
 		return fmt.Errorf("requeue: read orders: %w", err)
 	}
+	found := false
 	updated := false
 	for i := range orders.Orders {
 		if orders.Orders[i].ID != orderID {
 			continue
 		}
+		found = true
+		wasFailed := orders.Orders[i].Status == OrderStatusFailed
 		orders.Orders[i].Status = OrderStatusActive
-		resetStages(&orders.Orders[i].Stages)
-		updated = true
+		changed := resetStages(&orders.Orders[i].Stages)
+		updated = changed || wasFailed
 		break
+	}
+	if !found {
+		return fmt.Errorf("order %q not found", orderID)
+	}
+	if !updated {
+		return fmt.Errorf("order %q not in failed state", orderID)
 	}
 	if updated {
 		if err := l.writeOrdersState(orders); err != nil {
@@ -180,18 +183,21 @@ func (l *Loop) controlRequeue(orderID string) error {
 	_ = l.events.Emit(LoopEventOrderRequeued, OrderRequeuedPayload{
 		OrderID: orderID,
 	})
-	delete(l.cooks.failedTargets, orderID)
-	return l.writeFailedTargets()
+	return nil
 }
 
-// resetStages resets all failed/cancelled stages to pending.
-func resetStages(stages *[]Stage) {
+// resetStages resets all failed/cancelled stages to pending and reports whether
+// any stage changed.
+func resetStages(stages *[]Stage) bool {
+	changed := false
 	for i := range *stages {
 		switch (*stages)[i].Status {
 		case StageStatusFailed, StageStatusCancelled:
 			(*stages)[i].Status = StageStatusPending
+			changed = true
 		}
 	}
+	return changed
 }
 
 func (l *Loop) controlReorder(cmd ControlCommand) error {

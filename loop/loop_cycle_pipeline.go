@@ -155,9 +155,6 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 			return OrdersFile{}, false, err
 		}
 	}
-	if err := l.clearFailedTargetsForQueuedOrders(orders); err != nil {
-		return OrdersFile{}, false, err
-	}
 	l.setOrdersState(orders)
 	return orders, true, nil
 }
@@ -178,11 +175,6 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 		}
 	}
 
-	failedSet := make(map[string]struct{}, len(l.cooks.failedTargets))
-	for targetID := range l.cooks.failedTargets {
-		failedSet[targetID] = struct{}{}
-	}
-
 	adoptedSet := make(map[string]struct{}, len(l.cooks.adoptedTargets))
 	for targetID := range l.cooks.adoptedTargets {
 		adoptedSet[targetID] = struct{}{}
@@ -199,7 +191,7 @@ func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int
 		busySet[targetID] = struct{}{}
 	}
 
-	candidates := dispatchableStages(orders, busySet, failedSet, adoptedSet, activeTicketTargetSet(brief))
+	candidates := dispatchableStages(orders, busySet, adoptedSet, activeTicketTargetSet(brief))
 
 	// Limit to capacity.
 	limit := capacity

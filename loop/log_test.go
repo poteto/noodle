@@ -394,9 +394,6 @@ func TestLogBootstrapScheduleDoesNotLoopWhenScheduleOrderExists(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 
-	// Simulate a prior schedule failure so dispatch planning skips schedule.
-	tc.loop.cooks.failedTargets[ScheduleTaskKey()] = "previous failure"
-
 	if err := tc.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 1: %v", err)
 	}

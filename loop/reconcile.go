@@ -316,7 +316,7 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) err
 		OrderID: orderID,
 		Reason:  reason,
 	})
-	return l.markFailed(orderID, reason)
+	return nil
 }
 
 // extraString reads a string value from a stage's Extra map.

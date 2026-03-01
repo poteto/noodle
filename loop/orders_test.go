@@ -476,7 +476,7 @@ func TestAdvanceOrder(t *testing.T) {
 }
 
 func TestFailStage(t *testing.T) {
-	t.Run("removes order (always terminal)", func(t *testing.T) {
+	t.Run("marks current stage and order failed", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
 				makeOrder("1", OrderStatusActive, []Stage{
@@ -491,8 +491,14 @@ func TestFailStage(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(of.Orders) != 0 {
-			t.Fatalf("expected 0 orders, got %d", len(of.Orders))
+		if len(of.Orders) != 1 {
+			t.Fatalf("expected 1 order, got %d", len(of.Orders))
+		}
+		if got := of.Orders[0].Status; got != OrderStatusFailed {
+			t.Fatalf("order status = %q, want %q", got, OrderStatusFailed)
+		}
+		if got := of.Orders[0].Stages[1].Status; got != StageStatusFailed {
+			t.Fatalf("stage[1] status = %q, want %q", got, StageStatusFailed)
 		}
 	})
 
@@ -558,7 +564,7 @@ func TestDispatchableStages(t *testing.T) {
 			},
 		}
 
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
+		candidates := dispatchableStages(of, empty, empty, empty)
 		if len(candidates) != 2 {
 			t.Fatalf("expected 2 candidates, got %d", len(candidates))
 		}
@@ -570,11 +576,11 @@ func TestDispatchableStages(t *testing.T) {
 		}
 	})
 
-	t.Run("skips busy/failed/adopted/ticketed", func(t *testing.T) {
+	t.Run("skips busy/adopted/ticketed and failed orders", func(t *testing.T) {
 		of := OrdersFile{
 			Orders: []Order{
 				makeOrder("busy", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
-				makeOrder("failed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+				makeOrder("failed", OrderStatusFailed, []Stage{makeStage(StageStatusFailed)}),
 				makeOrder("adopted", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 				makeOrder("ticketed", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
 				makeOrder("free", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
@@ -582,11 +588,10 @@ func TestDispatchableStages(t *testing.T) {
 		}
 
 		busySet := map[string]struct{}{"busy": {}}
-		failedSet := map[string]struct{}{"failed": {}}
 		adoptedSet := map[string]struct{}{"adopted": {}}
 		ticketedSet := map[string]struct{}{"ticketed": {}}
 
-		candidates := dispatchableStages(of, busySet, failedSet, adoptedSet, ticketedSet)
+		candidates := dispatchableStages(of, busySet, adoptedSet, ticketedSet)
 		if len(candidates) != 1 {
 			t.Fatalf("expected 1 candidate, got %d", len(candidates))
 		}
@@ -606,7 +611,7 @@ func TestDispatchableStages(t *testing.T) {
 			},
 		}
 
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
+		candidates := dispatchableStages(of, empty, empty, empty)
 		if len(candidates) != 0 {
 			t.Fatalf("expected 0 candidates (active stage = already dispatched), got %d", len(candidates))
 		}
@@ -619,7 +624,7 @@ func TestDispatchableStages(t *testing.T) {
 			},
 		}
 
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
+		candidates := dispatchableStages(of, empty, empty, empty)
 		if len(candidates) != 0 {
 			t.Fatalf("expected 0 candidates for degenerate order, got %d", len(candidates))
 		}
@@ -634,7 +639,7 @@ func TestDispatchableStages(t *testing.T) {
 			},
 		}
 
-		candidates := dispatchableStages(of, empty, empty, empty, empty)
+		candidates := dispatchableStages(of, empty, empty, empty)
 		if len(candidates) != 3 {
 			t.Fatalf("expected 3 candidates, got %d", len(candidates))
 		}

@@ -143,13 +143,12 @@ func NormalizeAndValidateOrders(
 		// Write back trimmed ID (finding #8 — prevent dedupe bypass).
 		orders[i].ID = id
 
-		// Reject orders with invalid or terminal status.
+		// Reject orders with invalid status.
 		if err := ValidateOrderStatus(orders[i].Status); err != nil {
 			return of, false, fmt.Errorf("order %q: %w", id, err)
 		}
-		// Terminal statuses should never persist — the loop removes orders
-		// on completion/failure. Reject if present.
-		if orders[i].Status == OrderStatusCompleted || orders[i].Status == OrderStatusFailed {
+		// Completed orders should never persist — the loop removes them.
+		if orders[i].Status == OrderStatusCompleted {
 			return of, false, fmt.Errorf("order %q has terminal status %q", id, orders[i].Status)
 		}
 

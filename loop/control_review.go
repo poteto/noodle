@@ -114,9 +114,6 @@ func (l *Loop) controlReject(orderID string) error {
 		OrderID: orderID,
 		Reason:  "rejected by user",
 	})
-	if err := l.markFailed(orderID, "rejected by user"); err != nil {
-		return err
-	}
 	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
@@ -162,9 +159,6 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		OrderID: orderID,
 		Reason:  reason,
 	})
-	if err := l.markFailed(orderID, reason); err != nil {
-		return err
-	}
 
 	// Clean up the worktree for the failed stage.
 	if strings.TrimSpace(pending.worktreeName) != "" {

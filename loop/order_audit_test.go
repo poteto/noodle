@@ -48,7 +48,6 @@ func TestRegistryErrorResilience(t *testing.T) {
 		cooks: cookTracker{
 			activeCooksByOrder: map[string]*cookHandle{},
 			adoptedTargets:     map[string]string{},
-			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
 		},
 		cmds: cmdProcessor{
@@ -189,7 +188,6 @@ func TestPrepareOrdersRescanRecoversMissingSkill(t *testing.T) {
 		cooks: cookTracker{
 			activeCooksByOrder: map[string]*cookHandle{},
 			adoptedTargets:     map[string]string{},
-			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
 		},
 		cmds: cmdProcessor{
@@ -287,7 +285,6 @@ func TestPrepareOrdersRescanDropsGenuinelyUnknown(t *testing.T) {
 		cooks: cookTracker{
 			activeCooksByOrder: map[string]*cookHandle{},
 			adoptedTargets:     map[string]string{},
-			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
 		},
 		cmds: cmdProcessor{

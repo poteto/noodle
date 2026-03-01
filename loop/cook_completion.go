@@ -223,9 +223,6 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		"error":       reason,
 	})
 
-	if err := l.markFailed(cook.orderID, reason); err != nil {
-		return err
-	}
 	l.forwardToScheduler(cook, "stage_failed", reason)
 	if strings.TrimSpace(cook.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)

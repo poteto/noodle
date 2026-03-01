@@ -133,8 +133,8 @@ func advanceOrder(orders OrdersFile, orderID string) (OrdersFile, bool, error) {
 	return orders, false, nil
 }
 
-// failStage marks the current active stage as failed. The order stays in
-// orders.json so the scheduler can decide recovery.
+// failStage marks the current active/pending stage as failed and marks the
+// order as failed for explicit recovery via control commands.
 func failStage(orders OrdersFile, orderID string, reason string) (OrdersFile, error) {
 	idx := -1
 	for i := range orders.Orders {
@@ -158,9 +158,7 @@ func failStage(orders OrdersFile, orderID string, reason string) (OrdersFile, er
 			break
 		}
 	}
-
-	// Remove the order — the scheduler decides recovery via control commands.
-	orders.Orders = slices.Delete(orders.Orders, idx, idx+1)
+	order.Status = OrderStatusFailed
 	return orders, nil
 }
 
@@ -191,9 +189,8 @@ func cancelOrder(orders OrdersFile, orderID string) (OrdersFile, error) {
 }
 
 // dispatchableStages finds the first pending stage per order that is ready for dispatch.
-// Orders in busy/adopted/ticketed sets are skipped. Orders in the failed set are skipped,
-// except the system schedule order.
-func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[string]struct{}) []dispatchCandidate {
+// Orders in busy/adopted/ticketed sets are skipped.
+func dispatchableStages(orders OrdersFile, busy, adopted, ticketed map[string]struct{}) []dispatchCandidate {
 	var candidates []dispatchCandidate
 
 	for _, order := range orders.Orders {
@@ -201,7 +198,7 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 			continue
 		}
 
-		// Skip orders in busy/adopted/ticketed/failed sets.
+		// Skip orders in busy/adopted/ticketed sets.
 		if _, ok := busy[order.ID]; ok {
 			continue
 		}
@@ -209,9 +206,6 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 			continue
 		}
 		if _, ok := ticketed[order.ID]; ok {
-			continue
-		}
-		if _, ok := failed[order.ID]; ok && !isScheduleOrder(order) {
 			continue
 		}
 

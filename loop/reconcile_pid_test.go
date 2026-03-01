@@ -54,11 +54,10 @@ func TestRefreshAdoptedTargetsPrunesDeadPIDs(t *testing.T) {
 				"order-a": aliveSessionID,
 				"order-b": deadSessionID,
 			},
-				adoptedSessions: []string{aliveSessionID, deadSessionID},
-				failedTargets:   map[string]string{},
-				pendingReview:   map[string]*pendingReviewCook{},
-			},
-		}
+			adoptedSessions: []string{aliveSessionID, deadSessionID},
+			pendingReview:   map[string]*pendingReviewCook{},
+		},
+	}
 
 	l.refreshAdoptedTargets()
 

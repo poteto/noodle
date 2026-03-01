@@ -182,12 +182,6 @@ func TestEventIntegrationRequeueEmitsEvent(t *testing.T) {
 	eventsPath := filepath.Join(env.runtimeDir, "loop-events.ndjson")
 	l := env.loop
 
-	// Manually add to failedTargets to allow requeue.
-	l.cooks.failedTargets["rq-1"] = "failed: test"
-	if err := l.writeFailedTargets(); err != nil {
-		t.Fatalf("write failed targets: %v", err)
-	}
-
 	// Execute requeue control command.
 	if err := l.controlRequeue("rq-1"); err != nil {
 		t.Fatalf("controlRequeue: %v", err)

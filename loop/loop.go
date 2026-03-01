@@ -90,7 +90,6 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 			activeCooksByOrder: map[string]*cookHandle{},
 			adoptedTargets:     map[string]string{},
 			adoptedSessions:    []string{},
-			failedTargets:      map[string]string{},
 			pendingReview:      map[string]*pendingReviewCook{},
 		},
 		cmds: cmdProcessor{
@@ -186,9 +185,6 @@ func (l *Loop) Run(ctx context.Context) error {
 	}
 	if err := os.MkdirAll(l.runtimeDir, 0o755); err != nil {
 		return fmt.Errorf("create runtime directory: %w", err)
-	}
-	if err := l.loadFailedTargets(); err != nil {
-		return err
 	}
 	if err := l.loadOrdersState(); err != nil {
 		return err

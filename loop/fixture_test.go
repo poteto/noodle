@@ -26,7 +26,6 @@ type loopFixtureSetup struct {
 	WorktreeCreateError      string                     `json:"worktree_create_error"`
 	WorktreeCreateErrorNames []string                   `json:"worktree_create_error_names"`
 	WorktreeMergeError       string                     `json:"worktree_merge_error"`
-	FailedTargets            map[string]string          `json:"failed_targets"`
 	ActiveSessions           []loopFixtureActiveSession `json:"active_sessions"`
 	AdoptedTargets           []loopFixtureAdoptedTarget `json:"adopted_targets"`
 	RunStartupReconcile      bool                       `json:"run_startup_reconcile"`
@@ -152,24 +151,14 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 
 			l := New(projectDir, "noodle", baseCfg, Dependencies{
-				Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-				Worktree:   wt,
-				Adapter:    &fakeAdapterRunner{},
-				Mise:       &fakeMise{results: miseResults},
-				Monitor:    fakeMonitor{},
-				Registry:   testLoopRegistry(),
-				Now:        time.Now,
-				})
-			if len(setup.FailedTargets) > 0 {
-				l.cooks.failedTargets = make(map[string]string, len(setup.FailedTargets))
-				for id, reason := range setup.FailedTargets {
-					id = strings.TrimSpace(id)
-					if id == "" {
-						continue
-					}
-					l.cooks.failedTargets[id] = strings.TrimSpace(reason)
-				}
-			}
+				Runtimes: map[string]loopruntime.Runtime{"process": rt},
+				Worktree: wt,
+				Adapter:  &fakeAdapterRunner{},
+				Mise:     &fakeMise{results: miseResults},
+				Monitor:  fakeMonitor{},
+				Registry: testLoopRegistry(),
+				Now:      time.Now,
+			})
 			applyFixtureActiveSessions(l, setup.ActiveSessions)
 			applyFixtureAdoptedTargets(t, l, setup.AdoptedTargets)
 			applyFixtureBootstrap(l, setup)
@@ -328,7 +317,6 @@ func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) 
 func cloneConfig(in config.Config) config.Config {
 	return in
 }
-
 
 func applyStateRuntimeSnapshot(t *testing.T, state fixturedir.FixtureState, runtimeDir string) {
 	t.Helper()

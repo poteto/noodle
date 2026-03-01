@@ -72,8 +72,7 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, status ord
 }
 
 // flushState writes all in-memory state files atomically in a fixed order.
-// Orders file is written first (source of truth). Failed targets are
-// independently durable (not derivable from orders). Each file uses
+// Orders file is written first (source of truth). Each file uses
 // write-to-temp + rename for atomic replacement.
 func (l *Loop) flushState() error {
 	if l.ordersLoaded {
@@ -86,12 +85,6 @@ func (l *Loop) flushState() error {
 	}
 	if err := l.writePendingReview(); err != nil {
 		return fmt.Errorf("flush pending review: %w", err)
-	}
-	if l.TestFlushBarrier != nil {
-		l.TestFlushBarrier()
-	}
-	if err := l.writeFailedTargets(); err != nil {
-		return fmt.Errorf("flush failed targets: %w", err)
 	}
 	if l.TestFlushBarrier != nil {
 		l.TestFlushBarrier()

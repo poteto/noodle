@@ -107,13 +107,45 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 
 	session, err := l.dispatchSession(ctx, req)
 	if err != nil {
-		// Revert stage status to pending — otherwise restart sees "active"
-		// with no session, permanently stranding the stage.
-		_ = l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusPending)
 		if created {
 			_ = l.deps.Worktree.Cleanup(name, true)
 		}
-		return err
+		reason := "dispatch failed: " + err.Error()
+		orders, ordersErr := l.currentOrders()
+		if ordersErr != nil {
+			return ordersErr
+		}
+		orders, ordersErr = failStage(orders, cand.OrderID, reason)
+		if ordersErr != nil {
+			return ordersErr
+		}
+		if writeErr := l.writeOrdersState(orders); writeErr != nil {
+			return writeErr
+		}
+		_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+			OrderID:    cand.OrderID,
+			StageIndex: cand.StageIndex,
+			Reason:     reason,
+		})
+		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+			OrderID: cand.OrderID,
+			Reason:  reason,
+		})
+		l.emitEvent(ingest.EventStageFailed, map[string]any{
+			"order_id":    cand.OrderID,
+			"stage_index": cand.StageIndex,
+			"error":       reason,
+		})
+		l.forwardToScheduler(&cookHandle{
+			cookIdentity: cookIdentity{
+				orderID:    cand.OrderID,
+				stageIndex: cand.StageIndex,
+				stage:      stage,
+			},
+		}, "dispatch_failed", reason)
+		l.logger.Warn("cook dispatch failed; order marked failed",
+			"order", cand.OrderID, "stage", cand.StageIndex, "error", err)
+		return nil
 	}
 
 	displayName := strings.TrimSpace(opts.displayName)

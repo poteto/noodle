@@ -50,15 +50,27 @@ func newControlTestLoop(t *testing.T, wt *fakeWorktree, rt *mockRuntime) *Loop {
 	return l
 }
 
-func TestControlMergeKeepsPendingOnMergeFailure(t *testing.T) {
+func TestControlMergeMarksOrderFailedOnMergeFailure(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{mergeErr: errors.New("merge failed")}, newMockRuntime())
 
-	err := l.controlMerge("42")
-	if err == nil {
-		t.Fatal("expected merge error")
+	if err := l.controlMerge("42"); err != nil {
+		t.Fatalf("controlMerge: %v", err)
 	}
-	if _, ok := l.cooks.pendingReview["42"]; !ok {
-		t.Fatal("pending review item should remain when merge fails")
+	if _, ok := l.cooks.pendingReview["42"]; ok {
+		t.Fatal("pending review item should be removed when merge fails")
+	}
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(orders.Orders))
+	}
+	if orders.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", orders.Orders[0].Status, OrderStatusFailed)
+	}
+	if got := orders.Orders[0].Stages[0].Status; got != StageStatusFailed {
+		t.Fatalf("stage status = %q, want %q", got, StageStatusFailed)
 	}
 }
 
@@ -89,14 +101,19 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after successful reject")
 	}
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected rejected item to be tracked as failed")
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	for _, o := range orders.Orders {
+		if o.ID == "42" {
+			t.Fatal("order 42 should be removed from orders.json after reject")
+		}
 	}
 }
 
-// controlRequestChanges should terminally fail the order, remove it, and mark
-// the target failed.
-func TestControlRequestChangesMarksFailedAndRemovesOrder(t *testing.T) {
+// controlRequestChanges should terminally fail the order and keep it for explicit requeue.
+func TestControlRequestChangesMarksOrderFailed(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
 	if err := l.controlRequestChanges("42", "Add missing tests"); err != nil {
@@ -105,17 +122,21 @@ func TestControlRequestChangesMarksFailedAndRemovesOrder(t *testing.T) {
 	if _, ok := l.cooks.pendingReview["42"]; ok {
 		t.Fatal("pending review item should be removed after request-changes")
 	}
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected order to be marked failed")
-	}
-	// Order should be removed from orders.json.
 	orders, err := readOrders(l.deps.OrdersFile)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
 	}
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(orders.Orders))
+	}
 	for _, o := range orders.Orders {
 		if o.ID == "42" {
-			t.Fatal("order 42 should be removed from orders.json")
+			if o.Status != OrderStatusFailed {
+				t.Fatalf("order status = %q, want %q", o.Status, OrderStatusFailed)
+			}
+			if got := o.Stages[0].Status; got != StageStatusFailed {
+				t.Fatalf("stage status = %q, want %q", got, StageStatusFailed)
+			}
 		}
 	}
 }
@@ -126,9 +147,15 @@ func TestControlRequestChangesAllowsEmptyFeedback(t *testing.T) {
 	if err := l.controlRequestChanges("42", "   "); err != nil {
 		t.Fatalf("controlRequestChanges: %v", err)
 	}
-	// With empty feedback, order should still be terminally failed.
-	if _, ok := l.cooks.failedTargets["42"]; !ok {
-		t.Fatal("expected order to be marked failed")
+	orders, err := readOrders(l.deps.OrdersFile)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(orders.Orders))
+	}
+	if orders.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", orders.Orders[0].Status, OrderStatusFailed)
 	}
 }
 
@@ -147,7 +174,7 @@ func TestControlRequestChangesNotInPendingReview(t *testing.T) {
 func TestControlRejectKeepsPendingOnWriteFailure(t *testing.T) {
 	l := newControlTestLoop(t, &fakeWorktree{}, newMockRuntime())
 
-	// Make the runtime dir unwritable so markFailed cannot write failed.json.
+	// Make the runtime dir unwritable so writeOrdersState fails.
 	if err := os.Chmod(l.runtimeDir, 0o444); err != nil {
 		t.Fatalf("chmod runtime dir: %v", err)
 	}
@@ -172,7 +199,7 @@ func TestControlEnqueueCreatesSingleStageOrder(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -235,7 +262,7 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -295,7 +322,7 @@ func TestControlReorderChangesOrderPosition(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -344,7 +371,7 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -370,7 +397,6 @@ func TestControlSkipCancelsRemainingStages(t *testing.T) {
 	}
 }
 
-
 func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -380,7 +406,7 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -389,17 +415,12 @@ func TestControlRequeueOrderNotInOrdersFile(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.cooks.failedTargets = map[string]string{"42": "failed"}
-	if err := l.writeFailedTargets(); err != nil {
-		t.Fatalf("write failed targets: %v", err)
+	err := l.controlRequeue("42")
+	if err == nil {
+		t.Fatal("expected error for missing order")
 	}
-
-	// Should not error — just remove the failure marker.
-	if err := l.controlRequeue("42"); err != nil {
-		t.Fatalf("controlRequeue: %v", err)
-	}
-	if _, ok := l.cooks.failedTargets["42"]; ok {
-		t.Fatal("failure marker should be removed even if order is gone")
+	if !strings.Contains(err.Error(), `order "42" not found`) {
+		t.Fatalf("error = %q, want order not found", err.Error())
 	}
 }
 
@@ -416,7 +437,7 @@ func TestControlMergeFinalStageActiveOrderFiresDone(t *testing.T) {
 	}
 	ar := &fakeAdapterRunner{}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    ar,
 		Mise:       &fakeMise{},
@@ -465,7 +486,7 @@ func TestCommandSequenceAssignment(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -510,7 +531,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -540,7 +561,7 @@ func TestCommandSequencePersistenceRoundTrip(t *testing.T) {
 
 	// Create a new loop and hydrate — should recover the sequence.
 	l2 := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -568,7 +589,7 @@ func TestCommandSequenceSkipsReplayedCommands(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -612,7 +633,7 @@ func TestCommandSequenceIdempotentReplay(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -657,7 +678,7 @@ func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -692,19 +713,18 @@ func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 	}
 }
 
-func TestFailedTargetStickiness(t *testing.T) {
+func TestFailedOrderRequiresRequeueBeforeDispatch(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	// Create an order with the same ID as a failed target.
 	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{{
-		ID: "42", Title: "test", Status: OrderStatusActive,
-		Stages: []Stage{{TaskKey: "execute", Status: StageStatusPending}},
+		ID: "42", Title: "test", Status: OrderStatusFailed,
+		Stages: []Stage{{TaskKey: "execute", Status: StageStatusFailed}},
 	}}}); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
@@ -713,25 +733,23 @@ func TestFailedTargetStickiness(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
-	l.cooks.failedTargets = map[string]string{"42": "previous failure"}
-
-	// Dispatching should skip this order due to failed target stickiness.
 	orders, err := readOrders(ordersPath)
 	if err != nil {
 		t.Fatalf("read orders: %v", err)
 	}
-	failedSet := make(map[string]struct{})
-	for id := range l.cooks.failedTargets {
-		failedSet[id] = struct{}{}
-	}
-	candidates := dispatchableStages(orders, nil, failedSet, nil, nil)
+	candidates := dispatchableStages(orders, nil, nil, nil)
 	if len(candidates) != 0 {
-		t.Fatal("failed target should block dispatch of order with same ID")
+		t.Fatal("failed order should not dispatch before requeue")
 	}
 
-	// After requeue, the order should be dispatchable.
-	delete(l.cooks.failedTargets, "42")
-	candidates = dispatchableStages(orders, nil, nil, nil, nil)
+	if err := l.controlRequeue("42"); err != nil {
+		t.Fatalf("controlRequeue: %v", err)
+	}
+	orders, err = readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders after requeue: %v", err)
+	}
+	candidates = dispatchableStages(orders, nil, nil, nil)
 	if len(candidates) != 1 {
 		t.Fatalf("candidates = %d, want 1 after requeue", len(candidates))
 	}
