@@ -1,13 +1,12 @@
 ---
-priority: [87, 84, 88, 20, 69, 77]
+priority: [87, 84, 88, 20, 69]
 # 87 go simplification (subtract before you add — clean the substrate
 #    before building new features. Phases 1-2 delete dead backend stubs
 #    that 69 will redesign, phase 3 consolidates state utilities),
 # 84 sub-agent tracking (foundational infra),
 # 88 sub-agent tracking v2 (extends 84),
 # 20 skill-path defaults (small docs fix),
-# 69 cursor dispatcher (feature, benefits from cleaned dispatcher package),
-# 77 react-window (UI polish)
+# 69 cursor dispatcher (feature, benefits from cleaned dispatcher package)
 ---
 
 # Todos
@@ -26,7 +25,6 @@ priority: [87, 84, 88, 20, 69, 77]
 
 ## UI
 
-77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
 86. [ ] Investigate adding https://diffs.com/ to the web UI — every code change can be represented as a diff, making it easier for users to review code changes inline
 
 ## Backend
