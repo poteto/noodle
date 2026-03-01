@@ -1,5 +1,12 @@
 import { useRef, useEffect, useCallback } from "react";
-import { hierarchy, select, tree, zoom as createZoom, zoomIdentity } from "d3";
+import {
+  easeCubicOut,
+  hierarchy,
+  select,
+  tree,
+  zoom as createZoom,
+  zoomIdentity,
+} from "d3";
 import type {
   D3ZoomEvent,
   HierarchyNode,
@@ -16,9 +23,8 @@ import type { TreeNodeData } from "./tree-utils";
 
 const NODE_WIDTH = 100;
 const NODE_HEIGHT = 90;
-const NODE_HORIZONTAL_GAP = 6;
-const NODE_VERTICAL_GAP = 60;
-const JITTER_MAX = 20;
+const NODE_HORIZONTAL_GAP = 15;
+const NODE_VERTICAL_GAP = 100;
 
 type PointNode = HierarchyPointNode<TreeNodeData>;
 
@@ -61,7 +67,10 @@ function nodeHTML(data: TreeNodeData): string {
       ? `<div class="tree-node-cost">${formatCost(data.cost)}</div>`
       : "";
 
-  return `<div xmlns="http://www.w3.org/1999/xhtml" class="tree-node-card" style="border-color:${borderColor}"><div class="tree-node-header"><span class="tree-node-dot" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${statusLine}${detail}${costLine}</div>`;
+  const cardClass = isActive ? "tree-node-card node-active" : "tree-node-card";
+  const dotClass = isActive ? "tree-node-dot tree-node-dot-active" : "tree-node-dot";
+
+  return `<div xmlns="http://www.w3.org/1999/xhtml" class="${cardClass}" style="border-color:${borderColor}"><div class="tree-node-header"><span class="${dotClass}" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${statusLine}${detail}${costLine}</div>`;
 }
 
 function nodeKey(d: HierarchyNode<TreeNodeData>): string {
@@ -70,16 +79,6 @@ function nodeKey(d: HierarchyNode<TreeNodeData>): string {
     .toReversed()
     .map((a) => a.data.name)
     .join("/");
-}
-
-/** Deterministic jitter from a string key — returns value in [-1, 1]. */
-function jitter(key: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return ((h >>> 0) / 0xffffffff) * 2 - 1;
 }
 
 function actorSessionId(data: TreeNodeData): string | null {
@@ -99,18 +98,10 @@ function renderTree(
 ) {
   const { zoomRef, onActorClick } = options;
   const rootNode = hierarchy(snapshotToHierarchy(snapshot));
-  const treeLayout = tree<TreeNodeData>().nodeSize([
-    NODE_WIDTH + NODE_HORIZONTAL_GAP,
-    NODE_HEIGHT + NODE_VERTICAL_GAP,
-  ]);
+  const treeLayout = tree<TreeNodeData>()
+    .nodeSize([NODE_WIDTH + NODE_HORIZONTAL_GAP, NODE_HEIGHT + NODE_VERTICAL_GAP])
+    .separation(() => 1);
   treeLayout(rootNode);
-
-  // Add deterministic vertical jitter so same-level nodes aren't perfectly aligned.
-  for (const node of rootNode.descendants()) {
-    if (node.depth > 0) {
-      (node as PointNode).y += jitter(nodeKey(node)) * JITTER_MAX;
-    }
-  }
 
   const svg = select(svgEl);
 
@@ -154,31 +145,53 @@ function renderTree(
     nodeGroup = g.append("g").attr("class", "tree-nodes");
   }
 
-  // Edges — join by index (stateless paths, no identity needed).
+  // Edges — enter/update/exit with transitions.
+  const links = rootNode.links() as HierarchyPointLink<TreeNodeData>[];
+  const edgePath = (d: HierarchyPointLink<TreeNodeData>) => {
+    const s = d.source;
+    const t = d.target;
+    return `M${s.x},${s.y}C${s.x},${(s.y + t.y) / 2} ${t.x},${(s.y + t.y) / 2} ${t.x},${t.y}`;
+  };
+  const isEdgeActive = (d: HierarchyPointLink<TreeNodeData>) => {
+    const st = d.target.data.status;
+    return st === "active" || st === "running";
+  };
+
   edgeGroup
     .selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
-    .data(rootNode.links())
-    .join("path")
-    .attr("class", "link")
-    .attr("d", (d) => {
-      const s = d.source as PointNode;
-      const t = d.target as PointNode;
-      return `M${s.x},${s.y}C${s.x},${(s.y + t.y) / 2} ${t.x},${(s.y + t.y) / 2} ${t.x},${t.y}`;
-    })
-    .attr("fill", "none")
-    .attr("stroke", (d) => {
-      const { status } = (d.target as PointNode).data;
-      return status === "active" || status === "running"
-        ? "var(--color-accent)"
-        : "var(--color-border-subtle)";
-    })
+    .data(links)
+    .join(
+      (enter) =>
+        enter
+          .append("path")
+          .attr("class", "link")
+          .attr("fill", "none")
+          .attr("stroke-width", 1.5)
+          .attr("d", edgePath)
+          .style("opacity", 0)
+          .call((sel) =>
+            sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1),
+          ),
+      (update) =>
+        update.call((sel) =>
+          sel.transition().duration(300).ease(easeCubicOut).attr("d", edgePath),
+        ),
+      (exit) =>
+        exit.call((sel) =>
+          sel.transition().duration(200).style("opacity", 0).remove(),
+        ),
+    )
+    .classed("edge-active", isEdgeActive)
+    .attr("stroke", (d) =>
+      isEdgeActive(d) ? "var(--color-accent)" : "var(--color-border-subtle)",
+    )
     .attr("stroke-width", 1.5)
     .attr("stroke-dasharray", (d) =>
-      (d.target as PointNode).data.status === "pending" ? "4 4" : "none",
+      d.target.data.status === "pending" ? "4 4" : "none",
     );
 
   // Nodes — join by path key so D3 reuses existing foreignObjects.
-  nodeGroup
+  const nodes = nodeGroup
     .selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
     .data(rootNode.descendants(), (d) => nodeKey(d))
     .join(
@@ -188,12 +201,30 @@ function renderTree(
           .attr("class", "node")
           .attr("width", NODE_WIDTH)
           .attr("height", NODE_HEIGHT)
-          .attr("overflow", "visible"),
+          .attr("overflow", "visible")
+          .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
+          .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
+          .style("opacity", 0)
+          .call((sel) =>
+            sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1),
+          ),
       (update) => update,
-      (exit) => exit.remove(),
-    )
+      (exit) =>
+        exit.call((sel) =>
+          sel.transition().duration(200).style("opacity", 0).remove(),
+        ),
+    );
+
+  // Glide existing nodes to new positions.
+  nodes
+    .transition()
+    .duration(300)
+    .ease(easeCubicOut)
     .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
-    .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
+    .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2);
+
+  // Apply click handlers, classes, and render content on all nodes.
+  nodes
     .classed("node-clickable", (d) => actorSessionId(d.data) !== null)
     .on("click", (_, d) => {
       const sessionId = actorSessionId(d.data);
