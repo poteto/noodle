@@ -42,7 +42,11 @@ The session manager needs a method like `discoverSubAgentFiles(parentSessionID)`
 
 Scope gate: this out-of-band discovery work is follow-up after v1. Phase 5 v1 scope is in-band pipeline wiring only. Follow-up implementation must use bounded polling (not unbounded watchers) and include explicit session lifecycle cleanup tests (startup, shutdown, restart, orphan cleanup).
 
-v1 fallback contract for Codex child visibility: if child transcript ingestion is unavailable, emit/retain parent-stream orchestration events with explicit pending label metadata so UI distinguishes "not yet ingested" from "no activity."
+v1 fallback contract for Codex child visibility (explicit):
+- retain parent-stream orchestration events (`spawn_agent`, `send_input`, `close_agent`) as normal session events
+- when child thread ID is known, those events must carry `agent_id` so downstream snapshot/UI can key agent rows
+- mark orchestration-only rows with summary text `"orchestration-only: child transcript pending ingestion"`
+- do not drop/merge away orchestration-only rows even when no `EventAgentSpawned` exists yet
 
 ## Data Structures
 
@@ -62,6 +66,7 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical wiring with clear mappin
 - Unit test: construct each new canonical event type, verify it maps to the correct event.Event
 - Unit test: verify WebSocket message payload includes agent fields
 - Unit test: EventLine TypeScript type includes optional agent_id, agent_name, agent_type
+- Unit test: orchestration-only Codex rows preserve `agent_id` and summary marker when no child transcript exists
 
 ### Runtime
 - Integration test: feed agent NDJSON through stamp processor -> session_base -> capture WebSocket output, verify agent events arrive with agent metadata

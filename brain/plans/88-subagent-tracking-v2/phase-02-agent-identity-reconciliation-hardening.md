@@ -8,12 +8,13 @@ Guarantee canonical `AgentID` handling end-to-end so one logical agent always ma
 
 ## Changes
 
-- Enforce parser-level rule: provisional correlation IDs never persist as canonical `AgentID`.
-- Normalize Codex and Claude spawn/progress/complete reconciliation so duplicate spawn-like signals merge on canonical identity.
-- Update snapshot materialization logic to upsert by canonical `AgentID` and merge metadata deterministically.
+- Build on plan 84 canonical-ID rules; do not reintroduce provisional-ID persistence.
+- Harden only post-v1 gaps: cross-source reconciliation (in-band + out-of-band), legacy replay compatibility, and deterministic metadata precedence under mixed ordering.
+- Update snapshot materialization logic to upsert by canonical `AgentID` and merge metadata deterministically across source modes.
 
 Relationship to Plan 84:
-- Replace the v1 provisional map behavior with this canonical reconciliation contract (single source of truth), rather than maintaining two parallel identity mechanisms.
+- This phase does not replace v1 parser reconciliation mechanics.
+- This phase adds cross-source/upgrade compatibility rules on top of v1 so plan-84-era logs and v2 mixed-source logs resolve to the same canonical node identity model.
 
 ## Data Structures
 
@@ -35,3 +36,4 @@ Relationship to Plan 84:
 ### Runtime
 - Replay mixed-order fixtures where spawn/progress/complete arrive in different orders; verify no duplicate nodes.
 - Verify parent-child links remain stable when provisional IDs are present in source logs.
+- Replay plan-84-era logs under v2 reconciliation rules and verify canonical IDs/nodes remain stable (no reinterpretation to provisional IDs).

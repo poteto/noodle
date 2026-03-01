@@ -22,6 +22,11 @@ Status values: `running`, `completed`, `errored`, `shutdown`.
 3. Scan for `EventAgentProgress` events to set each agent's `CurrentAction` (last action)
 4. Build the tree by resolving `ParentID` references
 
+v1 Codex fallback materialization rule:
+- if an agent-scoped `EventAgentProgress`/`EventAgentExited` exists with `agent_id` but no prior `EventAgentSpawned`, materialize a placeholder node keyed by that canonical `agent_id`
+- metadata precedence for placeholder upsert: spawn payload (if later discovered) > progress/exit payload > defaults (`AgentName=agent_id`, `AgentType="codex-subagent"`, `ParentID=""`)
+- placeholder nodes remain valid for v1 and merge into canonical spawn metadata when child `session_meta` is later ingested
+
 Identity/dedupe rule: materialize nodes by canonical `AgentID` only. If multiple spawn-like signals refer to the same canonical agent, merge metadata into one node (no duplicates). Provisional correlation IDs are never used as node keys.
 
 Performance guardrail: keep per-snapshot tree rebuild linear in event count with a target budget of <50ms per active session at 10k events; if exceeded, add incremental/cache-based materialization in v2.
@@ -44,6 +49,7 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- straightforward struct additions an
 ### Static
 - `go test ./internal/snapshot/...`
 - Unit test: build snapshot from fixture event log containing spawn/progress/exit events, verify agent tree and no duplicate nodes for a single canonical agent
+- Unit test: Codex orchestration-only fixture (progress/exit without spawn) still materializes one placeholder node keyed by `agent_id`
 
 ### Runtime
 - Integration test: run stamp processor with fixture NDJSON containing agent events, build snapshot, verify `Session.Agents` is populated with correct hierarchy

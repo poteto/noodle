@@ -13,6 +13,7 @@ Ingest provider-owned out-of-band files (Codex child sessions and Claude team in
   - Claude team inbox files for known team members
 - Feed discovered lines through existing parse + canonical event plumbing instead of building a parallel channel.
 - Persist per-source read offsets so restarts continue from last processed position.
+- Add emit-time dedupe contract for replay safety: every out-of-band line carries a deterministic ingest identity (`source_key`, `source_offset`) and duplicate identities are dropped before appending session events.
 
 Codex child path resolution rules:
 - Primary lookup by thread ID filename under date-partitioned tree (`~/.codex/sessions/YYYY/MM/DD/{thread_id}.jsonl`)
@@ -25,12 +26,13 @@ Checkpoint persistence rules:
 - Store checkpoints in runtime dir (for example: `.noodle/sessions/{parent}/ingestion-checkpoints.ndjson`)
 - Write checkpoint updates atomically (temp file + rename)
 - Include source fingerprint (`provider`, `path`, `agent_id`) to prevent misapplying offsets after source remap
-- Recovery rule: on corrupt checkpoint read, rename checkpoint to `.corrupt.<ts>`, emit warning event, and replay from safe boundary (offset 0 for that source)
+- Recovery rule: on corrupt checkpoint read, rename checkpoint to `.corrupt.<ts>`, emit warning event, rebuild per-source high-water marks from existing session event log (`source_key` + `source_offset`), then replay from safe boundary (offset 0) with dedupe guard active
 
 ## Data Structures
 
 - `AgentSourceRef`: `{Provider, ParentSessionID, AgentID, SourceType, Path}`
-- `IngestionCheckpoint`: `{SourceKey, Provider, Path, AgentID, Offset, UpdatedAt}`
+- `IngestionCheckpoint`: `{SourceKey, Provider, Path, AgentID, Offset, HighWaterOffset, UpdatedAt}`
+- `IngestIdentity`: `{SourceKey, SourceOffset}` attached to out-of-band derived events for dedupe/replay safety
 
 ## Routing
 
@@ -49,3 +51,4 @@ Checkpoint persistence rules:
 - Restart during ingestion; verify no duplicate replay and no missed tail lines.
 - Midnight rollover test: spawn near day boundary and resolve child file across partition directories.
 - Corrupt/partial checkpoint recovery test: restart does not skip unread lines.
+- Corrupt checkpoint replay test: replay-from-zero produces zero duplicate emitted events because dedupe identity is enforced.

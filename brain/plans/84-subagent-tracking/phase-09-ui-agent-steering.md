@@ -26,7 +26,7 @@ Server/loop changes:
 2. Add control action `steer-agent`
 3. Handle provider-specific steering in the existing control queue path (same validation, retries, and auditability as other control actions)
 4. Validate delivery preconditions at execution time (agent still exists, steerable, running, and parent session active) to avoid stale-race sends
-5. Delivery-state contract: `accepted` (queued), `delivered` (observed target delivery signal), `timeout` (no delivery signal by timeout), `rejected` (validation failure)
+5. v1 response contract is terminal and single-path: reuse existing control ack (`status: ok|error`) with typed failure payload (`code`, `message`, `retryable`) for validation/execution failures
 
 **`ui/src/components/AgentChat.tsx`** -- The message input (from phase 8):
 - Enabled when `agent.steerable === true` and `agent.status === "running"`
@@ -42,7 +42,6 @@ Server/loop changes:
 - New control action: `steer-agent`
 - Claude inbox entry: `{from, text, summary string, timestamp time.Time, read bool}`
 - Reuse existing control ack failure shape for steer errors (`code`, `message`, `retryable`) rather than introducing a parallel response contract
-- `SteerDeliveryState`: one of `{accepted, delivered, timeout, rejected}` surfaced via control/snapshot events
 
 ## Routing
 
@@ -64,6 +63,5 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about error ha
 - Visual: message input enabled/disabled based on agent type
 - Integration: send message, verify it shows in agent chat feed
 - Steering race test: agent completes between submit and execution -> deterministic typed failure, no write side effects
-- Codex confirmation test: after steer request, observe target-agent `send_input` progress within timeout; if absent, surface retryable failure
+- Codex steer integration test: after steer request, observe target-agent `send_input` progress in session events
 - Claude inbox write test uses atomic write (temp file + rename) to avoid partial JSON on concurrent reads
-- Delivery-state test: each steering request transitions through valid state machine with no impossible transitions

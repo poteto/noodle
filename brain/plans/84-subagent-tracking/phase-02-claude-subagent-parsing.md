@@ -22,7 +22,11 @@ Parse Claude's `agent_progress` NDJSON events and Agent `tool_use` blocks into c
    - Map scope is per-session parser context (never shared across sessions)
    - Remove entry when matching `EventAgentComplete` is emitted
    - Enforce bounded size (LRU or FIFO cap) and TTL eviction for orphaned entries
-   - Do not store reconciliation state on a shared global adapter singleton; parser state must be session-owned and concurrency-safe
+   - Ownership contract for v1:
+     - One `stamp.Processor`/`parse.Registry` instance is created per active session ingest stream
+     - `ClaudeAdapter` reconciliation state is stored on that session-local adapter instance only
+     - No package-level/shared singleton adapter may hold reconciliation state
+   - Parser state must be concurrency-safe within a session stream (mutex-protected map)
 
 2. **`progress` message type** (new case in `Parse()` switch):
    When `type == "progress"` and `data.type == "agent_progress"`, emit `EventAgentProgress` with:
@@ -50,7 +54,10 @@ All Claude sub-agents are non-steerable (`Steerable: false`) — they run to com
 ## Data Structures
 
 - `claudeProgressData` struct: `{Type string, AgentID string, Prompt string, Message json.RawMessage}`
-- `tool_use_id` -> `agentId` reconciliation map (built during parse, not persisted). Note: `ClaudeAdapter` is currently stateless (`Parse()` is a pure function). This phase requires making the adapter stateful — add a map field to the struct to track in-flight agent tool_use correlations.
+- `tool_use_id` -> `agentId` reconciliation map (built during parse, not persisted) on session-local `ClaudeAdapter` instance:
+  - `mu sync.Mutex`
+  - `pending map[string]agentCorrelation`
+  - `agentCorrelation`: `{ToolUseID, AgentName, AgentType, FirstSeenAt, CanonicalAgentID}`
 - Canonical identity rule: only stable `agentId` is serialized as `AgentID`.
 - Reuse existing `claudeMessage` / `claudeContent` for parsing the inner agent message
 - `claudeContent` must include `ID string json:"id"` for tool_use correlation
@@ -73,6 +80,7 @@ Provider: `claude`, Model: `claude-opus-4-6` -- parsing nested message structure
   - agent_progress with stable `agentId` but no pending tool_use still materializes a spawn node
   - map lifecycle tests: completion cleanup, TTL/size eviction, and no cross-session contamination
   - tool_result text with multiple IDs does not emit ambiguous `EventAgentComplete`
+  - session ownership test: two concurrent session processors cannot observe each other's tool_use correlations
 
 ### Runtime
 - Feed fixture NDJSON through `ClaudeAdapter.Parse()`, verify correct event types and agent metadata

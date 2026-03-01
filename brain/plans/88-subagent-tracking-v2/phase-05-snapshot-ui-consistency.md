@@ -13,9 +13,10 @@ Keep tree/feed/agent-chat state coherent when events arrive late, out-of-order, 
 - Ensure steer-input enabled/disabled state derives from reconciled agent status, not transient single-event assumptions.
 
 Determinism rules:
-- Ordering key: `(event_timestamp, ingest_sequence)` where ingest_sequence is monotonic per source
+- Dedupe key: `(source_key, source_offset)` for out-of-band derived events; duplicates are discarded before projection
+- Ordering key: `(event_timestamp, source_key, ingest_sequence)` where ingest_sequence is monotonic per source
 - Terminal precedence: `completed`/`errored` are terminal and absorb late non-terminal progress updates
-- Equal timestamp tie-breaker uses ingest_sequence, not map iteration order
+- Equal timestamp tie-breaker uses `(source_key, ingest_sequence)`, not map iteration order
 
 ## Data Structures
 
@@ -36,4 +37,5 @@ Determinism rules:
 
 ### Runtime
 - Replay reordered event fixtures; verify stable tree/feed output.
+- Replay duplicate out-of-band fixture lines; verify tree/feed rows remain single-instance by dedupe key.
 - Manual UI pass: switch parent/agent views during live updates and verify no flicker/duplication.

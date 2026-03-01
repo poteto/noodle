@@ -25,7 +25,7 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
 2. **`function_call` items in `response_item`** (extend `parseCodexResponseItem()` for `function_call` type):
    Codex sub-agent orchestration uses `response_item` events containing `function_call` with specific function names. Real NDJSON uses this pattern — NOT `collab_tool_call` (which has zero matches in actual session logs):
-   - `function_call` with `name: "spawn_agent"` -> `EventAgentProgress` intent event only (request to spawn), not canonical spawn
+   - `function_call` with `name: "spawn_agent"` -> `EventAgentProgress` intent event only (request to spawn), not canonical spawn. Include child thread ID in `agent_id` when present in arguments/output so downstream snapshot can key a placeholder node deterministically.
    - `function_call` with `name: "send_input"` -> `EventAgentProgress` on the target agent; arguments: `{id, message}` where `id` is the child thread ID
    - `function_call` with `name: "wait"` -> no event (blocking call)
    - `function_call` with `name: "close_agent"` -> `EventAgentComplete`; arguments: `{id}` where `id` is the child thread ID
@@ -34,7 +34,9 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
 **Codex file discovery:** Codex sub-agents live in separate JSONL files at `~/.codex/sessions/YYYY/MM/DD/`. The parent session's `function_call` events reference child thread IDs, but the child's NDJSON is a separate file that must be discovered and ingested. Phase 5 addresses how the session manager discovers and consumes these out-of-band files.
 
-v1 behavior note: until out-of-band ingestion is enabled, Codex child nodes may show orchestration-only activity (spawn/send_input/close) without full child transcript. UI should label this state clearly (for example, "child transcript pending ingestion") to avoid false "empty/broken" appearance.
+v1 behavior note: until out-of-band ingestion is enabled, Codex child nodes may be represented by orchestration-only activity (spawn/send_input/close) without full child transcript. Contract:
+- parser emits agent-scoped orchestration events with stable `agent_id` when child thread ID is known
+- event summary includes `"orchestration-only: child transcript pending ingestion"` so UI can distinguish this from "no activity"
 
 ## Data Structures
 
