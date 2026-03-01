@@ -1,8 +1,5 @@
 ---
-priority: [87, 84, 88, 20, 69]
-# 87 go simplification (subtract before you add — clean the substrate
-#    before building new features. Phases 1-2 delete dead backend stubs
-#    that 69 will redesign, phase 3 consolidates state utilities),
+priority: [84, 88, 20, 69]
 # 84 sub-agent tracking (foundational infra),
 # 88 sub-agent tracking v2 (extends 84),
 # 20 skill-path defaults (small docs fix),
@@ -30,6 +27,5 @@ priority: [87, 84, 88, 20, 69]
 ## Backend
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
-87. [ ] Go codebase simplification — deduplicate state utilities, extract loop helpers, decompose long functions, delete dead code, create shared jsonx/stringx utilities. [[plans/87-go-codebase-simplification/overview]]
 88. [ ] Sub-agent tracking v2 — add out-of-band ingestion (Codex child sessions + Claude team inbox), harden canonical identity reconciliation, lifecycle-safe bounded pollers, robust `steer-agent` control behavior, and expanded hardening tests. [[plans/88-subagent-tracking-v2/overview]]
 89. [ ] Runtime merge detection — replace static `permissions.merge` frontmatter with runtime `HasUnmergedCommits` check on the worktree. Removes `Permissions` struct, `CanMerge` from taskreg/mise, and simplifies skill frontmatter. [[plans/89-runtime-merge-detection/overview]]
