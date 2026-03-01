@@ -198,7 +198,7 @@ function renderTree(
     .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
     .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2);
 
-  // Apply click handlers, classes, and render content on all nodes.
+  // Apply click handlers, tooltip, and render content on all nodes.
   nodes
     .classed("node-clickable", (d) => actorSessionId(d.data) !== null)
     .on("click", (_, d) => {
@@ -206,6 +206,20 @@ function renderTree(
       if (sessionId) {
         onActorClick(sessionId);
       }
+    })
+    .on("mouseenter", function onEnter(_event, d) {
+      const rect = (this as SVGForeignObjectElement).getBoundingClientRect();
+      const tip = document.createElement("div");
+      tip.className = "overflow-tooltip";
+      tip.textContent = d.data.name;
+      tip.style.left = `${rect.left + rect.width / 2}px`;
+      tip.style.top = `${rect.top}px`;
+      tip.style.transform = "translateX(-50%) translateY(-100%) translateY(-6px)";
+      tip.dataset.treeTooltip = "1";
+      document.body.appendChild(tip);
+    })
+    .on("mouseleave", () => {
+      document.querySelectorAll("[data-tree-tooltip]").forEach((el) => el.remove());
     })
     .each(function renderNode(this: SVGForeignObjectElement, d) {
       this.innerHTML = nodeHTML(d.data);
