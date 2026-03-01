@@ -76,6 +76,16 @@ func (h *capturingHandler) hasMessage(msg string) bool {
 	return ok
 }
 
+func (h *capturingHandler) countMessage(msg string) int {
+	count := 0
+	for _, e := range h.snapshot() {
+		if e.Message == msg {
+			count++
+		}
+	}
+	return count
+}
+
 // newTestLogger creates a *slog.Logger backed by a capturingHandler.
 func newTestLogger() (*slog.Logger, *capturingHandler) {
 	h := &capturingHandler{}
@@ -352,6 +362,50 @@ func TestLogBootstrapSchedule(t *testing.T) {
 
 	if !handler.hasMessage("orders empty, bootstrapping schedule") {
 		t.Fatal("expected 'orders empty, bootstrapping schedule' log entry")
+	}
+}
+
+func TestLogBootstrapScheduleDoesNotLoopWhenScheduleOrderExists(t *testing.T) {
+	logger, handler := newTestLogger()
+	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
+		brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
+		o.brief = &brief
+	})
+
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     ScheduleTaskKey(),
+				Title:  "scheduling tasks based on your backlog",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  ScheduleTaskKey(),
+						Skill:    "schedule",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	// Simulate a prior schedule failure so dispatch planning skips schedule.
+	tc.loop.cooks.failedTargets[ScheduleTaskKey()] = "previous failure"
+
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 1: %v", err)
+	}
+	if err := tc.loop.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 2: %v", err)
+	}
+
+	if got := handler.countMessage("orders empty, bootstrapping schedule"); got != 0 {
+		t.Fatalf("bootstrap log count = %d, want 0", got)
 	}
 }
 

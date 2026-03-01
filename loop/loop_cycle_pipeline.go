@@ -122,12 +122,15 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 				l.setState(StateIdle)
 				return OrdersFile{}, false, nil
 			}
-			// Bootstrap a schedule order.
-			orders = bootstrapScheduleOrder(l.config)
-			if err := l.writeOrdersState(orders); err != nil {
-				return OrdersFile{}, false, err
+			// Bootstrap only when a schedule order is truly absent.
+			// Rewriting an existing schedule order creates a file-watch hot loop.
+			if !hasScheduleOrder(orders) {
+				orders = bootstrapScheduleOrder(l.config)
+				if err := l.writeOrdersState(orders); err != nil {
+					return OrdersFile{}, false, err
+				}
+				l.logger.Info("orders empty, bootstrapping schedule")
 			}
-			l.logger.Info("orders empty, bootstrapping schedule")
 		}
 	}
 

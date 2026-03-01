@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -172,9 +174,10 @@ func runWebServer(
 	}()
 
 	srv.WaitReady()
-	logger.Info("listening", "addr", srv.Addr())
+	displayAddr := normalizeLoopbackHost(srv.Addr())
+	logger.Info("listening", "addr", displayAddr)
 
-	url := "http://" + srv.Addr()
+	url := "http://" + displayAddr
 	if devURL := os.Getenv("NOODLE_BROWSER_URL"); devURL != "" {
 		url = devURL
 	}
@@ -186,6 +189,22 @@ func runWebServer(
 	}
 
 	return <-errCh
+}
+
+func normalizeLoopbackHost(addr string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return ""
+	}
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	ip := net.ParseIP(host)
+	if ip != nil && ip.IsLoopback() {
+		host = "localhost"
+	}
+	return net.JoinHostPort(host, port)
 }
 
 func newAPILogger(w io.Writer) *charmlog.Logger {

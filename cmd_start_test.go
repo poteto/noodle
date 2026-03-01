@@ -171,3 +171,24 @@ func TestNewAPILogger(t *testing.T) {
 		t.Fatalf("log output missing attr: %q", out)
 	}
 }
+
+func TestNormalizeLoopbackHost(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "ipv4 loopback", in: "127.0.0.1:3000", want: "localhost:3000"},
+		{name: "ipv6 loopback", in: "[::1]:3000", want: "localhost:3000"},
+		{name: "hostname stays", in: "example.com:3000", want: "example.com:3000"},
+		{name: "empty stays empty", in: "", want: ""},
+		{name: "invalid addr unchanged", in: "bad-address", want: "bad-address"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeLoopbackHost(tt.in); got != tt.want {
+				t.Fatalf("normalizeLoopbackHost(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
