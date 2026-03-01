@@ -13,18 +13,6 @@ Use `noodle schema mise` and `noodle schema orders` as the schema source of trut
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
-## Mode Awareness
-
-The loop runs in one of three modes (set via `mode` config). The mode determines what the scheduler and dispatcher are allowed to do:
-
-| Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
-|------|----------|----------|------------|------------|
-| `auto` | yes | yes | yes | yes |
-| `supervised` | yes | yes | no | no |
-| `manual` | no | no | no | no |
-
-In `manual` mode, the scheduler is not invoked — the operator manages orders directly. In `supervised` mode, scheduling and dispatch proceed normally, but merges and retries require human approval. Always write valid orders regardless of mode; the loop applies mode gates after promotion.
-
 ## Orders Model
 
 Output is `{orders: [...]}` where each order is a **pipeline of stages** executed sequentially. Group related work into stages within one order rather than separate orders.
@@ -79,16 +67,10 @@ These are emitted automatically by the loop. The V2 backend uses canonical event
 | `stage_failed` | A stage failed (includes reason) |
 | `order_completed` | All stages in an order finished — the order is done |
 | `order_failed` | An order failed terminally |
-| `dispatch_requested` | A stage is ready for dispatch (includes order ID, stage index) |
-| `dispatch_completed` | A dispatch attempt finished (includes attempt ID, exit code) |
-| `mode_changed` | The run mode was changed (includes from/to mode, epoch) |
-| `merge_completed` | A cook's worktree was merged back to main |
 | `merge_failed` | A merge failed (includes error reason) |
-| `session_adopted` | An orphaned session was recovered on startup |
 | `order.dropped` | An order was removed because its task type is no longer registered |
 | `order.requeued` | A failed order was reset and re-queued for another attempt |
 | `registry.rebuilt` | The skill registry was rebuilt (skills added or removed) |
-| `sync.degraded` | The backlog sync script encountered issues |
 
 ### External Events
 
@@ -127,16 +109,7 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 
 ## Stage Lifecycle
 
-Stages in the canonical state follow this lifecycle:
-
-```
-pending -> dispatching -> running -> merging -> review -> completed
-                                  \-> failed (may retry -> pending)
-                                  \-> cancelled
-                                  \-> skipped
-```
-
-The scheduler writes stages with `"status": "pending"`. The dispatcher and loop manage all subsequent transitions. If a stage fails and the retry policy allows, it resets to `pending` for another attempt. Each attempt is tracked as an `AttemptNode` with its own lifecycle (launching, running, completed, failed, cancelled).
+Write stages with `"status": "pending"`. The loop manages all subsequent transitions (dispatching, running, merging, review, completed/failed).
 
 ## Model Routing
 
@@ -156,19 +129,6 @@ Read `routing.available_runtimes` from mise before writing orders.
 - Keep `review`, `reflect`, and `meditate` on `"runtime": "process"` unless explicitly justified.
 - `cursor` runtime requires `polling` and `remote_sync` capabilities — only use when available and appropriate.
 - Always include `"runtime"` on scheduled stages so dispatch routing is explicit.
-
-### Runtime Capabilities
-
-Each runtime declares capabilities that affect dispatch behavior:
-
-| Capability | Description |
-|------------|-------------|
-| `steerable` | Session supports live message injection (steer control command) |
-| `polling` | Session status must be polled (no push completion signal) |
-| `remote_sync` | Session runs remotely and needs branch push/pull |
-| `heartbeat` | Session emits periodic heartbeats for liveness detection |
-
-Default profiles: `process` and `sprites` are steerable. `cursor` requires polling and remote sync.
 
 ## Output
 
