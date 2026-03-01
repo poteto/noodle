@@ -16,6 +16,11 @@ import (
 	"github.com/poteto/noodle/stamp"
 )
 
+const (
+	scannerInitialBuffer = 64 * 1024
+	scannerMaxBuffer     = 64 << 20
+)
+
 // sessionBase contains the shared fields and methods for processSession and
 // spritesSession. Both session types embed this struct and delegate the
 // identical event-handling, publishing, and lifecycle plumbing to it.

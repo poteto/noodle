@@ -28,7 +28,7 @@ func readCanonicalEvents(path string) ([]parse.CanonicalEvent, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 64<<20)
+	scanner.Buffer(make([]byte, 0, scannerInitialBuffer), scannerMaxBuffer)
 	events := make([]parse.CanonicalEvent, 0, 32)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
