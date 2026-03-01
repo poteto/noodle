@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { LayoutGrid, User, Network, ShieldCheck } from "lucide-react";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
@@ -11,76 +12,6 @@ const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   failed: { symbol: "✗", cls: "stage-done" },
   cancelled: { symbol: "□", cls: "stage-pending" },
 };
-
-function DashboardIcon() {
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="1" y="1" width="6" height="6" rx="1" />
-      <rect x="11" y="1" width="6" height="6" rx="1" />
-      <rect x="1" y="11" width="6" height="6" rx="1" />
-      <rect x="11" y="11" width="6" height="6" rx="1" />
-    </svg>
-  );
-}
-
-function FeedIcon() {
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="9" cy="5" r="3" />
-      <path d="M2 16c0-3.3 3.1-6 7-6s7 2.7 7 6" />
-    </svg>
-  );
-}
-
-function TreeIcon() {
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="9" cy="9" r="2.5" />
-      <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" />
-    </svg>
-  );
-}
-
-function ReviewIcon() {
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 1L2 4v5c0 4.4 3 7.5 7 9 4-1.5 7-4.6 7-9V4L9 1z" />
-      <path d="M6 9l2 2 4-4" />
-    </svg>
-  );
-}
 
 function ConnectionDot() {
   const status = useWSStatus();
@@ -202,15 +133,25 @@ export function Sidebar() {
           to="/dashboard"
           label="Dashboard"
           active={pathname === "/dashboard"}
-          icon={<DashboardIcon />}
+          icon={<LayoutGrid className="nav-icon" size={16} strokeWidth={1.5} />}
         />
-        <NavLink to="/" label="Live Feed" active={isFeedRoute} icon={<FeedIcon />} />
-        <NavLink to="/tree" label="Tree" active={pathname === "/tree"} icon={<TreeIcon />} />
+        <NavLink
+          to="/"
+          label="Live Feed"
+          active={isFeedRoute}
+          icon={<User className="nav-icon" size={16} strokeWidth={1.5} />}
+        />
+        <NavLink
+          to="/tree"
+          label="Topology"
+          active={pathname === "/tree"}
+          icon={<Network className="nav-icon" size={16} strokeWidth={1.5} />}
+        />
         <NavLink
           to="/review"
-          label={`Review${snapshot.pending_review_count ? ` (${snapshot.pending_review_count})` : ""}`}
+          label={`Reviews${snapshot.pending_review_count ? ` (${snapshot.pending_review_count})` : ""}`}
           active={pathname === "/review"}
-          icon={<ReviewIcon />}
+          icon={<ShieldCheck className="nav-icon" size={16} strokeWidth={1.5} />}
         />
       </nav>
 
