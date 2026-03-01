@@ -88,9 +88,7 @@ function SystemFooter({ snapshot }: { snapshot: Snapshot }) {
 function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
   const warningCount = snapshot.warnings?.length ?? 0;
   const warningsWithKeys = keyByOccurrence(snapshot.warnings ?? []);
-  const completedOrders = snapshot.orders.filter(
-    (o) => o.status === "merged" || o.status === "completed",
-  ).length;
+  const completedOrders = snapshot.orders.filter((o) => o.status === "completed").length;
 
   return (
     <>
