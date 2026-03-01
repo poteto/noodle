@@ -13,11 +13,13 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 92 -->
+<!-- next-id: 93 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
 ## Onboarding & Getting Started
+
+92. [ ] Publish docs to GitHub Pages via custom GitHub Actions workflow — set up a GH Actions workflow that builds and deploys the docs site on push to main. Reference: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
 
 20. [ ] First-run experience — make it obvious how to install, configure, and use Noodle. Simple installation path, clear documentation of core concepts (skills, scheduling, brain), example projects showing real workflows (e.g. a minimal schedule+execute setup, a multi-skill autonomous loop), and getting-started guides that take a new user from zero to a running Noodle in minutes. [[plans/20-onboarding/overview]]
 
