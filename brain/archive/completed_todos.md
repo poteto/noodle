@@ -1,5 +1,8 @@
 # Completed Todos
 
+82. [x] ~~Backend V2 first-principles rewrite — redesign loop internals around a canonical order-centric state model and reducer/effect pipeline while preserving files-as-API and skills-only extensibility. Unify oversight into `mode`, standardize runtime capability contracts, align projections/files/UI streams from one state source, then cut over and delete legacy paths. [[archive/plans/82-backend-v2-first-principles/overview]]~~ — done. New internal/ packages: state, ingest, reducer, rtcap, dispatch, mode, projection, integration. Autonomy replaced with tri-state mode (auto/supervised/manual). Version fencing at startup. Skill docs aligned. Resilience tests pass all acceptance criteria.
+68. [x] ~~Unified involvement levels~~ — superseded by #82 (backend V2 rewrite). Mode field (auto/supervised/manual) implemented as part of the V2 cutover.
+
 80. [x] Add charmbracelet/log (https://github.com/charmbracelet/log) for styled API logs on `noodle start` — done. `cmd_start` now injects a charm logger-backed slog handler for loop output and emits high-signal startup/server lifecycle logs; runtime dispatch fallback now logs when non-process runtimes degrade to `process`.
 
 7. [x] ~~`go install` support~~ — superseded by Homebrew distribution (`brew install poteto/tap/noodle`).

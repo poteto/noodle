@@ -14,12 +14,6 @@
 
 77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
 
-## Modes
-
-68. [ ] Unified involvement levels — replace `autonomy` and `schedule.run` with a single `mode` field that sets sensible defaults for scheduling, dispatch, and merge gating. Three levels: `auto` (Noodle runs the kitchen, respect per-skill `permissions.merge`), `supervised` (auto-schedule, auto-dispatch, human approves all merges), `manual` (user drives scheduling and dispatch, human approves all merges). Per-skill `permissions.merge` still works as a fine-grained override. Subsumes current `autonomy` (auto/approve) and `schedule.run` (after-each/after-n/manual) into one dial. [[plans/68-unified-involvement-levels/overview]]
-
 ## Backend
-
-82. [ ] Backend V2 first-principles rewrite — redesign loop internals around a canonical order-centric state model and reducer/effect pipeline while preserving files-as-API and skills-only extensibility. Unify oversight into `mode`, standardize runtime capability contracts, align projections/files/UI streams from one state source, then cut over and delete legacy paths. [[plans/82-backend-v2-first-principles/overview]]
 83. [ ] Error recoverability taxonomy
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
