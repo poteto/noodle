@@ -146,25 +146,44 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 	next := cloneState(current)
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
-	stage.Status = state.StageCompleted
 	order.UpdatedAt = event.Timestamp
 	finalizeAttempt(&stage, payload, event, state.AttemptCompleted)
+
+	if stageMergeable(stage, payload) {
+		stage.Status = state.StageMerging
+		order.Stages[payload.StageIndex] = stage
+		next.Orders[payload.OrderID] = order
+		next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+
+		effects := []Effect{
+			makeEffect(event, 0, EffectMerge, map[string]any{
+				"order_id":      payload.OrderID,
+				"stage_index":   payload.StageIndex,
+				"worktree_name": latestWorktreeName(stage),
+			}),
+		}
+		return next, effects
+	}
+
+	// Non-mergeable: complete immediately and check order advancement.
+	stage.Status = state.StageCompleted
 	order.Stages[payload.StageIndex] = stage
+
+	if allStagesTerminal(order) {
+		order.Status = state.OrderCompleted
+	}
+
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	if !stageMergeable(stage, payload) {
-		return next, nil
+	if order.Status == state.OrderCompleted {
+		effects := []Effect{
+			makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID}),
+			makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID}),
+		}
+		return next, effects
 	}
-
-	effects := []Effect{
-		makeEffect(event, 0, EffectMerge, map[string]any{
-			"order_id":      payload.OrderID,
-			"stage_index":   payload.StageIndex,
-			"worktree_name": latestWorktreeName(stage),
-		}),
-	}
-	return next, effects
+	return next, nil
 }
 
 func reduceStageFailed(current state.State, event ingest.StateEvent) (state.State, []Effect) {
@@ -270,7 +289,7 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 	if !ok || isTerminalOrder(order.Status) {
 		return current, nil
 	}
-	if stage.Status == state.StageFailed || stage.Status == state.StageCancelled || stage.Status == state.StageSkipped {
+	if stage.Status != state.StageMerging {
 		return current, nil
 	}
 
@@ -281,12 +300,12 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 	order.Stages[payload.StageIndex] = stage
 	order.UpdatedAt = event.Timestamp
 
-	nextStageIndex := payload.StageIndex + 1
-	if nextStageIndex >= len(order.Stages) {
+	if allStagesTerminal(order) {
 		order.Status = state.OrderCompleted
 	} else {
 		order.Status = state.OrderActive
-		if order.Stages[nextStageIndex].Status == "" {
+		nextStageIndex := payload.StageIndex + 1
+		if nextStageIndex < len(order.Stages) && order.Stages[nextStageIndex].Status == "" {
 			order.Stages[nextStageIndex].Status = state.StagePending
 		}
 	}
@@ -302,7 +321,10 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 		return current, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	if !ok || isTerminalOrder(order.Status) {
+		return current, nil
+	}
+	if stage.Status != state.StageMerging {
 		return current, nil
 	}
 
@@ -423,6 +445,15 @@ func stageMergeable(stage state.StageNode, payload orderStagePayload) bool {
 		return *payload.Mergeable
 	}
 	return latestWorktreeName(stage) != ""
+}
+
+func allStagesTerminal(order state.OrderNode) bool {
+	for _, stage := range order.Stages {
+		if !isTerminalStage(stage.Status) {
+			return false
+		}
+	}
+	return true
 }
 
 func isTerminalOrder(status state.OrderLifecycleStatus) bool {

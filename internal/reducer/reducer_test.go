@@ -139,7 +139,7 @@ func TestReducerTransitionsTable(t *testing.T) {
 			},
 		},
 		{
-			name: "stage_completed sets completed and emits merge effect when mergeable",
+			name: "stage_completed sets merging and emits merge effect when mergeable",
 			current: state.State{
 				Orders: map[string]state.OrderNode{
 					"o1": {
@@ -165,11 +165,88 @@ func TestReducerTransitionsTable(t *testing.T) {
 				"stage_index": 0,
 			}, ts),
 			assertFn: func(t *testing.T, next state.State, effects []Effect) {
-				if got := next.Orders["o1"].Stages[0].Status; got != state.StageCompleted {
-					t.Fatalf("stage status mismatch: got %q", got)
+				if got := next.Orders["o1"].Stages[0].Status; got != state.StageMerging {
+					t.Fatalf("stage status mismatch: got %q, want %q", got, state.StageMerging)
 				}
 				assertEffectTypes(t, effects, EffectMerge)
 				assertEffectIDs(t, effects, "event-13-effect-0")
+			},
+		},
+		{
+			name: "stage_completed non-mergeable completes order when last stage",
+			current: state.State{
+				Orders: map[string]state.OrderNode{
+					"o1": {
+						OrderID:   "o1",
+						Status:    state.OrderActive,
+						CreatedAt: ts,
+						UpdatedAt: ts,
+						Stages: []state.StageNode{{
+							StageIndex: 0,
+							Status:     state.StageRunning,
+							Attempts: []state.AttemptNode{{
+								AttemptID: "a1",
+								Status:    state.AttemptRunning,
+								StartedAt: ts,
+							}},
+						}},
+					},
+				},
+			},
+			event: mustStateEvent(40, ingest.EventStageCompleted, map[string]any{
+				"order_id":    "o1",
+				"stage_index": 0,
+				"mergeable":   false,
+			}, ts),
+			assertFn: func(t *testing.T, next state.State, effects []Effect) {
+				if got := next.Orders["o1"].Stages[0].Status; got != state.StageCompleted {
+					t.Fatalf("stage status mismatch: got %q", got)
+				}
+				if got := next.Orders["o1"].Status; got != state.OrderCompleted {
+					t.Fatalf("order status mismatch: got %q, want %q", got, state.OrderCompleted)
+				}
+				assertEffectTypes(t, effects, EffectWriteProjection, EffectAck)
+			},
+		},
+		{
+			name: "stage_completed non-mergeable keeps order active when more stages remain",
+			current: state.State{
+				Orders: map[string]state.OrderNode{
+					"o1": {
+						OrderID:   "o1",
+						Status:    state.OrderActive,
+						CreatedAt: ts,
+						UpdatedAt: ts,
+						Stages: []state.StageNode{
+							{
+								StageIndex: 0,
+								Status:     state.StageRunning,
+								Attempts: []state.AttemptNode{{
+									AttemptID: "a1",
+									Status:    state.AttemptRunning,
+									StartedAt: ts,
+								}},
+							},
+							{StageIndex: 1, Status: state.StagePending},
+						},
+					},
+				},
+			},
+			event: mustStateEvent(41, ingest.EventStageCompleted, map[string]any{
+				"order_id":    "o1",
+				"stage_index": 0,
+				"mergeable":   false,
+			}, ts),
+			assertFn: func(t *testing.T, next state.State, effects []Effect) {
+				if got := next.Orders["o1"].Stages[0].Status; got != state.StageCompleted {
+					t.Fatalf("stage status mismatch: got %q", got)
+				}
+				if got := next.Orders["o1"].Status; got != state.OrderActive {
+					t.Fatalf("order status mismatch: got %q, want %q", got, state.OrderActive)
+				}
+				if len(effects) != 0 {
+					t.Fatalf("non-mergeable stage with remaining stages should emit no effects, got %d", len(effects))
+				}
 			},
 		},
 		{
