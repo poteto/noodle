@@ -30,6 +30,8 @@ Read `task_types` from mise to discover every schedulable task type and its `sch
 
 Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID (as a string) as the order `id`.
 
+**Depth-first scheduling:** When multiple backlog items have plans, focus on finishing one plan before starting another. Pick the highest-priority plan with remaining phases and schedule its next phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
+
 **Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Determine the next unfinished phase (first unchecked `- [ ]` item). Schedule an execute stage for that phase. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
 
 **Items without plans:** Schedule as a simple execute task using the backlog item's title and description as the prompt.
@@ -96,14 +98,13 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 | New backlog items | Create orders respecting workflow stage order |
 | Items without plans | Schedule as simple execute tasks |
 | All items blocked/done | Write empty orders array, let loop cooldown |
-| All items blocked | Schedule reflect or meditate to use the slot productively |
 
 ## Scheduling Heuristics
 
+- **Depth-first plans**: Finish one plan's phases before starting another. Breadth-first wastes context rebuilding plan state each time; depth-first produces complete, shippable results.
 - **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every order must cite which principle or rule drove its placement.
-- **Work around blockers**: If the top-priority item is blocked, schedule the next viable item — never idle.
 - **Timebox failures**: If an item has failed 2+ times in `recent_history`, deschedule or split it.
 
 ## Stage Lifecycle
