@@ -37,7 +37,7 @@ func runReset(app *App) error {
 			return fmt.Errorf("noodle is running (PID %d) — stop it before resetting", locked.HolderPID)
 		}
 		// Lock file doesn't exist or other benign error — proceed.
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 	}
@@ -45,50 +45,11 @@ func runReset(app *App) error {
 		lock.Close()
 	}
 
-	files := []string{
-		"orders.json",
-		"orders-next.json",
-		"mise.json",
-		"failed.json",
-		"pending-review.json",
-		"status.json",
-		"tickets.json",
-		"control.ndjson",
-		"control-ack.ndjson",
-		"control.lock",
-		"last-applied-seq",
-		"loop-events.ndjson",
-		"noodle.lock",
+	if err := os.RemoveAll(runtimeDir); err != nil {
+		return fmt.Errorf("remove %s: %w", runtimeDir, err)
 	}
-
-	dirs := []string{
-		"sessions",
-		"quality",
-	}
-
-	for _, name := range files {
-		path := filepath.Join(runtimeDir, name)
-		if err := os.Remove(path); err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return fmt.Errorf("remove %s: %w", name, err)
-		}
-		fmt.Println("removed", name)
-	}
-
-	for _, name := range dirs {
-		path := filepath.Join(runtimeDir, name)
-		if _, err := os.Stat(path); err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return fmt.Errorf("stat %s: %w", name, err)
-		}
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("remove %s: %w", name, err)
-		}
-		fmt.Println("removed", name+"/")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		return fmt.Errorf("recreate %s: %w", runtimeDir, err)
 	}
 
 	fmt.Println("runtime state reset")
