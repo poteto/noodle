@@ -55,7 +55,7 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Live Feed")).toBeInTheDocument();
-    expect(screen.getByText("Tree")).toBeInTheDocument();
+    expect(screen.getByText("Topology")).toBeInTheDocument();
   });
 
   it("renders scheduler channel item", () => {

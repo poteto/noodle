@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutGrid, User, Network, ShieldCheck } from "lucide-react";
+import { LayoutGrid, User, Network, BadgeCheck } from "lucide-react";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
@@ -117,6 +117,9 @@ export function Sidebar() {
   const schedulerRunning = snapshot.sessions.some(
     (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
   );
+  const visibleOrders = snapshot.orders.filter(
+    (o) => !o.stages.every((s) => s.task_key?.toLowerCase().trim() === "schedule"),
+  );
 
   return (
     <aside className="sidebar">
@@ -142,16 +145,16 @@ export function Sidebar() {
           icon={<User className="nav-icon" size={16} strokeWidth={1.5} />}
         />
         <NavLink
-          to="/tree"
+          to="/topology"
           label="Topology"
-          active={pathname === "/tree"}
+          active={pathname === "/topology"}
           icon={<Network className="nav-icon" size={16} strokeWidth={1.5} />}
         />
         <NavLink
-          to="/review"
+          to="/reviews"
           label={`Reviews${snapshot.pending_review_count ? ` (${snapshot.pending_review_count})` : ""}`}
-          active={pathname === "/review"}
-          icon={<ShieldCheck className="nav-icon" size={16} strokeWidth={1.5} />}
+          active={pathname === "/reviews"}
+          icon={<BadgeCheck className="nav-icon" size={16} strokeWidth={1.5} />}
         />
       </nav>
 
@@ -176,11 +179,11 @@ export function Sidebar() {
       </ul>
 
       <div className="section-label">
-        Orders <span className="section-count">{snapshot.orders.length}</span>
+        Orders <span className="section-count">{visibleOrders.length}</span>
       </div>
 
       <div className="agent-tree">
-        {snapshot.orders.length === 0 && (
+        {visibleOrders.length === 0 && (
           <div
             style={{
               padding: "6px 12px",
@@ -192,7 +195,7 @@ export function Sidebar() {
             No orders
           </div>
         )}
-        {snapshot.orders.map((order) => {
+        {visibleOrders.map((order) => {
           const isExpanded = expandedOrders.has(order.id);
           const hasActiveStage = order.stages.some((s) => s.status === "active");
           const orderActive = order.stages.some((s) => {

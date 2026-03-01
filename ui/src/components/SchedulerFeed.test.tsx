@@ -36,16 +36,16 @@ describe("SchedulerFeed", () => {
 
   it("renders input area", () => {
     render(<SchedulerFeed />);
-    expect(screen.getByPlaceholderText("Talk to the scheduler...")).toBeInTheDocument();
-    expect(screen.getByText("SEND")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter instructions or critique...")).toBeInTheDocument();
+    expect(screen.getByText("Send")).toBeInTheDocument();
   });
 
   it("sends steer command on submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Talk to the scheduler...");
+    const textarea = screen.getByPlaceholderText("Enter instructions or critique...");
     await user.type(textarea, "deploy to staging");
-    await user.click(screen.getByText("SEND"));
+    await user.click(screen.getByText("Send"));
     expect(mockSend).toHaveBeenCalledWith({
       action: "steer",
       target: "schedule",
@@ -56,7 +56,7 @@ describe("SchedulerFeed", () => {
   it("sends steer command on Enter", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Talk to the scheduler...");
+    const textarea = screen.getByPlaceholderText("Enter instructions or critique...");
     await user.type(textarea, "run tests{Enter}");
     expect(mockSend).toHaveBeenCalledWith({
       action: "steer",
@@ -68,16 +68,18 @@ describe("SchedulerFeed", () => {
   it("clears input after submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    const textarea = screen.getByPlaceholderText("Talk to the scheduler...") as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(
+      "Enter instructions or critique...",
+    ) as HTMLTextAreaElement;
     await user.type(textarea, "do something");
-    await user.click(screen.getByText("SEND"));
+    await user.click(screen.getByText("Send"));
     expect(textarea.value).toBe("");
   });
 
   it("does not send empty input", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();
-    await user.click(screen.getByText("SEND"));
+    await user.click(screen.getByText("Send"));
     expect(mockSend).not.toHaveBeenCalled();
   });
 });

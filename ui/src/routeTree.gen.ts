@@ -9,20 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TreeRouteImport } from './routes/tree'
-import { Route as ReviewRouteImport } from './routes/review'
+import { Route as TopologyRouteImport } from './routes/topology'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorIdRouteImport } from './routes/actor.$id'
 
-const TreeRoute = TreeRouteImport.update({
-  id: '/tree',
-  path: '/tree',
+const TopologyRoute = TopologyRouteImport.update({
+  id: '/topology',
+  path: '/topology',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReviewRoute = ReviewRouteImport.update({
-  id: '/review',
-  path: '/review',
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -44,55 +44,55 @@ const ActorIdRoute = ActorIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/review': typeof ReviewRoute
-  '/tree': typeof TreeRoute
+  '/reviews': typeof ReviewsRoute
+  '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/review': typeof ReviewRoute
-  '/tree': typeof TreeRoute
+  '/reviews': typeof ReviewsRoute
+  '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/review': typeof ReviewRoute
-  '/tree': typeof TreeRoute
+  '/reviews': typeof ReviewsRoute
+  '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
+  fullPaths: '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
-  id: '__root__' | '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
+  to: '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
+  id: '__root__' | '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
-  ReviewRoute: typeof ReviewRoute
-  TreeRoute: typeof TreeRoute
+  ReviewsRoute: typeof ReviewsRoute
+  TopologyRoute: typeof TopologyRoute
   ActorIdRoute: typeof ActorIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tree': {
-      id: '/tree'
-      path: '/tree'
-      fullPath: '/tree'
-      preLoaderRoute: typeof TreeRouteImport
+    '/topology': {
+      id: '/topology'
+      path: '/topology'
+      fullPath: '/topology'
+      preLoaderRoute: typeof TopologyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/review': {
-      id: '/review'
-      path: '/review'
-      fullPath: '/review'
-      preLoaderRoute: typeof ReviewRouteImport
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -122,8 +122,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
-  ReviewRoute: ReviewRoute,
-  TreeRoute: TreeRoute,
+  ReviewsRoute: ReviewsRoute,
+  TopologyRoute: TopologyRoute,
   ActorIdRoute: ActorIdRoute,
 }
 export const routeTree = rootRouteImport

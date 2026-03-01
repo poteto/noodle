@@ -103,7 +103,7 @@ export function Dashboard() {
 
   function handleRowClick(row: SessionRow) {
     if (isCompletedStatus(row.status) || needsReview(snapshot, row.id)) {
-      navigate({ to: "/review" });
+      navigate({ to: "/reviews" });
       return;
     }
     navigate({ to: "/actor/$id", params: { id: row.id } });

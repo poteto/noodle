@@ -51,7 +51,7 @@ describe("Dashboard", () => {
     render(<Dashboard />);
     await user.click(screen.getByText("s2"));
 
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/review" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/reviews" });
   });
 
   it("clicking a pending-review session row navigates to review route", async () => {
@@ -75,7 +75,7 @@ describe("Dashboard", () => {
     render(<Dashboard />);
     await user.click(screen.getByText("s3"));
 
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/review" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/reviews" });
   });
 
   it("renders stats bar with correct totals", () => {
