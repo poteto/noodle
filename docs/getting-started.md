@@ -149,7 +149,7 @@ Run `noodle status` to see the current loop state from the terminal: active orde
 
 ## Next steps
 
-- [Why Noodle](/why-noodle) -- the design philosophy behind skill-based orchestration
+- [Vision](/vision) -- the design philosophy behind skill-based orchestration
 - [Skills](/concepts/skills) -- how skills work and how to write more of them
 - [Scheduling](/concepts/scheduling) -- how the LLM-powered scheduler decides what to do
 - [Brain](/concepts/brain) -- the persistent memory vault

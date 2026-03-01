@@ -26,8 +26,8 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: "Why Noodle",
-        link: "/why-noodle",
+        text: "Vision",
+        link: "/vision",
       },
       {
         text: "Getting Started",

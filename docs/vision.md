@@ -1,4 +1,4 @@
-# Why Noodle
+# Vision
 
 Agents read files. Agents write files. That's the one thing every coding agent already does well.
 

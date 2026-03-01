@@ -2,7 +2,7 @@
 
 Skills are Noodle's single extension point. Every behavior an agent can perform — scheduling work, executing tasks, reviewing code, reflecting on mistakes — is a skill. There are no plugins, no hooks API, no configuration DSL. Just a directory with a markdown file.
 
-For why this matters, see [Why Noodle](/why-noodle).
+For why this matters, see [Vision](/vision).
 
 ## Anatomy of a Skill
 

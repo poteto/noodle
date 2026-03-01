@@ -36,7 +36,7 @@ The brain accumulates your project's actual working knowledge. It replaces the k
 
 ## Self-Learning
 
-The brain powers Noodle's self-learning loop through three skills — reflect, meditate, and ruminate. See [Why Noodle](/why-noodle) for how they work together.
+The brain powers Noodle's self-learning loop through three skills — reflect, meditate, and ruminate. See [Vision](/vision) for how they work together.
 
 ## Why Files
 
