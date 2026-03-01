@@ -28,15 +28,18 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	// Consume orders-next.json if the schedule session wrote one.
 	promoted, emptyPromotion, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
 	if err != nil {
-		l.classifyDegrade(
+		mistake := newSchedulerMistakeEnvelope(SchedulerMistakeReasonOrdersNextRejected)
+		l.classifySchedulerMistake(
 			"build.promote_orders_next",
 			"orders-next promotion failed",
 			err,
+			SchedulerMistakeReasonOrdersNextRejected,
 		)
 		l.logger.Warn("orders-next promotion failed", "error", err)
 		l.lastPromotionError = err.Error()
 		_ = l.events.Emit(LoopEventPromotionFailed, PromotionFailedPayload{
-			Reason: err.Error(),
+			Reason:       err.Error(),
+			AgentMistake: &mistake,
 		})
 		// Mark promoted so the schedule order can complete and a new
 		// schedule can be spawned. Without this, the schedule order

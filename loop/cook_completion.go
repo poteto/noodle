@@ -281,7 +281,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 // forwardToScheduler sends a message to the scheduler session about an event.
 // Best-effort — if the scheduler is not alive, the message is dropped and the
 // order stays in the orders file for later recovery.
-func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details string) {
+func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details string, mistake ...*AgentMistakeEnvelope) {
 	var schedulerCook *cookHandle
 	for _, c := range l.cooks.activeCooksByOrder {
 		if isScheduleStage(c.stage) {
@@ -300,8 +300,15 @@ func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details st
 			"order", cook.orderID, "event", eventType)
 		return
 	}
-	msg := fmt.Sprintf("[%s] order=%s stage=%d task=%s: %s",
-		eventType, cook.orderID, cook.stageIndex, cook.stage.TaskKey, details)
+	classification := ""
+	if len(mistake) > 0 && mistake[0] != nil {
+		classification = fmt.Sprintf(" owner=%s scope=%s", mistake[0].Owner, mistake[0].Scope)
+		if reason := agentMistakeReason(mistake[0]); reason != "" {
+			classification += " reason=" + reason
+		}
+	}
+	msg := fmt.Sprintf("[%s]%s order=%s stage=%d task=%s: %s",
+		eventType, classification, cook.orderID, cook.stageIndex, cook.stage.TaskKey, details)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

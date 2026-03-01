@@ -100,13 +100,19 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Failed"
 			category = "stage_failed"
 			var p struct {
-				OrderID string `json:"order_id"`
-				TaskKey string `json:"task_key"`
-				Reason  string `json:"reason"`
+				OrderID      string `json:"order_id"`
+				TaskKey      string `json:"task_key"`
+				Reason       string `json:"reason"`
+				AgentMistake *struct {
+					Owner string `json:"owner"`
+				} `json:"agent_mistake"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
 			taskType = p.TaskKey
 			body = p.Reason
+			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
+				body = "[" + p.AgentMistake.Owner + "] " + body
+			}
 		case "order.completed":
 			label = "Order Complete"
 			category = "order_completed"
@@ -119,14 +125,20 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Order Failed"
 			category = "order_failed"
 			var p struct {
-				OrderID string `json:"order_id"`
-				Reason  string `json:"reason"`
+				OrderID      string `json:"order_id"`
+				Reason       string `json:"reason"`
+				AgentMistake *struct {
+					Owner string `json:"owner"`
+				} `json:"agent_mistake"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
 				body = p.OrderID
+			}
+			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
+				body = "[" + p.AgentMistake.Owner + "] " + body
 			}
 		case "order.dropped":
 			label = "Dropped"
@@ -212,13 +224,19 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Rejected"
 			category = "promotion_failed"
 			var p struct {
-				Reason string `json:"reason"`
+				Reason       string `json:"reason"`
+				AgentMistake *struct {
+					Owner string `json:"owner"`
+				} `json:"agent_mistake"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
 				body = "orders-next.json validation failed"
+			}
+			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
+				body = "[" + p.AgentMistake.Owner + "] " + body
 			}
 		default:
 			continue

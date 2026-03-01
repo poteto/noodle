@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	stderrors "errors"
 	"os"
 	"path/filepath"
@@ -51,6 +52,37 @@ func TestCycleClassifiesOrdersNextPromotionFailureAsDegrade(t *testing.T) {
 	}
 	if envelope.Recoverability != failure.FailureRecoverabilityDegrade {
 		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityDegrade)
+	}
+	if envelope.AgentMistake == nil {
+		t.Fatal("agent mistake should be classified for rejected orders-next")
+	}
+	if envelope.AgentMistake.Owner != failure.FailureOwnerSchedulerAgent {
+		t.Fatalf("owner = %q, want %q", envelope.AgentMistake.Owner, failure.FailureOwnerSchedulerAgent)
+	}
+	if envelope.AgentMistake.SchedulerReason != SchedulerMistakeReasonOrdersNextRejected {
+		t.Fatalf("scheduler reason = %q, want %q", envelope.AgentMistake.SchedulerReason, SchedulerMistakeReasonOrdersNextRejected)
+	}
+	if envelope.AgentMistake.Scope != failure.FailureScopeSystem {
+		t.Fatalf("scope = %q, want %q", envelope.AgentMistake.Scope, failure.FailureScopeSystem)
+	}
+
+	events := readNDJSON(t, filepath.Join(runtimeDir, "loop-events.ndjson"))
+	promotions := findEvents(events, LoopEventPromotionFailed)
+	if len(promotions) == 0 {
+		t.Fatal("expected promotion.failed event")
+	}
+	var payload PromotionFailedPayload
+	if err := json.Unmarshal(promotions[len(promotions)-1].Payload, &payload); err != nil {
+		t.Fatalf("parse promotion payload: %v", err)
+	}
+	if payload.AgentMistake == nil {
+		t.Fatal("promotion.failed payload missing agent_mistake classification")
+	}
+	if payload.AgentMistake.Owner != failure.FailureOwnerSchedulerAgent {
+		t.Fatalf("payload owner = %q, want %q", payload.AgentMistake.Owner, failure.FailureOwnerSchedulerAgent)
+	}
+	if payload.AgentMistake.SchedulerReason != SchedulerMistakeReasonOrdersNextRejected {
+		t.Fatalf("payload scheduler reason = %q, want %q", payload.AgentMistake.SchedulerReason, SchedulerMistakeReasonOrdersNextRejected)
 	}
 }
 

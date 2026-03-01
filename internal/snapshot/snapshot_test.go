@@ -239,6 +239,27 @@ func TestReadLoopEventsDropWithoutReason(t *testing.T) {
 	}
 }
 
+func TestReadLoopEventsAgentOwnershipPrefix(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"seq":1,"type":"promotion.failed","at":"2026-02-24T10:00:00Z","payload":{"reason":"invalid orders-next","agent_mistake":{"owner":"scheduler_agent"}}}
+{"seq":2,"type":"stage.failed","at":"2026-02-24T10:01:00Z","payload":{"order_id":"order-1","task_key":"quality","reason":"changes requested","agent_mistake":{"owner":"cook_agent"}}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
+	}
+
+	events := readLoopEvents(dir)
+	if len(events) != 2 {
+		t.Fatalf("event count = %d, want 2", len(events))
+	}
+	if events[0].Body != "[scheduler_agent] invalid orders-next" {
+		t.Fatalf("event[0] body = %q", events[0].Body)
+	}
+	if events[1].Body != "[cook_agent] changes requested" {
+		t.Fatalf("event[1] body = %q", events[1].Body)
+	}
+}
+
 func TestReadLoopEventsUnknownTypeSkipped(t *testing.T) {
 	dir := t.TempDir()
 	ndjson := `{"seq":1,"type":"unknown.event","at":"2026-02-24T10:00:00Z"}

@@ -12,7 +12,7 @@ const (
 	LoopEventOrderRequeued      = event.LoopEventOrderRequeued
 	LoopEventWorktreeMerged     = event.LoopEventWorktreeMerged
 	LoopEventMergeConflict      = event.LoopEventMergeConflict
-	LoopEventScheduleCompleted = event.LoopEventScheduleCompleted
+	LoopEventScheduleCompleted  = event.LoopEventScheduleCompleted
 	LoopEventRegistryRebuilt    = event.LoopEventRegistryRebuilt
 	LoopEventSyncDegraded       = event.LoopEventSyncDegraded
 	LoopEventBootstrapCompleted = event.LoopEventBootstrapCompleted
@@ -49,10 +49,11 @@ type StageCompletedPayload struct {
 }
 
 type StageFailedPayload struct {
-	OrderID    string  `json:"order_id"`
-	StageIndex int     `json:"stage_index"`
-	Reason     string  `json:"reason"`
-	SessionID  *string `json:"session_id,omitempty"`
+	OrderID      string                `json:"order_id"`
+	StageIndex   int                   `json:"stage_index"`
+	Reason       string                `json:"reason"`
+	SessionID    *string               `json:"session_id,omitempty"`
+	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
 }
 
 type OrderCompletedPayload struct {
@@ -60,8 +61,9 @@ type OrderCompletedPayload struct {
 }
 
 type OrderFailedPayload struct {
-	OrderID string `json:"order_id"`
-	Reason  string `json:"reason"`
+	OrderID      string                `json:"order_id"`
+	Reason       string                `json:"reason"`
+	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
 }
 
 type ScheduleCompletedPayload struct {
@@ -85,7 +87,8 @@ type OrderRequeuedPayload struct {
 }
 
 type PromotionFailedPayload struct {
-	Reason string `json:"reason"`
+	Reason       string                `json:"reason"`
+	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
 }
 
 // sessionIDPtr returns a pointer to the session ID, or nil if the cook has no session.

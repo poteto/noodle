@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/failure"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
@@ -110,6 +111,45 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 			t.Fatal("order 42 should be removed from orders.json after reject")
 		}
 	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Class != CycleFailureClassOrderHard {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassOrderHard)
+	}
+	if envelope.OrderClass != OrderFailureClassOrderTerminal {
+		t.Fatalf("order class = %q, want %q", envelope.OrderClass, OrderFailureClassOrderTerminal)
+	}
+	if envelope.AgentMistake == nil {
+		t.Fatal("reject should classify cook agent mistake")
+	}
+	if envelope.AgentMistake.Owner != failure.FailureOwnerCookAgent {
+		t.Fatalf("owner = %q, want %q", envelope.AgentMistake.Owner, failure.FailureOwnerCookAgent)
+	}
+	if envelope.AgentMistake.CookReason != CookMistakeReasonReviewRejected {
+		t.Fatalf("cook reason = %q, want %q", envelope.AgentMistake.CookReason, CookMistakeReasonReviewRejected)
+	}
+	if envelope.AgentMistake.Scope != failure.FailureScopeOrder {
+		t.Fatalf("scope = %q, want %q", envelope.AgentMistake.Scope, failure.FailureScopeOrder)
+	}
+	if envelope.AgentMistake.OrderID != "42" {
+		t.Fatalf("agent mistake order_id = %q, want 42", envelope.AgentMistake.OrderID)
+	}
+	if envelope.AgentMistake.StageIndex == nil || *envelope.AgentMistake.StageIndex != 0 {
+		t.Fatalf("agent mistake stage_index = %v, want 0", envelope.AgentMistake.StageIndex)
+	}
+
+	events := readNDJSON(t, filepath.Join(l.runtimeDir, "loop-events.ndjson"))
+	stageFailed := findEvents(events, LoopEventStageFailed)
+	if len(stageFailed) == 0 {
+		t.Fatal("expected stage.failed event after reject")
+	}
+	var stagePayload StageFailedPayload
+	if err := json.Unmarshal(stageFailed[len(stageFailed)-1].Payload, &stagePayload); err != nil {
+		t.Fatalf("parse stage.failed payload: %v", err)
+	}
+	if stagePayload.AgentMistake == nil || stagePayload.AgentMistake.Owner != failure.FailureOwnerCookAgent {
+		t.Fatal("stage.failed payload missing cook ownership classification")
+	}
 }
 
 // controlRequestChanges should terminally fail the order and keep it for explicit requeue.
@@ -138,6 +178,48 @@ func TestControlRequestChangesMarksOrderFailed(t *testing.T) {
 				t.Fatalf("stage status = %q, want %q", got, StageStatusFailed)
 			}
 		}
+	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Class != CycleFailureClassOrderHard {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassOrderHard)
+	}
+	if envelope.OrderClass != OrderFailureClassStageTerminal {
+		t.Fatalf("order class = %q, want %q", envelope.OrderClass, OrderFailureClassStageTerminal)
+	}
+	if envelope.AgentMistake == nil {
+		t.Fatal("request-changes should classify cook agent mistake")
+	}
+	if envelope.AgentMistake.Owner != failure.FailureOwnerCookAgent {
+		t.Fatalf("owner = %q, want %q", envelope.AgentMistake.Owner, failure.FailureOwnerCookAgent)
+	}
+	if envelope.AgentMistake.CookReason != CookMistakeReasonRequestChanges {
+		t.Fatalf("cook reason = %q, want %q", envelope.AgentMistake.CookReason, CookMistakeReasonRequestChanges)
+	}
+	if envelope.AgentMistake.Scope != failure.FailureScopeOrder {
+		t.Fatalf("scope = %q, want %q", envelope.AgentMistake.Scope, failure.FailureScopeOrder)
+	}
+	if envelope.AgentMistake.OrderID != "42" {
+		t.Fatalf("agent mistake order_id = %q, want 42", envelope.AgentMistake.OrderID)
+	}
+	if envelope.AgentMistake.StageIndex == nil || *envelope.AgentMistake.StageIndex != 0 {
+		t.Fatalf("agent mistake stage_index = %v, want 0", envelope.AgentMistake.StageIndex)
+	}
+
+	events := readNDJSON(t, filepath.Join(l.runtimeDir, "loop-events.ndjson"))
+	stageFailed := findEvents(events, LoopEventStageFailed)
+	if len(stageFailed) == 0 {
+		t.Fatal("expected stage.failed event after request-changes")
+	}
+	var stagePayload StageFailedPayload
+	if err := json.Unmarshal(stageFailed[len(stageFailed)-1].Payload, &stagePayload); err != nil {
+		t.Fatalf("parse stage.failed payload: %v", err)
+	}
+	if stagePayload.AgentMistake == nil {
+		t.Fatal("stage.failed payload missing agent_mistake classification")
+	}
+	if stagePayload.AgentMistake.CookReason != CookMistakeReasonRequestChanges {
+		t.Fatalf("stage.failed cook reason = %q, want %q", stagePayload.AgentMistake.CookReason, CookMistakeReasonRequestChanges)
 	}
 }
 

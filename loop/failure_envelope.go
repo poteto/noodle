@@ -37,6 +37,7 @@ type LoopFailureEnvelope struct {
 	Class          CycleFailureClass
 	Recoverability failure.FailureRecoverability
 	OrderClass     OrderFailureClass
+	AgentMistake   *AgentMistakeEnvelope
 	OrderID        string
 	StageIndex     int
 	Message        string
@@ -110,6 +111,7 @@ func newDegradeLoopFailure(path string, message string, cause error) LoopFailure
 
 func (l *Loop) recordLoopFailure(envelope LoopFailureEnvelope) {
 	env := envelope
+	env.AgentMistake = cloneAgentMistakeEnvelope(envelope.AgentMistake)
 	l.lastLoopFailure = &env
 	if l.logger == nil {
 		return
@@ -128,6 +130,17 @@ func (l *Loop) recordLoopFailure(envelope LoopFailureEnvelope) {
 	}
 	if env.OrderClass != "" {
 		attrs = append(attrs, "order_class", string(env.OrderClass))
+	}
+	if env.AgentMistake != nil {
+		attrs = append(
+			attrs,
+			"failure_owner", string(env.AgentMistake.Owner),
+			"failure_scope", string(env.AgentMistake.Scope),
+			"failure_class", string(env.AgentMistake.FailureClass),
+		)
+		if reason := agentMistakeReason(env.AgentMistake); reason != "" {
+			attrs = append(attrs, "agent_mistake_reason", reason)
+		}
 	}
 	if env.Cause != nil {
 		attrs = append(attrs, "cause", env.Cause)
@@ -163,6 +176,27 @@ func (l *Loop) classifyOrderHard(
 
 func (l *Loop) classifyDegrade(path string, message string, cause error) {
 	envelope := newDegradeLoopFailure(path, message, cause)
+	l.recordLoopFailure(envelope)
+}
+
+func (l *Loop) classifySchedulerMistake(path string, message string, cause error, reason SchedulerMistakeReason) {
+	envelope := newDegradeLoopFailure(path, message, cause)
+	mistake := newSchedulerMistakeEnvelope(reason)
+	envelope.AgentMistake = &mistake
+	l.recordLoopFailure(envelope)
+}
+
+func (l *Loop) classifyCookMistake(
+	path string,
+	orderClass OrderFailureClass,
+	orderID string,
+	stageIndex int,
+	message string,
+	reason CookMistakeReason,
+) {
+	envelope := newOrderHardLoopFailure(path, orderClass, orderID, stageIndex, message, nil)
+	mistake := newCookMistakeEnvelope(reason, orderID, stageIndex)
+	envelope.AgentMistake = &mistake
 	l.recordLoopFailure(envelope)
 }
 

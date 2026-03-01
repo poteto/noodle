@@ -240,9 +240,33 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 		}
 		return s
 	}
+	getNestedString := func(parent string, key string) string {
+		raw, ok := fields[parent]
+		if !ok {
+			return ""
+		}
+		var nested map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &nested); err != nil {
+			return ""
+		}
+		value, ok := nested[key]
+		if !ok {
+			return ""
+		}
+		var s string
+		if err := json.Unmarshal(value, &s); err != nil {
+			return ""
+		}
+		return s
+	}
 
 	orderID := getString("order_id")
 	reason := getString("reason")
+	owner := getNestedString("agent_mistake", "owner")
+	prefix := ""
+	if owner != "" {
+		prefix = "[" + owner + "] "
+	}
 
 	switch eventType {
 	case "stage.completed":
@@ -253,16 +277,21 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 		return "stage completed for " + orderID
 	case "stage.failed":
 		if reason != "" {
-			return "stage failed for " + orderID + ": " + reason
+			return prefix + "stage failed for " + orderID + ": " + reason
 		}
-		return "stage failed for " + orderID
+		return prefix + "stage failed for " + orderID
 	case "order.completed":
 		return "order " + orderID + " completed"
 	case "order.failed":
 		if reason != "" {
-			return "order " + orderID + " failed: " + reason
+			return prefix + "order " + orderID + " failed: " + reason
 		}
-		return "order " + orderID + " failed"
+		return prefix + "order " + orderID + " failed"
+	case "promotion.failed":
+		if reason != "" {
+			return prefix + "orders-next rejected: " + reason
+		}
+		return prefix + "orders-next rejected"
 	case "order.dropped":
 		return "order " + orderID + " dropped"
 	case "order.requeued":

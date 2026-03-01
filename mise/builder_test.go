@@ -254,3 +254,26 @@ func TestReadRecentEventsSummary(t *testing.T) {
 		t.Fatalf("summary[1] = %q", events[1].Summary)
 	}
 }
+
+func TestReadRecentEventsSummaryIncludesOwnerForAgentMistake(t *testing.T) {
+	dir := t.TempDir()
+	eventsPath := filepath.Join(dir, "loop-events.ndjson")
+	lines := []string{
+		`{"seq":1,"type":"promotion.failed","at":"2026-02-22T16:00:00Z","payload":{"reason":"invalid orders-next","agent_mistake":{"owner":"scheduler_agent"}}}`,
+		`{"seq":2,"type":"order.failed","at":"2026-02-22T16:01:00Z","payload":{"order_id":"43","reason":"changes requested","agent_mistake":{"owner":"cook_agent"}}}`,
+	}
+	if err := os.WriteFile(eventsPath, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	events := readRecentEvents(dir)
+	if len(events) != 2 {
+		t.Fatalf("got %d events, want 2", len(events))
+	}
+	if events[0].Summary != "[scheduler_agent] orders-next rejected: invalid orders-next" {
+		t.Fatalf("summary[0] = %q", events[0].Summary)
+	}
+	if events[1].Summary != "[cook_agent] order 43 failed: changes requested" {
+		t.Fatalf("summary[1] = %q", events[1].Summary)
+	}
+}
