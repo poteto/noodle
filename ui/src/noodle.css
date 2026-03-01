@@ -488,6 +488,9 @@
   transition: background 0.15s;
   animation: message-enter 0.2s ease-out both;
 }
+.message-row > :nth-child(2) {
+  min-width: 0;
+}
 .message-row:hover {
   background: rgba(255, 255, 255, 0.02);
 }
@@ -611,11 +614,15 @@
   border: 1px solid var(--color-border-subtle);
   padding: 10px 14px;
   margin: 8px 0;
-  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.5;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--color-text-secondary);
 }
 .msg-markdown .code-block code {
