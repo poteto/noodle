@@ -358,15 +358,21 @@ func TestResilienceVerification(t *testing.T) {
 		versionViolations := 0
 		hashInconsistencies := 0
 		hashByState := make(map[string]projection.ProjectionHash)
+		primaryVersions := make([]projection.ProjectionVersion, 0, 100)
 
-		for i, event := range events[:100] {
-			current, _, _ = reducer.Reduce(current, event)
+		for _, event := range events[:100] {
+			next, _, err := reducer.Reduce(current, event)
+			if err != nil {
+				t.Fatalf("reducer failed during monotonicity run: %v", err)
+			}
+			current = next
 			bundle := mustProject(t, current, mode.ModeState{EffectiveMode: current.Mode})
 
-			if i > 0 && bundle.Version < prevVersion {
+			if bundle.Version <= prevVersion {
 				versionViolations++
 			}
 			prevVersion = bundle.Version
+			primaryVersions = append(primaryVersions, bundle.Version)
 
 			sig := mustStateSignature(current)
 			if existing, ok := hashByState[sig]; ok && existing != bundle.Hash {
@@ -376,12 +382,427 @@ func TestResilienceVerification(t *testing.T) {
 		}
 
 		if versionViolations != 0 {
-			t.Fatalf("projection version moved backwards during replay: violations=%d", versionViolations)
+			t.Fatalf("projection version not strictly increasing: violations=%d", versionViolations)
 		}
 		if hashInconsistencies != 0 {
 			t.Fatalf("projection hash changed for identical state content: inconsistencies=%d", hashInconsistencies)
 		}
+
+		// Replay phase: fresh state, same events, verify same monotonic version pattern
+		replayCurrent := makeState(18, 2, baseAt)
+		replayViolations := 0
+		for i, event := range events[:100] {
+			next, _, err := reducer.Reduce(replayCurrent, event)
+			if err != nil {
+				t.Fatalf("reducer failed during monotonicity replay: %v", err)
+			}
+			replayCurrent = next
+			bundle := mustProject(t, replayCurrent, mode.ModeState{EffectiveMode: replayCurrent.Mode})
+			if bundle.Version != primaryVersions[i] {
+				replayViolations++
+			}
+		}
+		if replayViolations != 0 {
+			t.Fatalf("projection version pattern diverged on replay: violations=%d", replayViolations)
+		}
 	})
+}
+
+func TestIngestionReplayDeterminism(t *testing.T) {
+	baseAt := time.Date(2026, 3, 1, 15, 0, 0, 0, time.UTC)
+	const eventCount = 120
+	const orderCount = 30
+	const stageCount = 1
+
+	// Build InputEnvelopes that go through the ingester's normalization and dedup.
+	envelopes := buildInputEnvelopes(orderCount, stageCount, baseAt)
+	if len(envelopes) < eventCount {
+		t.Fatalf("envelope stream too small for ingestion replay: count=%d", len(envelopes))
+	}
+	envelopes = envelopes[:eventCount]
+
+	// --- Run A: ingest + reduce ---
+	ingesterA := ingest.NewIngester()
+	stateA := makeState(orderCount, stageCount, baseAt)
+	var appliedA []ingest.StateEvent
+	for _, env := range envelopes {
+		event, err := ingesterA.Ingest(env)
+		if err != nil {
+			t.Fatalf("ingester A failed: %v", err)
+		}
+		if !event.Applied {
+			t.Fatalf("event unexpectedly deduplicated on first pass: id=%d key=%s reason=%s", event.ID, event.IdempotencyKey, event.DedupReason)
+		}
+		appliedA = append(appliedA, event)
+		next, _, err := reducer.Reduce(stateA, event)
+		if err != nil {
+			t.Fatalf("reducer failed during run A at event %d: %v", event.ID, err)
+		}
+		stateA = next
+	}
+	hashA := hashState(t, stateA)
+	statsA := ingesterA.Stats()
+
+	// --- Run B: new ingester, same envelopes = identical result ---
+	ingesterB := ingest.NewIngester()
+	stateB := makeState(orderCount, stageCount, baseAt)
+	for _, env := range envelopes {
+		event, err := ingesterB.Ingest(env)
+		if err != nil {
+			t.Fatalf("ingester B failed: %v", err)
+		}
+		if !event.Applied {
+			t.Fatalf("event unexpectedly deduplicated on replay pass: id=%d key=%s reason=%s", event.ID, event.IdempotencyKey, event.DedupReason)
+		}
+		next, _, err := reducer.Reduce(stateB, event)
+		if err != nil {
+			t.Fatalf("reducer failed during run B at event %d: %v", event.ID, err)
+		}
+		stateB = next
+	}
+	hashB := hashState(t, stateB)
+
+	if hashA != hashB {
+		t.Fatalf("deterministic hash diverged across ingestion replay: run_a=%s run_b=%s", hashA, hashB)
+	}
+
+	// --- Dedup verification: replay same envelopes into ingester A ---
+	dedupCount := 0
+	for _, env := range envelopes {
+		event, err := ingesterA.Ingest(env)
+		if err != nil {
+			t.Fatalf("ingester A dedup pass failed: %v", err)
+		}
+		if event.Applied {
+			t.Fatalf("duplicate envelope not deduplicated: id=%d key=%s", event.ID, event.IdempotencyKey)
+		}
+		dedupCount++
+	}
+
+	statsAfterDedup := ingesterA.Stats()
+	wantDeduped := statsAfterDedup.DedupedEvents
+	if wantDeduped != uint64(eventCount) {
+		t.Fatalf("dedup count diverged from event count: deduped=%d events=%d", wantDeduped, eventCount)
+	}
+
+	// --- Acceptance gate ---
+	t.Logf("ingestion replay determinism: hash_match=true events=%d applied_a=%d deduped_on_replay=%d",
+		eventCount, statsA.AppliedEvents, dedupCount)
+}
+
+func TestCrashBoundaryWithIngestionDedup(t *testing.T) {
+	baseAt := time.Date(2026, 3, 1, 16, 0, 0, 0, time.UTC)
+	const orderCount = 20
+	const stageCount = 2
+	const overlapWindow = 5
+
+	envelopes := buildInputEnvelopes(orderCount, stageCount, baseAt)
+	if len(envelopes) < 20 {
+		t.Fatalf("envelope stream too small for crash boundary: count=%d", len(envelopes))
+	}
+
+	// --- Full uninterrupted run through ingester + reducer ---
+	fullIngester := ingest.NewIngester()
+	fullState := makeState(orderCount, stageCount, baseAt)
+	var allApplied []ingest.StateEvent
+	for _, env := range envelopes {
+		event, err := fullIngester.Ingest(env)
+		if err != nil {
+			t.Fatalf("full ingester failed: %v", err)
+		}
+		if !event.Applied {
+			continue
+		}
+		allApplied = append(allApplied, event)
+		next, _, err := reducer.Reduce(fullState, event)
+		if err != nil {
+			t.Fatalf("reducer failed during full run at event %d: %v", event.ID, err)
+		}
+		fullState = next
+	}
+	fullOrders, fullStages := terminalCounts(fullState)
+
+	// --- Crash at envelope K ---
+	K := len(envelopes) / 2
+	if K < overlapWindow {
+		t.Fatalf("crash point too early for overlap window: K=%d overlap=%d", K, overlapWindow)
+	}
+
+	// Pre-crash: process envelopes [0..K) through a fresh ingester + reducer
+	preCrashIngester := ingest.NewIngester()
+	preCrashState := makeState(orderCount, stageCount, baseAt)
+	for i := 0; i < K; i++ {
+		event, err := preCrashIngester.Ingest(envelopes[i])
+		if err != nil {
+			t.Fatalf("pre-crash ingester failed at envelope %d: %v", i, err)
+		}
+		if !event.Applied {
+			continue
+		}
+		next, _, err := reducer.Reduce(preCrashState, event)
+		if err != nil {
+			t.Fatalf("reducer failed during pre-crash at event %d: %v", event.ID, err)
+		}
+		preCrashState = next
+	}
+
+	// Save pre-crash state (simulates snapshot)
+	snapshot := reducer.BuildSnapshot(preCrashState, reducer.NewEffectLedger(), baseAt.Add(5*time.Minute))
+	snapshot = writeReadSnapshot(t, snapshot)
+
+	// Recovery: replay envelopes [K-overlap..N) through the SAME ingester
+	// (simulating an ingester whose dedup index survived the crash).
+	// The ingester's monotonic ID counter advances even for deduplicated events,
+	// so post-recovery event IDs will differ from the full run. This is expected:
+	// we verify logical state equivalence (order/stage statuses and terminal counts)
+	// rather than projection-hash equality.
+	recoveredState := snapshot.State
+	replayStart := K - overlapWindow
+	duplicatesObserved := 0
+	for i := replayStart; i < len(envelopes); i++ {
+		event, err := preCrashIngester.Ingest(envelopes[i])
+		if err != nil {
+			t.Fatalf("recovery ingester failed at envelope %d: %v", i, err)
+		}
+		if !event.Applied {
+			duplicatesObserved++
+			continue
+		}
+		next, _, err := reducer.Reduce(recoveredState, event)
+		if err != nil {
+			t.Fatalf("reducer failed during recovery at event %d: %v", event.ID, err)
+		}
+		recoveredState = next
+	}
+
+	if duplicatesObserved != overlapWindow {
+		t.Fatalf("overlap dedup count mismatched: observed=%d overlap_window=%d", duplicatesObserved, overlapWindow)
+	}
+
+	// Verify logical state equivalence: same order/stage statuses
+	recoveredOrders, recoveredStages := terminalCounts(recoveredState)
+	lostOrders := maxInt(0, fullOrders-recoveredOrders)
+	lostStages := maxInt(0, fullStages-recoveredStages)
+	if lostOrders != 0 || lostStages != 0 {
+		t.Fatalf("terminal states dropped after crash boundary recovery: lost_orders=%d lost_stages=%d", lostOrders, lostStages)
+	}
+	if recoveredOrders != fullOrders {
+		t.Fatalf("recovered terminal order count diverged: recovered=%d full=%d", recoveredOrders, fullOrders)
+	}
+	if recoveredStages != fullStages {
+		t.Fatalf("recovered terminal stage count diverged: recovered=%d full=%d", recoveredStages, fullStages)
+	}
+
+	// Verify per-order structural equivalence (status and stage statuses match)
+	for orderID, fullOrder := range fullState.Orders {
+		recoveredOrder, exists := recoveredState.Orders[orderID]
+		if !exists {
+			t.Fatalf("order missing after crash recovery: order_id=%s", orderID)
+		}
+		if recoveredOrder.Status != fullOrder.Status {
+			t.Fatalf("order status diverged after crash recovery: order_id=%s recovered=%s full=%s", orderID, recoveredOrder.Status, fullOrder.Status)
+		}
+		if len(recoveredOrder.Stages) != len(fullOrder.Stages) {
+			t.Fatalf("stage count diverged after crash recovery: order_id=%s recovered=%d full=%d", orderID, len(recoveredOrder.Stages), len(fullOrder.Stages))
+		}
+		for si, fullStage := range fullOrder.Stages {
+			recoveredStage := recoveredOrder.Stages[si]
+			if recoveredStage.Status != fullStage.Status {
+				t.Fatalf("stage status diverged after crash recovery: order_id=%s stage=%d recovered=%s full=%s", orderID, si, recoveredStage.Status, fullStage.Status)
+			}
+		}
+	}
+
+	t.Logf("crash boundary with dedup: structural_match=true overlap_deduped=%d lost_terminal=0 applied_events=%d", duplicatesObserved, len(allApplied))
+}
+
+func TestAcceptanceGateSummary(t *testing.T) {
+	baseAt := time.Date(2026, 3, 1, 17, 0, 0, 0, time.UTC)
+
+	// Counters for all acceptance criteria
+	duplicateDispatches := 0
+	terminalStatesLost := 0
+	deterministicHashMatches := 0
+	deterministicHashTrials := 0
+	projectionMonotonicityViolations := 0
+
+	// --- Trial 1: Deterministic replay hash match ---
+	const trialCount = 3
+	initialEvents := lifecycleEvents(20, 2, 1, baseAt.Add(time.Second))
+	if len(initialEvents) < 100 {
+		t.Fatalf("event stream too small for acceptance gate: count=%d", len(initialEvents))
+	}
+	stream := initialEvents[:100]
+
+	var referenceHash projection.ProjectionHash
+	for trial := 0; trial < trialCount; trial++ {
+		trialState := makeState(20, 2, baseAt)
+		run := applyEvents(trialState, stream, nil)
+		h := hashState(t, run.state)
+		deterministicHashTrials++
+		if trial == 0 {
+			referenceHash = h
+		}
+		if h == referenceHash {
+			deterministicHashMatches++
+		}
+
+		// Check dispatch duplicates per run
+		duplicateDispatches += duplicateCount(run.dispatchEffectIDs)
+	}
+
+	// --- Trial 2: Crash recovery terminal state preservation ---
+	crashBaseAt := baseAt.Add(10 * time.Minute)
+	crashInitial := makeState(24, 2, crashBaseAt)
+	crashEvents := lifecycleEvents(24, 2, 1, crashBaseAt.Add(time.Second))
+	fullRun := applyEvents(crashInitial, crashEvents, nil)
+	fullOrders, fullStages := terminalCounts(fullRun.state)
+	fullHash := hashState(t, fullRun.state)
+
+	cuts := []int{len(crashEvents) / 4, len(crashEvents) / 2, len(crashEvents) * 3 / 4}
+	for _, cut := range cuts {
+		if cut == 0 {
+			continue
+		}
+		beforeCrash := applyEvents(makeState(24, 2, crashBaseAt), crashEvents[:cut], nil)
+		snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, crashBaseAt.Add(5*time.Minute))
+		snapshot = writeReadSnapshot(t, snapshot)
+
+		recovered := applyEvents(snapshot.State, crashEvents[cut:], ledgerFromRecords(snapshot.EffectLedger))
+		recoveredHash := hashState(t, recovered.state)
+
+		deterministicHashTrials++
+		if recoveredHash == fullHash {
+			deterministicHashMatches++
+		}
+
+		recoveredOrders, recoveredStages := terminalCounts(recovered.state)
+		terminalStatesLost += maxInt(0, fullOrders-recoveredOrders)
+		terminalStatesLost += maxInt(0, fullStages-recoveredStages)
+
+		duplicateDispatches += duplicateCount(append(beforeCrash.dispatchEffectIDs, recovered.dispatchEffectIDs...))
+	}
+
+	// --- Trial 3: Projection monotonicity ---
+	monoState := makeState(18, 2, baseAt)
+	monoEvents := lifecycleEvents(18, 2, 1, baseAt.Add(time.Second))
+	if len(monoEvents) < 100 {
+		t.Fatalf("event stream too small for acceptance gate monotonicity: count=%d", len(monoEvents))
+	}
+	prevVersion := projection.ProjectionVersion(0)
+	for _, event := range monoEvents[:100] {
+		next, _, err := reducer.Reduce(monoState, event)
+		if err != nil {
+			t.Fatalf("reducer failed during acceptance gate monotonicity: %v", err)
+		}
+		monoState = next
+		bundle := mustProject(t, monoState, mode.ModeState{EffectiveMode: monoState.Mode})
+		if bundle.Version <= prevVersion {
+			projectionMonotonicityViolations++
+		}
+		prevVersion = bundle.Version
+	}
+
+	// --- Acceptance gate assertions ---
+	deterministicPercent := 0
+	if deterministicHashTrials > 0 {
+		deterministicPercent = (deterministicHashMatches * 100) / deterministicHashTrials
+	}
+
+	if duplicateDispatches != 0 {
+		t.Fatalf("duplicate dispatches observed across replay: %d (expected 0)", duplicateDispatches)
+	}
+	if terminalStatesLost != 0 {
+		t.Fatalf("terminal states lost after replay: %d (expected 0)", terminalStatesLost)
+	}
+	if deterministicPercent != 100 {
+		t.Fatalf("deterministic replay hash match: %d%% (expected 100%%)", deterministicPercent)
+	}
+	if projectionMonotonicityViolations != 0 {
+		t.Fatalf("projection monotonicity violations: %d (expected 0)", projectionMonotonicityViolations)
+	}
+
+	t.Logf("acceptance gate passed: duplicate_dispatches=0 terminal_states_lost=0 deterministic_match=100%% monotonicity_violations=0")
+}
+
+// buildInputEnvelopes creates raw InputEnvelope values for the full lifecycle
+// of orderCount orders with stageCount stages each, using SourceInternal so the
+// ingester extracts idempotency_key from the payload.
+func buildInputEnvelopes(orderCount, stageCount int, baseAt time.Time) []ingest.InputEnvelope {
+	envelopes := make([]ingest.InputEnvelope, 0, orderCount*stageCount*4)
+	seqNum := 0
+	nextTimestamp := func() time.Time {
+		seqNum++
+		return baseAt.Add(time.Duration(seqNum) * 10 * time.Millisecond)
+	}
+
+	for orderIndex := 0; orderIndex < orderCount; orderIndex++ {
+		orderID := fmt.Sprintf("order-%03d", orderIndex)
+		for stageIndex := 0; stageIndex < stageCount; stageIndex++ {
+			attemptID := fmt.Sprintf("attempt-%03d-%d", orderIndex, stageIndex)
+			idempKey := fmt.Sprintf("idem-%03d-%d", orderIndex, stageIndex)
+
+			envelopes = append(envelopes, ingest.InputEnvelope{
+				Source: string(ingest.SourceInternal),
+				RawPayload: mustMarshal(map[string]any{
+					"type":            string(ingest.EventDispatchRequested),
+					"idempotency_key": idempKey + "-dispatch-req",
+					"order_id":        orderID,
+					"stage_index":     stageIndex,
+					"attempt_id":      attemptID,
+				}),
+				ReceivedAt: nextTimestamp(),
+			})
+
+			envelopes = append(envelopes, ingest.InputEnvelope{
+				Source: string(ingest.SourceInternal),
+				RawPayload: mustMarshal(map[string]any{
+					"type":            string(ingest.EventDispatchCompleted),
+					"idempotency_key": idempKey + "-dispatch-done",
+					"order_id":        orderID,
+					"stage_index":     stageIndex,
+					"attempt_id":      attemptID,
+					"session_id":      fmt.Sprintf("session-%03d-%d", orderIndex, stageIndex),
+					"worktree_name":   fmt.Sprintf("wt-%03d-%d", orderIndex, stageIndex),
+				}),
+				ReceivedAt: nextTimestamp(),
+			})
+
+			envelopes = append(envelopes, ingest.InputEnvelope{
+				Source: string(ingest.SourceInternal),
+				RawPayload: mustMarshal(map[string]any{
+					"type":            string(ingest.EventStageCompleted),
+					"idempotency_key": idempKey + "-stage-done",
+					"order_id":        orderID,
+					"stage_index":     stageIndex,
+					"attempt_id":      attemptID,
+					"mergeable":       true,
+				}),
+				ReceivedAt: nextTimestamp(),
+			})
+
+			envelopes = append(envelopes, ingest.InputEnvelope{
+				Source: string(ingest.SourceInternal),
+				RawPayload: mustMarshal(map[string]any{
+					"type":            string(ingest.EventMergeCompleted),
+					"idempotency_key": idempKey + "-merge-done",
+					"order_id":        orderID,
+					"stage_index":     stageIndex,
+				}),
+				ReceivedAt: nextTimestamp(),
+			})
+		}
+	}
+
+	return envelopes
+}
+
+func mustMarshal(v any) json.RawMessage {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("mustMarshal failed: %v", err))
+	}
+	return data
 }
 
 type applyRun struct {
