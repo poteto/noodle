@@ -30,11 +30,15 @@ Read `task_types` from mise to discover every schedulable task type and its `sch
 
 Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID (as a string) as the order `id`.
 
-**Depth-first scheduling:** When multiple backlog items have plans, focus on finishing one plan before starting another. Pick the highest-priority plan with remaining phases and schedule its next phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
+**One plan at a time:** Schedule one plan's next phase at a time. Pick the highest-priority plan with remaining phases and schedule its next phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
+
+**Shared infrastructure:** When multiple plans depend on common infrastructure (shared types, utilities, base packages), propose a standalone infra order that isn't tied to any single plan. Use a descriptive slug ID (e.g., `"infra-shared-types"`, `"infra-event-system"`) — orders don't need to match a backlog item ID. If the infra work is substantial, create a backlog item for it via the adapter (`noodle adapter run backlog add`), then use that item's ID as the order ID. The infra order should run before any plan that depends on it.
 
 **Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Determine the next unfinished phase (first unchecked `- [ ]` item). Schedule an execute stage for that phase. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
 
 **Items without plans:** Schedule as a simple execute task using the backlog item's title and description as the prompt.
+
+**Standalone orders:** Orders can have arbitrary IDs — they don't need to correspond to a backlog item. When a standalone order completes, the `backlog done` adapter call is a no-op (no matching item to mark done). Use standalone orders for shared infrastructure, maintenance tasks, or cross-cutting work that serves multiple backlog items.
 
 **Nothing to schedule:** When no backlog items are actionable (all blocked, all in-progress, all done, etc.), still write `orders-next.json` with an empty orders array (`{"orders":[]}`). This signals to the loop that scheduling ran but found nothing — preventing hot-loop re-spawns.
 
@@ -101,7 +105,7 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 
 ## Scheduling Heuristics
 
-- **Depth-first plans**: Finish one plan's phases before starting another. Breadth-first wastes context rebuilding plan state each time; depth-first produces complete, shippable results.
+- **One plan at a time**: Finish one plan's phases before starting another. Breadth-first wastes context rebuilding plan state each time; depth-first produces complete, shippable results. Exception: shared infra orders can run alongside or before a plan's phases.
 - **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every order must cite which principle or rule drove its placement.
@@ -180,6 +184,26 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
         {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
         {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
         {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+      ]
+    }
+  ]
+}
+```
+
+### Example: Shared infrastructure order
+
+```json
+{
+  "orders": [
+    {
+      "id": "infra-event-system",
+      "title": "shared event types used by subagent-tracking and diffs-integration",
+      "rationale": "foundation-before-feature: both plan 84 and plan 86 depend on shared event types",
+      "status": "active",
+      "stages": [
+        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending",
+         "extra_prompt": "Create shared event types in internal/event/ that both subagent-tracking and diffs-integration will consume. Keep scope narrow — only the shared interfaces, not plan-specific logic."},
+        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
   ]
