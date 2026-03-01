@@ -43,19 +43,19 @@ Project defaults in `.codex/config.toml`. Always include `--skip-git-repo-check`
 
 | Use case | Command |
 | --- | --- |
-| Read-only analysis | `codex exec --skip-git-repo-check --json -o "$CODEX_OUT" "prompt" 2>/dev/null` |
+| Read-only analysis | `codex exec --skip-git-repo-check -o "$CODEX_OUT" "prompt" 2>/dev/null` |
 | Speed-first interactive loop (Spark) | add `--model gpt-5.3-codex-spark` |
 | Apply local edits | add `--profile edit` |
 | Network / broad access | add `--profile full` |
-| Resume session | `echo "prompt" \| codex exec --skip-git-repo-check --json -o "$CODEX_OUT" resume --last 2>/dev/null` |
+| Resume session | `echo "prompt" \| codex exec --skip-git-repo-check -o "$CODEX_OUT" resume --last 2>/dev/null` |
 
-Create a temp file for output before running: `CODEX_OUT=$(mktemp)`. Read the result from `$CODEX_OUT` after completion.
+Create a temp file for output before running: `CODEX_OUT=$(mktemp /tmp/codex-out.XXXXXX)`. Read the result from `$CODEX_OUT` after completion.
 
 Run with Bash `run_in_background: true`. Monitor via `TaskOutput` with `block: true, timeout: 600000` — do NOT use `sleep` commands to poll. Read the `-o` file for the final answer.
 
 ## Resuming
 
-Don't pass model/effort/sandbox flags when resuming — original session settings carry over. `--json` and `-o` are safe to include.
+Don't pass model/effort/sandbox flags when resuming — original session settings carry over. `-o` is safe to include.
 
 ## Conventions
 
