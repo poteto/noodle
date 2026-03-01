@@ -509,7 +509,7 @@ import { withBase } from "vitepress";
   margin-bottom: 40px;
   letter-spacing: -0.02em;
   font-size: clamp(56px, 8vw, 96px);
-  color: #2a2a2a;
+  color: #444444;
 }
 
 .block {
@@ -625,6 +625,8 @@ import { withBase } from "vitepress";
   padding: 32px;
   border: 1px solid transparent;
   transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
 }
 
 .feature-card::before {
@@ -686,8 +688,9 @@ import { withBase } from "vitepress";
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 24px;
-  font-size: 12px;
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 1em;
   color: rgba(250, 204, 21, 0.6);
   text-decoration: none;
   transition: color 0.2s;
