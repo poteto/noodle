@@ -53,7 +53,7 @@ Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID
 
 After an execute stage, consider what naturally follows. Add follow-up stages to the same order:
 
-- **quality** after **execute** — review the cook's work
+- **quality** after **execute** — review the cook's work. **Cross-provider review:** prefer the opposite provider from the execute stage. If codex executed, claude reviews; if claude executed, codex reviews. Fresh eyes from a different model catch more issues.
 - **reflect** after **quality** — capture learnings from the completed cycle
 
 These are starting points, not a closed list. If the `task_types` registry contains new types you haven't seen before, read their `schedule` hints and infer where they fit.
