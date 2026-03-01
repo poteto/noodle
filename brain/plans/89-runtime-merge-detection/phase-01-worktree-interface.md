@@ -9,18 +9,21 @@ Expose the existing `countUnmergedCommits` logic through the `WorktreeManager` i
 ## Changes
 
 **`worktree/app.go`** — Add public method:
-- `HasUnmergedCommits(name string) bool` — delegates to existing `countUnmergedCommits(name) > 0`
+- `HasUnmergedCommits(name string) (bool, error)` — delegates to existing `cherryStatus`. Returns error on git failures instead of silently collapsing to `false`.
 
 **`loop/types.go`** — Add to `WorktreeManager` interface:
-- `HasUnmergedCommits(name string) bool`
+- `HasUnmergedCommits(name string) (bool, error)`
 
 **`loop/loop_test.go`** — Update `fakeWorktree`:
 - Add `hasUnmergedCommits map[string]bool` field
-- Implement `HasUnmergedCommits` — returns `true` by default (preserves existing test behavior where stages are expected to merge), `false` only when explicitly set
+- Implement `HasUnmergedCommits` — returns `true, nil` by default (preserves existing test behavior where stages are expected to merge), `false, nil` only when explicitly set
+
+**`loop/defaults.go`** — Update `noOpWorktree`:
+- Add `HasUnmergedCommits(string) (bool, error)` returning `false, nil`
 
 ## Data structures
 
-- No new types. One method addition to an existing interface.
+- No new types. One method addition to an existing interface. Signature returns `(bool, error)` — git failures must not silently become "no changes."
 
 ## Routing
 
@@ -35,5 +38,6 @@ go test ./worktree/... ./loop/...
 go vet ./worktree/... ./loop/...
 ```
 
-- Confirm `fakeWorktree` compiles and satisfies the interface
+- Confirm `fakeWorktree` and `noOpWorktree` both compile and satisfy the interface
 - Existing tests pass unchanged (default `true` preserves behavior)
+- Verify error propagation: a git failure returns `(false, err)`, not `(false, nil)`
