@@ -44,7 +44,7 @@ Read `references/reviewer-lenses.md` for lens definitions.
 Create a temp directory for reviewer output:
 
 ```sh
-REVIEW_DIR=$(mktemp -d)
+REVIEW_DIR=$(mktemp -d /tmp/adversarial-review.XXXXXX)
 ```
 
 Determine which model you are, then spawn reviewers on the opposite:
