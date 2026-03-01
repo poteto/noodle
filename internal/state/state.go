@@ -57,13 +57,33 @@ const (
 	RunModeManual     RunMode = "manual"
 )
 
+// ModeEpoch is a monotonic counter incremented on every mode transition.
+// Compatible with mode.ModeEpoch for use across package boundaries.
+type ModeEpoch uint64
+
+// ModeTransitionRecord tracks a single mode change for audit purposes.
+// Compatible with mode.ModeTransitionRecord for use across package boundaries.
+type ModeTransitionRecord struct {
+	FromMode    RunMode   `json:"from_mode"`
+	ToMode      RunMode   `json:"to_mode"`
+	Epoch       ModeEpoch `json:"epoch"`
+	RequestedBy string    `json:"requested_by"`
+	Reason      string    `json:"reason"`
+	AppliedAt   time.Time `json:"applied_at"`
+}
+
+// MaxModeTransitionHistory is the number of recent transitions retained.
+const MaxModeTransitionHistory = 50
+
 // State is the top-level canonical backend state. All loop scheduling
 // decisions derive from this single model.
 type State struct {
-	Orders        map[string]OrderNode       `json:"orders"`
-	Mode          RunMode                    `json:"mode"`
-	SchemaVersion statever.SchemaVersion     `json:"schema_version"`
-	LastEventID   string                     `json:"last_event_id"`
+	Orders          map[string]OrderNode       `json:"orders"`
+	Mode            RunMode                    `json:"mode"`
+	ModeEpoch       ModeEpoch                  `json:"mode_epoch"`
+	ModeTransitions []ModeTransitionRecord     `json:"mode_transitions"`
+	SchemaVersion   statever.SchemaVersion     `json:"schema_version"`
+	LastEventID     string                     `json:"last_event_id"`
 }
 
 // OrderNode represents an order's canonical state.

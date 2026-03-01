@@ -85,7 +85,26 @@ func fullState() State {
 				},
 			},
 		},
-		Mode:          RunModeAuto,
+		Mode:      RunModeAuto,
+		ModeEpoch: 2,
+		ModeTransitions: []ModeTransitionRecord{
+			{
+				FromMode:    RunModeManual,
+				ToMode:      RunModeSupervised,
+				Epoch:       1,
+				RequestedBy: "user:alice",
+				Reason:      "escalation",
+				AppliedAt:   now.Add(-time.Hour),
+			},
+			{
+				FromMode:    RunModeSupervised,
+				ToMode:      RunModeAuto,
+				Epoch:       2,
+				RequestedBy: "system",
+				Reason:      "resolved",
+				AppliedAt:   now.Add(-30 * time.Minute),
+			},
+		},
 		SchemaVersion: statever.Current,
 		LastEventID:   "evt-42",
 	}
@@ -462,6 +481,46 @@ func TestPendingEffectIndex(t *testing.T) {
 	}
 }
 
+// --- Mode epoch tests ---
+
+func TestModeTransitionRecordJSONFields(t *testing.T) {
+	now := time.Date(2026, 2, 28, 12, 0, 0, 0, time.UTC)
+	r := ModeTransitionRecord{
+		FromMode:    RunModeAuto,
+		ToMode:      RunModeManual,
+		Epoch:       3,
+		RequestedBy: "user:bob",
+		Reason:      "incident",
+		AppliedAt:   now,
+	}
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	raw := string(data)
+	for _, field := range []string{`"from_mode"`, `"to_mode"`, `"epoch"`, `"requested_by"`, `"reason"`, `"applied_at"`} {
+		if !contains(raw, field) {
+			t.Errorf("expected JSON field %s in output: %s", field, raw)
+		}
+	}
+}
+
+func TestModeEpochInState(t *testing.T) {
+	s := fullState()
+	if s.ModeEpoch != 2 {
+		t.Fatalf("expected ModeEpoch 2, got %d", s.ModeEpoch)
+	}
+	if len(s.ModeTransitions) != 2 {
+		t.Fatalf("expected 2 transitions, got %d", len(s.ModeTransitions))
+	}
+	if s.ModeTransitions[0].FromMode != RunModeManual || s.ModeTransitions[0].ToMode != RunModeSupervised {
+		t.Fatalf("transition[0] mismatch: %s -> %s", s.ModeTransitions[0].FromMode, s.ModeTransitions[0].ToMode)
+	}
+	if s.ModeTransitions[1].FromMode != RunModeSupervised || s.ModeTransitions[1].ToMode != RunModeAuto {
+		t.Fatalf("transition[1] mismatch: %s -> %s", s.ModeTransitions[1].FromMode, s.ModeTransitions[1].ToMode)
+	}
+}
+
 // --- Edge cases ---
 
 func TestValidateEmptyOrdersMap(t *testing.T) {
@@ -531,17 +590,19 @@ func TestOrderBusyIndexAllBusyStatuses(t *testing.T) {
 
 func TestSerializationJSONFieldNames(t *testing.T) {
 	s := State{
-		Orders:        map[string]OrderNode{},
-		Mode:          RunModeAuto,
-		SchemaVersion: 1,
-		LastEventID:   "e1",
+		Orders:          map[string]OrderNode{},
+		Mode:            RunModeAuto,
+		ModeEpoch:       1,
+		ModeTransitions: []ModeTransitionRecord{},
+		SchemaVersion:   1,
+		LastEventID:     "e1",
 	}
 	data, err := json.Marshal(s)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
 	raw := string(data)
-	for _, field := range []string{`"orders"`, `"mode"`, `"schema_version"`, `"last_event_id"`} {
+	for _, field := range []string{`"orders"`, `"mode"`, `"mode_epoch"`, `"mode_transitions"`, `"schema_version"`, `"last_event_id"`} {
 		if !contains(raw, field) {
 			t.Errorf("expected JSON field %s in output: %s", field, raw)
 		}

@@ -14,8 +14,13 @@ import (
 )
 
 // ModeEpoch is a monotonic counter incremented on every mode transition.
-// Strictly ordered, cheaply comparable, and persisted in canonical state.
-type ModeEpoch uint64
+// This is an alias for state.ModeEpoch — the canonical definition lives in
+// internal/state so the reducer can persist it without circular imports.
+type ModeEpoch = state.ModeEpoch
+
+// ModeTransitionRecord tracks a single mode change for audit purposes.
+// This is an alias for state.ModeTransitionRecord.
+type ModeTransitionRecord = state.ModeTransitionRecord
 
 // EpochResult is the outcome of validating an effect's epoch against the
 // current epoch.
@@ -27,16 +32,6 @@ const (
 	EpochDeferred EpochResult = "deferred"
 )
 
-// ModeTransitionRecord tracks a single mode change for audit purposes.
-type ModeTransitionRecord struct {
-	FromMode    state.RunMode `json:"from_mode"`
-	ToMode      state.RunMode `json:"to_mode"`
-	Epoch       ModeEpoch     `json:"epoch"`
-	RequestedBy string        `json:"requested_by"`
-	Reason      string        `json:"reason"`
-	AppliedAt   time.Time     `json:"applied_at"`
-}
-
 // ModeState is the canonical mode tracking state, intended for embedding
 // in the top-level canonical state.
 type ModeState struct {
@@ -47,7 +42,7 @@ type ModeState struct {
 }
 
 // maxTransitionHistory is the number of recent transitions retained for audit.
-const maxTransitionHistory = 50
+const maxTransitionHistory = state.MaxModeTransitionHistory
 
 // StampedEffect pairs an effect ID with the epoch at which it was created.
 type StampedEffect struct {
