@@ -641,7 +641,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 78px;
+  padding: 8px 28px 8px 78px;
+  margin-left: 28px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-text-tertiary);
@@ -977,7 +978,6 @@
 .msg-markdown table {
   border-collapse: collapse;
   margin: 8px 0;
-  width: 100%;
   font-size: 13px;
 }
 .msg-markdown th,
@@ -990,6 +990,7 @@
   font-weight: 600;
   color: var(--color-text-primary);
   background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
 }
 
 /* Tree node cards (rendered via D3 innerHTML, not React) */
