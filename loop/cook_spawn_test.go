@@ -2,9 +2,12 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/failure"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
@@ -29,12 +32,24 @@ func TestDispatchSessionFallsBackToProcess(t *testing.T) {
 		Runtime: "tmux",
 	}
 
-	session, err := l.dispatchSession(context.Background(), req)
+	session, fallback, err := l.dispatchSession(context.Background(), req)
 	if err != nil {
 		t.Fatalf("dispatchSession should fall back to process, got error: %v", err)
 	}
 	if session == nil {
 		t.Fatal("expected non-nil session")
+	}
+	if fallback.Class != AgentStartFailureClassFallback {
+		t.Fatalf("fallback class = %q, want %q", fallback.Class, AgentStartFailureClassFallback)
+	}
+	if fallback.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("fallback recoverability = %q, want %q", fallback.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+	if fallback.RequestedRuntime != "tmux" {
+		t.Fatalf("fallback requested runtime = %q, want tmux", fallback.RequestedRuntime)
+	}
+	if fallback.SelectedRuntime != "process" {
+		t.Fatalf("fallback selected runtime = %q, want process", fallback.SelectedRuntime)
 	}
 
 	processRT.mu.Lock()
@@ -66,8 +81,56 @@ func TestDispatchSessionErrorsWhenProcessAlsoMissing(t *testing.T) {
 		Runtime: "tmux",
 	}
 
-	_, err := l.dispatchSession(context.Background(), req)
+	_, _, err := l.dispatchSession(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error when both tmux and process runtimes are missing")
+	}
+	envelope, ok := asDispatchFailureEnvelope(err)
+	if !ok {
+		t.Fatalf("error = %T (%v), want DispatchFailureEnvelope", err, err)
+	}
+	if envelope.Class != AgentStartFailureClassUnrecoverable {
+		t.Fatalf("dispatch class = %q, want %q", envelope.Class, AgentStartFailureClassUnrecoverable)
+	}
+	if envelope.FailureClass != failure.FailureClassAgentStartUnrecoverable {
+		t.Fatalf("failure class = %q, want %q", envelope.FailureClass, failure.FailureClassAgentStartUnrecoverable)
+	}
+	if envelope.Runtime != "tmux" {
+		t.Fatalf("runtime = %q, want tmux", envelope.Runtime)
+	}
+}
+
+func TestDispatchSessionProcessStartFailureIsUnrecoverable(t *testing.T) {
+	processRT := newMockRuntime()
+	processRT.dispatchErr = dispatcher.ProcessStartError{Cause: errors.New("binary missing")}
+
+	l := New(t.TempDir(), "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": processRT},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+	})
+
+	req := loopruntime.DispatchRequest{
+		Name:    "test-cook",
+		Prompt:  "do something",
+		Runtime: "process",
+	}
+
+	_, _, err := l.dispatchSession(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected process start failure")
+	}
+	envelope, ok := asDispatchFailureEnvelope(err)
+	if !ok {
+		t.Fatalf("error = %T (%v), want DispatchFailureEnvelope", err, err)
+	}
+	if envelope.Class != AgentStartFailureClassUnrecoverable {
+		t.Fatalf("dispatch class = %q, want %q", envelope.Class, AgentStartFailureClassUnrecoverable)
+	}
+	if !loopruntime.IsProcessStartFailure(err) {
+		t.Fatalf("error should carry typed process start failure, got %v", err)
 	}
 }

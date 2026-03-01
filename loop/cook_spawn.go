@@ -105,60 +105,22 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		return err
 	}
 
-	session, err := l.dispatchSession(ctx, req)
+	session, fallbackOutcome, err := l.dispatchSession(ctx, req)
 	if err != nil {
-		if created {
-			_ = l.deps.Worktree.Cleanup(name, true)
-		}
-		reason := "dispatch failed: " + err.Error()
-		orders, ordersErr := l.currentOrders()
-		if ordersErr != nil {
-			return ordersErr
-		}
-		orders, ordersErr = failStage(orders, cand.OrderID, reason)
-		if ordersErr != nil {
-			return ordersErr
-		}
-		if writeErr := l.writeOrdersState(orders); writeErr != nil {
-			return writeErr
-		}
-		_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-			OrderID:    cand.OrderID,
-			StageIndex: cand.StageIndex,
-			Reason:     reason,
-		})
-		_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-			OrderID: cand.OrderID,
-			Reason:  reason,
-		})
-		l.emitEvent(ingest.EventStageFailed, map[string]any{
-			"order_id":    cand.OrderID,
-			"stage_index": cand.StageIndex,
-			"error":       reason,
-		})
-		l.forwardToScheduler(&cookHandle{
-			cookIdentity: cookIdentity{
-				orderID:    cand.OrderID,
-				stageIndex: cand.StageIndex,
-				stage:      stage,
-			},
-		}, "dispatch_failed", reason)
-		l.classifyOrderHard(
-			"cycle.dispatch_terminal",
-			OrderFailureClassStageTerminal,
-			cand.OrderID,
-			cand.StageIndex,
-			reason,
-			err,
-		)
-		l.logger.Warn("cook dispatch failed; order marked failed",
-			"order", cand.OrderID, "stage", cand.StageIndex, "error", err)
-		return nil
+		return l.handleCookDispatchFailure(cand, stage, name, created, err)
 	}
 
 	displayName := strings.TrimSpace(opts.displayName)
 	if displayName == "" {
 		displayName = stringx.KitchenName(session.ID())
+	}
+
+	dispatchedRuntime := strings.ToLower(strings.TrimSpace(req.Runtime))
+	if fallbackOutcome.Class == AgentStartFailureClassFallback {
+		dispatchedRuntime = strings.ToLower(strings.TrimSpace(fallbackOutcome.SelectedRuntime))
+	}
+	if dispatchedRuntime == "" {
+		dispatchedRuntime = "process"
 	}
 
 	cook := &cookHandle{
@@ -175,7 +137,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		attempt:           opts.attempt,
 		generation:        l.nextDispatchGeneration(),
 		displayName:       displayName,
-		dispatchedRuntime: req.Runtime, // captures actual runtime after potential fallback
+		dispatchedRuntime: dispatchedRuntime,
 	}
 	l.trackCookStarted(cook)
 	l.cooks.activeCooksByOrder[cand.OrderID] = cook
@@ -198,7 +160,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	return nil
 }
 
-func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, error) {
+func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, RuntimeFallbackOutcome, error) {
 	runtimeName := strings.ToLower(strings.TrimSpace(req.Runtime))
 	if runtimeName == "" {
 		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
@@ -211,28 +173,120 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	if runtime == nil && runtimeName != "process" {
 		if fallback := l.deps.Runtimes["process"]; fallback != nil {
 			l.logger.Warn("runtime not configured, falling back to process", "runtime", runtimeName)
-			runtime = fallback
-			runtimeName = "process"
 			req.Runtime = "process"
+			missingErr := newRuntimeNotConfiguredError(runtimeName)
+			req.DispatchWarning = missingErr.Error()
+			outcome := newRuntimeFallbackOutcome(
+				runtimeName,
+				"process",
+				"runtime fallback used process dispatcher",
+				missingErr,
+			)
+			session, err := fallback.Dispatch(ctx, req)
+			if err != nil {
+				return nil, outcome, classifyAgentStartFailure("process", err)
+			}
+			return session, outcome, nil
 		}
 	}
 	if runtime == nil {
-		return nil, fmt.Errorf("runtime %q not configured", runtimeName)
+		notConfigured := newRuntimeNotConfiguredError(runtimeName)
+		return nil, RuntimeFallbackOutcome{}, classifyAgentStartFailure(runtimeName, notConfigured)
 	}
 
+	req.Runtime = runtimeName
 	session, err := runtime.Dispatch(ctx, req)
 	if err == nil {
-		return session, nil
+		return session, RuntimeFallbackOutcome{}, nil
 	}
 	if runtimeName != "process" {
 		if fallback := l.deps.Runtimes["process"]; fallback != nil {
 			l.logger.Warn("runtime dispatch failed, falling back to process", "runtime", runtimeName, "error", err)
 			req.Runtime = "process"
 			req.DispatchWarning = fmt.Sprintf("%s dispatch failed: %v", runtimeName, err)
-			return fallback.Dispatch(ctx, req)
+			outcome := newRuntimeFallbackOutcome(
+				runtimeName,
+				"process",
+				"runtime fallback used process dispatcher",
+				err,
+			)
+			fallbackSession, fallbackErr := fallback.Dispatch(ctx, req)
+			if fallbackErr != nil {
+				return nil, outcome, classifyAgentStartFailure("process", fallbackErr)
+			}
+			return fallbackSession, outcome, nil
 		}
 	}
-	return nil, err
+	return nil, RuntimeFallbackOutcome{}, classifyAgentStartFailure(runtimeName, err)
+}
+
+func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, worktreeName string, created bool, err error) error {
+	if created {
+		_ = l.deps.Worktree.Cleanup(worktreeName, true)
+	}
+	envelope, ok := asDispatchFailureEnvelope(err)
+	if !ok {
+		envelope = classifyAgentStartFailure(stage.Runtime, err)
+	}
+	if envelope.Class == AgentStartFailureClassRetryable {
+		if persistErr := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusPending); persistErr != nil {
+			return persistErr
+		}
+		l.logger.Warn(
+			"cook dispatch failed; stage reset to pending",
+			"order", cand.OrderID,
+			"stage", cand.StageIndex,
+			"class", envelope.Class,
+			"recoverability", envelope.Recoverability,
+			"error", envelope.Cause,
+		)
+		return nil
+	}
+
+	reason := "dispatch failed: " + envelope.Error()
+	orders, ordersErr := l.currentOrders()
+	if ordersErr != nil {
+		return ordersErr
+	}
+	orders, ordersErr = failStage(orders, cand.OrderID, reason)
+	if ordersErr != nil {
+		return ordersErr
+	}
+	if writeErr := l.writeOrdersState(orders); writeErr != nil {
+		return writeErr
+	}
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    cand.OrderID,
+		StageIndex: cand.StageIndex,
+		Reason:     reason,
+	})
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: cand.OrderID,
+		Reason:  reason,
+	})
+	l.emitEvent(ingest.EventStageFailed, map[string]any{
+		"order_id":    cand.OrderID,
+		"stage_index": cand.StageIndex,
+		"error":       reason,
+	})
+	l.forwardToScheduler(&cookHandle{
+		cookIdentity: cookIdentity{
+			orderID:    cand.OrderID,
+			stageIndex: cand.StageIndex,
+			stage:      stage,
+		},
+	}, "dispatch_failed", reason)
+	l.classifyOrderHard(
+		"cycle.dispatch_terminal",
+		OrderFailureClassStageTerminal,
+		cand.OrderID,
+		cand.StageIndex,
+		reason,
+		err,
+	)
+	l.logger.Warn("cook dispatch failed; order marked failed",
+		"order", cand.OrderID, "stage", cand.StageIndex, "error", err, "class", envelope.Class)
+	return nil
 }
 
 func (l *Loop) worktreePath(name string) string {

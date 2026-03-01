@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -210,5 +211,53 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 	}
 	if updated.Orders[0].Stages[0].Status != StageStatusActive {
 		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusActive)
+	}
+}
+
+func TestSpawnScheduleRetryableDispatchFailureResetsPending(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+
+	cfg := config.DefaultConfig()
+	cfg.Runtime.Default = "sprites"
+	order := scheduleOrder(cfg, "")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{order}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	spritesRT := newMockRuntime()
+	spritesRT.dispatchErr = errors.New("sprites runtime temporarily unavailable")
+
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"sprites": spritesRT},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.spawnSchedule(context.Background(), order, 0, ""); err != nil {
+		t.Fatalf("spawnSchedule should treat retryable dispatch failures as recoverable: %v", err)
+	}
+	if _, ok := l.cooks.activeCooksByOrder[scheduleOrderID]; ok {
+		t.Fatal("schedule cook should not be active after retryable dispatch failure")
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) != 1 || len(updated.Orders[0].Stages) != 1 {
+		t.Fatalf("unexpected orders shape: %+v", updated.Orders)
+	}
+	if updated.Orders[0].Stages[0].Status != StageStatusPending {
+		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusPending)
 	}
 }

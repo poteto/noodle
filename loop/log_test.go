@@ -547,7 +547,7 @@ func TestLogRuntimeDispatchFallback(t *testing.T) {
 		Prompt:  "do something",
 		Runtime: "sprites",
 	}
-	if _, err := tc.loop.dispatchSession(context.Background(), req); err != nil {
+	if _, _, err := tc.loop.dispatchSession(context.Background(), req); err != nil {
 		t.Fatalf("dispatchSession: %v", err)
 	}
 

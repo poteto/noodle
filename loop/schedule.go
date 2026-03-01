@@ -111,9 +111,20 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	if err := l.persistOrderStageStatus(order.ID, stageIndex, StageStatusActive); err != nil {
 		return err
 	}
-	session, err := l.dispatchSession(ctx, req)
+	session, _, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		_ = l.persistOrderStageStatus(order.ID, stageIndex, StageStatusPending)
+		if envelope, ok := asDispatchFailureEnvelope(err); ok && envelope.Class == AgentStartFailureClassRetryable {
+			l.logger.Warn(
+				"schedule dispatch failed; stage reset to pending",
+				"order", order.ID,
+				"stage", stageIndex,
+				"class", envelope.Class,
+				"recoverability", envelope.Recoverability,
+				"error", envelope.Cause,
+			)
+			return nil
+		}
 		return err
 	}
 	cook := &cookHandle{
@@ -182,7 +193,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		AllowPrimaryCheckout: true,
 		Title:                "bootstrapping schedule skill",
 	}
-	session, err := l.dispatchSession(ctx, req)
+	session, _, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		l.logger.Warn("bootstrap dispatch failed", "error", err, "attempt", l.bootstrapAttempts+1)
 		l.bootstrapAttempts++

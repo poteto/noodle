@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 
 	"github.com/poteto/noodle/dispatcher"
@@ -66,4 +67,10 @@ func (s dispatcherSessionHandle) VerdictPath() string {
 }
 func (s dispatcherSessionHandle) Controller() AgentController {
 	return s.session.Controller()
+}
+
+// IsProcessStartFailure reports whether err is a typed process launch failure.
+func IsProcessStartFailure(err error) bool {
+	var startErr dispatcher.ProcessStartError
+	return errors.As(err, &startErr)
 }

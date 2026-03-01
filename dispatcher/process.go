@@ -57,7 +57,7 @@ func StartProcess(cmd *exec.Cmd) (*ProcessHandle, error) {
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start process: %w", err)
+		return nil, ProcessStartError{Cause: err}
 	}
 
 	h := &ProcessHandle{

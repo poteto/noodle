@@ -348,6 +348,65 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 }
 
+func TestCycleRetryableDispatchFailureResetsStagePending(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     "42",
+				Status: OrderStatusActive,
+				Stages: []Stage{{
+					TaskKey:  "execute",
+					Skill:    "execute",
+					Provider: "claude",
+					Model:    "claude-opus-4-6",
+					Runtime:  "sprites",
+					Status:   StageStatusPending,
+				}},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	spritesRT := newMockRuntime()
+	spritesRT.dispatchErr = errors.New("sprites runtime unavailable")
+	wt := &fakeWorktree{}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"sprites": spritesRT},
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	got, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].Status != OrderStatusActive {
+		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, OrderStatusActive)
+	}
+	if status := got.Orders[0].Stages[0].Status; status != StageStatusPending {
+		t.Fatalf("stage status = %q, want %q", status, StageStatusPending)
+	}
+}
+
 func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
