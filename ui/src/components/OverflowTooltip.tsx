@@ -12,7 +12,9 @@ export function OverflowTooltip({ text, className }: OverflowTooltipProps) {
 
   const handleEnter = useCallback(() => {
     const el = spanRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
+    if (!el || el.scrollWidth <= el.clientWidth) {
+      return;
+    }
     const rect = el.getBoundingClientRect();
     setTip({ x: rect.left, y: rect.top });
   }, []);
@@ -31,10 +33,7 @@ export function OverflowTooltip({ text, className }: OverflowTooltipProps) {
       </span>
       {tip &&
         createPortal(
-          <div
-            className="overflow-tooltip"
-            style={{ left: tip.x, top: tip.y }}
-          >
+          <div className="overflow-tooltip" style={{ left: tip.x, top: tip.y }}>
             {text}
           </div>,
           document.body,

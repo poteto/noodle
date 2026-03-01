@@ -83,6 +83,7 @@
   gap: 2px;
 }
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -102,6 +103,21 @@
     transform 0.12s;
   text-decoration: none;
 }
+.nav-item::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--color-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-item.active::after {
+  transform: scaleY(1);
+}
 .nav-item:hover {
   background: var(--color-bg-surface);
   color: var(--color-text-primary);
@@ -118,7 +134,10 @@
   height: 18px;
   opacity: 0.7;
   flex-shrink: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-item:hover .nav-icon {
+  opacity: 1;
 }
 .nav-item.active .nav-icon {
   opacity: 0.9;
@@ -191,10 +210,12 @@
   color: var(--color-text-secondary);
   flex-shrink: 0;
   font-family: var(--font-mono);
-  transition: transform 0.15s;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .agent-item:hover .agent-avatar {
   transform: scale(1.05);
+  border-color: var(--color-accent-dim);
 }
 
 /* Manager gets accent avatar */
@@ -329,6 +350,7 @@
   );
 }
 .tree-stage {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -363,6 +385,21 @@
 .tree-stage:disabled {
   cursor: default;
   opacity: 1;
+}
+.tree-stage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tree-stage.stage-active::before {
+  transform: scaleY(1);
 }
 .tree-icon {
   flex-shrink: 0;
@@ -450,7 +487,7 @@
 @keyframes message-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -549,7 +586,7 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: all 0.12s;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .feed-action-btn:active {
   transform: scale(0.96);
@@ -599,17 +636,32 @@
 
 /* --- Message rows --- */
 .message-row {
+  position: relative;
   padding: 12px 28px;
   display: grid;
   grid-template-columns: 36px 1fr;
   gap: 14px;
   transition: background 0.15s;
-  animation: message-enter 0.2s ease-out both;
+  animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   border-left: 1px solid var(--color-border-subtle);
   margin-left: 28px;
 }
+.message-row::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
 .message-row > :nth-child(2) {
   min-width: 0;
+}
+.message-row:hover::before {
+  opacity: 1;
 }
 .message-row:hover {
   background: rgba(255, 255, 255, 0.02);
@@ -623,8 +675,24 @@
 }
 /* Tool events — indented (Read, Edit, Write, Bash, etc.) */
 .message-row.type-tool {
+  position: relative;
   padding-left: calc(28px + 16px);
   grid-template-columns: 1fr;
+}
+.message-row.type-tool::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent-dim);
+  transform: scaleY(0);
+  transform-origin: top;
+  animation: tool-accent-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+@keyframes tool-accent-in {
+  to { transform: scaleY(1); }
 }
 /* Cost line — even more compact */
 .message-row.type-cost {
@@ -682,7 +750,7 @@
   background: #111;
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-primary);
-  animation: scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: badge-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .msg-badge.badge-read {
   color: var(--color-blue);
@@ -703,6 +771,20 @@
   color: var(--color-green);
   border-color: var(--color-green);
   background: transparent;
+}
+@keyframes badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .msg-body {
@@ -840,9 +922,18 @@
 }
 foreignObject.node.node-clickable .tree-node-card {
   cursor: pointer;
+  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 foreignObject.node.node-clickable .tree-node-card:hover {
   border-color: var(--color-accent) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+foreignObject.node.node-clickable .tree-node-card:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 .tree-node-header {
   display: flex;
@@ -907,11 +998,35 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s;
+  backdrop-filter: blur(4px);
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tree-zoom-controls button:hover {
   border-color: var(--color-text-secondary);
   color: var(--color-text-primary);
+}
+.tree-zoom-controls button:active {
+  transform: scale(0.92);
+}
+
+/* Active node glow */
+.tree-node-card.node-active {
+  box-shadow: 0 0 6px var(--color-accent-dim);
+}
+
+/* Active node dot pulse */
+.tree-node-dot-active {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Active edge flow animation */
+@keyframes edge-flow {
+  to { stroke-dashoffset: -16; }
+}
+.edge-active {
+  stroke-dasharray: 8 8;
+  animation: edge-flow 0.8s linear infinite;
+  filter: drop-shadow(0 0 2px var(--color-accent-dim));
 }
 
 /* Output block (tool results, code) */
@@ -933,6 +1048,8 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   animation: fade-in 0.3s ease-out;
 }
 .idle-divider span {
+  display: inline-block;
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-text-tertiary);
@@ -940,6 +1057,21 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border: 1px dashed var(--color-border-subtle);
   text-transform: uppercase;
   letter-spacing: 1px;
+  animation: idle-draw-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes idle-draw-in {
+  from {
+    opacity: 0;
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  to {
+    opacity: 1;
+    max-width: 200px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
 
 /* Cost line */
@@ -1017,10 +1149,12 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   display: flex;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .input-row:focus-within {
   border-color: var(--color-border-active);
+  box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.08);
 }
 
 .input-row-field {
@@ -1095,6 +1229,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 }
 .btn-submit:active {
   transform: scale(0.96);
+  background: #ffe066;
 }
 .btn-submit:disabled {
   opacity: 0.4;
@@ -1172,7 +1307,12 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 .metric-card {
   background: #0c0c0c;
   padding: 12px;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.metric-card:hover {
+  background: #0f0f0f;
 }
 .metric-card:nth-child(odd) {
   border-right: 1px solid var(--color-border-subtle);
@@ -1194,6 +1334,11 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   font-size: 16px;
   font-weight: 500;
   color: var(--color-text-primary);
+  transition: color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.metric-value-updated {
+  color: var(--color-accent);
+  transition: color 0.05s;
 }
 
 .ctx-section-label {
@@ -1225,9 +1370,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border-left: 2px solid transparent;
   cursor: pointer;
   transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   letter-spacing: 0.5px;
 }
 .stage-item:hover {
@@ -1257,13 +1402,25 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 .stage-dot.active {
   background: var(--color-accent);
   box-shadow: 0 0 8px var(--color-accent-dim);
-  animation: pulse 2s infinite;
+  animation: pulse 2s infinite, status-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .stage-dot.pending {
   background: var(--color-text-tertiary);
 }
 .stage-dot.failed {
   background: var(--color-red);
+}
+
+@keyframes status-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Context panel system stats footer */
@@ -1379,6 +1536,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   cursor: pointer;
   transition: opacity 0.12s;
 }
+.btn-new-order:active {
+  transform: scale(0.96);
+}
 .btn-new-order:hover {
   opacity: 0.85;
 }
@@ -1427,7 +1587,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 .review-section {
   padding: 28px 36px;
   border-bottom: 1px solid var(--color-border-subtle);
-  animation: fade-in 0.25s ease-out;
+  animation: review-section-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .review-section:last-child {
@@ -1495,10 +1655,10 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   cursor: pointer;
   border: 1.5px solid transparent;
   transition:
-    background 0.12s,
-    border-color 0.12s,
-    opacity 0.12s,
-    transform 0.12s;
+    background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .review-action-btn:hover {
@@ -1563,7 +1723,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 
 .review-feedback-input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.15);
+  animation: focus-glow-settle 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .review-feedback-input::placeholder {
@@ -1581,6 +1741,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 }
 
 .review-tab {
+  position: relative;
   padding: 10px 20px;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1593,16 +1754,34 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   white-space: nowrap;
   transition:
     color 0.12s,
-    border-color 0.2s;
+    background 0.12s,
+    transform 0.12s;
+}
+.review-tab::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .review-tab:hover {
   color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+}
+.review-tab:active {
+  transform: scale(0.96);
 }
 
 .review-tab.active {
   color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
+}
+.review-tab.active::after {
+  transform: scaleX(1);
 }
 
 /* Empty state */
@@ -1612,4 +1791,25 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--color-text-tertiary);
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Review keyframes */
+@keyframes review-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes focus-glow-settle {
+  from {
+    box-shadow: 0 0 0 2px rgba(251, 219, 36, 0.2);
+  }
+  to {
+    box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.15);
+  }
 }

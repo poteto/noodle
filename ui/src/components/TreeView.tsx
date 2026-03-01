@@ -1,12 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import {
-  easeCubicOut,
-  hierarchy,
-  select,
-  tree,
-  zoom as createZoom,
-  zoomIdentity,
-} from "d3";
+import { easeCubicOut, hierarchy, select, tree, zoom as createZoom, zoomIdentity } from "d3";
 import type {
   D3ZoomEvent,
   HierarchyNode,
@@ -88,6 +81,17 @@ function actorSessionId(data: TreeNodeData): string | null {
   return data.sessionId;
 }
 
+function edgePath(d: HierarchyPointLink<TreeNodeData>): string {
+  const s = d.source;
+  const t = d.target;
+  return `M${s.x},${s.y}C${s.x},${(s.y + t.y) / 2} ${t.x},${(s.y + t.y) / 2} ${t.x},${t.y}`;
+}
+
+function isEdgeActive(d: HierarchyPointLink<TreeNodeData>): boolean {
+  const st = d.target.data.status;
+  return st === "active" || st === "running";
+}
+
 function renderTree(
   svgEl: SVGSVGElement,
   snapshot: Snapshot,
@@ -147,15 +151,6 @@ function renderTree(
 
   // Edges — enter/update/exit with transitions.
   const links = rootNode.links() as HierarchyPointLink<TreeNodeData>[];
-  const edgePath = (d: HierarchyPointLink<TreeNodeData>) => {
-    const s = d.source;
-    const t = d.target;
-    return `M${s.x},${s.y}C${s.x},${(s.y + t.y) / 2} ${t.x},${(s.y + t.y) / 2} ${t.x},${t.y}`;
-  };
-  const isEdgeActive = (d: HierarchyPointLink<TreeNodeData>) => {
-    const st = d.target.data.status;
-    return st === "active" || st === "running";
-  };
 
   edgeGroup
     .selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
@@ -169,26 +164,15 @@ function renderTree(
           .attr("stroke-width", 1.5)
           .attr("d", edgePath)
           .style("opacity", 0)
-          .call((sel) =>
-            sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1),
-          ),
+          .call((sel) => sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1)),
       (update) =>
-        update.call((sel) =>
-          sel.transition().duration(300).ease(easeCubicOut).attr("d", edgePath),
-        ),
-      (exit) =>
-        exit.call((sel) =>
-          sel.transition().duration(200).style("opacity", 0).remove(),
-        ),
+        update.call((sel) => sel.transition().duration(300).ease(easeCubicOut).attr("d", edgePath)),
+      (exit) => exit.call((sel) => sel.transition().duration(200).style("opacity", 0).remove()),
     )
     .classed("edge-active", isEdgeActive)
-    .attr("stroke", (d) =>
-      isEdgeActive(d) ? "var(--color-accent)" : "var(--color-border-subtle)",
-    )
+    .attr("stroke", (d) => (isEdgeActive(d) ? "var(--color-accent)" : "var(--color-border-subtle)"))
     .attr("stroke-width", 1.5)
-    .attr("stroke-dasharray", (d) =>
-      d.target.data.status === "pending" ? "4 4" : "none",
-    );
+    .attr("stroke-dasharray", (d) => (d.target.data.status === "pending" ? "4 4" : "none"));
 
   // Nodes — join by path key so D3 reuses existing foreignObjects.
   const nodes = nodeGroup
@@ -205,14 +189,9 @@ function renderTree(
           .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
           .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
           .style("opacity", 0)
-          .call((sel) =>
-            sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1),
-          ),
+          .call((sel) => sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1)),
       (update) => update,
-      (exit) =>
-        exit.call((sel) =>
-          sel.transition().duration(200).style("opacity", 0).remove(),
-        ),
+      (exit) => exit.call((sel) => sel.transition().duration(200).style("opacity", 0).remove()),
     );
 
   // Glide existing nodes to new positions.

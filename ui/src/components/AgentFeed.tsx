@@ -60,7 +60,9 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, []);

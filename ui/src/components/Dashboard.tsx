@@ -149,18 +149,29 @@ export function Dashboard() {
                 >
                   {col.label}
                   {sortKey === col.key && (
-                    <span className="ml-1">{sortDir === "asc" ? "\u2191" : "\u2193"}</span>
+                    <span
+                      className="ml-1 inline-block"
+                      style={{ animation: "scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both" }}
+                    >
+                      {sortDir === "asc" ? "\u2191" : "\u2193"}
+                    </span>
                   )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {rows.map((row, i) => (
               <tr
                 key={row.id}
                 onClick={() => handleRowClick(row)}
-                className="border-b border-border-subtle hover:bg-bg-surface transition-[background,border-left] duration-[120ms] hover:border-l-2 hover:border-l-accent cursor-pointer"
+                className="border-b border-border-subtle border-l-2 border-l-transparent hover:border-l-accent hover:bg-bg-surface cursor-pointer"
+                style={{
+                  transition:
+                    "background 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.12s cubic-bezier(0.16, 1, 0.3, 1)",
+                  animation: "fade-in 0.15s ease-out both",
+                  animationDelay: `${Math.min(i, 12) * 25}ms`,
+                }}
               >
                 <td className="px-3 py-2 font-mono text-sm">{row.id}</td>
                 <td className="px-3 py-2 font-mono text-sm max-w-[300px] truncate">{row.title}</td>
@@ -197,7 +208,7 @@ export function Dashboard() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="border border-border-subtle bg-bg-surface px-4 py-3 transition-[border-color] duration-150 hover:border-border-active">
+    <div className="border border-border-subtle bg-bg-surface px-4 py-3 transition-[border-color,background] duration-150 hover:border-border-active hover:bg-[#111]">
       <div className="font-mono text-base font-bold text-text-primary">{value}</div>
       <div className="font-mono text-[9px] font-semibold text-text-tertiary uppercase tracking-wider">
         {label}
