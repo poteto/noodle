@@ -19,7 +19,7 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 ## Onboarding & Getting Started
 
-20. [ ] First-run experience — make it obvious how to install, configure, and use Noodle. Simple installation path, clear documentation of core concepts (skills, scheduling, brain), example projects showing real workflows (e.g. a minimal schedule+execute setup, a multi-skill autonomous loop), and getting-started guides that take a new user from zero to a running Noodle in minutes. Includes resolving skill-path defaults (`.agents/skills` vs project-level) so bootstrapping just works.
+20. [ ] First-run experience — make it obvious how to install, configure, and use Noodle. Simple installation path, clear documentation of core concepts (skills, scheduling, brain), example projects showing real workflows (e.g. a minimal schedule+execute setup, a multi-skill autonomous loop), and getting-started guides that take a new user from zero to a running Noodle in minutes. [[plans/20-onboarding/overview]]
 
 ## Remote Dispatchers
 

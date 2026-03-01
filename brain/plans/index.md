@@ -6,3 +6,4 @@
 - [ ] [[plans/88-subagent-tracking-v2/overview]]
 - [ ] [[plans/86-diffs-integration/overview]]
 - [x] [[archive/plans/89-simplify-task-type-frontmatter/overview]]
+- [ ] [[plans/20-onboarding/overview]]

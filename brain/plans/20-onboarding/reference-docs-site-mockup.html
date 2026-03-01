@@ -1,0 +1,592 @@
+<html lang="en" vid="0"><head vid="1">
+    <meta charset="UTF-8" vid="2">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" vid="3">
+    <title vid="4">Noodle - Documentation</title>
+    <style vid="5">
+        /* Tokens from ui/src/app.css */
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg: #050505;
+            --bg-depth: #0a0a0a;
+            --surface: #111111;
+            --surface-hover: #161616;
+            --surface-active: #1a1a1a;
+            --text-main: #e5e5e5;
+            --text-muted: #888888;
+            --text-tertiary: #777777;
+            --border: #222222;
+            --border-active: #333333;
+            --accent: #f5c518;
+            --accent-dim: rgba(245, 197, 24, 0.12);
+            --accent-subtle: rgba(245, 197, 24, 0.06);
+            --green: #4ade80;
+            --red: #f87171;
+            --blue: #60a5fa;
+
+
+            --font-sans: "JetBrains Mono", monospace;
+            --font-mono: "JetBrains Mono", monospace;
+
+
+            --space-xs: 4px;
+            --space-s: 12px;
+            --space-m: 24px;
+            --space-l: 40px;
+            --space-xl: 80px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            font-size: 14px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+
+        .pixel-border {
+            border: 1px solid var(--border);
+        }
+
+        .pixel-border-bottom {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pixel-border-right {
+            border-right: 1px solid var(--border);
+        }
+
+        .pixel-border-left {
+            border-left: 1px solid var(--border);
+        }
+
+        .pixel-border-active {
+            border: 1px solid var(--border-active);
+        }
+
+
+        ::selection {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+
+        header {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--space-m);
+            background: var(--bg);
+            z-index: 10;
+        }
+
+        .brand {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .brand-logo {
+            width: 18px;
+            height: 18px;
+            position: relative;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .brand:hover .brand-logo {
+            transform: rotate(90deg);
+        }
+
+        .brand-logo::before,
+        .brand-logo::after {
+            content: '';
+            position: absolute;
+            background: var(--accent);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .brand-logo::before {
+            width: 2px;
+            height: 100%;
+        }
+
+        .brand-logo::after {
+            width: 100%;
+            height: 2px;
+        }
+
+        .version-badge {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            background: var(--surface-hover);
+            color: var(--text-muted);
+            padding: 2px 6px;
+            border: 1px solid var(--border);
+        }
+
+        .header-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            padding: 4px 12px;
+            width: 240px;
+        }
+
+        .header-search:hover {
+            border-color: var(--border-active);
+        }
+
+
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr 240px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+
+        .sidebar {
+            overflow-y: auto;
+            padding: var(--space-m) 0;
+        }
+
+        .nav-section {
+            margin-bottom: var(--space-m);
+        }
+
+        .nav-title {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 var(--space-m);
+            margin-bottom: var(--space-s);
+            letter-spacing: 1px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 6px var(--space-m);
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+            transition: 0s;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background: var(--surface);
+        }
+
+        .nav-link.active {
+            color: var(--bg);
+            background: var(--accent);
+            border-left: 2px solid var(--accent);
+        }
+
+
+        .main-content {
+            overflow-y: auto;
+            padding: var(--space-l) var(--space-xl);
+            background: var(--bg);
+            background-image: radial-gradient(var(--border) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+
+        article {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .breadcrumbs {
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-bottom: var(--space-m);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .breadcrumb-separator {
+            width: 4px;
+            height: 4px;
+            background: var(--border);
+        }
+
+        h1 {
+            font-family: var(--font-sans);
+            font-weight: 600;
+            font-size: 32px;
+            margin-bottom: var(--space-m);
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+        }
+
+        h1::before {
+            content: '█';
+            margin-right: 12px;
+            font-size: 24px;
+            color: var(--accent);
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        p {
+            margin-bottom: var(--space-m);
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        h2 {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            margin-top: var(--space-l);
+            margin-bottom: var(--space-m);
+            padding-bottom: var(--space-s);
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-main);
+        }
+
+        h3 {
+            font-family: var(--font-sans);
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: var(--space-m);
+            margin-bottom: var(--space-s);
+            color: var(--text-main);
+        }
+
+
+        .code-block {
+            background: var(--bg-depth);
+            border: 1px solid var(--border);
+            padding: var(--space-m);
+            margin-bottom: var(--space-m);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--border-active);
+            color: var(--text-main);
+            font-size: 10px;
+            padding: 2px 8px;
+            text-transform: uppercase;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            color: var(--text-main);
+        }
+
+        .keyword { color: var(--accent); font-weight: bold; }
+        .string { color: var(--text-muted); }
+        .function { color: var(--text-main); text-decoration: underline; text-decoration-color: var(--border-active); }
+        .comment { color: var(--text-tertiary); font-style: italic; }
+
+        .inline-code {
+            font-family: var(--font-mono);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 2px 4px;
+            font-size: 12px;
+        }
+
+
+        .toc {
+            padding: var(--space-m);
+            overflow-y: auto;
+        }
+
+        .toc-header {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: var(--space-m);
+        }
+
+        .toc-list {
+            list-style: none;
+            position: relative;
+        }
+
+
+        .toc-list::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: var(--border);
+        }
+
+        .toc-item {
+            margin-bottom: 8px;
+        }
+
+        .toc-link {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 12px;
+            padding-left: 16px;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .toc-link:hover {
+            color: var(--text-main);
+        }
+
+        .toc-link.active {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .toc-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 6px;
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+        }
+
+
+        .callout {
+            border: 1px solid var(--border);
+            border-left: 2px solid var(--accent);
+            padding: var(--space-m);
+            margin-bottom: var(--space-m);
+            display: flex;
+            gap: var(--space-m);
+            background: var(--accent-subtle);
+        }
+
+        .callout-icon {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--accent);
+        }
+
+        .callout-content {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .callout-content strong {
+            color: var(--text-main);
+        }
+
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+    </style>
+</head>
+<body vid="6">
+
+    <header class="pixel-border-bottom" vid="7">
+        <div class="brand" vid="8">
+            <div class="brand-logo" vid="9"></div>
+            NOODLE
+            <span class="version-badge" vid="10">v1.2.0</span>
+        </div>
+        <div class="header-search" vid="11">
+            <span vid="12">/</span>
+            <span vid="13">Search documentation...</span>
+        </div>
+    </header>
+
+    <div class="layout" vid="14">
+
+        <nav class="sidebar pixel-border-right" vid="15">
+            <div class="nav-section" vid="16">
+                <div class="nav-title" vid="17">Documentation</div>
+                <a href="#" class="nav-link" vid="18">Introduction</a>
+                <a href="#" class="nav-link" vid="19">Getting Started</a>
+                <a href="#" class="nav-link" vid="20">Architecture</a>
+            </div>
+
+            <div class="nav-section" vid="21">
+                <div class="nav-title" vid="22">Core Concepts</div>
+                <a href="#" class="nav-link active" vid="23">Pipeline Orchestration</a>
+                <a href="#" class="nav-link" vid="24">Agents &amp; Tools</a>
+                <a href="#" class="nav-link" vid="25">Memory Management</a>
+                <a href="#" class="nav-link" vid="26">Steering</a>
+            </div>
+
+            <div class="nav-section" vid="27">
+                <div class="nav-title" vid="28">API Reference</div>
+                <a href="#" class="nav-link" vid="29">REST API</a>
+                <a href="#" class="nav-link" vid="30">Python SDK</a>
+                <a href="#" class="nav-link" vid="31">Node.js SDK</a>
+            </div>
+
+             <div class="nav-section" vid="32">
+                <div class="nav-title" vid="33">Guides</div>
+                <a href="#" class="nav-link" vid="34">Multi-agent Chat</a>
+                <a href="#" class="nav-link" vid="35">Data Extraction</a>
+                <a href="#" class="nav-link" vid="36">Self-Correction Loops</a>
+            </div>
+        </nav>
+
+
+        <main class="main-content" vid="37">
+            <article vid="38">
+                <div class="breadcrumbs" vid="39">
+                    <span vid="40">Docs</span>
+                    <span class="breadcrumb-separator" vid="41"></span>
+                    <span vid="42">Concepts</span>
+                    <span class="breadcrumb-separator" vid="43"></span>
+                    <span vid="44">Pipeline</span>
+                </div>
+
+                <h1 vid="45">Pipeline Orchestration</h1>
+
+                <p vid="46">
+                    Noodle pipelines are deterministic sequences of agentic behaviors. Unlike standard chains, a Noodle pipeline enforces a strict four-stage lifecycle for every interaction: Execute, Quality, Reflect, and Meditate. This ensures high-reliability outputs in autonomous multi-agent systems.
+                </p>
+
+                <div class="callout" vid="47">
+                    <div class="callout-icon" vid="48">ℹ</div>
+                    <div class="callout-content" vid="49">
+                        <strong vid="50">Steering Agents</strong> typically intervene during the Reflect stage, modifying the context before the next execution cycle begins.
+                    </div>
+                </div>
+
+                <h2 id="lifecycle" vid="51">The Four Stages</h2>
+
+                <p vid="52">
+                    Every <span class="inline-code" vid="53">Order</span> processed by the Manager goes through these discrete phases. The architecture prevents race conditions by locking the context state during the mutation phases (Execute, Meditate).
+                </p>
+
+                <h3 vid="54">1. Execute</h3>
+                <p vid="55">
+                    The primary agent attempts to fulfill the prompt. Tools are called, and raw output is generated. No validation occurs here.
+                </p>
+
+                <h3 vid="56">2. Quality (QA)</h3>
+                <p vid="57">
+                    A separate, specialized observer agent critiques the output against the defined schema. If the confidence score is below threshold, the pipeline may loop back or escalate.
+                </p>
+
+                <div class="code-block" data-lang="YAML" vid="58">
+<code vid="59">pipeline:
+  name: "data-extraction-v1"
+  stages:
+    - type: <span class="keyword" vid="60">execute</span>
+      agent: "extractor-01"
+      timeout: 30s
+    - type: <span class="keyword" vid="61">quality</span>
+      rules:
+        - "must_be_json"
+        - "confidence &gt; 0.9"
+    - type: <span class="keyword" vid="62">reflect</span>
+      strategy: "cumulative_memory"
+</code>
+                </div>
+
+                <h2 id="manager" vid="63">Manager Orchestration</h2>
+                <p vid="64">
+                    The Manager is the singleton process responsible for routing Orders to available agents. It maintains the global state of the conversation and handles the "handshake" between different pipeline stages.
+                </p>
+
+                <p vid="65">
+                    When an agent enters the <span class="inline-code" vid="66">Meditate</span> phase, it is essentially compressing its context window to save tokens for future turns.
+                </p>
+
+                <div class="code-block" data-lang="PYTHON" vid="67">
+<code vid="68"><span class="keyword" vid="69">from</span> noodle.core <span class="keyword" vid="70">import</span> Manager, Order
+
+mgr = Manager(mode=<span class="string" vid="71">"strict"</span>)
+
+<span class="comment" vid="72"># Define an order with specific steering parameters</span>
+order = Order(
+    prompt=<span class="string" vid="73">"Analyze market trends"</span>,
+    steering={
+        <span class="string" vid="74">"bias"</span>: <span class="string" vid="75">"conservative"</span>,
+        <span class="string" vid="76">"format"</span>: <span class="string" vid="77">"markdown_table"</span>
+    }
+)
+
+result = mgr.dispatch(order)
+<span class="function" vid="78">print</span>(result.trace_id)</code>
+                </div>
+
+            </article>
+        </main>
+
+
+        <aside class="toc pixel-border-left" vid="79">
+            <div class="toc-header" vid="80">On this page</div>
+            <ul class="toc-list" vid="81">
+                <li class="toc-item" vid="82"><a href="#lifecycle" class="toc-link active" vid="83">The Four Stages</a></li>
+                <li class="toc-item" vid="84"><a href="#execute" class="toc-link" vid="85">Execute Phase</a></li>
+                <li class="toc-item" vid="86"><a href="#quality" class="toc-link" vid="87">Quality Assurance</a></li>
+                <li class="toc-item" vid="88"><a href="#manager" class="toc-link" vid="89">Manager Orchestration</a></li>
+                <li class="toc-item" vid="90"><a href="#examples" class="toc-link" vid="91">Code Examples</a></li>
+            </ul>
+        </aside>
+    </div>
+
+
+</body></html>
