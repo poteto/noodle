@@ -122,3 +122,17 @@ For each finding:
 - **PASS** — no high-severity findings
 - **CONTESTED** — high-severity findings but reviewers disagree on them
 - **REJECT** — high-severity findings with reviewer consensus
+
+## Step 5 — Render Judgment
+
+After synthesizing the reviewers, apply your own judgment. Using the stated intent and brain
+principles as your frame, state which findings you would accept and which you would reject —
+and why. Reviewers are adversarial by design; not every finding warrants action. Call out
+false positives, overreach, and findings that mistake style for substance.
+
+Append to the verdict:
+
+```
+## Lead Judgment
+<for each finding: accept or reject with a one-line rationale>
+```
