@@ -1,13 +1,13 @@
 ---
 name: ruminate
 description: >-
-  Mine past Claude Code conversations for uncaptured patterns, corrections, and knowledge.
+  Mine past Claude Code and Codex conversations for uncaptured patterns, corrections, and knowledge.
   Cross-references with existing brain content. Triggers: "ruminate", "mine my history".
 ---
 
 # Ruminate
 
-Mine conversation history for brain-worthy knowledge that was never captured. Complements `reflect` (current session) and `meditate` (brain vault audit) by looking at the full archive of past conversations.
+Mine conversation history for brain-worthy knowledge that was never captured. Complements `reflect` (current session) and `meditate` (brain vault audit) by looking at the full archive of past conversations across both providers.
 
 ## Process
 
@@ -19,27 +19,34 @@ Build a brain snapshot: `sh .claude/skills/meditate/scripts/snapshot.sh brain/ /
 
 ### 2. Locate conversations
 
-Find the project conversation directory:
+Find both provider roots:
 
-```
-~/.claude/projects/-<cwd-with-dashes-replacing-slashes>/
-```
+1. Claude project directory:
+   `~/.claude/projects/-<cwd-with-dashes-replacing-slashes>/`
+2. Codex sessions root:
+   `~/.codex/sessions/`
 
-For example, `/Users/lauren/code/noodle` becomes `~/.claude/projects/-Users-lauren-code-noodle/`.
+For example, `/Users/lauren/code/noodle` maps to
+`~/.claude/projects/-Users-lauren-code-noodle/` for Claude and uses `~/.codex/sessions/` for Codex.
 
 ### 3. Extract conversations
 
-Run the extraction script to parse JSONL conversation files into readable text and split into batches:
+Run the extraction script to parse both JSONL formats into readable text and split into batches:
 
 ```bash
 SKILL_DIR="$(dirname "$(realpath "$0")")/.."  # adjust path as needed
-CONV_DIR="$HOME/.claude/projects/-<project-slug>"
+CLAUDE_DIR="$HOME/.claude/projects/-<project-slug>"
+CODEX_DIR="$HOME/.codex/sessions"
 OUT_DIR="/tmp/ruminate-$(date +%s)"
 
-python3 "$SKILL_DIR/scripts/extract-conversations.py" "$CONV_DIR" "$OUT_DIR" --batches N
+python3 "$SKILL_DIR/scripts/extract-conversations.py" "$OUT_DIR" \
+  --claude-dir "$CLAUDE_DIR" \
+  --codex-dir "$CODEX_DIR" \
+  --cwd "$PWD" \
+  --batches N
 ```
 
-Choose N based on the number of conversations found: ~1 batch per 20 conversations, minimum 2, maximum 10.
+Choose N based on total extracted conversations (Claude + Codex): ~1 batch per 20 conversations, minimum 2, maximum 10.
 
 ### 4. Spawn analysis team
 
@@ -50,6 +57,7 @@ Each agent's prompt should include:
 - The batch manifest path (`$OUT_DIR/batches/batch_N.txt`)
 - The output path (`$OUT_DIR/findings_N.md`)
 - The list of topics **already captured** in the brain (compiled from step 1) — so agents skip known knowledge
+- A reminder that each extracted file includes provider/source metadata headers (`[PROVIDER]`, `[CWD]`, `[SOURCE_FILE]`) and should be used as evidence context
 - Instructions to extract from each conversation:
   - **User corrections**: times the user corrected the assistant's approach, code, or understanding
   - **Recurring preferences**: things the user explicitly asked for or pushed back on repeatedly
@@ -97,5 +105,5 @@ rm -rf "$OUT_DIR"
 
 - **Filter aggressively.** Most conversations will have low signal — automated tasks, trivial exchanges, already-captured knowledge. Only surface what's genuinely new and impactful.
 - **Prefer reduction.** If a finding is a special case of an existing brain principle, update the existing note rather than creating a new one.
-- **Quote the user.** When a finding stems from a direct user correction, include the user's words — they carry the most signal about what matters.
+- **Quote the user.** When a finding stems from a direct user correction, include the user's words and source file path — they carry the most signal about what matters.
 - **Shut down agents** when analysis is complete. Don't leave them idle.
