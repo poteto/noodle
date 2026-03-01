@@ -14,10 +14,10 @@ import type { Snapshot } from "~/client";
 import { snapshotToHierarchy } from "./tree-utils";
 import type { TreeNodeData } from "./tree-utils";
 
-const NODE_WIDTH = 160;
-const NODE_HEIGHT = 70;
-const NODE_HORIZONTAL_GAP = 20;
-const NODE_VERTICAL_GAP = 60;
+const NODE_WIDTH = 100;
+const NODE_HEIGHT = 90;
+const NODE_HORIZONTAL_GAP = 6;
+const NODE_VERTICAL_GAP = 30;
 
 type PointNode = HierarchyPointNode<TreeNodeData>;
 
@@ -46,6 +46,8 @@ function nodeHTML(data: TreeNodeData): string {
   const borderColor = isActive ? "var(--color-accent)" : "var(--color-border-subtle)";
   const dotColor = statusDotColors[data.status] ?? "var(--color-border-subtle)";
 
+  const statusLine = `<div class="tree-node-status">${esc(data.status)}</div>`;
+
   let detail = "";
   if (data.currentAction) {
     detail = `<div class="tree-node-detail">${esc(data.currentAction)}</div>`;
@@ -55,10 +57,10 @@ function nodeHTML(data: TreeNodeData): string {
 
   const costLine =
     typeof data.cost === "number"
-      ? `<div class="tree-node-detail" style="margin-top:2px">${formatCost(data.cost)}</div>`
+      ? `<div class="tree-node-cost">${formatCost(data.cost)}</div>`
       : "";
 
-  return `<div xmlns="http://www.w3.org/1999/xhtml" class="tree-node-card" style="border-color:${borderColor}"><div class="tree-node-header"><span class="tree-node-dot" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${detail}${costLine}</div>`;
+  return `<div xmlns="http://www.w3.org/1999/xhtml" class="tree-node-card" style="border-color:${borderColor}"><div class="tree-node-header"><span class="tree-node-dot" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${statusLine}${detail}${costLine}</div>`;
 }
 
 function nodeKey(d: HierarchyNode<TreeNodeData>): string {
@@ -124,8 +126,19 @@ function renderTree(
     }
   }
 
+  // Use separate groups so nodes always render above edges (SVG z-order).
+  let edgeGroup = g.select<SVGGElement>("g.tree-edges");
+  if (edgeGroup.empty()) {
+    edgeGroup = g.append("g").attr("class", "tree-edges");
+  }
+  let nodeGroup = g.select<SVGGElement>("g.tree-nodes");
+  if (nodeGroup.empty()) {
+    nodeGroup = g.append("g").attr("class", "tree-nodes");
+  }
+
   // Edges — join by index (stateless paths, no identity needed).
-  g.selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
+  edgeGroup
+    .selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
     .data(rootNode.links())
     .join("path")
     .attr("class", "link")
@@ -147,7 +160,8 @@ function renderTree(
     );
 
   // Nodes — join by path key so D3 reuses existing foreignObjects.
-  g.selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
+  nodeGroup
+    .selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
     .data(rootNode.descendants(), (d) => nodeKey(d))
     .join(
       (enter) =>

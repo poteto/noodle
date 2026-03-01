@@ -12,7 +12,7 @@ test.describe("Noodle UI smoke", () => {
     // Nav links visible
     await expect(sidebar.getByRole("link", { name: "Dashboard" })).toBeVisible();
     await expect(sidebar.getByRole("link", { name: "Live Feed" })).toBeVisible();
-    await expect(sidebar.getByRole("link", { name: "Tree" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Topology" })).toBeVisible();
 
     // Agents section visible
     await expect(sidebar.getByText("Agents")).toBeVisible();
@@ -39,8 +39,8 @@ test.describe("Noodle UI smoke", () => {
     await expect(page.getByTestId("stats-bar")).toBeVisible();
   });
 
-  test("tree route loads", async ({ page }) => {
-    await page.goto("/tree");
+  test("topology route loads", async ({ page }) => {
+    await page.goto("/topology");
 
     // Tree visualization SVG renders (the large one, not nav icons)
     const svg = page.locator("svg.w-full");
@@ -54,7 +54,7 @@ test.describe("Noodle UI smoke", () => {
     const textarea = page.locator("textarea");
     await expect(textarea).toBeVisible();
 
-    const sendButton = page.getByRole("button", { name: "SEND" });
+    const sendButton = page.getByRole("button", { name: "Send" });
     await expect(sendButton).toBeVisible();
   });
 

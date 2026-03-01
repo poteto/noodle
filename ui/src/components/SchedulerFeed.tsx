@@ -88,6 +88,8 @@ export function SchedulerFeed() {
         </div>
       </header>
 
+      <div className="feed-watermark">NOODLE</div>
+
       <div ref={containerRef} className="feed-content" onScroll={handleScroll}>
         {events.length === 0 && (
           <div
@@ -135,33 +137,37 @@ export function SchedulerFeed() {
       )}
 
       <div className="input-area">
-        <div className="input-wrapper">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Talk to the scheduler..."
-            rows={1}
-          />
-          <div className="input-footer">
+        <div className="input-label">Talk to the scheduler...</div>
+        <div className="input-row">
+          <div className="input-row-field">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter instructions or critique..."
+              rows={1}
+            />
             <div className="input-hint">
-              <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline
+              <kbd>Enter</kbd>
+              <span>send</span>
+              <kbd>Shift+Enter</kbd>
+              <span>newline</span>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {schedulerSession?.status === "running" && (
-                <button type="button" className="btn-stop" onClick={handleStop}>
-                  STOP
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn-submit"
-                onClick={handleSubmit}
-                disabled={isPending || !input.trim()}
-              >
-                SEND
+          </div>
+          <div className="input-row-actions">
+            {schedulerSession?.status === "running" && (
+              <button type="button" className="btn-stop" onClick={handleStop}>
+                Stop
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="btn-submit"
+              onClick={handleSubmit}
+              disabled={isPending || !input.trim()}
+            >
+              Send
+            </button>
           </div>
         </div>
       </div>

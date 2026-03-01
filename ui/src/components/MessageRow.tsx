@@ -10,6 +10,8 @@ const TOOL_BADGE_CLASS: Record<string, string> = {
   Grep: "badge-read",
 };
 
+const TOOL_LABELS = new Set(["Read", "Edit", "Write", "Bash", "Glob", "Grep"]);
+
 const MARKDOWN_LABELS = new Set(["Think", "Prompt"]);
 
 function formatTime(iso: string): string {
@@ -30,6 +32,9 @@ function typeClass(event: EventLine): string {
   }
   if (event.label === "Think") {
     return "type-system";
+  }
+  if (TOOL_LABELS.has(event.label)) {
+    return "type-tool";
   }
   if (event.label === "Manager") {
     return "from-manager";
@@ -88,9 +93,22 @@ export function MessageRow({ event }: { event: EventLine }) {
   }
 
   const badgeCls = TOOL_BADGE_CLASS[event.label] ?? "";
+  const tc = typeClass(event);
+
+  if (tc === "type-tool") {
+    return (
+      <div className={`message-row ${tc}`}>
+        <div className="msg-meta">
+          <span className={`msg-badge ${badgeCls}`}>{event.label}</span>
+          <span>{formatTime(event.at)}</span>
+        </div>
+        <BodyContent event={event} />
+      </div>
+    );
+  }
 
   return (
-    <div className={`message-row ${typeClass(event)}`}>
+    <div className={`message-row ${tc}`}>
       <div className="msg-avatar">{initials(event.label)}</div>
       <div>
         <div className="msg-meta">

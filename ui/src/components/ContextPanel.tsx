@@ -60,27 +60,90 @@ function findOrderForSession(sessionId: string, snapshot: Snapshot): Order | und
   );
 }
 
+function SystemFooter({ snapshot }: { snapshot: Snapshot }) {
+  return (
+    <div className="context-footer">
+      <div className="context-footer-grid">
+        <div>
+          <div className="context-footer-label">Loop</div>
+          <div className="context-footer-value">{snapshot.loop_state}</div>
+        </div>
+        <div>
+          <div className="context-footer-label">Active</div>
+          <div className="context-footer-value">{snapshot.active.length}</div>
+        </div>
+        <div>
+          <div className="context-footer-label">Orders</div>
+          <div className="context-footer-value">{snapshot.orders.length}</div>
+        </div>
+        <div>
+          <div className="context-footer-label">Cost</div>
+          <div className="context-footer-value">{formatCost(snapshot.total_cost_usd)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
-  const activeCount = snapshot.active.length;
-  const orderCount = snapshot.orders.length;
   const warningCount = snapshot.warnings?.length ?? 0;
   const warningsWithKeys = keyByOccurrence(snapshot.warnings ?? []);
+  const completedOrders = snapshot.orders.filter((o) => o.status === "completed").length;
 
   return (
     <>
       <div className="context-header">System Status</div>
 
-      <div className="context-body">
-        <div className="metric-grid">
-          <MetricCard label="Loop" value={snapshot.loop_state} />
-          <MetricCard label="Active" value={String(activeCount)} />
-          <MetricCard label="Orders" value={String(orderCount)} />
-          <MetricCard label="Cost" value={formatCost(snapshot.total_cost_usd)} />
-        </div>
+      <div className="metric-grid">
+        <MetricCard label="Loop" value={snapshot.loop_state} />
+        <MetricCard label="Active" value={String(snapshot.active.length)} />
+        <MetricCard label="Orders" value={String(snapshot.orders.length)} />
+        <MetricCard label="Cost" value={formatCost(snapshot.total_cost_usd)} />
+      </div>
 
-        {warningCount > 0 && (
-          <>
-            <div className="ctx-section-label">Warnings</div>
+      {snapshot.active.length > 0 && (
+        <>
+          <div className="ctx-section-label">Active Agents</div>
+          <div className="stage-rail">
+            {snapshot.active.map((s) => {
+              const isRunning = s.status === "running";
+              return (
+                <div key={s.id} className={`stage-item ${isRunning ? "current" : ""}`}>
+                  <div className={`stage-dot ${isRunning ? "active" : "pending"}`} />
+                  <span>{s.display_name || s.id}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {snapshot.orders.length > 0 && (
+        <>
+          <div className="ctx-section-label">Pipeline</div>
+          <div className="ctx-progress">
+            <div className="ctx-progress-label">
+              <span>
+                {completedOrders}/{snapshot.orders.length} orders
+              </span>
+            </div>
+            <div className="ctx-progress-bar">
+              <div
+                className="ctx-progress-fill"
+                style={{
+                  width: `${snapshot.orders.length > 0 ? (completedOrders / snapshot.orders.length) * 100 : 0}%`,
+                  background: "var(--color-green)",
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {warningCount > 0 && (
+        <>
+          <div className="ctx-section-label">Warnings</div>
+          <div style={{ padding: "0 16px" }}>
             <div className="file-list">
               {warningsWithKeys.map((warning) => (
                 <div
@@ -92,9 +155,9 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
                 </div>
               ))}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -113,74 +176,72 @@ function AgentContext({ session, snapshot }: { session: Session; snapshot: Snaps
     <>
       <div className="context-header">{session.display_name || session.id}</div>
 
-      <div className="context-body">
-        <div className="metric-grid">
-          <MetricCard label="Cost" value={formatCost(session.total_cost_usd)} />
-          <MetricCard label="Duration" value={formatDuration(session.duration_seconds)} />
-          <MetricCard label="Context" value={`${cwPct}%`} />
-          <MetricCard label="Model" value={session.model} />
-        </div>
-
-        {/* Context window bar */}
-        <div className="ctx-progress">
-          <div className="ctx-progress-bar">
-            <div
-              className="ctx-progress-fill"
-              style={{
-                width: `${Math.min(cwPct, 100)}%`,
-                background: contextFillColor(cwPct),
-              }}
-            />
-          </div>
-          <div className="ctx-progress-label">
-            <span>{cwPct}% context used</span>
-          </div>
-        </div>
-
-        {/* Stage pipeline */}
-        {order && (
-          <>
-            <div className="ctx-section-label">Pipeline</div>
-            <StageRail stages={order.stages} />
-
-            {totalStages > 0 && (
-              <div className="ctx-progress" style={{ marginTop: 12 }}>
-                <div className="ctx-progress-bar">
-                  <div
-                    className="ctx-progress-fill"
-                    style={{ width: `${progressPct}%`, background: "var(--color-green)" }}
-                  />
-                </div>
-                <div className="ctx-progress-label">
-                  <span>
-                    {completedStages}/{totalStages} stages
-                  </span>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Files touched */}
-        {filesTouched.length > 0 && (
-          <>
-            <div className="ctx-section-label">Files ({filesTouched.length})</div>
-            <div className="file-list">
-              {filesTouched.map((f) => (
-                <div key={`${f.action}:${f.path}`} className="file-item">
-                  <span className={`file-action ${f.action}`}>{f.action}</span>
-                  <span
-                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                    title={f.path}
-                  >
-                    {f.path}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+      <div className="metric-grid">
+        <MetricCard label="Cost" value={formatCost(session.total_cost_usd)} />
+        <MetricCard label="Duration" value={formatDuration(session.duration_seconds)} />
+        <MetricCard label="Context" value={`${cwPct}%`} />
+        <MetricCard label="Model" value={session.model} />
       </div>
+
+      {/* Context window bar */}
+      <div className="ctx-progress">
+        <div className="ctx-progress-bar">
+          <div
+            className="ctx-progress-fill"
+            style={{
+              width: `${Math.min(cwPct, 100)}%`,
+              background: contextFillColor(cwPct),
+            }}
+          />
+        </div>
+        <div className="ctx-progress-label">
+          <span>{cwPct}% context used</span>
+        </div>
+      </div>
+
+      {/* Stage pipeline */}
+      {order && (
+        <>
+          <div className="ctx-section-label">Pipeline</div>
+          <StageRail stages={order.stages} />
+
+          {totalStages > 0 && (
+            <div className="ctx-progress" style={{ marginTop: 12 }}>
+              <div className="ctx-progress-bar">
+                <div
+                  className="ctx-progress-fill"
+                  style={{ width: `${progressPct}%`, background: "var(--color-green)" }}
+                />
+              </div>
+              <div className="ctx-progress-label">
+                <span>
+                  {completedStages}/{totalStages} stages
+                </span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Files touched */}
+      {filesTouched.length > 0 && (
+        <>
+          <div className="ctx-section-label">Files ({filesTouched.length})</div>
+          <div className="file-list">
+            {filesTouched.map((f) => (
+              <div key={`${f.action}:${f.path}`} className="file-item">
+                <span className={`file-action ${f.action}`}>{f.action}</span>
+                <span
+                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  title={f.path}
+                >
+                  {f.path}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -243,6 +304,7 @@ export function ContextPanel() {
   return (
     <aside className="context-panel">
       <div style={{ flex: 1, overflowY: "auto" }}>{content}</div>
+      <SystemFooter snapshot={snapshot} />
     </aside>
   );
 }
