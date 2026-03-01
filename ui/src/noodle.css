@@ -691,6 +691,12 @@
   width: 160px;
   color: var(--color-text-primary);
 }
+foreignObject.node.node-clickable .tree-node-card {
+  cursor: pointer;
+}
+foreignObject.node.node-clickable .tree-node-card:hover {
+  border-color: var(--color-accent) !important;
+}
 .tree-node-header {
   display: flex;
   align-items: center;

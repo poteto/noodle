@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import * as d3 from "d3";
 import { useSuspenseSnapshot, formatCost } from "~/client";
+import { useNavigate } from "@tanstack/react-router";
 import type { Snapshot } from "~/client";
 import { snapshotToHierarchy } from "./tree-utils";
 import type { TreeNodeData } from "./tree-utils";
@@ -58,10 +59,18 @@ function nodeKey(d: d3.HierarchyNode<TreeNodeData>): string {
     .join("/");
 }
 
+function actorSessionId(data: TreeNodeData): string | null {
+  if (data.type !== "stage" || !data.sessionId) {
+    return null;
+  }
+  return data.sessionId;
+}
+
 function renderTree(
   svgEl: SVGSVGElement,
   snapshot: Snapshot,
   zoomRef: React.MutableRefObject<d3.ZoomBehavior<SVGSVGElement, unknown> | null>,
+  onActorClick: (sessionId: string) => void,
 ) {
   const root = d3.hierarchy(snapshotToHierarchy(snapshot));
   const treeLayout = d3.tree<TreeNodeData>().nodeSize([NODE_WIDTH + 40, NODE_HEIGHT + 60]);
@@ -134,6 +143,13 @@ function renderTree(
     )
     .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
     .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
+    .classed("node-clickable", (d) => actorSessionId(d.data) !== null)
+    .on("click", (_, d) => {
+      const sessionId = actorSessionId(d.data);
+      if (sessionId) {
+        onActorClick(sessionId);
+      }
+    })
     .each(function (d) {
       this.innerHTML = nodeHTML(d.data);
     });
@@ -141,14 +157,21 @@ function renderTree(
 
 export function TreeView() {
   const { data: snapshot } = useSuspenseSnapshot();
+  const navigate = useNavigate();
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const handleActorClick = useCallback(
+    (sessionId: string) => {
+      navigate({ to: "/actor/$id", params: { id: sessionId } });
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     if (svgRef.current) {
-      renderTree(svgRef.current, snapshot, zoomRef);
+      renderTree(svgRef.current, snapshot, zoomRef, handleActorClick);
     }
-  }, [snapshot]);
+  }, [snapshot, handleActorClick]);
 
   const handleZoomIn = useCallback(() => {
     if (svgRef.current && zoomRef.current) {

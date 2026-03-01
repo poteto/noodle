@@ -36,7 +36,7 @@ function orderToNode(order: Order, sessions: Session[]): TreeNodeData {
         cost: session?.total_cost_usd,
         model: session?.model,
         currentAction: session?.current_action,
-        sessionId: session?.id,
+        sessionId: stage.session_id,
       };
     }),
   };

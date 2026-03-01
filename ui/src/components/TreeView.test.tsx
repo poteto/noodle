@@ -109,4 +109,18 @@ describe("snapshotToHierarchy", () => {
     expect(stage.currentAction).toBe("Reading file");
     expect(stage.sessionId).toBe("sess-1");
   });
+
+  it("keeps stage sessionId even when session details are missing", () => {
+    const snapshot = buildSnapshot({
+      orders: [
+        buildOrder({
+          stages: [buildStage({ session_id: "actor-42", status: "active" })],
+        }),
+      ],
+      sessions: [],
+    });
+
+    const stage = snapshotToHierarchy(snapshot).children![0]!.children![0]!;
+    expect(stage.sessionId).toBe("actor-42");
+  });
 });
