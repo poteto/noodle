@@ -126,3 +126,69 @@ func TestHandleCompletionFailureForwardsToScheduler(t *testing.T) {
 		t.Fatalf("stage status = %q, want %q", got, StageStatusFailed)
 	}
 }
+
+func TestHandleCompletionCancelledClassifiesAsStageTerminal(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{
+		Orders: []Order{{
+			ID:     "order-1",
+			Status: OrderStatusActive,
+			Stages: []Stage{{
+				TaskKey: "execute",
+				Skill:   "execute",
+				Status:  StageStatusActive,
+			}},
+		}},
+	}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	failedCook := &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID:    "order-1",
+			stageIndex: 0,
+			stage: Stage{
+				TaskKey: "execute",
+				Skill:   "execute",
+			},
+		},
+		session: &mockSession{
+			id:     "order-1-session",
+			status: "cancelled",
+			done:   make(chan struct{}),
+		},
+	}
+
+	if err := l.handleCompletion(context.Background(), failedCook, StageResultCancelled, "cancelled"); err != nil {
+		t.Fatalf("handleCompletion: %v", err)
+	}
+
+	if l.lastLoopFailure == nil {
+		t.Fatal("lastLoopFailure = nil, want classification recorded")
+	}
+	if l.lastLoopFailure.Class != CycleFailureClassOrderHard {
+		t.Fatalf("lastLoopFailure class = %q, want %q", l.lastLoopFailure.Class, CycleFailureClassOrderHard)
+	}
+	if l.lastLoopFailure.OrderClass != OrderFailureClassStageTerminal {
+		t.Fatalf("lastLoopFailure order class = %q, want %q", l.lastLoopFailure.OrderClass, OrderFailureClassStageTerminal)
+	}
+	if !strings.Contains(l.lastLoopFailure.Message, "cook cancelled with status cancelled") {
+		t.Fatalf("lastLoopFailure message = %q, want cancelled failure wording", l.lastLoopFailure.Message)
+	}
+}

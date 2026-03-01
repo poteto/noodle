@@ -129,7 +129,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		stageMsg := l.readStageMessage(cook.session.ID())
 		if stageMsg != nil && stageMsg.IsBlocking() {
 			l.logger.Info("stage message blocks advance", "order", cook.orderID, "session", cook.session.ID())
-			l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message)
+			l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message, nil)
 			_ = l.parkPendingReview(cook, "blocked by stage message: "+stageMsg.Message)
 			return nil
 		}
@@ -137,7 +137,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		var msg *string
 		if stageMsg != nil {
 			msg = &stageMsg.Message
-			l.forwardToScheduler(cook, "stage_message", stageMsg.Message)
+			l.forwardToScheduler(cook, "stage_message", stageMsg.Message, nil)
 		}
 
 		canMerge := l.canMergeStage(cook.stage)
@@ -194,6 +194,12 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		}
 	}
 	reason := "cook exited with status " + status
+	// Cancellation is intentionally classified as stage-terminal order-hard.
+	// It terminates the current stage while keeping the loop recoverable for
+	// other orders and future retries.
+	if resultStatus == StageResultCancelled {
+		reason = "cook cancelled with status " + status
+	}
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
@@ -238,7 +244,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		nil,
 	)
 
-	l.forwardToScheduler(cook, "stage_failed", reason)
+	l.forwardToScheduler(cook, "stage_failed", reason, nil)
 	if strings.TrimSpace(cook.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}
@@ -288,7 +294,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 // forwardToScheduler sends a message to the scheduler session about an event.
 // Best-effort — if the scheduler is not alive, the message is dropped and the
 // order stays in the orders file for later recovery.
-func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details string, mistake ...*AgentMistakeEnvelope) {
+func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details string, mistake *AgentMistakeEnvelope) {
 	var schedulerCook *cookHandle
 	for _, c := range l.cooks.activeCooksByOrder {
 		if isScheduleStage(c.stage) {
@@ -308,9 +314,9 @@ func (l *Loop) forwardToScheduler(cook *cookHandle, eventType string, details st
 		return
 	}
 	classification := ""
-	if len(mistake) > 0 && mistake[0] != nil {
-		classification = fmt.Sprintf(" owner=%s scope=%s", mistake[0].Owner, mistake[0].Scope)
-		if reason := agentMistakeReason(mistake[0]); reason != "" {
+	if mistake != nil {
+		classification = fmt.Sprintf(" owner=%s scope=%s", mistake.Owner, mistake.Scope)
+		if reason := agentMistakeReason(mistake); reason != "" {
 			classification += " reason=" + reason
 		}
 	}

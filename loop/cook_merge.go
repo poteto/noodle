@@ -149,7 +149,7 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 		// Forward conflict to scheduler and mark the stage as failed.
 		reason := "merge conflict: " + conflictErr.Error()
 		l.logger.Warn("merge conflict, forwarding to scheduler", "order", cook.orderID, "reason", reason)
-		l.forwardToScheduler(cook, "merge_conflict", reason)
+		l.forwardToScheduler(cook, "merge_conflict", reason, nil)
 		_ = l.events.Emit(LoopEventMergeConflict, MergeConflictPayload{
 			OrderID:      cook.orderID,
 			StageIndex:   cook.stageIndex,
@@ -175,7 +175,7 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	reason := "merge failed: " + err.Error()
 	schedulerHint := reason + ". Use Skill(schedule) and create a new order to fix this issue before retrying."
 	l.logger.Warn("merge failed, forwarding to scheduler", "order", cook.orderID, "reason", reason)
-	l.forwardToScheduler(cook, "merge_failed", schedulerHint)
+	l.forwardToScheduler(cook, "merge_failed", schedulerHint, nil)
 
 	orders, ordersErr := l.currentOrders()
 	if ordersErr != nil {

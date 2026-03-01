@@ -265,10 +265,10 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 	reason := getString("reason")
 	owner := getNestedString("failure", "owner")
 	failureClass := getNestedString("failure", "class")
-	prefix := ""
-	if owner != "" && failureClass == string(failure.FailureClassAgentMistake) {
-		prefix = "[" + owner + "] "
-	}
+	prefix := failure.OwnerPrefixForDisplay(
+		failure.FailureClass(failureClass),
+		failure.FailureOwner(owner),
+	)
 
 	switch eventType {
 	case "stage.completed":

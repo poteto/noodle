@@ -266,8 +266,8 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 }
 
 func failureOwnerPrefix(metadata *loop.EventFailureMetadata) string {
-	if metadata == nil || metadata.Owner == "" || metadata.Class != failure.FailureClassAgentMistake {
+	if metadata == nil {
 		return ""
 	}
-	return "[" + string(metadata.Owner) + "] "
+	return failure.OwnerPrefixForDisplay(metadata.Class, metadata.Owner)
 }

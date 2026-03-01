@@ -38,6 +38,7 @@ GO_FILES="$TMP_DIR/go-files.txt"
 find . \
   \( \
     -path "./.git" -o \
+    -path "./.claude/worktrees" -o \
     -path "./.worktrees" -o \
     -path "./.noodle" -o \
     -path "./bin" -o \
@@ -99,6 +100,7 @@ LEGACY_FIXTURES="$TMP_DIR/legacy-fixture-files.txt"
 find . \
   \( \
     -path "./.git" -o \
+    -path "./.claude/worktrees" -o \
     -path "./.worktrees" -o \
     -path "./.noodle" -o \
     -path "./bin" \

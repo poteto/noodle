@@ -259,7 +259,7 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 			stageIndex: cand.StageIndex,
 			stage:      stage,
 		},
-	}, "dispatch_failed", reason)
+	}, "dispatch_failed", reason, nil)
 	l.classifyOrderHard(
 		"cycle.dispatch_terminal",
 		OrderFailureClassStageTerminal,
