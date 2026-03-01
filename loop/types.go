@@ -18,6 +18,7 @@ import (
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
+	"github.com/poteto/noodle/worktree"
 )
 
 type State string
@@ -128,7 +129,7 @@ type pendingReviewCook struct {
 }
 
 type WorktreeManager interface {
-	Create(name string) error
+	Create(name string, opts ...worktree.CreateOpts) error
 	Merge(name, into string) error
 	MergeRemoteBranch(branch string) error
 	Cleanup(name string, force bool) error

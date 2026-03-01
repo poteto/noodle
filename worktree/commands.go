@@ -7,8 +7,18 @@ import (
 	"path/filepath"
 )
 
+// CreateOpts holds optional parameters for Create.
+type CreateOpts struct {
+	// From is the branch or commit to base the new worktree on. Empty means HEAD.
+	From string
+}
+
 // Create creates a new worktree and branch, symlinks local settings, and installs deps.
-func (a *App) Create(name string) error {
+func (a *App) Create(name string, opts ...CreateOpts) error {
+	var o CreateOpts
+	if len(opts) > 0 {
+		o = opts[0]
+	}
 	wtPath := WorktreePath(a.Root, name)
 
 	if a.git("check-ignore", "-q", ".worktrees").Run() != nil {
@@ -27,7 +37,11 @@ func (a *App) Create(name string) error {
 	}
 
 	a.info(fmt.Sprintf("Creating worktree at %s...", wtPath))
-	if err := a.gitRun("worktree", "add", wtPath, "-b", name); err != nil {
+	addArgs := []string{"worktree", "add", wtPath, "-b", name}
+	if o.From != "" {
+		addArgs = append(addArgs, o.From)
+	}
+	if err := a.gitRun(addArgs...); err != nil {
 		// Reuse an existing local branch if it already exists but has no worktree path.
 		if a.branchExists(name) {
 			if retryErr := a.gitRun("worktree", "add", wtPath, name); retryErr == nil {

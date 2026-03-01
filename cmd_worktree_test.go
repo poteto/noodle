@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"testing"
+
+	"github.com/poteto/noodle/worktree"
 )
 
 func TestWorktreeCreateDispatches(t *testing.T) {
@@ -26,6 +28,35 @@ func TestWorktreeCreateDispatches(t *testing.T) {
 	}
 	if fake.createName != "feat-a" {
 		t.Fatalf("create name = %q", fake.createName)
+	}
+	if fake.createFrom != "" {
+		t.Fatalf("create from = %q, want empty", fake.createFrom)
+	}
+}
+
+func TestWorktreeCreateFromFlag(t *testing.T) {
+	originalFactory := newWorktreeCommandApp
+	t.Cleanup(func() {
+		newWorktreeCommandApp = originalFactory
+	})
+
+	fake := &fakeWorktreeCommandApp{}
+	newWorktreeCommandApp = func() (worktreeCommandApp, error) {
+		return fake, nil
+	}
+
+	cmd := newWorktreeCmd(nil)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"create", "--from", "develop", "feat-b"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("worktree create --from: %v", err)
+	}
+	if fake.createName != "feat-b" {
+		t.Fatalf("create name = %q, want %q", fake.createName, "feat-b")
+	}
+	if fake.createFrom != "develop" {
+		t.Fatalf("create from = %q, want %q", fake.createFrom, "develop")
 	}
 }
 
@@ -144,6 +175,7 @@ func TestWorktreeHookBypassesAppFactory(t *testing.T) {
 
 type fakeWorktreeCommandApp struct {
 	createName   string
+	createFrom   string
 	execName     string
 	execArgs     []string
 	mergeName    string
@@ -154,8 +186,11 @@ type fakeWorktreeCommandApp struct {
 	pruneCalled  bool
 }
 
-func (f *fakeWorktreeCommandApp) Create(name string) error {
+func (f *fakeWorktreeCommandApp) Create(name string, opts ...worktree.CreateOpts) error {
 	f.createName = name
+	if len(opts) > 0 {
+		f.createFrom = opts[0].From
+	}
 	return nil
 }
 

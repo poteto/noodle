@@ -34,7 +34,9 @@ func Commands() []Command {
 			{Name: "list", Short: "List available schema targets"},
 		}},
 		{Name: "worktree", Short: "Manage linked git worktrees", Subcommands: []Command{
-			{Name: "create", Short: "Create a new linked worktree"},
+			{Name: "create", Short: "Create a new linked worktree", Flags: []Flag{
+				{Name: "from", Type: "string", Desc: "Branch or commit to base the new worktree on (default: HEAD)"},
+			}},
 			{Name: "exec", Short: "Run command inside worktree (CWD-safe)"},
 			{Name: "merge", Short: "Merge a worktree branch into a target branch", Flags: []Flag{
 				{Name: "into", Type: "string", Desc: "Target branch to merge into (default: integration branch)"},

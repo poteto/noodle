@@ -17,6 +17,7 @@ import (
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
+	"github.com/poteto/noodle/worktree"
 )
 
 type fakeWorktree struct {
@@ -30,7 +31,7 @@ type fakeWorktree struct {
 	createErrByName map[string]error
 }
 
-func (f *fakeWorktree) Create(name string) error {
+func (f *fakeWorktree) Create(name string, _ ...worktree.CreateOpts) error {
 	f.created = append(f.created, name)
 	if f.createErrByName != nil {
 		if err, ok := f.createErrByName[name]; ok {

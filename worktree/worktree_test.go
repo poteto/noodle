@@ -361,6 +361,42 @@ func TestCreateReusesExistingBranch(t *testing.T) {
 	}
 }
 
+func TestCreateFromBranch(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+
+	// Create a branch with an extra commit that main doesn't have.
+	runGitIn(t, dir, "checkout", "-b", "base-branch")
+	writeFile(t, filepath.Join(dir, "base.txt"), "from base branch")
+	runGitIn(t, dir, "add", "base.txt")
+	runGitIn(t, dir, "commit", "-m", "base branch commit")
+	baseCommit := gitOutputIn(t, dir, "rev-parse", "HEAD")
+	runGitIn(t, dir, "checkout", "main")
+
+	app := &App{Root: dir}
+	if err := app.Create("from-test", CreateOpts{From: "base-branch"}); err != nil {
+		t.Fatalf("Create --from failed: %v", err)
+	}
+
+	wtPath := WorktreePath(dir, "from-test")
+	if !fileExists(wtPath) {
+		t.Fatal("worktree directory not created")
+	}
+
+	// The worktree should start at the base-branch commit.
+	wtCommit := gitOutputIn(t, wtPath, "rev-parse", "HEAD")
+	if wtCommit != baseCommit {
+		t.Fatalf("worktree HEAD = %s, want %s (base-branch)", wtCommit, baseCommit)
+	}
+
+	// The file from base-branch should be present.
+	if !fileExists(filepath.Join(wtPath, "base.txt")) {
+		t.Fatal("base.txt not found in worktree — --from did not use correct start point")
+	}
+}
+
 func TestExec(t *testing.T) {
 	t.Parallel()
 	skipWorktreeIntegrationShort(t)

@@ -19,7 +19,7 @@ import (
 
 type noOpWorktree struct{}
 
-func (noOpWorktree) Create(string) error            { return nil }
+func (noOpWorktree) Create(string, ...worktree.CreateOpts) error { return nil }
 func (noOpWorktree) Merge(string, string) error     { return nil }
 func (noOpWorktree) MergeRemoteBranch(string) error { return nil }
 func (noOpWorktree) Cleanup(string, bool) error     { return nil }

@@ -11,7 +11,7 @@ import (
 )
 
 type worktreeCommandApp interface {
-	Create(name string) error
+	Create(name string, opts ...worktree.CreateOpts) error
 	Exec(name string, args []string) error
 	Merge(name, into string) error
 	Cleanup(name string, force bool) error
@@ -59,7 +59,8 @@ func newWorktreeHookCmd() *cobra.Command {
 }
 
 func newWorktreeCreateCmd() *cobra.Command {
-	return &cobra.Command{
+	var from string
+	cmd := &cobra.Command{
 		Use:   "create <name>",
 		Short: cmdmeta.Short("worktree", "create"),
 		Args:  exactTrimmedArgs(1),
@@ -68,9 +69,15 @@ func newWorktreeCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return wApp.Create(strings.TrimSpace(args[0]))
+			var opts []worktree.CreateOpts
+			if f := strings.TrimSpace(from); f != "" {
+				opts = append(opts, worktree.CreateOpts{From: f})
+			}
+			return wApp.Create(strings.TrimSpace(args[0]), opts...)
 		},
 	}
+	cmd.Flags().StringVar(&from, "from", "", "Branch or commit to base the new worktree on (default: HEAD)")
+	return cmd
 }
 
 func newWorktreeExecCmd() *cobra.Command {
