@@ -16,6 +16,11 @@ The `brain/` directory is an Obsidian vault — persistent memory across session
 - **User ordering:** Follow bullet/numbered list order. Don't reorder silently.
 - **Isolation:** Multiple sessions run concurrently — use `Skill(worktree)` and `Skill(commit)`.
 
+## Building
+
+- **Build:** `pnpm build`, not bare `go build`.
+- **Check:** `pnpm check` (full suite).
+
 ## Coding
 
 - **Error messages:** Describe failure state ("session not found"), not expectations ("session must exist").
