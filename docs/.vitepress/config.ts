@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
+  base: "/noodle/",
   title: "Noodle",
   description:
     "Open-source AI coding framework. Skills as the only extension point, LLM-powered scheduling, kitchen brigade model.",
