@@ -12,13 +12,18 @@ import (
 )
 
 func TestDispatchSessionFallsBackToProcess(t *testing.T) {
+	tmuxRT := newMockRuntime()
+	tmuxRT.dispatchErr = errors.New("tmux runtime unavailable")
 	processRT := newMockRuntime()
 
 	cfg := config.DefaultConfig()
 	cfg.Runtime.Default = "tmux"
 
 	l := New(t.TempDir(), "noodle", cfg, Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": processRT},
+		Runtimes: map[string]loopruntime.Runtime{
+			"tmux":    tmuxRT,
+			"process": processRT,
+		},
 		Worktree: &fakeWorktree{},
 		Adapter:  &fakeAdapterRunner{},
 		Mise:     &fakeMise{},
@@ -52,6 +57,13 @@ func TestDispatchSessionFallsBackToProcess(t *testing.T) {
 		t.Fatalf("fallback selected runtime = %q, want process", fallback.SelectedRuntime)
 	}
 
+	tmuxRT.mu.Lock()
+	if len(tmuxRT.calls) != 1 {
+		tmuxRT.mu.Unlock()
+		t.Fatalf("expected 1 dispatch call to tmux runtime, got %d", len(tmuxRT.calls))
+	}
+	tmuxRT.mu.Unlock()
+
 	processRT.mu.Lock()
 	defer processRT.mu.Unlock()
 	if len(processRT.calls) != 1 {
@@ -62,12 +74,13 @@ func TestDispatchSessionFallsBackToProcess(t *testing.T) {
 	}
 }
 
-func TestDispatchSessionErrorsWhenProcessAlsoMissing(t *testing.T) {
+func TestDispatchSessionInvalidRuntimeIsUnrecoverable(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Runtime.Default = "tmux"
+	processRT := newMockRuntime()
 
 	l := New(t.TempDir(), "noodle", cfg, Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{},
+		Runtimes: map[string]loopruntime.Runtime{"process": processRT},
 		Worktree: &fakeWorktree{},
 		Adapter:  &fakeAdapterRunner{},
 		Mise:     &fakeMise{},
@@ -83,7 +96,7 @@ func TestDispatchSessionErrorsWhenProcessAlsoMissing(t *testing.T) {
 
 	_, _, err := l.dispatchSession(context.Background(), req)
 	if err == nil {
-		t.Fatal("expected error when both tmux and process runtimes are missing")
+		t.Fatal("expected error for invalid runtime configuration")
 	}
 	envelope, ok := asDispatchFailureEnvelope(err)
 	if !ok {
@@ -97,6 +110,12 @@ func TestDispatchSessionErrorsWhenProcessAlsoMissing(t *testing.T) {
 	}
 	if envelope.Runtime != "tmux" {
 		t.Fatalf("runtime = %q, want tmux", envelope.Runtime)
+	}
+
+	processRT.mu.Lock()
+	defer processRT.mu.Unlock()
+	if len(processRT.calls) != 0 {
+		t.Fatalf("process runtime should not be called for invalid runtime, got %d call(s)", len(processRT.calls))
 	}
 }
 

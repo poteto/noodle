@@ -170,25 +170,6 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	}
 
 	runtime := l.deps.Runtimes[runtimeName]
-	if runtime == nil && runtimeName != "process" {
-		if fallback := l.deps.Runtimes["process"]; fallback != nil {
-			l.logger.Warn("runtime not configured, falling back to process", "runtime", runtimeName)
-			req.Runtime = "process"
-			missingErr := newRuntimeNotConfiguredError(runtimeName)
-			req.DispatchWarning = missingErr.Error()
-			outcome := newRuntimeFallbackOutcome(
-				runtimeName,
-				"process",
-				"runtime fallback used process dispatcher",
-				missingErr,
-			)
-			session, err := fallback.Dispatch(ctx, req)
-			if err != nil {
-				return nil, outcome, classifyAgentStartFailure("process", err)
-			}
-			return session, outcome, nil
-		}
-	}
 	if runtime == nil {
 		notConfigured := newRuntimeNotConfiguredError(runtimeName)
 		return nil, RuntimeFallbackOutcome{}, classifyAgentStartFailure(runtimeName, notConfigured)
