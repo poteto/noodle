@@ -505,6 +505,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .feed-badge {
