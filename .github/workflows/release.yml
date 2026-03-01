@@ -1,21 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version tag to create (e.g. v0.2.0)"
-        required: true
-      sha:
-        description: "Commit SHA to release (defaults to HEAD)"
-        required: false
-      dry_run:
-        description: "Dry run — validate without publishing"
-        type: boolean
-        default: false
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -26,14 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.sha || github.sha }}
           fetch-depth: 0
-
-      - name: Create tag
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
-        run: |
-          git tag "${{ github.event.inputs.version }}"
-          git push origin "${{ github.event.inputs.version }}"
 
       - uses: actions/setup-go@v5
         with:
@@ -42,7 +22,7 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean ${{ github.event.inputs.dry_run == 'true' && '--snapshot' || '' }}
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
