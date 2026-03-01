@@ -1,6 +1,6 @@
 # Noodle
 
-AI coding framework. Agents do the work, humans steer. Built in Go.
+Skill-based agent orchestration. Built in Go.
 
 ## Install
 

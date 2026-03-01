@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: NOODLE
-  text: AI coding framework
-  tagline: Skills as the only extension point. LLM-powered scheduling. Kitchen brigade model.
+  text: Skill-based agent orchestration
+  tagline: Build your own agent orchestration workflow. Skills in, code out.
   actions:
     - theme: brand
       text: Get Started
