@@ -7,7 +7,7 @@ priority: [83, 84, 20, 69, 77]
 
 # Todos
 
-<!-- next-id: 86 -->
+<!-- next-id: 87 -->
 
 ## Bootstrap Skill Fixes
 
@@ -20,6 +20,7 @@ priority: [83, 84, 20, 69, 77]
 ## UI
 
 77. [ ] Add react-window (https://github.com/bvaughn/react-window) — virtualized list rendering for large datasets
+86. [ ] Investigate adding https://diffs.com/ to the web UI — every code change can be represented as a diff, making it easier for users to review code changes inline
 
 ## Backend
 83. [ ] Error recoverability taxonomy
