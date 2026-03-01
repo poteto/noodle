@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/failure"
+	"github.com/poteto/noodle/internal/stringx"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
@@ -63,11 +64,11 @@ func (e runtimeNotConfiguredError) Error() string {
 }
 
 func newRuntimeNotConfiguredError(runtimeName string) runtimeNotConfiguredError {
-	return runtimeNotConfiguredError{Runtime: strings.ToLower(strings.TrimSpace(runtimeName))}
+	return runtimeNotConfiguredError{Runtime: stringx.Normalize(runtimeName)}
 }
 
 func classifyAgentStartFailure(runtimeName string, cause error) DispatchFailureEnvelope {
-	normalizedRuntime := strings.ToLower(strings.TrimSpace(runtimeName))
+	normalizedRuntime := stringx.Normalize(runtimeName)
 	class := AgentStartFailureClassRetryable
 	failureClass := failure.FailureClassAgentStartRetryable
 	if normalizedRuntime == "process" || isRuntimeMisconfiguration(cause) || loopruntime.IsProcessStartFailure(cause) {
@@ -95,8 +96,8 @@ func newRuntimeFallbackOutcome(
 		Class:            AgentStartFailureClassFallback,
 		FailureClass:     failureClass,
 		Recoverability:   failure.RecoverabilityForClass(failureClass),
-		RequestedRuntime: strings.ToLower(strings.TrimSpace(requestedRuntime)),
-		SelectedRuntime:  strings.ToLower(strings.TrimSpace(selectedRuntime)),
+		RequestedRuntime: stringx.Normalize(requestedRuntime),
+		SelectedRuntime:  stringx.Normalize(selectedRuntime),
 		Message:          strings.TrimSpace(message),
 		Cause:            cause,
 	}

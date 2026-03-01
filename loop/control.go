@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) controlPaths() (controlPath string, ackPath string, lockPath string) {
@@ -178,7 +179,7 @@ func appendAcks(path string, acks []ControlAck) error {
 
 func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	ack := ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()}
-	switch strings.ToLower(strings.TrimSpace(cmd.Action)) {
+	switch stringx.Normalize(cmd.Action) {
 	case "pause":
 		l.setState(StatePaused)
 	case "resume":

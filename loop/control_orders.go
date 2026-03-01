@@ -7,10 +7,11 @@ import (
 
 	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/state"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) controlMode(value string) error {
-	value = strings.ToLower(strings.TrimSpace(value))
+	value = stringx.Normalize(value)
 	switch value {
 	case string(state.RunModeAuto), string(state.RunModeSupervised), string(state.RunModeManual):
 		l.config.Mode = value

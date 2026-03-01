@@ -115,9 +115,9 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		displayName = stringx.KitchenName(session.ID())
 	}
 
-	dispatchedRuntime := strings.ToLower(strings.TrimSpace(req.Runtime))
+	dispatchedRuntime := stringx.Normalize(req.Runtime)
 	if fallbackOutcome.Class == AgentStartFailureClassFallback {
-		dispatchedRuntime = strings.ToLower(strings.TrimSpace(fallbackOutcome.SelectedRuntime))
+		dispatchedRuntime = stringx.Normalize(fallbackOutcome.SelectedRuntime)
 	}
 	if dispatchedRuntime == "" {
 		dispatchedRuntime = "process"
@@ -161,9 +161,9 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 }
 
 func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequest) (loopruntime.SessionHandle, RuntimeFallbackOutcome, error) {
-	runtimeName := strings.ToLower(strings.TrimSpace(req.Runtime))
+	runtimeName := stringx.Normalize(req.Runtime)
 	if runtimeName == "" {
-		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
+		runtimeName = stringx.Normalize(l.config.Runtime.Default)
 	}
 	if runtimeName == "" {
 		runtimeName = "process"

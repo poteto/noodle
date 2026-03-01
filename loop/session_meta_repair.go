@@ -2,7 +2,8 @@ package loop
 
 import (
 	"context"
-	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 // runMonitorPass refreshes session meta.json files and applies monitor-side
@@ -58,7 +59,7 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 }
 
 func stageResultFromSessionMetaStatus(raw string) (StageResultStatus, bool) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
+	switch stringx.Normalize(raw) {
 	case "completed", "exited":
 		return StageResultCompleted, true
 	case "failed":

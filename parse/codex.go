@@ -310,7 +310,7 @@ func parseCodexItem(envType string, raw json.RawMessage, ts time.Time) ([]Canoni
 		if envType != "item.completed" {
 			return nil, nil
 		}
-		status := strings.ToLower(strings.TrimSpace(item.Status))
+		status := stringx.Normalize(item.Status)
 		if status != "failed" && status != "error" && status != "cancelled" {
 			return nil, nil
 		}
@@ -412,7 +412,7 @@ func normalizeShellCommand(command string) string {
 }
 
 func parseCodexToolOutputKind(output string) (string, bool) {
-	lower := strings.ToLower(strings.TrimSpace(output))
+	lower := stringx.Normalize(output)
 	switch {
 	case strings.HasPrefix(lower, "exec_command failed:"):
 		return "exec_command", true

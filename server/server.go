@@ -15,6 +15,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/snapshot"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/skill"
 	"github.com/poteto/noodle/worktree"
@@ -415,7 +416,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func isLocalhostOrigin(origin string) bool {
-	origin = strings.ToLower(strings.TrimSpace(origin))
+	origin = stringx.Normalize(origin)
 	if origin == "" {
 		return false
 	}

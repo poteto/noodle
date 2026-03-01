@@ -129,7 +129,7 @@ func isWorktreeAlreadyExistsError(err error) bool {
 // hasSyncWarnings returns true if any warning indicates a sync script problem.
 func hasSyncWarnings(warnings []string) bool {
 	for _, warning := range warnings {
-		warning = strings.ToLower(strings.TrimSpace(warning))
+		warning = stringx.Normalize(warning)
 		if warning == "" {
 			continue
 		}

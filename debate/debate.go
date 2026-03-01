@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 const (
@@ -328,7 +330,7 @@ func verdictPath(debateDir string) string {
 }
 
 func slugify(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
+	value = stringx.Normalize(value)
 	if value == "" {
 		return "debate"
 	}

@@ -2,9 +2,9 @@ package loop
 
 import (
 	"sort"
-	"strings"
 	"time"
 
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -79,7 +79,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 			Model:        cook.stage.Model,
 			StartedAt:    cook.startedAt,
 			DisplayName:  cook.displayName,
-			Status:       strings.ToLower(strings.TrimSpace(cook.session.Status())),
+			Status:       stringx.Normalize(cook.session.Status()),
 			TotalCostUSD: cook.session.TotalCost(),
 		})
 	}

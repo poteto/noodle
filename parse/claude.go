@@ -59,9 +59,9 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 	ts := parseTimestamp(parseTimestampField(payload.Injected), parseTimestampField(payload.Timestamp))
 	switch payload.Type {
 	case "system":
-		subType := strings.ToLower(strings.TrimSpace(payload.SubType))
+		subType := stringx.Normalize(payload.SubType)
 		if subType == "" {
-			subType = strings.ToLower(strings.TrimSpace(payload.Subtype))
+			subType = stringx.Normalize(payload.Subtype)
 		}
 		switch subType {
 		case "init":
@@ -123,9 +123,9 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		event.CostUSD = extractClaudeCost(line)
 		event.TokensIn, event.TokensOut = extractClaudeUsage(payload.Usage)
 
-		subType := strings.ToLower(strings.TrimSpace(payload.SubType))
+		subType := stringx.Normalize(payload.SubType)
 		if subType == "" {
-			subType = strings.ToLower(strings.TrimSpace(payload.Subtype))
+			subType = stringx.Normalize(payload.Subtype)
 		}
 
 		isError := parseFlexibleBool(payload.IsError) || parseFlexibleBool(payload.IsErrorV2)
@@ -286,7 +286,7 @@ func parseFlexibleBool(raw json.RawMessage) bool {
 
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
-		asString = strings.ToLower(strings.TrimSpace(asString))
+		asString = stringx.Normalize(asString)
 		return asString == "true" || asString == "1" || asString == "yes"
 	}
 

@@ -3,6 +3,7 @@ package loop
 import (
 	"strings"
 
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -26,12 +27,12 @@ func (l *Loop) trackCookStarted(cook *cookHandle) {
 	if taskKey == "" {
 		taskKey = "unknown"
 	}
-	runtimeName := strings.ToLower(strings.TrimSpace(cook.dispatchedRuntime))
+	runtimeName := stringx.Normalize(cook.dispatchedRuntime)
 	if runtimeName == "" {
-		runtimeName = strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+		runtimeName = stringx.Normalize(cook.stage.Runtime)
 	}
 	if runtimeName == "" {
-		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
+		runtimeName = stringx.Normalize(l.config.Runtime.Default)
 	}
 	if runtimeName == "" {
 		runtimeName = "process"
@@ -52,12 +53,12 @@ func (l *Loop) trackCookCompleted(cook *cookHandle, result StageResult) {
 	if taskKey == "" {
 		taskKey = "unknown"
 	}
-	runtimeName := strings.ToLower(strings.TrimSpace(cook.dispatchedRuntime))
+	runtimeName := stringx.Normalize(cook.dispatchedRuntime)
 	if runtimeName == "" {
-		runtimeName = strings.ToLower(strings.TrimSpace(cook.stage.Runtime))
+		runtimeName = stringx.Normalize(cook.stage.Runtime)
 	}
 	if runtimeName == "" {
-		runtimeName = strings.ToLower(strings.TrimSpace(l.config.Runtime.Default))
+		runtimeName = stringx.Normalize(l.config.Runtime.Default)
 	}
 	if runtimeName == "" {
 		runtimeName = "process"

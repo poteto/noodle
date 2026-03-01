@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -131,7 +132,7 @@ func (l *Loop) readSessionSyncResult(sessionID string) (loopruntime.SyncResult, 
 	if strings.TrimSpace(payload.Sync.Type) == "" && strings.TrimSpace(payload.Sync.Branch) == "" {
 		return loopruntime.SyncResult{}, false, nil
 	}
-	payload.Sync.Type = strings.ToLower(strings.TrimSpace(payload.Sync.Type))
+	payload.Sync.Type = stringx.Normalize(payload.Sync.Type)
 	payload.Sync.Branch = strings.TrimSpace(payload.Sync.Branch)
 	return payload.Sync, true, nil
 }

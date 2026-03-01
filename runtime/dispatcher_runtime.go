@@ -3,10 +3,10 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 type DispatcherRuntime struct {
@@ -20,7 +20,7 @@ type DispatcherRuntime struct {
 }
 
 func NewDispatcherRuntime(name string, d dispatcher.Dispatcher, runtimeDir string) *DispatcherRuntime {
-	name = strings.ToLower(strings.TrimSpace(name))
+	name = stringx.Normalize(name)
 	if name == "" {
 		name = "process"
 	}

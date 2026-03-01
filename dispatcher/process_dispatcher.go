@@ -11,6 +11,7 @@ import (
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/skill"
 	wt "github.com/poteto/noodle/worktree"
 )
@@ -130,7 +131,7 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	// The prompt is sent as the first user message via stream-json.
 	// For other providers, write the prompt to stdin and close.
 	var controller *claudeController
-	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	provider := stringx.Normalize(req.Provider)
 	if provider != "codex" {
 		controller = newClaudeController(process.Stdin())
 		// Send the composed prompt as the first user message.
@@ -180,7 +181,7 @@ func (d *ProcessDispatcher) buildCmd(req DispatchRequest, systemPrompt string) (
 		return d.buildCustomRuntimeCmd(req, runtimeCmd)
 	}
 
-	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	provider := stringx.Normalize(req.Provider)
 	binary := d.resolveAgentBinary(provider)
 	extraArgs := d.resolveExtraArgs(provider)
 
@@ -214,7 +215,7 @@ func (d *ProcessDispatcher) buildCustomRuntimeCmd(req DispatchRequest, runtimeCm
 }
 
 func (d *ProcessDispatcher) resolveAgentBinary(provider string) string {
-	switch strings.ToLower(strings.TrimSpace(provider)) {
+	switch stringx.Normalize(provider) {
 	case "codex":
 		if path := strings.TrimSpace(d.providerConfigs.Codex.Path); path != "" {
 			candidate := filepath.Join(filex.ExpandHome(path), "codex")
@@ -235,7 +236,7 @@ func (d *ProcessDispatcher) resolveAgentBinary(provider string) string {
 }
 
 func (d *ProcessDispatcher) resolveExtraArgs(provider string) []string {
-	switch strings.ToLower(strings.TrimSpace(provider)) {
+	switch stringx.Normalize(provider) {
 	case "codex":
 		return d.providerConfigs.Codex.Args
 	default:

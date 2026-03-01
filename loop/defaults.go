@@ -9,6 +9,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -90,9 +91,9 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 }
 
 func runtimeEnabled(available []string, kind string) bool {
-	kind = strings.ToLower(strings.TrimSpace(kind))
+	kind = stringx.Normalize(kind)
 	for _, runtime := range available {
-		if strings.ToLower(strings.TrimSpace(runtime)) == kind {
+		if stringx.Normalize(runtime) == kind {
 			return true
 		}
 	}

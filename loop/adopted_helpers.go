@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/poteto/noodle/internal/recover"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
@@ -24,7 +24,7 @@ func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return "", false, err
 	}
-	return strings.ToLower(strings.TrimSpace(payload.Status)), true, nil
+	return stringx.Normalize(payload.Status), true, nil
 }
 
 func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string) (*cookHandle, bool, error) {

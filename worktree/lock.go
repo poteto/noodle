@@ -1,36 +1,18 @@
 package worktree
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/poteto/noodle/internal/procx"
 )
 
 func (a *App) mergeLockPath() string {
 	return filepath.Join(a.Root, ".worktrees", ".merge-lock")
-}
-
-func isProcessAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	err = process.Signal(syscall.Signal(0))
-	if err == nil {
-		return true
-	}
-	if errors.Is(err, os.ErrPermission) {
-		return true
-	}
-	return false
 }
 
 func readMergeLockPID(lockPath string) (int, error) {
@@ -132,7 +114,7 @@ func (a *App) acquireMergeLock() error {
 			continue
 		}
 
-		if !isProcessAlive(pid) {
+		if !procx.IsPIDAlive(pid) {
 			a.warnf("WARNING: removing stale merge lock %s (PID %d)\n", lockPath, pid)
 			currentPID, readErr := readMergeLockPID(lockPath)
 			if readErr != nil {

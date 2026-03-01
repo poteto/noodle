@@ -11,6 +11,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) drainCompletions(ctx context.Context) error {
@@ -111,9 +112,9 @@ func (l *Loop) handleBootstrapResult(result StageResult) {
 }
 
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultStatus StageResultStatus, rawStatus string) error {
-	status := strings.ToLower(strings.TrimSpace(rawStatus))
+	status := stringx.Normalize(rawStatus)
 	if status == "" {
-		status = strings.ToLower(strings.TrimSpace(cook.session.Status()))
+		status = stringx.Normalize(cook.session.Status())
 	}
 	success := resultStatus == StageResultCompleted
 	if success {

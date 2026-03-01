@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) killCook(name string) error {
@@ -147,7 +148,7 @@ func buildSteerResumeContext(runtimeDir string, sessionID string) string {
 				Summary string `json:"summary"`
 			}
 			_ = json.Unmarshal(ev.Payload, &action)
-			tool := strings.ToLower(strings.TrimSpace(action.Tool))
+			tool := stringx.Normalize(action.Tool)
 			if path := strings.TrimSpace(action.Path); path != "" {
 				switch tool {
 				case "read", "edit", "write":

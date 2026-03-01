@@ -1,6 +1,10 @@
 package loop
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
+)
 
 const bootstrapSessionPrefix = "bootstrap-"
 
@@ -71,7 +75,7 @@ After scheduling an execute stage, add follow-up stages to the same order:
 // buildBootstrapPrompt returns the bootstrap prompt with {{history_dirs}}
 // substituted based on provider.
 func buildBootstrapPrompt(provider string) string {
-	provider = strings.ToLower(strings.TrimSpace(provider))
+	provider = stringx.Normalize(provider)
 	var historyDirs string
 	switch provider {
 	case "codex":

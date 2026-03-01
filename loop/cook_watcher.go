@@ -2,7 +2,8 @@ package loop
 
 import (
 	"context"
-	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 func (l *Loop) nextDispatchGeneration() uint64 {
@@ -42,7 +43,7 @@ func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBoot
 }
 
 func stageResultStatus(raw string) StageResultStatus {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
+	switch stringx.Normalize(raw) {
 	case "completed", "exited":
 		return StageResultCompleted
 	case "killed", "cancelled", "canceled", "stopped":
