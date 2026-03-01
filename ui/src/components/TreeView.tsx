@@ -8,6 +8,8 @@ import type { TreeNodeData } from "./tree-utils";
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 70;
+const NODE_HORIZONTAL_GAP = 20;
+const NODE_VERTICAL_GAP = 60;
 
 type PointNode = d3.HierarchyPointNode<TreeNodeData>;
 
@@ -73,7 +75,9 @@ function renderTree(
   onActorClick: (sessionId: string) => void,
 ) {
   const root = d3.hierarchy(snapshotToHierarchy(snapshot));
-  const treeLayout = d3.tree<TreeNodeData>().nodeSize([NODE_WIDTH + 40, NODE_HEIGHT + 60]);
+  const treeLayout = d3
+    .tree<TreeNodeData>()
+    .nodeSize([NODE_WIDTH + NODE_HORIZONTAL_GAP, NODE_HEIGHT + NODE_VERTICAL_GAP]);
   treeLayout(root);
 
   const svg = d3.select(svgEl);
