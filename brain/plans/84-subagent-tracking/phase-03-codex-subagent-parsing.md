@@ -20,9 +20,12 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
    When `source` is a string (`"cli"`, `"exec"`), this is a root session -- emit the existing `EventInit` as before (no agent metadata).
 
+   This is the canonical spawn source for Codex agent nodes.
+   Unknown `source` shapes must emit an observable warning/action event (not silent drop) so protocol drift is detectable.
+
 2. **`function_call` items in `response_item`** (extend `parseCodexResponseItem()` for `function_call` type):
    Codex sub-agent orchestration uses `response_item` events containing `function_call` with specific function names. Real NDJSON uses this pattern — NOT `collab_tool_call` (which has zero matches in actual session logs):
-   - `function_call` with `name: "spawn_agent"` -> `EventAgentSpawn` with `AgentName` from arguments summary; arguments: `{agent_type, message}`
+   - `function_call` with `name: "spawn_agent"` -> `EventAgentProgress` intent event only (request to spawn), not canonical spawn
    - `function_call` with `name: "send_input"` -> `EventAgentProgress` on the target agent; arguments: `{id, message}` where `id` is the child thread ID
    - `function_call` with `name: "wait"` -> no event (blocking call)
    - `function_call` with `name: "close_agent"` -> `EventAgentComplete`; arguments: `{id}` where `id` is the child thread ID
@@ -30,6 +33,8 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
    Preserve the existing error handling for failed/error/cancelled status in `parseCodexItem()`.
 
 **Codex file discovery:** Codex sub-agents live in separate JSONL files at `~/.codex/sessions/YYYY/MM/DD/`. The parent session's `function_call` events reference child thread IDs, but the child's NDJSON is a separate file that must be discovered and ingested. Phase 5 addresses how the session manager discovers and consumes these out-of-band files.
+
+v1 behavior note: until out-of-band ingestion is enabled, Codex child nodes may show orchestration-only activity (spawn/send_input/close) without full child transcript. UI should label this state clearly (for example, "child transcript pending ingestion") to avoid false "empty/broken" appearance.
 
 ## Data Structures
 
@@ -49,10 +54,12 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical parsing with clear field
 - New test cases with fixture NDJSON:
   - `session_meta` with `source: "cli"` (root, no agent events)
   - `session_meta` with `source.subagent.thread_spawn` (sub-agent spawn)
-  - `response_item` with `function_call` name `spawn_agent` -> EventAgentSpawn
+  - `response_item` with `function_call` name `spawn_agent` -> EventAgentProgress intent (no spawn)
   - `response_item` with `function_call` name `send_input` -> EventAgentProgress
   - `response_item` with `function_call` name `close_agent` -> EventAgentComplete
   - `function_call_output` from `spawn_agent` (contains child thread ID)
+  - When both `session_meta` and `spawn_agent` exist, only one canonical spawn node is produced
+  - Unknown `session_meta.source` shape emits warning/action event
 
 ### Runtime
 - Feed fixture lines through `CodexAdapter.Parse()`, verify correct event types and agent metadata

@@ -12,3 +12,5 @@
 - [x] ~~[[plans/76-websocket-streaming/overview]]~~
 - [ ] [[plans/81-stage-groups/overview]]
 - [ ] [[plans/84-subagent-tracking/overview]]
+- [ ] [[plans/87-go-codebase-simplification/overview]]
+- [ ] [[plans/88-subagent-tracking-v2/overview]]

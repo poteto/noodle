@@ -31,10 +31,11 @@ Parse Claude team lifecycle (TeamCreate, SendMessage, teammate inbox messages) i
 4. **Teammate messages in NDJSON**: Team inbox traffic appears in the parent's NDJSON as `type: "user"` messages with `teamName` field and `<teammate-message teammate_id="..." color="..." summary="...">` XML wrappers in `message.content`. Parse the wrapper attributes to extract teammate identity and summary, then emit `EventAgentProgress`.
 
    Note: `input.agent_type` on TeamCreate is typically null in practice — fall back to `"team_lead"` when absent.
+   Fallback rule: if wrapper parsing fails or wrapper format drifts, emit a plain `EventAgentProgress` with raw summary text and a parse-warning action event (do not silently drop).
 
 **Note on teams and steerability:** Claude team members spawned via `Agent` with `team_name` are steerable (`Steerable: true`). Regular Claude sub-agents (no team) are non-steerable.
 
-**Out-of-band ingestion:** Team inbox files (`~/.claude/teams/{name}/inboxes/{agent}.json`) live outside the NDJSON stream. The session manager polls or watches these files and feeds new messages into the event pipeline. This is wired in Phase 5 alongside Codex sub-agent file discovery.
+**Out-of-band ingestion (follow-up):** Team inbox files (`~/.claude/teams/{name}/inboxes/{agent}.json`) live outside the NDJSON stream. For v1, ship in-band NDJSON team visibility first; out-of-band ingestion is follow-up work behind a bounded poller and explicit watcher cleanup/lifecycle tests.
 
 ## Data Structures
 
@@ -55,7 +56,8 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about what tea
   - SendMessage tool_use (type: shutdown_request) -> EventAgentProgress
   - Agent tool_use with team_name set -> EventAgentSpawn with Steerable=true and TeamName
   - `<teammate-message>` NDJSON entries -> EventAgentProgress with teammate identity
+  - malformed/unknown wrapper format -> fallback progress + warning event
 
 ### Runtime
 - Round-trip: construct fixture NDJSON, parse, verify events
-- Inbox file parsing is out-of-band (Phase 5 wires the discovery/ingestion)
+- Inbox file parsing is follow-up work (not required for v1 in-band delivery)

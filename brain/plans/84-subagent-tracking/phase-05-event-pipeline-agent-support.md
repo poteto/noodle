@@ -30,7 +30,7 @@ Wire the new agent canonical events through the full pipeline: event storage, se
 
 This is the source of truth — `ui/src/client/generated-types.ts` is generated from this via tygo.
 
-**`internal/snapshot/session_events.go`** -- `FormatSingleEvent()` must extract agent fields from the event payload and populate the new EventLine fields. All event types (not just EventAgent*) may carry `agent_id` in their payload.
+**`dispatcher/session_helpers.go` + `internal/snapshot/session_events.go`** -- Ensure the existing canonical->event formatting path and snapshot event-line formatting both carry agent fields end-to-end. All event types (not just EventAgent*) may carry `agent_id` in payload.
 
 Without these changes, agent metadata is lost at the Go -> JSON -> WebSocket boundary. The UI needs `agent_id` on every EventLine to filter events per-agent in Phase 8.
 
@@ -39,6 +39,10 @@ Without these changes, agent metadata is lost at the Go -> JSON -> WebSocket bou
 2. **Claude team inbox files** — polled/watched by the session manager. New messages converted to agent events via the Phase 4 parser.
 
 The session manager needs a method like `discoverSubAgentFiles(parentSessionID)` that maps known child agent IDs to their file paths and starts ingestion.
+
+Scope gate: this out-of-band discovery work is follow-up after v1. Phase 5 v1 scope is in-band pipeline wiring only. Follow-up implementation must use bounded polling (not unbounded watchers) and include explicit session lifecycle cleanup tests (startup, shutdown, restart, orphan cleanup).
+
+v1 fallback contract for Codex child visibility: if child transcript ingestion is unavailable, emit/retain parent-stream orchestration events with explicit pending label metadata so UI distinguishes "not yet ingested" from "no activity."
 
 ## Data Structures
 
@@ -61,4 +65,4 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical wiring with clear mappin
 
 ### Runtime
 - Integration test: feed agent NDJSON through stamp processor -> session_base -> capture WebSocket output, verify agent events arrive with agent metadata
-- Verify out-of-band Codex file discovery: parent spawn event triggers child file tailing
+- Follow-up tests (out-of-band phase): verify bounded poller lifecycle and cleanup on session stop/restart

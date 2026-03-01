@@ -19,33 +19,30 @@ The `AgentNode.Steerable` field is set by the parser during parse (Phase 2/3/4) 
 
 ## Changes
 
-**`server/agent_steering.go`** -- New file, new API endpoint:
+**Control-plane architecture:** Reuse existing `/api/control` and loop control command processing. Do not introduce a second per-agent endpoint.
 
-`POST /api/sessions/{id}/agents/{agent_id}/message`
-- Request: `{text: string}`
-- Response: `{ok: bool, error?: string}`
-
-Dispatch logic:
-1. Look up agent in session snapshot by agent_id
-2. If not steerable, return 400
-3. **Claude team member**: Read agent's team config from `~/.claude/teams/{team}/config.json` to find the inbox path. Append message to inbox JSON array with `{from: "user", text, summary, timestamp, read: false}`. Use atomic write (write to temp file, rename) to avoid corrupting the inbox if multiple writers race.
-4. **Codex sub-agent**: The live steering mechanism is `send_input` — a function_call the parent agent makes to deliver input to a running sub-agent. Noodle triggers this by invoking `codex exec resume` on the parent session with a prompt that instructs it to send_input to the target child thread ID. Note: Codex stdin is closed after initial prompt write, so direct stdin is not available — `codex exec resume` is the only path.
-
-**`server/server.go`** -- Register the new endpoint in the existing `mux` route table (there is no separate routes.go).
+Server/loop changes:
+1. Extend control request/command schema with optional `agent_id`
+2. Add control action `steer-agent`
+3. Handle provider-specific steering in the existing control queue path (same validation, retries, and auditability as other control actions)
+4. Validate delivery preconditions at execution time (agent still exists, steerable, running, and parent session active) to avoid stale-race sends
+5. Delivery-state contract: `accepted` (queued), `delivered` (observed target delivery signal), `timeout` (no delivery signal by timeout), `rejected` (validation failure)
 
 **`ui/src/components/AgentChat.tsx`** -- The message input (from phase 8):
 - Enabled when `agent.steerable === true` and `agent.status === "running"`
 - Disabled with tooltip "This agent cannot receive messages" for non-steerable
 - Disabled with tooltip "Agent has completed" for completed steerable agents
-- On send: POST to `/api/sessions/{id}/agents/{agent_id}/message`
+- On send: POST to `/api/control` with `{action: "steer-agent", target: sessionId, agent_id, prompt}`
 - Optimistically add sent message to the feed as a user message
 - On error: show inline error, remove optimistic message
 
 ## Data Structures
 
-- `AgentSteerRequest`: `{text string}` (Go)
-- `AgentSteerResponse`: `{ok bool, error string}` (Go)
+- `ControlCommand` extension: optional `agent_id string`
+- New control action: `steer-agent`
 - Claude inbox entry: `{from, text, summary string, timestamp time.Time, read bool}`
+- Reuse existing control ack failure shape for steer errors (`code`, `message`, `retryable`) rather than introducing a parallel response contract
+- `SteerDeliveryState`: one of `{accepted, delivered, timeout, rejected}` surfaced via control/snapshot events
 
 ## Routing
 
@@ -55,9 +52,10 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about error ha
 
 ### Static
 - `go test ./server/...`
+- `go test ./loop/...`
 - `cd ui && pnpm tsc --noEmit && pnpm test`
-- API returns 400 for non-steerable agents
-- API returns 200 and writes to inbox for Claude team member
+- Control action returns error for non-steerable agents
+- Control action succeeds for steerable agents
 - UI disables input for non-steerable agents
 
 ### Runtime
@@ -65,3 +63,7 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about error ha
 - Send message to completed agent, verify disabled state
 - Visual: message input enabled/disabled based on agent type
 - Integration: send message, verify it shows in agent chat feed
+- Steering race test: agent completes between submit and execution -> deterministic typed failure, no write side effects
+- Codex confirmation test: after steer request, observe target-agent `send_input` progress within timeout; if absent, surface retryable failure
+- Claude inbox write test uses atomic write (temp file + rename) to avoid partial JSON on concurrent reads
+- Delivery-state test: each steering request transitions through valid state machine with no impossible transitions

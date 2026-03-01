@@ -22,6 +22,10 @@ Status values: `running`, `completed`, `errored`, `shutdown`.
 3. Scan for `EventAgentProgress` events to set each agent's `CurrentAction` (last action)
 4. Build the tree by resolving `ParentID` references
 
+Identity/dedupe rule: materialize nodes by canonical `AgentID` only. If multiple spawn-like signals refer to the same canonical agent, merge metadata into one node (no duplicates). Provisional correlation IDs are never used as node keys.
+
+Performance guardrail: keep per-snapshot tree rebuild linear in event count with a target budget of <50ms per active session at 10k events; if exceeded, add incremental/cache-based materialization in v2.
+
 The agent tree is built from the event log on each snapshot rebuild (same pattern as `CurrentAction` today). No separate state storage needed.
 
 **`ui/src/client/generated-types.ts`** -- Add `AgentNode` type and `agents` field to `Session` (generated from Go types or manually kept in sync).
@@ -39,7 +43,8 @@ Provider: `codex`, Model: `gpt-5.3-codex` -- straightforward struct additions an
 
 ### Static
 - `go test ./internal/snapshot/...`
-- Unit test: build snapshot from fixture event log containing spawn/progress/exit events, verify agent tree
+- Unit test: build snapshot from fixture event log containing spawn/progress/exit events, verify agent tree and no duplicate nodes for a single canonical agent
 
 ### Runtime
 - Integration test: run stamp processor with fixture NDJSON containing agent events, build snapshot, verify `Session.Agents` is populated with correct hierarchy
+- Benchmark-style runtime check on large fixture to confirm rebuild budget is met or flagged
