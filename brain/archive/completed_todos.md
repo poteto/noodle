@@ -1,5 +1,7 @@
 # Completed Todos
 
+91. [x] ~~Remove `debate` as a first-class concept — delete the `debate/` Go package (unused, zero imports), remove the `.agents/skills/debate/` skill, and clean up any debate references in the loop (e.g. comment in `cook_completion.go`). The adversarial-review skill proves structured multi-perspective review works purely as a skill without framework-level support.~~ — done. Deleted `debate/` package (357 lines, zero imports), `.agents/skills/debate/` skill + references, cleaned comment in `loop/cook_completion.go`.
+
 87. [x] ~~Go codebase simplification — deduplicate state utilities, extract loop helpers, decompose long functions, delete dead code, create shared jsonx/stringx utilities. [[archive/plans/87-go-codebase-simplification/overview]]~~ — done. 12 phases: deleted dead backend abstractions, merged tiny packages, consolidated state utilities (Clone/IsTerminal/IsBusy/LookupStage), added stringx.Normalize + jsonx generics, unified routing types, extracted loop failure/cleanup helpers, amended mutateOrdersState API, decomposed 6 long functions (>100 lines each), split large files. 73 files changed, net -338 lines.
 
 83. [x] ~~Error recoverability taxonomy — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[archive/plans/83-error-recoverability-taxonomy/overview]]~~ — done.
