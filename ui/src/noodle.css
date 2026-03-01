@@ -824,12 +824,12 @@
 /* Tree node cards (rendered via D3 innerHTML, not React) */
 .tree-node-card {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.3;
   background: var(--color-bg-surface);
   border: 1px solid;
-  padding: 8px 10px;
-  width: 160px;
+  padding: 6px 8px;
+  width: 140px;
   color: var(--color-text-primary);
 }
 foreignObject.node.node-clickable .tree-node-card {

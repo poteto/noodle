@@ -14,10 +14,10 @@ import type { Snapshot } from "~/client";
 import { snapshotToHierarchy } from "./tree-utils";
 import type { TreeNodeData } from "./tree-utils";
 
-const NODE_WIDTH = 160;
-const NODE_HEIGHT = 70;
-const NODE_HORIZONTAL_GAP = 20;
-const NODE_VERTICAL_GAP = 60;
+const NODE_WIDTH = 140;
+const NODE_HEIGHT = 60;
+const NODE_HORIZONTAL_GAP = 10;
+const NODE_VERTICAL_GAP = 40;
 
 type PointNode = HierarchyPointNode<TreeNodeData>;
 
