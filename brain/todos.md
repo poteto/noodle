@@ -2,11 +2,10 @@
 priority: [89, 20, 84, 90, 86, 88, 85, 69]
 # Launch-blocking:
 #   89 simplify frontmatter — clean API surface before users depend on it
-#   20 skill-path defaults — onboarding clarity, small fix
-# High value for launch:
+#   20 onboarding — install, docs, examples, getting-started guides
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
-#   86 diffs integration — better code-change review UX
+#   86 diffs integration — code-change review UX
 # Post-launch:
 #   88 sub-agent tracking v2 — hardening, depends on 84
 #   85 .noodle.toml live reload — convenience, restart works fine
@@ -19,9 +18,9 @@ priority: [89, 20, 84, 90, 86, 88, 85, 69]
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
-## Bootstrap Skill Fixes
+## Onboarding & Getting Started
 
-20. [ ] Clarify skill-path defaults for repo vs user projects — current default is `.agents/skills`, but bootstrap/docs should explicitly explain repo-internal development vs user-project bootstrapping expectations and where skills are expected to live in each mode.
+20. [ ] First-run experience — make it obvious how to install, configure, and use Noodle. Simple installation path, clear documentation of core concepts (skills, scheduling, brain), example projects showing real workflows (e.g. a minimal schedule+execute setup, a multi-skill autonomous loop), and getting-started guides that take a new user from zero to a running Noodle in minutes. Includes resolving skill-path defaults (`.agents/skills` vs project-level) so bootstrapping just works.
 
 ## Remote Dispatchers
 
