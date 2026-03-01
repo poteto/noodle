@@ -1,0 +1,26 @@
+{
+  "now": "2026-03-01T07:20:00Z",
+  "observations": {
+    "cook-stuck-complete": {
+      "session_id": "cook-stuck-complete",
+      "alive": true,
+      "log_mtime": "2026-03-01T07:18:03Z",
+      "log_size": 1024
+    }
+  },
+  "claims": {
+    "cook-stuck-complete": {
+      "session_id": "cook-stuck-complete",
+      "has_events": true,
+      "completed": true,
+      "provider": "claude",
+      "runtime": "process",
+      "model": "claude-opus-4-6",
+      "first_event_at": "2026-03-01T07:15:36Z",
+      "last_event_at": "2026-03-01T07:18:03Z",
+      "last_action": "turn complete",
+      "total_cost_usd": 0.3
+    }
+  },
+  "ticket_events": {}
+}

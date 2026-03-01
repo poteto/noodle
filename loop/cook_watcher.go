@@ -43,7 +43,7 @@ func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBoot
 
 func stageResultStatus(raw string) StageResultStatus {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "completed":
+	case "completed", "exited":
 		return StageResultCompleted
 	case "killed", "cancelled", "canceled", "stopped":
 		return StageResultCancelled

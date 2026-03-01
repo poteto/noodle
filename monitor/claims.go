@@ -89,6 +89,9 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 		return SessionClaims{}, fmt.Errorf("read canonical events: %w", err)
 	}
 	if metadata, err := r.readSpawnMetadata(sessionID); err == nil {
+		if claims.Skill == "" {
+			claims.Skill = metadata.Skill
+		}
 		if claims.Runtime == "" {
 			claims.Runtime = metadata.Runtime
 		}
@@ -117,11 +120,13 @@ func (r *CanonicalClaimsReader) readSpawnMetadata(sessionID string) (SessionClai
 		Runtime  string `json:"runtime"`
 		Provider string `json:"provider"`
 		Model    string `json:"model"`
+		Skill    string `json:"skill"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return SessionClaims{}, fmt.Errorf("parse spawn metadata: %w", err)
 	}
 	return SessionClaims{
+		Skill:    strings.TrimSpace(payload.Skill),
 		Runtime:  strings.TrimSpace(payload.Runtime),
 		Provider: strings.TrimSpace(payload.Provider),
 		Model:    strings.TrimSpace(payload.Model),

@@ -77,7 +77,7 @@ func (l *Loop) applyStageResult(ctx context.Context, result StageResult) error {
 	}
 	l.trackCookCompleted(cook, result)
 	delete(l.cooks.activeCooksByOrder, cook.orderID)
-	if err := l.handleCompletion(ctx, cook); err != nil {
+	if err := l.handleCompletion(ctx, cook, result.Status, string(result.Status)); err != nil {
 		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 			return conflictErr
 		}
@@ -110,9 +110,12 @@ func (l *Loop) handleBootstrapResult(result StageResult) {
 	l.logger.Warn("bootstrap failed", "attempt", l.bootstrapAttempts, "status", string(result.Status))
 }
 
-func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
-	status := strings.ToLower(strings.TrimSpace(cook.session.Status()))
-	success := status == "completed"
+func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultStatus StageResultStatus, rawStatus string) error {
+	status := strings.ToLower(strings.TrimSpace(rawStatus))
+	if status == "" {
+		status = strings.ToLower(strings.TrimSpace(cook.session.Status()))
+	}
+	success := resultStatus == StageResultCompleted
 	if success {
 		if isScheduleStage(cook.stage) {
 			l.logger.Info("schedule completed", "session", cook.session.ID())
@@ -326,7 +329,7 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 			continue
 		}
 		l.logger.Info("adopted session completed", "order", targetID, "session", sessionID, "status", status)
-		if err := l.handleCompletion(ctx, cook); err != nil {
+		if err := l.handleCompletion(ctx, cook, stageResultStatus(status), status); err != nil {
 			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 				return conflictErr
 			}

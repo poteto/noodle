@@ -40,6 +40,7 @@ type SessionClaims struct {
 	SessionID    string    `json:"session_id"`
 	HasEvents    bool      `json:"has_events"`
 	Completed    bool      `json:"completed"`
+	Skill        string    `json:"skill,omitempty"`
 	Runtime      string    `json:"runtime,omitempty"`
 	Provider     string    `json:"provider,omitempty"`
 	Model        string    `json:"model,omitempty"`

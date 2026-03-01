@@ -1,0 +1,27 @@
+{
+  "now": "2026-03-01T07:20:00Z",
+  "observations": {
+    "schedule-sess": {
+      "session_id": "schedule-sess",
+      "alive": true,
+      "log_mtime": "2026-03-01T07:18:03Z",
+      "log_size": 1024
+    }
+  },
+  "claims": {
+    "schedule-sess": {
+      "session_id": "schedule-sess",
+      "has_events": true,
+      "completed": true,
+      "skill": "schedule",
+      "provider": "claude",
+      "runtime": "process",
+      "model": "claude-opus-4-6",
+      "first_event_at": "2026-03-01T07:15:36Z",
+      "last_event_at": "2026-03-01T07:18:03Z",
+      "last_action": "turn complete",
+      "total_cost_usd": 0.05
+    }
+  },
+  "ticket_events": {}
+}

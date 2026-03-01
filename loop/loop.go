@@ -319,6 +319,10 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 		fmt.Fprintf(os.Stderr, "skill registry error (attempt %d/3, skipping cycle): %v\n", l.registryFailCount, l.registryErr)
 		return false, nil
 	}
+	l.runMonitorPass(ctx)
+	if err := l.enqueueTerminalActiveCompletions(ctx); err != nil {
+		return false, err
+	}
 	if err := l.drainCompletions(ctx); err != nil {
 		return false, err
 	}

@@ -71,6 +71,18 @@ func (m *Monitor) RunOnce(ctx context.Context) ([]SessionMeta, error) {
 		}
 
 		meta := DeriveSessionMeta(sessionID, observation, claims, previous, now, m.stuckThreshold)
+		if shouldRepairTerminalAliveSession(observation, claims) {
+			KillSessionByPID(m.runtimeDir, sessionID)
+			meta.Alive = false
+			meta.Stuck = false
+			if claims.Failed {
+				meta.Status = SessionStatusFailed
+				meta.Health = HealthRed
+			} else {
+				meta.Status = SessionStatusExited
+				meta.Health = HealthYellow
+			}
+		}
 		if err := writeSessionMeta(sessionMetaPath(m.runtimeDir, sessionID), meta); err != nil {
 			return nil, fmt.Errorf("write meta for %s: %w", sessionID, err)
 		}
@@ -224,4 +236,14 @@ func maybeAddSessionDirWatch(
 	}
 	watchedDirs[path] = struct{}{}
 	return nil
+}
+
+func shouldRepairTerminalAliveSession(observation Observation, claims SessionClaims) bool {
+	if !observation.Alive {
+		return false
+	}
+	if isPersistentSchedulerSession(claims) {
+		return false
+	}
+	return claims.Completed || claims.Failed
 }
