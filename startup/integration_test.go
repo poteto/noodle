@@ -18,11 +18,18 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	// Build the binary
+	// Build UI assets then the binary
+	projectRoot := findProjectRoot(t)
+	uiBuild := exec.Command("pnpm", "--filter", "noodle-ui", "build")
+	uiBuild.Dir = projectRoot
+	if out, err := uiBuild.CombinedOutput(); err != nil {
+		t.Fatalf("build ui: %v\n%s", err, out)
+	}
+
 	binDir := t.TempDir()
 	binPath := filepath.Join(binDir, "noodle")
 	build := exec.Command("go", "build", "-o", binPath, ".")
-	build.Dir = findProjectRoot(t)
+	build.Dir = projectRoot
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build noodle: %v\n%s", err, out)
 	}
