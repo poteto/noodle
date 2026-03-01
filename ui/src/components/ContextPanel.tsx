@@ -88,15 +88,64 @@ function SystemFooter({ snapshot }: { snapshot: Snapshot }) {
 function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
   const warningCount = snapshot.warnings?.length ?? 0;
   const warningsWithKeys = keyByOccurrence(snapshot.warnings ?? []);
+  const completedOrders = snapshot.orders.filter(
+    (o) => o.status === "merged" || o.status === "completed",
+  ).length;
 
   return (
     <>
       <div className="context-header">System Status</div>
 
-      <div className="context-body">
-        {warningCount > 0 && (
-          <>
-            <div className="ctx-section-label">Warnings</div>
+      <div className="metric-grid">
+        <MetricCard label="Loop" value={snapshot.loop_state} />
+        <MetricCard label="Active" value={String(snapshot.active.length)} />
+        <MetricCard label="Orders" value={String(snapshot.orders.length)} />
+        <MetricCard label="Cost" value={formatCost(snapshot.total_cost_usd)} />
+      </div>
+
+      {snapshot.active.length > 0 && (
+        <>
+          <div className="ctx-section-label">Active Agents</div>
+          <div className="stage-rail">
+            {snapshot.active.map((s) => {
+              const isRunning = s.status === "running";
+              return (
+                <div key={s.id} className={`stage-item ${isRunning ? "current" : ""}`}>
+                  <div className={`stage-dot ${isRunning ? "active" : "pending"}`} />
+                  <span>{s.display_name || s.id}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {snapshot.orders.length > 0 && (
+        <>
+          <div className="ctx-section-label">Pipeline</div>
+          <div className="ctx-progress">
+            <div className="ctx-progress-label">
+              <span>
+                {completedOrders}/{snapshot.orders.length} orders
+              </span>
+            </div>
+            <div className="ctx-progress-bar">
+              <div
+                className="ctx-progress-fill"
+                style={{
+                  width: `${snapshot.orders.length > 0 ? (completedOrders / snapshot.orders.length) * 100 : 0}%`,
+                  background: "var(--color-green)",
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {warningCount > 0 && (
+        <>
+          <div className="ctx-section-label">Warnings</div>
+          <div style={{ padding: "0 16px" }}>
             <div className="file-list">
               {warningsWithKeys.map((warning) => (
                 <div
@@ -108,9 +157,9 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
                 </div>
               ))}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
