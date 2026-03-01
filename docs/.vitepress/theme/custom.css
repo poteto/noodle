@@ -1,0 +1,473 @@
+/* ============================================================
+   Noodle docs theme — matches ui/src/app.css design tokens
+   Near-black backgrounds, #f5c518 yellow accent, JetBrains Mono,
+   pixel borders, dot-grid content area.
+   ============================================================ */
+
+:root {
+  /* -- Backgrounds ----------------------------------------- */
+  --noodle-bg: #050505;
+  --noodle-bg-depth: #0a0a0a;
+  --noodle-surface: #111111;
+  --noodle-surface-hover: #161616;
+  --noodle-surface-active: #1a1a1a;
+
+  /* -- Text ------------------------------------------------ */
+  --noodle-text-main: #e5e5e5;
+  --noodle-text-muted: #888888;
+  --noodle-text-tertiary: #777777;
+
+  /* -- Borders --------------------------------------------- */
+  --noodle-border: #222222;
+  --noodle-border-active: #333333;
+
+  /* -- Accent ---------------------------------------------- */
+  --noodle-accent: #f5c518;
+  --noodle-accent-dim: rgba(245, 197, 24, 0.12);
+  --noodle-accent-subtle: rgba(245, 197, 24, 0.06);
+
+  /* -- Status ---------------------------------------------- */
+  --noodle-green: #4ade80;
+  --noodle-red: #f87171;
+  --noodle-blue: #60a5fa;
+
+  /* -- Typography ------------------------------------------ */
+  --noodle-font: "JetBrains Mono", monospace;
+}
+
+
+/* ============================================================
+   VitePress CSS-variable overrides (dark mode)
+   ============================================================ */
+
+:root {
+  --vp-c-bg: var(--noodle-bg);
+  --vp-c-bg-alt: var(--noodle-bg-depth);
+  --vp-c-bg-elv: var(--noodle-surface);
+  --vp-c-bg-soft: var(--noodle-surface);
+
+  --vp-c-text-1: var(--noodle-text-main);
+  --vp-c-text-2: var(--noodle-text-muted);
+  --vp-c-text-3: var(--noodle-text-tertiary);
+
+  --vp-c-divider: var(--noodle-border);
+  --vp-c-gutter: var(--noodle-bg-depth);
+
+  --vp-c-brand-1: var(--noodle-accent);
+  --vp-c-brand-2: var(--noodle-accent);
+  --vp-c-brand-3: var(--noodle-accent);
+  --vp-c-brand-soft: var(--noodle-accent-dim);
+
+  --vp-c-tip-1: var(--noodle-accent);
+  --vp-c-tip-2: var(--noodle-accent);
+  --vp-c-tip-3: var(--noodle-accent-dim);
+  --vp-c-tip-soft: var(--noodle-accent-subtle);
+
+  --vp-c-warning-1: var(--noodle-accent);
+  --vp-c-warning-2: var(--noodle-accent);
+  --vp-c-warning-soft: var(--noodle-accent-dim);
+
+  --vp-c-danger-1: var(--noodle-red);
+  --vp-c-danger-2: var(--noodle-red);
+  --vp-c-danger-soft: rgba(248, 113, 113, 0.12);
+
+  --vp-c-default-1: var(--noodle-border-active);
+  --vp-c-default-2: var(--noodle-border);
+  --vp-c-default-3: var(--noodle-border);
+  --vp-c-default-soft: var(--noodle-surface);
+
+  --vp-font-family-base: var(--noodle-font);
+  --vp-font-family-mono: var(--noodle-font);
+
+  --vp-sidebar-bg-color: var(--noodle-bg);
+  --vp-nav-bg-color: var(--noodle-bg);
+
+  --vp-code-bg: var(--noodle-bg-depth);
+  --vp-code-color: var(--noodle-text-main);
+  --vp-code-block-bg: var(--noodle-bg-depth);
+
+  --vp-button-brand-bg: var(--noodle-accent);
+  --vp-button-brand-text: var(--noodle-bg);
+  --vp-button-brand-hover-bg: #d4a910;
+  --vp-button-brand-hover-text: var(--noodle-bg);
+  --vp-button-brand-active-bg: #b8930e;
+  --vp-button-brand-active-text: var(--noodle-bg);
+
+  --vp-button-alt-bg: var(--noodle-surface);
+  --vp-button-alt-text: var(--noodle-text-main);
+  --vp-button-alt-hover-bg: var(--noodle-surface-hover);
+  --vp-button-alt-hover-text: var(--noodle-text-main);
+
+  --vp-home-hero-name-color: var(--noodle-text-main);
+
+  --vp-custom-block-tip-bg: var(--noodle-accent-subtle);
+  --vp-custom-block-tip-text: var(--noodle-text-main);
+  --vp-custom-block-tip-border: var(--noodle-accent);
+  --vp-custom-block-tip-code-bg: var(--noodle-bg-depth);
+
+  --vp-custom-block-info-bg: var(--noodle-surface);
+  --vp-custom-block-info-text: var(--noodle-text-main);
+  --vp-custom-block-info-border: var(--noodle-border-active);
+
+  --vp-custom-block-warning-bg: var(--noodle-accent-subtle);
+  --vp-custom-block-warning-text: var(--noodle-text-main);
+  --vp-custom-block-warning-border: var(--noodle-accent);
+
+  --vp-custom-block-danger-bg: rgba(248, 113, 113, 0.06);
+  --vp-custom-block-danger-text: var(--noodle-text-main);
+  --vp-custom-block-danger-border: var(--noodle-red);
+}
+
+/* Force dark regardless of OS preference */
+html {
+  color-scheme: dark;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+
+/* ============================================================
+   Global typography
+   ============================================================ */
+
+body {
+  font-family: var(--noodle-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+
+/* ============================================================
+   Selection
+   ============================================================ */
+
+::selection {
+  background: var(--noodle-accent);
+  color: var(--noodle-bg);
+}
+
+
+/* ============================================================
+   Scrollbars
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--noodle-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--noodle-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--noodle-text-muted);
+}
+
+
+/* ============================================================
+   Navbar
+   ============================================================ */
+
+.VPNav {
+  border-bottom: 1px solid var(--noodle-border) !important;
+}
+
+.VPNavBar {
+  background: var(--noodle-bg) !important;
+  border-bottom: 1px solid var(--noodle-border) !important;
+}
+
+.VPNavBar .title {
+  font-family: var(--noodle-font);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
+
+.VPSidebar {
+  background: var(--noodle-bg) !important;
+  border-right: 1px solid var(--noodle-border) !important;
+}
+
+.VPSidebarItem .text {
+  font-family: var(--noodle-font);
+  font-size: 13px;
+}
+
+.VPSidebarItem.is-active > .item > .indicator {
+  background: var(--noodle-accent) !important;
+}
+
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--noodle-accent) !important;
+  font-weight: 600;
+}
+
+/* Section titles */
+.VPSidebarItem.level-0 > .item > .link > .text {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--noodle-text-muted);
+}
+
+
+/* ============================================================
+   Content area — dot grid background
+   ============================================================ */
+
+.VPDoc .container {
+  background-image: radial-gradient(var(--noodle-border) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.VPContent {
+  background: var(--noodle-bg) !important;
+}
+
+
+/* ============================================================
+   Headings
+   ============================================================ */
+
+.vp-doc h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.vp-doc h2 {
+  font-family: var(--noodle-font);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--noodle-border);
+  padding-bottom: 12px;
+}
+
+.vp-doc h3 {
+  font-weight: 600;
+}
+
+
+/* ============================================================
+   Code blocks
+   ============================================================ */
+
+.vp-doc div[class*="language-"] {
+  background: var(--noodle-bg-depth) !important;
+  border: 1px solid var(--noodle-border);
+}
+
+.vp-doc div[class*="language-"] > span.lang {
+  background: var(--noodle-border-active);
+  color: var(--noodle-text-main);
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  font-family: var(--noodle-font);
+}
+
+.vp-doc :not(pre) > code {
+  background: var(--noodle-surface);
+  border: 1px solid var(--noodle-border);
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--noodle-text-main);
+}
+
+
+/* ============================================================
+   Custom blocks / callouts
+   ============================================================ */
+
+.vp-doc .custom-block {
+  border: 1px solid var(--noodle-border);
+  border-left-width: 2px;
+}
+
+.vp-doc .custom-block.tip {
+  border-left-color: var(--noodle-accent);
+  background: var(--noodle-accent-subtle);
+}
+
+.vp-doc .custom-block.warning {
+  border-left-color: var(--noodle-accent);
+  background: var(--noodle-accent-subtle);
+}
+
+.vp-doc .custom-block.danger {
+  border-left-color: var(--noodle-red);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+
+/* ============================================================
+   TOC (aside / outline)
+   ============================================================ */
+
+.VPDocAsideOutline {
+  border-left: 1px solid var(--noodle-border) !important;
+}
+
+.VPDocAsideOutline .outline-marker {
+  background: var(--noodle-accent) !important;
+  width: 4px !important;
+  height: 4px !important;
+  border-radius: 0 !important;
+}
+
+.VPDocAsideOutline .outline-link.active {
+  color: var(--noodle-accent) !important;
+  font-weight: 500;
+}
+
+.VPDocAsideOutline .outline-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+
+/* ============================================================
+   Hero (landing page)
+   ============================================================ */
+
+.VPHero .name {
+  font-family: var(--noodle-font) !important;
+  font-weight: 700 !important;
+  letter-spacing: 2px !important;
+}
+
+.VPHero .text {
+  font-family: var(--noodle-font) !important;
+  color: var(--noodle-text-muted) !important;
+}
+
+.VPHero .tagline {
+  font-family: var(--noodle-font) !important;
+  color: var(--noodle-text-tertiary) !important;
+}
+
+.VPHomeHero .name .clip {
+  background: var(--noodle-accent) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+
+/* ============================================================
+   Feature cards
+   ============================================================ */
+
+.VPFeature {
+  background: var(--noodle-surface) !important;
+  border: 1px solid var(--noodle-border) !important;
+  transition: border-color 0.15s;
+}
+
+.VPFeature:hover {
+  border-color: var(--noodle-border-active) !important;
+}
+
+.VPFeature .title {
+  color: var(--noodle-accent) !important;
+  font-family: var(--noodle-font);
+  font-weight: 600;
+}
+
+.VPFeature .details {
+  color: var(--noodle-text-muted) !important;
+  font-family: var(--noodle-font);
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   Links
+   ============================================================ */
+
+.vp-doc a {
+  color: var(--noodle-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--noodle-border-active);
+  text-underline-offset: 3px;
+}
+
+.vp-doc a:hover {
+  text-decoration-color: var(--noodle-accent);
+}
+
+
+/* ============================================================
+   Footer
+   ============================================================ */
+
+.VPDocFooter {
+  border-top: 1px solid var(--noodle-border) !important;
+}
+
+.VPDocFooter .pager-link {
+  background: var(--noodle-surface) !important;
+  border: 1px solid var(--noodle-border) !important;
+}
+
+.VPDocFooter .pager-link:hover {
+  border-color: var(--noodle-border-active) !important;
+}
+
+
+/* ============================================================
+   Tables
+   ============================================================ */
+
+.vp-doc table {
+  border: 1px solid var(--noodle-border);
+}
+
+.vp-doc table th {
+  background: var(--noodle-surface);
+  border: 1px solid var(--noodle-border);
+  font-family: var(--noodle-font);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vp-doc table td {
+  border: 1px solid var(--noodle-border);
+}
+
+.vp-doc table tr:nth-child(even) {
+  background: var(--noodle-surface);
+}
+
+
+/* ============================================================
+   Search
+   ============================================================ */
+
+.VPNavBarSearch .search-input {
+  background: var(--noodle-surface) !important;
+  border: 1px solid var(--noodle-border) !important;
+  font-family: var(--noodle-font);
+}
+
+.VPNavBarSearch .search-input:hover {
+  border-color: var(--noodle-border-active) !important;
+}

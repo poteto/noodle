@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "ui",
-    "e2e/ui"
+    "e2e/ui",
+    "docs"
   ],
   "scripts": {
     "setup": "pnpm install",
@@ -25,6 +26,8 @@
     "fixtures:hash": "go run ./scripts/fixturehash check",
     "fixtures:hash:sync": "go run ./scripts/fixturehash sync",
     "bugs": "sh scripts/bugs.sh",
+    "docs:dev": "pnpm --filter noodle-docs dev",
+    "docs:build": "pnpm --filter noodle-docs build",
     "clean": "rm -f ./bin/noodle && rm -rf ui/dist/client/assets ui/dist/client/index.html",
     "mark-done": "sh scripts/mark-done.sh",
     "sandbox": "sh scripts/sandbox.sh",
