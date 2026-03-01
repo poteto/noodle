@@ -37,13 +37,18 @@ Read `references/reviewer-lenses.md` for lens definitions.
 
 ## Step 3 — Detect Model and Spawn Reviewers
 
+Create a temp directory for reviewer output:
+
+```sh
+REVIEW_DIR=$(mktemp -d)
+```
+
 Determine which model you are, then spawn reviewers on the opposite:
 
 **If you are Claude** → spawn Codex reviewers via `codex exec`:
 
 ```sh
-CODEX_OUT=$(mktemp)
-codex exec --skip-git-repo-check --json -o "$CODEX_OUT" "prompt" 2>/dev/null
+codex exec --skip-git-repo-check --json -o "$REVIEW_DIR/skeptic.md" "prompt" 2>/dev/null
 ```
 
 Use `--profile edit` only if the reviewer needs to run tests. Default to read-only.
@@ -52,11 +57,12 @@ Run with `run_in_background: true`, monitor via `TaskOutput` with `block: true, 
 **If you are Codex** → spawn Claude reviewers via `claude` CLI:
 
 ```sh
-CLAUDE_OUT=$(mktemp)
-claude -p --output-format json "prompt" > "$CLAUDE_OUT" 2>/dev/null
+claude -p "prompt" > "$REVIEW_DIR/skeptic.md" 2>/dev/null
 ```
 
 Run with `run_in_background: true`.
+
+Name each output file after the lens: `skeptic.md`, `architect.md`, `minimalist.md`.
 
 ### Reviewer prompt template
 
@@ -69,13 +75,14 @@ Each reviewer gets a single prompt containing:
 5. Instructions: "You are an adversarial reviewer. Your job is to find real problems, not
    validate the work. Be specific — cite files, lines, and concrete failure scenarios.
    Rate each finding: high (blocks ship), medium (should fix), low (worth noting).
-   Output findings as a numbered list."
+   Write findings as a numbered markdown list to your output file."
 
 Spawn all reviewers in parallel.
 
 ## Step 4 — Synthesize Verdict
 
-Collect all reviewer outputs. Deduplicate overlapping findings. Produce a single verdict:
+Read each reviewer's output file from `$REVIEW_DIR/`. Deduplicate overlapping findings.
+Produce a single verdict:
 
 ```
 ## Intent
