@@ -79,7 +79,7 @@ func TestMergeUsesIntegrationBranch(t *testing.T) {
 	runGitIn(t, wtPath, "add", "develop-feat.txt")
 	runGitIn(t, wtPath, "commit", "-m", "add feature on develop")
 
-	if err := app.Merge("feat-on-develop", ""); err != nil {
+	if err := app.Merge("feat-on-develop"); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -109,13 +109,13 @@ func TestCleanupUsesIntegrationBranch(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "add work on trunk")
 
 	// Cleanup without --force should fail (has unmerged commits).
-	err := app.Cleanup("cleanup-trunk", false)
+	err := app.Cleanup("cleanup-trunk")
 	if err == nil {
 		t.Error("expected error for unmerged commits without --force")
 	}
 
 	// Force cleanup should succeed.
-	if err := app.Cleanup("cleanup-trunk", true); err != nil {
+	if err := app.Cleanup("cleanup-trunk", CleanupOpts{Force: true}); err != nil {
 		t.Fatalf("Cleanup --force failed: %v", err)
 	}
 
@@ -141,7 +141,7 @@ func TestMergeRejectsWrongBranch(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	err := app.Merge("wrong-branch", "")
+	err := app.Merge("wrong-branch")
 	if err == nil {
 		t.Fatal("expected error when not on integration branch")
 	}
@@ -172,7 +172,7 @@ func TestMergeIntoTargetBranch(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "add sub-feature")
 
 	// Merge sub-work into lead-work (not main).
-	if err := app.Merge("sub-work", "lead-work"); err != nil {
+	if err := app.Merge("sub-work", MergeOpts{Into: "lead-work"}); err != nil {
 		t.Fatalf("Merge --into lead-work failed: %v", err)
 	}
 
@@ -209,7 +209,7 @@ func TestMergeIntoRejectsWrongCurrentBranch(t *testing.T) {
 	}
 
 	// Try to merge into lead-work while on main — should fail.
-	err := app.Merge("sub-work-2", "lead-work")
+	err := app.Merge("sub-work-2", MergeOpts{Into: "lead-work"})
 	if err == nil {
 		t.Fatal("expected error when not on target branch")
 	}

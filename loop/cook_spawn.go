@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	loopruntime "github.com/poteto/noodle/runtime"
+	"github.com/poteto/noodle/worktree"
 )
 
 // ensureSkillFresh verifies the skill is resolvable via the registry.
@@ -100,7 +101,7 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	// Persist active status BEFORE spawning session — restart safety.
 	if err := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusActive); err != nil {
 		if created {
-			_ = l.deps.Worktree.Cleanup(name, true)
+			_ = l.deps.Worktree.Cleanup(name, worktree.CleanupOpts{Force: true})
 		}
 		return err
 	}
@@ -203,7 +204,7 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 
 func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, worktreeName string, created bool, err error) error {
 	if created {
-		_ = l.deps.Worktree.Cleanup(worktreeName, true)
+		_ = l.deps.Worktree.Cleanup(worktreeName, worktree.CleanupOpts{Force: true})
 	}
 	envelope, ok := asDispatchFailureEnvelope(err)
 	if !ok {

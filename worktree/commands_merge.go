@@ -6,12 +6,21 @@ import (
 	"strings"
 )
 
+// MergeOpts holds optional parameters for Merge.
+type MergeOpts struct {
+	// Into overrides the integration branch for this merge.
+	Into string
+}
+
 // Merge rebases the worktree branch onto a target branch, merges, and cleans up.
-// When into is non-empty it overrides the integration branch for this merge.
-func (a *App) Merge(name, into string) error {
+func (a *App) Merge(name string, opts ...MergeOpts) error {
+	var o MergeOpts
+	if len(opts) > 0 {
+		o = opts[0]
+	}
 	base := a.integrationBranch()
-	if into != "" {
-		base = into
+	if o.Into != "" {
+		base = o.Into
 	}
 	wtPath := WorktreePath(a.Root, name)
 	mergeBranch := a.resolveBranchName(name)

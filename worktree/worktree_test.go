@@ -460,7 +460,7 @@ func TestMerge(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "add new-file.txt")
 
 	// Merge back
-	if err := app.Merge("test-merge", ""); err != nil {
+	if err := app.Merge("test-merge"); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -583,7 +583,7 @@ func TestMergeLockAcquiredAndReleased(t *testing.T) {
 	runGitIn(t, wtPath, "add", "new-file.txt")
 	runGitIn(t, wtPath, "commit", "-m", "add new-file.txt")
 
-	if err := app.Merge("lock-happy-path", ""); err != nil {
+	if err := app.Merge("lock-happy-path"); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -615,7 +615,7 @@ func TestMergeLockReleasedOnError(t *testing.T) {
 	runGitIn(t, dir, "add", "README.md")
 	runGitIn(t, dir, "commit", "-m", "main update")
 
-	err := app.Merge("lock-failure", "")
+	err := app.Merge("lock-failure")
 	if err == nil {
 		t.Fatal("expected merge to fail due to rebase conflict")
 	}
@@ -667,7 +667,7 @@ func TestStaleLockCleanedUp(t *testing.T) {
 
 	writeFile(t, app.mergeLockPath(), "99999\n0")
 
-	if err := app.Merge("stale-lock", ""); err != nil {
+	if err := app.Merge("stale-lock"); err != nil {
 		t.Fatalf("expected merge to succeed after stale lock cleanup: %v", err)
 	}
 
@@ -694,7 +694,7 @@ func TestActiveLockBlocksMerge(t *testing.T) {
 
 	writeFile(t, app.mergeLockPath(), fmt.Sprintf("%d\n%d", os.Getpid(), time.Now().Unix()))
 
-	err := app.Merge("active-lock", "")
+	err := app.Merge("active-lock")
 	if err == nil {
 		t.Fatal("expected merge to fail when active lock exists")
 	}
@@ -722,7 +722,7 @@ func TestMergeLockCorruptContent(t *testing.T) {
 	// Write garbage to the lock file
 	writeFile(t, app.mergeLockPath(), "not-a-pid\ngarbage-timestamp")
 
-	if err := app.Merge("corrupt-lock", ""); err != nil {
+	if err := app.Merge("corrupt-lock"); err != nil {
 		t.Fatalf("expected merge to succeed after corrupt lock cleanup: %v", err)
 	}
 
@@ -743,7 +743,7 @@ func TestMergeLockReleasedOnNoCommits(t *testing.T) {
 	}
 
 	// Merge with no commits (no-op path)
-	if err := app.Merge("no-commits-lock", ""); err != nil {
+	if err := app.Merge("no-commits-lock"); err != nil {
 		t.Fatalf("Merge failed: %v", err)
 	}
 
@@ -775,7 +775,7 @@ func TestMergeLockWaitsForRelease(t *testing.T) {
 	mergeStarted := make(chan struct{})
 	go func() {
 		close(mergeStarted)
-		mergeDone <- app.Merge("wait-lock", "")
+		mergeDone <- app.Merge("wait-lock")
 	}()
 
 	<-mergeStarted
@@ -824,7 +824,7 @@ func TestMergeLockEmptyFile(t *testing.T) {
 	// Write an empty lock file (0 bytes)
 	writeFile(t, app.mergeLockPath(), "")
 
-	if err := app.Merge("empty-lock", ""); err != nil {
+	if err := app.Merge("empty-lock"); err != nil {
 		t.Fatalf("expected merge to succeed after empty lock cleanup: %v", err)
 	}
 
@@ -852,7 +852,7 @@ func TestMergeLockZeroPID(t *testing.T) {
 	// Write a lock file with PID 0 (invalid)
 	writeFile(t, app.mergeLockPath(), "0\n0")
 
-	if err := app.Merge("zero-pid", ""); err != nil {
+	if err := app.Merge("zero-pid"); err != nil {
 		t.Fatalf("expected merge to succeed after zero-PID lock cleanup: %v", err)
 	}
 
@@ -880,7 +880,7 @@ func TestMergeLockNegativePID(t *testing.T) {
 	// Write a lock file with negative PID
 	writeFile(t, app.mergeLockPath(), "-1\n0")
 
-	if err := app.Merge("neg-pid", ""); err != nil {
+	if err := app.Merge("neg-pid"); err != nil {
 		t.Fatalf("expected merge to succeed after negative-PID lock cleanup: %v", err)
 	}
 
@@ -933,7 +933,7 @@ func TestMergeNoCommits(t *testing.T) {
 	}
 
 	// Merge with no commits should succeed (no-op)
-	if err := app.Merge("empty-branch", ""); err != nil {
+	if err := app.Merge("empty-branch"); err != nil {
 		t.Fatalf("Merge with no commits should succeed: %v", err)
 	}
 
@@ -951,7 +951,7 @@ func TestMergeNonExistent(t *testing.T) {
 	dir := setupTestRepo(t)
 	app := &App{Root: dir}
 
-	err := app.Merge("ghost", "")
+	err := app.Merge("ghost")
 	if err == nil {
 		t.Error("expected error for non-existent worktree")
 	}
@@ -970,7 +970,7 @@ func TestCleanup(t *testing.T) {
 
 	wtPath := WorktreePath(dir, "cleanup-test")
 
-	if err := app.Cleanup("cleanup-test", false); err != nil {
+	if err := app.Cleanup("cleanup-test"); err != nil {
 		t.Fatalf("Cleanup failed: %v", err)
 	}
 
@@ -998,7 +998,7 @@ func TestCleanupDeletesNoodlePrefixedBranch(t *testing.T) {
 		t.Fatalf("expected worktree path to exist: %s", wtPath)
 	}
 
-	if err := app.Cleanup(name, false); err != nil {
+	if err := app.Cleanup(name); err != nil {
 		t.Fatalf("Cleanup failed: %v", err)
 	}
 	if fileExists(wtPath) {
@@ -1029,7 +1029,7 @@ func TestCleanupRefusesUnmergedCommits(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "add work")
 
 	// Cleanup without --force should fail
-	err := app.Cleanup("has-commits", false)
+	err := app.Cleanup("has-commits")
 	if err == nil {
 		t.Error("expected error for unmerged commits without --force")
 	}
@@ -1058,7 +1058,7 @@ func TestCleanupForce(t *testing.T) {
 	runGitIn(t, wtPath, "commit", "-m", "doomed commit")
 
 	// Force cleanup should succeed
-	if err := app.Cleanup("force-cleanup", true); err != nil {
+	if err := app.Cleanup("force-cleanup", CleanupOpts{Force: true}); err != nil {
 		t.Fatalf("Cleanup --force failed: %v", err)
 	}
 
@@ -1082,7 +1082,7 @@ func TestCleanupMissingDirectory(t *testing.T) {
 	os.RemoveAll(wtPath)
 
 	// Cleanup should handle missing directory gracefully
-	if err := app.Cleanup("ghost-dir", false); err != nil {
+	if err := app.Cleanup("ghost-dir"); err != nil {
 		t.Fatalf("Cleanup of missing dir failed: %v", err)
 	}
 }
@@ -1105,7 +1105,7 @@ func TestCleanupMissingDirectoryRefusesUnmergedCommits(t *testing.T) {
 
 	os.RemoveAll(wtPath)
 
-	err := app.Cleanup("ghost-unmerged", false)
+	err := app.Cleanup("ghost-unmerged")
 	if err == nil {
 		t.Fatal("expected cleanup to refuse deleting missing worktree refs with unmerged commits")
 	}
@@ -1162,7 +1162,7 @@ func TestMergeWithDirtyWorktree(t *testing.T) {
 	runGitIn(t, wtPath, "add", "noise.txt")
 
 	// Merge should handle the dirty worktree via stash
-	if err := app.Merge("dirty-merge", ""); err != nil {
+	if err := app.Merge("dirty-merge"); err != nil {
 		t.Fatalf("Merge with dirty worktree failed: %v", err)
 	}
 

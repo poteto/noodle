@@ -130,9 +130,9 @@ type pendingReviewCook struct {
 
 type WorktreeManager interface {
 	Create(name string, opts ...worktree.CreateOpts) error
-	Merge(name, into string) error
+	Merge(name string, opts ...worktree.MergeOpts) error
 	MergeRemoteBranch(branch string) error
-	Cleanup(name string, force bool) error
+	Cleanup(name string, opts ...worktree.CleanupOpts) error
 }
 
 type AdapterRunner interface {

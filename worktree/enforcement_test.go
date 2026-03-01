@@ -30,7 +30,7 @@ func TestValidateLinkedCheckout_AcceptsLinkedWorktree(t *testing.T) {
 	if err := app.Create("enforce-test"); err != nil {
 		t.Fatalf("Create worktree: %v", err)
 	}
-	t.Cleanup(func() { _ = app.Cleanup("enforce-test", true) })
+	t.Cleanup(func() { _ = app.Cleanup("enforce-test", CleanupOpts{Force: true}) })
 
 	wtPath := WorktreePath(repo, "enforce-test")
 	got, err := ValidateLinkedCheckout(wtPath)

@@ -1,6 +1,10 @@
 package loop
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/poteto/noodle/worktree"
+)
 
 // recordStageFailure performs the state transition for a stage failure:
 // builds failure metadata and emits StageFailed + OrderFailed loop events.
@@ -34,6 +38,6 @@ func (l *Loop) recordStageFailure(cook *cookHandle, reason string, orderClass Or
 // cleanupCookWorktree removes the cook's worktree if it has a non-empty name.
 func (l *Loop) cleanupCookWorktree(cook *cookHandle) {
 	if strings.TrimSpace(cook.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
+		_ = l.deps.Worktree.Cleanup(cook.worktreeName, worktree.CleanupOpts{Force: true})
 	}
 }

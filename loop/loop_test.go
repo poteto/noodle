@@ -40,7 +40,7 @@ func (f *fakeWorktree) Create(name string, _ ...worktree.CreateOpts) error {
 	}
 	return f.createErr
 }
-func (f *fakeWorktree) Merge(name, into string) error {
+func (f *fakeWorktree) Merge(name string, _ ...worktree.MergeOpts) error {
 	f.merged = append(f.merged, name)
 	return f.mergeErr
 }
@@ -48,7 +48,7 @@ func (f *fakeWorktree) MergeRemoteBranch(branch string) error {
 	f.remoteMerged = append(f.remoteMerged, branch)
 	return f.remoteMergeErr
 }
-func (f *fakeWorktree) Cleanup(name string, _ bool) error {
+func (f *fakeWorktree) Cleanup(name string, _ ...worktree.CleanupOpts) error {
 	f.cleaned = append(f.cleaned, name)
 	return nil
 }

@@ -321,7 +321,7 @@ func startRepairSession(
 
 	noodleBin, err := app.NoodleBinaryPath()
 	if err != nil {
-		_ = worktreeApp.Cleanup(name, true)
+		_ = worktreeApp.Cleanup(name, worktree.CleanupOpts{Force: true})
 		return repairLaunchResult{}, err
 	}
 	runtimeDir := filepath.Join(worktreeApp.Root, ".noodle")
@@ -344,7 +344,7 @@ func startRepairSession(
 	}
 	session, err := d.Dispatch(ctx, request)
 	if err != nil {
-		_ = worktreeApp.Cleanup(name, true)
+		_ = worktreeApp.Cleanup(name, worktree.CleanupOpts{Force: true})
 		return repairLaunchResult{}, err
 	}
 	return repairLaunchResult{

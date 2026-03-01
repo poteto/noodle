@@ -13,8 +13,8 @@ import (
 type worktreeCommandApp interface {
 	Create(name string, opts ...worktree.CreateOpts) error
 	Exec(name string, args []string) error
-	Merge(name, into string) error
-	Cleanup(name string, force bool) error
+	Merge(name string, opts ...worktree.MergeOpts) error
+	Cleanup(name string, opts ...worktree.CleanupOpts) error
 	List() error
 	Prune() error
 }
@@ -107,7 +107,11 @@ func newWorktreeMergeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return wApp.Merge(strings.TrimSpace(args[0]), strings.TrimSpace(into))
+			var opts []worktree.MergeOpts
+			if i := strings.TrimSpace(into); i != "" {
+				opts = append(opts, worktree.MergeOpts{Into: i})
+			}
+			return wApp.Merge(strings.TrimSpace(args[0]), opts...)
 		},
 	}
 	cmd.Flags().StringVar(&into, "into", "", "Target branch to merge into (default: integration branch)")
@@ -125,7 +129,11 @@ func newWorktreeCleanupCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return wApp.Cleanup(strings.TrimSpace(args[0]), force)
+			var opts []worktree.CleanupOpts
+			if force {
+				opts = append(opts, worktree.CleanupOpts{Force: true})
+			}
+			return wApp.Cleanup(strings.TrimSpace(args[0]), opts...)
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Remove even when unmerged commits exist")

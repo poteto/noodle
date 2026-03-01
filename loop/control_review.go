@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/worktree"
 )
 
 func (l *Loop) controlMerge(orderID string) error {
@@ -87,7 +88,7 @@ func (l *Loop) controlReject(orderID string) error {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
 	if strings.TrimSpace(pending.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
+		_ = l.deps.Worktree.Cleanup(pending.worktreeName, worktree.CleanupOpts{Force: true})
 	}
 	// Cancel and remove the order directly.
 	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {

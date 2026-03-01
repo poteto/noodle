@@ -200,15 +200,19 @@ func (f *fakeWorktreeCommandApp) Exec(name string, args []string) error {
 	return nil
 }
 
-func (f *fakeWorktreeCommandApp) Merge(name, into string) error {
+func (f *fakeWorktreeCommandApp) Merge(name string, opts ...worktree.MergeOpts) error {
 	f.mergeName = name
-	f.mergeInto = into
+	if len(opts) > 0 {
+		f.mergeInto = opts[0].Into
+	}
 	return nil
 }
 
-func (f *fakeWorktreeCommandApp) Cleanup(name string, force bool) error {
+func (f *fakeWorktreeCommandApp) Cleanup(name string, opts ...worktree.CleanupOpts) error {
 	f.cleanupName = name
-	f.cleanupForce = force
+	if len(opts) > 0 {
+		f.cleanupForce = opts[0].Force
+	}
 	return nil
 }
 

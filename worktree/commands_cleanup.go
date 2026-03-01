@@ -5,14 +5,23 @@ import (
 	"os"
 )
 
-// Cleanup removes a worktree without merging. If force is false, it refuses
-// when unmerged commits exist.
-func (a *App) Cleanup(name string, force bool) error {
+// CleanupOpts holds optional parameters for Cleanup.
+type CleanupOpts struct {
+	// Force removes the worktree even when unmerged commits exist.
+	Force bool
+}
+
+// Cleanup removes a worktree without merging.
+func (a *App) Cleanup(name string, opts ...CleanupOpts) error {
+	var o CleanupOpts
+	if len(opts) > 0 {
+		o = opts[0]
+	}
 	wtPath := a.resolveWorktreePath(name)
 	cleanupBranch := a.resolveBranchName(name)
 
 	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
-		if !force {
+		if !o.Force {
 			if err := a.ensureNoUnmergedCommits(name, cleanupBranch); err != nil {
 				return err
 			}
@@ -38,7 +47,7 @@ func (a *App) Cleanup(name string, force bool) error {
 		)
 	}
 
-	if !force {
+	if !o.Force {
 		if err := a.ensureNoUnmergedCommits(name, cleanupBranch); err != nil {
 			return err
 		}
@@ -190,7 +199,7 @@ func (a *App) Prune() error {
 		} else {
 			a.info(fmt.Sprintf("%s — no commits ahead of %s, pruning", e.Name, base))
 		}
-		if err := a.Cleanup(e.Name, false); err != nil {
+		if err := a.Cleanup(e.Name); err != nil {
 			skipped++
 			warnings = append(warnings, fmt.Sprintf("failed to prune %s: %v", e.Name, err))
 			continue
