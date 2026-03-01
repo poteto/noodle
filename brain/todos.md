@@ -22,7 +22,7 @@ priority: [84, 88, 20, 69]
 
 ## UI
 
-86. [ ] Investigate adding https://diffs.com/ to the web UI — every code change can be represented as a diff, making it easier for users to review code changes inline
+86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, and (2) in a dedicated diff tab/panel that collects all code changes from a session. Ship-ready: fully integrated, styled, and tested.
 
 ## Backend
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
