@@ -119,13 +119,13 @@ func PlanDispatches(s state.State, maxConcurrent int, failedOrders map[string]bo
 
 // RouteCompletion applies one attempt completion and emits canonical routing
 // events for downstream ingestion.
-func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest.StateEvent) {
+func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest.StateEvent, error) {
 	order, stage, ok := lookupOrderStage(s, rec.OrderID, rec.StageIndex)
 	if !ok || isTerminalOrder(order.Status) {
-		return s, nil
+		return s, nil, nil
 	}
 	if isTerminalStage(stage.Status) {
-		return s, nil
+		return s, nil, nil
 	}
 
 	next := cloneState(s)
@@ -145,13 +145,17 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 		order.Stages[rec.StageIndex] = stage
 		next.Orders[rec.OrderID] = order
 
-		events = append(events, buildInternalEvent(ingest.EventStageCompleted, rec.CompletedAt, completionEventPayload{
+		evt, err := buildInternalEvent(ingest.EventStageCompleted, rec.CompletedAt, completionEventPayload{
 			OrderID:    rec.OrderID,
 			StageIndex: rec.StageIndex,
 			AttemptID:  rec.AttemptID,
 			Error:      strings.TrimSpace(rec.Error),
 			ExitCode:   clonedExitCode(rec.ExitCode),
-		}))
+		})
+		if err != nil {
+			return s, nil, fmt.Errorf("route completion stage_completed: %w", err)
+		}
+		events = append(events, evt)
 
 	case state.AttemptFailed, state.AttemptCancelled:
 		order.Stages[rec.StageIndex] = stage
@@ -166,30 +170,38 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 			order.Stages[rec.StageIndex] = stage
 			next.Orders[rec.OrderID] = order
 
-			events = append(events, buildInternalEvent(ingest.EventDispatchRequested, rec.CompletedAt, completionEventPayload{
+			evt, err := buildInternalEvent(ingest.EventDispatchRequested, rec.CompletedAt, completionEventPayload{
 				OrderID:    rec.OrderID,
 				StageIndex: rec.StageIndex,
 				AttemptID:  rec.AttemptID,
 				Error:      strings.TrimSpace(rec.Error),
 				ExitCode:   clonedExitCode(rec.ExitCode),
-			}))
-			return next, events
+			})
+			if err != nil {
+				return s, nil, fmt.Errorf("route completion dispatch_requested: %w", err)
+			}
+			events = append(events, evt)
+			return next, events, nil
 		}
 
 		next = RouteFailure(next, rec.OrderID, rec.StageIndex, rec.Error)
-		events = append(events, buildInternalEvent(ingest.EventStageFailed, rec.CompletedAt, completionEventPayload{
+		evt, err := buildInternalEvent(ingest.EventStageFailed, rec.CompletedAt, completionEventPayload{
 			OrderID:    rec.OrderID,
 			StageIndex: rec.StageIndex,
 			AttemptID:  rec.AttemptID,
 			Error:      strings.TrimSpace(rec.Error),
 			ExitCode:   clonedExitCode(rec.ExitCode),
-		}))
+		})
+		if err != nil {
+			return s, nil, fmt.Errorf("route completion stage_failed: %w", err)
+		}
+		events = append(events, evt)
 	default:
 		order.Stages[rec.StageIndex] = stage
 		next.Orders[rec.OrderID] = order
 	}
 
-	return next, events
+	return next, events, nil
 }
 
 // AdvanceOrder marks post-merge progress and returns removed=true when the
@@ -450,11 +462,10 @@ func defaultRetryPolicy() RetryPolicy {
 	}
 }
 
-func buildInternalEvent(eventType ingest.EventType, timestamp time.Time, payload completionEventPayload) ingest.StateEvent {
+func buildInternalEvent(eventType ingest.EventType, timestamp time.Time, payload completionEventPayload) (ingest.StateEvent, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		// dispatch-owned payloads are deterministic structs.
-		panic(fmt.Sprintf("encode dispatch event payload: %v", err))
+		return ingest.StateEvent{}, fmt.Errorf("dispatch event payload encoding failed: %v", err)
 	}
 	return ingest.StateEvent{
 		Source:         string(ingest.SourceInternal),
@@ -462,7 +473,7 @@ func buildInternalEvent(eventType ingest.EventType, timestamp time.Time, payload
 		Timestamp:      timestamp,
 		Payload:        data,
 		IdempotencyKey: fmt.Sprintf("%s:%s:%d:%s", eventType, payload.OrderID, payload.StageIndex, payload.AttemptID),
-	}
+	}, nil
 }
 
 func clonedExitCode(code *int) *int {

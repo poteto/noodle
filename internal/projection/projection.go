@@ -31,7 +31,7 @@ type hashPayload struct {
 }
 
 // Project deterministically projects canonical state into all external views.
-func Project(s state.State, modeState mode.ModeState) ProjectionBundle {
+func Project(s state.State, modeState mode.ModeState) (ProjectionBundle, error) {
 	generatedAt := projectionGeneratedAt(s, modeState)
 	orders := projectOrders(s)
 	version := versionFromLastEventID(s.LastEventID)
@@ -59,8 +59,12 @@ func Project(s state.State, modeState mode.ModeState) ProjectionBundle {
 		Version:      version,
 		GeneratedAt:  generatedAt,
 	}
-	bundle.Hash = ComputeHash(bundle)
-	return bundle
+	hash, err := ComputeHash(bundle)
+	if err != nil {
+		return ProjectionBundle{}, fmt.Errorf("project compute hash: %w", err)
+	}
+	bundle.Hash = hash
+	return bundle, nil
 }
 
 // WriteProjectionFiles atomically writes orders.json and state.json.
@@ -94,7 +98,7 @@ func WriteProjectionFiles(dir string, bundle ProjectionBundle) error {
 }
 
 // ComputeHash returns a deterministic SHA-256 hash of projection content.
-func ComputeHash(bundle ProjectionBundle) ProjectionHash {
+func ComputeHash(bundle ProjectionBundle) (ProjectionHash, error) {
 	payload := hashPayload{
 		OrdersProjection: cloneOrderProjections(bundle.OrdersProjection),
 		StateMarker: statever.StateMarker{
@@ -115,10 +119,10 @@ func ComputeHash(bundle ProjectionBundle) ProjectionHash {
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		panic(fmt.Sprintf("serialize projection hash payload: %v", err))
+		return "", fmt.Errorf("projection hash payload encoding failed: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	return ProjectionHash(hex.EncodeToString(sum[:]))
+	return ProjectionHash(hex.EncodeToString(sum[:])), nil
 }
 
 func versionFromLastEventID(lastEventID string) ProjectionVersion {

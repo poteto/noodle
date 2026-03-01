@@ -24,8 +24,8 @@ func TestProjectProducesDeterministicOutput(t *testing.T) {
 		Epoch:         42,
 	}
 
-	first := Project(st, modeState)
-	second := Project(st, modeState)
+	first := mustProject(t, st, modeState)
+	second := mustProject(t, st, modeState)
 
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("projection changed across identical inputs:\nfirst=%+v\nsecond=%+v", first, second)
@@ -77,7 +77,7 @@ func TestProjectMapsAllLifecycleStatuses(t *testing.T) {
 		}
 	}
 
-	bundle := Project(state.State{
+	bundle := mustProject(t, state.State{
 		Orders:        orders,
 		Mode:          state.RunModeAuto,
 		SchemaVersion: statever.Current,
@@ -107,10 +107,16 @@ func TestProjectionHashDeterministicAndChangesWhenStateChanges(t *testing.T) {
 
 	st := fixtureStateForProjection()
 	modeState := mode.ModeState{EffectiveMode: state.RunModeAuto, Epoch: 1}
-	bundle := Project(st, modeState)
+	bundle := mustProject(t, st, modeState)
 
-	hashA := ComputeHash(bundle)
-	hashB := ComputeHash(bundle)
+	hashA, err := ComputeHash(bundle)
+	if err != nil {
+		t.Fatalf("compute hash A: %v", err)
+	}
+	hashB, err := ComputeHash(bundle)
+	if err != nil {
+		t.Fatalf("compute hash B: %v", err)
+	}
 	if hashA != hashB {
 		t.Fatalf("hash changed across identical bundle: %q vs %q", hashA, hashB)
 	}
@@ -122,7 +128,7 @@ func TestProjectionHashDeterministicAndChangesWhenStateChanges(t *testing.T) {
 	st2.Orders["order-1"] = order
 	st2.LastEventID = "13"
 
-	changed := Project(st2, modeState)
+	changed := mustProject(t, st2, modeState)
 	if hashA == changed.Hash {
 		t.Fatalf("hash did not change after projection content changed: %q", hashA)
 	}
@@ -168,8 +174,8 @@ func TestProjectionHashIdenticalForIdenticalStates(t *testing.T) {
 	}
 
 	modeState := mode.ModeState{EffectiveMode: state.RunModeManual, Epoch: 7}
-	bundleA := Project(stateA, modeState)
-	bundleB := Project(stateB, modeState)
+	bundleA := mustProject(t, stateA, modeState)
+	bundleB := mustProject(t, stateB, modeState)
 
 	if bundleA.Hash != bundleB.Hash {
 		t.Fatalf("identical state produced different hashes: %q vs %q", bundleA.Hash, bundleB.Hash)
@@ -180,7 +186,7 @@ func TestWriteProjectionFilesCreatesValidJSONFiles(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	bundle := Project(fixtureStateForProjection(), mode.ModeState{
+	bundle := mustProject(t, fixtureStateForProjection(), mode.ModeState{
 		EffectiveMode: state.RunModeSupervised,
 		Epoch:         22,
 	})
@@ -218,7 +224,7 @@ func TestWriteProjectionFilesAtomicWriteLeavesNoTempFiles(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	bundle := Project(fixtureStateForProjection(), mode.ModeState{
+	bundle := mustProject(t, fixtureStateForProjection(), mode.ModeState{
 		EffectiveMode: state.RunModeAuto,
 		Epoch:         1,
 	})
@@ -294,9 +300,12 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 		LastEventID:   "101",
 	}
 
-	previous := Project(prevState, mode.ModeState{EffectiveMode: state.RunModeAuto, Epoch: 9})
-	current := Project(currState, mode.ModeState{EffectiveMode: state.RunModeManual, Epoch: 10})
-	delta := ComputeDelta(previous, current)
+	previous := mustProject(t, prevState, mode.ModeState{EffectiveMode: state.RunModeAuto, Epoch: 9})
+	current := mustProject(t, currState, mode.ModeState{EffectiveMode: state.RunModeManual, Epoch: 10})
+	delta, err := ComputeDelta(previous, current)
+	if err != nil {
+		t.Fatalf("compute delta: %v", err)
+	}
 
 	if delta.Version != current.Version {
 		t.Fatalf("delta version = %d, want %d", delta.Version, current.Version)
@@ -324,11 +333,14 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 func TestComputeDeltaIdenticalBundlesReturnsEmptyDelta(t *testing.T) {
 	t.Parallel()
 
-	bundle := Project(fixtureStateForProjection(), mode.ModeState{
+	bundle := mustProject(t, fixtureStateForProjection(), mode.ModeState{
 		EffectiveMode: state.RunModeAuto,
 		Epoch:         2,
 	})
-	delta := ComputeDelta(bundle, bundle)
+	delta, err := ComputeDelta(bundle, bundle)
+	if err != nil {
+		t.Fatalf("compute delta: %v", err)
+	}
 
 	if len(delta.Changes) != 0 {
 		t.Fatalf("identical bundles should produce no changes, got %d", len(delta.Changes))
@@ -372,7 +384,7 @@ func TestSnapshotViewContainsAllRequiredFields(t *testing.T) {
 		EffectiveMode: state.RunModeSupervised,
 		Epoch:         55,
 	}
-	bundle := Project(st, modeState)
+	bundle := mustProject(t, st, modeState)
 
 	snap := bundle.SnapshotView
 	if snap.Mode != string(modeState.EffectiveMode) {
@@ -422,7 +434,7 @@ func TestOrderProjectionMapsFromOrderNode(t *testing.T) {
 		LastEventID:   "7",
 	}
 
-	bundle := Project(st, mode.ModeState{
+	bundle := mustProject(t, st, mode.ModeState{
 		EffectiveMode: state.RunModeManual,
 		Epoch:         3,
 	})
@@ -446,11 +458,14 @@ func TestOrderProjectionMapsFromOrderNode(t *testing.T) {
 func TestProjectionTypesJSONRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	bundle := Project(fixtureStateForProjection(), mode.ModeState{
+	bundle := mustProject(t, fixtureStateForProjection(), mode.ModeState{
 		EffectiveMode: state.RunModeAuto,
 		Epoch:         4,
 	})
-	delta := ComputeDelta(bundle, bundle)
+	delta, err := ComputeDelta(bundle, bundle)
+	if err != nil {
+		t.Fatalf("compute delta: %v", err)
+	}
 	change := DeltaChange{
 		Path:  "orders.order-1.status",
 		Op:    string(DeltaOpSet),
@@ -603,10 +618,19 @@ func TestProjectEdgeCases(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			bundle := Project(tt.state, tt.modeState)
+			bundle := mustProject(t, tt.state, tt.modeState)
 			tt.assertions(t, bundle)
 		})
 	}
+}
+
+func mustProject(t *testing.T, s state.State, modeState mode.ModeState) ProjectionBundle {
+	t.Helper()
+	bundle, err := Project(s, modeState)
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	return bundle
 }
 
 func fixtureStateForProjection() state.State {

@@ -29,8 +29,8 @@ func TestResilienceVerification(t *testing.T) {
 		runA := applyEvents(initial, events, nil)
 		runB := applyEvents(makeState(50, 2, baseAt), events, nil)
 
-		hashA := hashState(runA.state)
-		hashB := hashState(runB.state)
+		hashA := hashState(t, runA.state)
+		hashB := hashState(t, runB.state)
 
 		deterministicMatchPercent := 0
 		if hashA == hashB {
@@ -59,7 +59,7 @@ func TestResilienceVerification(t *testing.T) {
 		initial := makeState(24, 2, baseAt)
 		events := lifecycleEvents(24, 2, 1, baseAt.Add(time.Second))
 		fullRun := applyEvents(initial, events, nil)
-		fullHash := hashState(fullRun.state)
+		fullHash := hashState(t, fullRun.state)
 		fullOrders, fullStages := terminalCounts(fullRun.state)
 
 		t.Run("after event persistence before state/effect ledger commit", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestResilienceVerification(t *testing.T) {
 			snapshot = writeReadSnapshot(t, snapshot)
 
 			recovered := applyEvents(snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
-			recoveredHash := hashState(recovered.state)
+			recoveredHash := hashState(t, recovered.state)
 			if recoveredHash != fullHash {
 				t.Fatalf("recovered state hash diverged after crash window A: recovered=%s full=%s", recoveredHash, fullHash)
 			}
@@ -132,7 +132,7 @@ func TestResilienceVerification(t *testing.T) {
 			}
 
 			recovered := applyEvents(snapshot.State, events[1:], recoveredLedger)
-			recoveredHash := hashState(recovered.state)
+			recoveredHash := hashState(t, recovered.state)
 			if recoveredHash != fullHash {
 				t.Fatalf("recovered state hash diverged after crash window B: recovered=%s full=%s", recoveredHash, fullHash)
 			}
@@ -156,7 +156,7 @@ func TestResilienceVerification(t *testing.T) {
 			snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, baseAt.Add(4*time.Minute))
 
 			projectionDir := t.TempDir()
-			bundle := projection.Project(beforeCrash.state, mode.ModeState{EffectiveMode: beforeCrash.state.Mode})
+			bundle := mustProject(t, beforeCrash.state, mode.ModeState{EffectiveMode: beforeCrash.state.Mode})
 			tempPath := writeInterruptedProjectionTemp(t, projectionDir, bundle)
 			if _, err := os.Stat(tempPath); err != nil {
 				t.Fatalf("projection temp artifact unavailable at crash window C boundary: %v", err)
@@ -165,18 +165,19 @@ func TestResilienceVerification(t *testing.T) {
 			snapshot = writeReadSnapshot(t, snapshot)
 			recovered := applyEvents(snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
 
-			finalBundle := projection.Project(recovered.state, mode.ModeState{EffectiveMode: recovered.state.Mode})
+			finalBundle := mustProject(t, recovered.state, mode.ModeState{EffectiveMode: recovered.state.Mode})
 			if err := projection.WriteProjectionFiles(projectionDir, finalBundle); err != nil {
 				t.Fatalf("projection rewrite failed after crash window C: %v", err)
 			}
 
-			recoveredHash := hashState(recovered.state)
+			recoveredHash := hashState(t, recovered.state)
 			if recoveredHash != fullHash {
 				t.Fatalf("recovered state hash diverged after crash window C: recovered=%s full=%s", recoveredHash, fullHash)
 			}
 
-			if finalBundle.Hash != projection.Project(fullRun.state, mode.ModeState{EffectiveMode: fullRun.state.Mode}).Hash {
-				t.Fatalf("projection hash diverged after crash window C recovery: recovered=%s full=%s", finalBundle.Hash, projection.Project(fullRun.state, mode.ModeState{EffectiveMode: fullRun.state.Mode}).Hash)
+			fullBundle := mustProject(t, fullRun.state, mode.ModeState{EffectiveMode: fullRun.state.Mode})
+			if finalBundle.Hash != fullBundle.Hash {
+				t.Fatalf("projection hash diverged after crash window C recovery: recovered=%s full=%s", finalBundle.Hash, fullBundle.Hash)
 			}
 
 			dupDispatch := duplicateCount(append(beforeCrash.dispatchEffectIDs, recovered.dispatchEffectIDs...))
@@ -205,8 +206,8 @@ func TestResilienceVerification(t *testing.T) {
 
 		runA := applyEvents(initialA, stream, nil)
 		runB := applyEvents(initialB, stream, nil)
-		hashA := hashState(runA.state)
-		hashB := hashState(runB.state)
+		hashA := hashState(t, runA.state)
+		hashB := hashState(t, runB.state)
 
 		deterministicMatchPercent := 0
 		if hashA == hashB {
@@ -242,7 +243,7 @@ func TestResilienceVerification(t *testing.T) {
 				nextMode := modeSequence[modeCursor]
 				modeCursor++
 				modeState = mode.TransitionMode(modeState, nextMode, "integration", fmt.Sprintf("pressure-step-%d", step), now)
-				current, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventModeChanged, map[string]any{
+				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventModeChanged, map[string]any{
 					"mode": string(nextMode),
 				}, now))
 				nextEventID++
@@ -271,7 +272,7 @@ func TestResilienceVerification(t *testing.T) {
 				"attempt_id":  attemptID,
 			}, now)
 			nextEventID++
-			nextState, effects := reducer.Reduce(current, request)
+			nextState, effects, _ := reducer.Reduce(current, request)
 			current = nextState
 			for _, effect := range effects {
 				if effect.Type == reducer.EffectDispatch {
@@ -279,7 +280,7 @@ func TestResilienceVerification(t *testing.T) {
 				}
 			}
 
-			current, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventDispatchCompleted, map[string]any{
+			current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventDispatchCompleted, map[string]any{
 				"order_id":      candidate.OrderID,
 				"stage_index":   candidate.StageIndex,
 				"attempt_id":    attemptID,
@@ -289,7 +290,7 @@ func TestResilienceVerification(t *testing.T) {
 			nextEventID++
 
 			if step%3 == 0 {
-				current, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageFailed, map[string]any{
+				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageFailed, map[string]any{
 					"order_id":    candidate.OrderID,
 					"stage_index": candidate.StageIndex,
 					"attempt_id":  attemptID,
@@ -299,7 +300,7 @@ func TestResilienceVerification(t *testing.T) {
 				continue
 			}
 
-			current, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageCompleted, map[string]any{
+			current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageCompleted, map[string]any{
 				"order_id":    candidate.OrderID,
 				"stage_index": candidate.StageIndex,
 				"attempt_id":  attemptID,
@@ -308,7 +309,7 @@ func TestResilienceVerification(t *testing.T) {
 			nextEventID++
 
 			if gate.CanAutoMerge(modeState.EffectiveMode) {
-				current, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventMergeCompleted, map[string]any{
+				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventMergeCompleted, map[string]any{
 					"order_id":    candidate.OrderID,
 					"stage_index": candidate.StageIndex,
 				}, now.Add(60*time.Millisecond)))
@@ -359,8 +360,8 @@ func TestResilienceVerification(t *testing.T) {
 		hashByState := make(map[string]projection.ProjectionHash)
 
 		for i, event := range events[:100] {
-			current, _ = reducer.Reduce(current, event)
-			bundle := projection.Project(current, mode.ModeState{EffectiveMode: current.Mode})
+			current, _, _ = reducer.Reduce(current, event)
+			bundle := mustProject(t, current, mode.ModeState{EffectiveMode: current.Mode})
 
 			if i > 0 && bundle.Version < prevVersion {
 				versionViolations++
@@ -398,7 +399,7 @@ func applyEvents(initial state.State, events []ingest.StateEvent, existingLedger
 	current := initial
 	dispatchIDs := make([]string, 0)
 	for _, event := range events {
-		next, effects := reducer.Reduce(current, event)
+		next, effects, _ := reducer.Reduce(current, event)
 		current = next
 		for _, effect := range effects {
 			ledger.Record(effect)
@@ -509,8 +510,18 @@ func makeEvent(id ingest.EventID, eventType ingest.EventType, payload map[string
 	}
 }
 
-func hashState(s state.State) projection.ProjectionHash {
-	bundle := projection.Project(s, mode.ModeState{EffectiveMode: s.Mode})
+func mustProject(t *testing.T, s state.State, ms mode.ModeState) projection.ProjectionBundle {
+	t.Helper()
+	bundle, err := projection.Project(s, ms)
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	return bundle
+}
+
+func hashState(t *testing.T, s state.State) projection.ProjectionHash {
+	t.Helper()
+	bundle := mustProject(t, s, mode.ModeState{EffectiveMode: s.Mode})
 	return bundle.Hash
 }
 

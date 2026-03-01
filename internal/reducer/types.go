@@ -13,7 +13,7 @@ import (
 //
 // It must never perform side effects. It only transforms state and emits
 // declarative effects for external executors.
-type Reducer func(state.State, ingest.StateEvent) (state.State, []Effect)
+type Reducer func(state.State, ingest.StateEvent) (state.State, []Effect, error)
 
 // EffectType identifies the side effect to execute after a state transition.
 type EffectType string
@@ -88,20 +88,23 @@ func effectIDForEvent(eventID ingest.EventID, effectIndex int) string {
 	return fmt.Sprintf("event-%d-effect-%d", eventID, effectIndex)
 }
 
-func makeEffect(event ingest.StateEvent, effectIndex int, effectType EffectType, payload any) Effect {
+func makeEffect(event ingest.StateEvent, effectIndex int, effectType EffectType, payload any) (Effect, error) {
+	raw, err := rawJSON(payload)
+	if err != nil {
+		return Effect{}, err
+	}
 	return Effect{
 		EffectID:  effectIDForEvent(event.ID, effectIndex),
 		Type:      effectType,
-		Payload:   mustRawJSON(payload),
+		Payload:   raw,
 		CreatedAt: event.Timestamp,
-	}
+	}, nil
 }
 
-func mustRawJSON(payload any) json.RawMessage {
+func rawJSON(payload any) (json.RawMessage, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		// Payloads are reducer-owned structs/maps and must always encode.
-		panic(fmt.Sprintf("effect payload encoding failed: %v", err))
+		return nil, fmt.Errorf("effect payload encoding failed: %v", err)
 	}
-	return json.RawMessage(data)
+	return json.RawMessage(data), nil
 }

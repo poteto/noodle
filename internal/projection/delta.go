@@ -7,24 +7,48 @@ import (
 )
 
 // ComputeDelta compares two projection bundles and returns a deterministic delta.
-func ComputeDelta(previous, current ProjectionBundle) ProjectionDelta {
+func ComputeDelta(previous, current ProjectionBundle) (ProjectionDelta, error) {
 	changes := make([]DeltaChange, 0)
-	changes = append(changes, computeOrderChanges(previous.OrdersProjection, current.OrdersProjection)...)
+	orderChanges, err := computeOrderChanges(previous.OrdersProjection, current.OrdersProjection)
+	if err != nil {
+		return ProjectionDelta{}, fmt.Errorf("compute order changes: %w", err)
+	}
+	changes = append(changes, orderChanges...)
 
 	if previous.SnapshotView.Mode != current.SnapshotView.Mode {
-		changes = append(changes, deltaSet("mode", current.SnapshotView.Mode))
+		c, err := deltaSet("mode", current.SnapshotView.Mode)
+		if err != nil {
+			return ProjectionDelta{}, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.SnapshotView.ModeEpoch != current.SnapshotView.ModeEpoch {
-		changes = append(changes, deltaSet("mode_epoch", current.SnapshotView.ModeEpoch))
+		c, err := deltaSet("mode_epoch", current.SnapshotView.ModeEpoch)
+		if err != nil {
+			return ProjectionDelta{}, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.SnapshotView.SchemaVersion != current.SnapshotView.SchemaVersion {
-		changes = append(changes, deltaSet("schema_version", current.SnapshotView.SchemaVersion))
+		c, err := deltaSet("schema_version", current.SnapshotView.SchemaVersion)
+		if err != nil {
+			return ProjectionDelta{}, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.SnapshotView.LastEventID != current.SnapshotView.LastEventID {
-		changes = append(changes, deltaSet("last_event_id", current.SnapshotView.LastEventID))
+		c, err := deltaSet("last_event_id", current.SnapshotView.LastEventID)
+		if err != nil {
+			return ProjectionDelta{}, err
+		}
+		changes = append(changes, c)
 	}
 	if !previous.SnapshotView.GeneratedAt.Equal(current.SnapshotView.GeneratedAt) {
-		changes = append(changes, deltaSet("generated_at", normalizeTime(current.SnapshotView.GeneratedAt)))
+		c, err := deltaSet("generated_at", normalizeTime(current.SnapshotView.GeneratedAt))
+		if err != nil {
+			return ProjectionDelta{}, err
+		}
+		changes = append(changes, c)
 	}
 
 	sort.SliceStable(changes, func(i, j int) bool {
@@ -39,10 +63,10 @@ func ComputeDelta(previous, current ProjectionBundle) ProjectionDelta {
 		PreviousVersion: previous.Version,
 		Changes:         changes,
 		Timestamp:       normalizeTime(current.GeneratedAt),
-	}
+	}, nil
 }
 
-func computeOrderChanges(previous, current []OrderProjection) []DeltaChange {
+func computeOrderChanges(previous, current []OrderProjection) ([]DeltaChange, error) {
 	changes := make([]DeltaChange, 0)
 
 	previousByID := make(map[string]OrderProjection, len(previous))
@@ -71,22 +95,34 @@ func computeOrderChanges(previous, current []OrderProjection) []DeltaChange {
 
 		switch {
 		case !hadPrev && hasCurr:
-			changes = append(changes, deltaSet(path, currOrder))
+			c, err := deltaSet(path, currOrder)
+			if err != nil {
+				return nil, err
+			}
+			changes = append(changes, c)
 		case hadPrev && !hasCurr:
 			changes = append(changes, deltaDelete(path))
 		default:
-			changes = append(changes, diffOrder(path, prevOrder, currOrder)...)
+			orderChanges, err := diffOrder(path, prevOrder, currOrder)
+			if err != nil {
+				return nil, err
+			}
+			changes = append(changes, orderChanges...)
 		}
 	}
 
-	return changes
+	return changes, nil
 }
 
-func diffOrder(basePath string, previous, current OrderProjection) []DeltaChange {
+func diffOrder(basePath string, previous, current OrderProjection) ([]DeltaChange, error) {
 	changes := make([]DeltaChange, 0)
 
 	if previous.Status != current.Status {
-		changes = append(changes, deltaSet(basePath+".status", current.Status))
+		c, err := deltaSet(basePath+".status", current.Status)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, c)
 	}
 
 	maxStages := len(previous.Stages)
@@ -97,46 +133,70 @@ func diffOrder(basePath string, previous, current OrderProjection) []DeltaChange
 	for i := 0; i < maxStages; i++ {
 		stagePath := fmt.Sprintf("%s.stages.%d", basePath, i)
 		if i >= len(previous.Stages) {
-			changes = append(changes, deltaSet(stagePath, current.Stages[i]))
+			c, err := deltaSet(stagePath, current.Stages[i])
+			if err != nil {
+				return nil, err
+			}
+			changes = append(changes, c)
 			continue
 		}
 		if i >= len(current.Stages) {
 			changes = append(changes, deltaDelete(stagePath))
 			continue
 		}
-		changes = append(changes, diffStage(stagePath, previous.Stages[i], current.Stages[i])...)
+		stageChanges, err := diffStage(stagePath, previous.Stages[i], current.Stages[i])
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, stageChanges...)
 	}
 
-	return changes
+	return changes, nil
 }
 
-func diffStage(basePath string, previous, current StageProjection) []DeltaChange {
+func diffStage(basePath string, previous, current StageProjection) ([]DeltaChange, error) {
 	changes := make([]DeltaChange, 0, 4)
 	if previous.Skill != current.Skill {
-		changes = append(changes, deltaSet(basePath+".skill", current.Skill))
+		c, err := deltaSet(basePath+".skill", current.Skill)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.Runtime != current.Runtime {
-		changes = append(changes, deltaSet(basePath+".runtime", current.Runtime))
+		c, err := deltaSet(basePath+".runtime", current.Runtime)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.Status != current.Status {
-		changes = append(changes, deltaSet(basePath+".status", current.Status))
+		c, err := deltaSet(basePath+".status", current.Status)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, c)
 	}
 	if previous.Group != current.Group {
-		changes = append(changes, deltaSet(basePath+".group", current.Group))
+		c, err := deltaSet(basePath+".group", current.Group)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, c)
 	}
-	return changes
+	return changes, nil
 }
 
-func deltaSet(path string, value any) DeltaChange {
+func deltaSet(path string, value any) (DeltaChange, error) {
 	data, err := json.Marshal(value)
 	if err != nil {
-		panic(fmt.Sprintf("serialize delta set value: %v", err))
+		return DeltaChange{}, fmt.Errorf("delta set value encoding failed for path %q: %v", path, err)
 	}
 	return DeltaChange{
 		Path:  path,
 		Op:    string(DeltaOpSet),
 		Value: json.RawMessage(data),
-	}
+	}, nil
 }
 
 func deltaDelete(path string) DeltaChange {

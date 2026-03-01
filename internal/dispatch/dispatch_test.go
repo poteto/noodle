@@ -365,7 +365,10 @@ func TestRouteCompletion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotState, gotEvents := RouteCompletion(tt.input, tt.rec)
+			gotState, gotEvents, err := RouteCompletion(tt.input, tt.rec)
+			if err != nil {
+				t.Fatalf("route completion: %v", err)
+			}
 			stage := gotState.Orders["order-1"].Stages[0]
 			if stage.Status != tt.wantStage {
 				t.Fatalf("stage status mismatch: got %q want %q", stage.Status, tt.wantStage)
@@ -616,13 +619,16 @@ func TestEdgeCases(t *testing.T) {
 			},
 		}
 
-		next, events := RouteCompletion(s, CompletionRecord{
+		next, events, err := RouteCompletion(s, CompletionRecord{
 			OrderID:     "order-1",
 			StageIndex:  0,
 			AttemptID:   "att-1",
 			Status:      state.AttemptCompleted,
 			CompletedAt: now,
 		})
+		if err != nil {
+			t.Fatalf("route completion: %v", err)
+		}
 		if !reflect.DeepEqual(next, s) {
 			t.Fatalf("terminal route completion should no-op:\n got=%+v\nwant=%+v", next, s)
 		}
@@ -700,7 +706,7 @@ func TestRouteCompletionEventPayloadUsesSnakeCase(t *testing.T) {
 		},
 	}
 
-	_, events := RouteCompletion(s, CompletionRecord{
+	_, events, err := RouteCompletion(s, CompletionRecord{
 		OrderID:     "order-1",
 		StageIndex:  0,
 		AttemptID:   "att-1",
@@ -708,6 +714,9 @@ func TestRouteCompletionEventPayloadUsesSnakeCase(t *testing.T) {
 		ExitCode:    &exitZero,
 		CompletedAt: now,
 	})
+	if err != nil {
+		t.Fatalf("route completion: %v", err)
+	}
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(events))
 	}
