@@ -148,8 +148,10 @@ export function SchedulerFeed() {
               rows={1}
             />
             <div className="input-hint">
-              <kbd>Enter</kbd><span>send</span>
-              <kbd>Shift+Enter</kbd><span>newline</span>
+              <kbd>Enter</kbd>
+              <span>send</span>
+              <kbd>Shift+Enter</kbd>
+              <span>newline</span>
             </div>
           </div>
           <div className="input-row-actions">
