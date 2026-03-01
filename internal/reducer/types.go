@@ -66,12 +66,10 @@ type EffectResult struct {
 type EffectLedgerStatus string
 
 const (
-	EffectLedgerPending   EffectLedgerStatus = "pending"
-	EffectLedgerRunning   EffectLedgerStatus = "running"
-	EffectLedgerDone      EffectLedgerStatus = "done"
-	EffectLedgerFailed    EffectLedgerStatus = "failed"
-	EffectLedgerCancelled EffectLedgerStatus = "cancelled"
-	EffectLedgerDeferred  EffectLedgerStatus = "deferred"
+	EffectLedgerPending EffectLedgerStatus = "pending"
+	EffectLedgerRunning EffectLedgerStatus = "running"
+	EffectLedgerDone    EffectLedgerStatus = "done"
+	EffectLedgerFailed  EffectLedgerStatus = "failed"
 )
 
 // EffectLedgerRecord stores the lifecycle state for one effect.

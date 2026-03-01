@@ -51,7 +51,7 @@ func (l *EffectLedger) MarkRunning(effectID string) error {
 	if !exists {
 		return fmt.Errorf("effect record not found: %s", effectID)
 	}
-	if record.Status == EffectLedgerPending || record.Status == EffectLedgerDeferred {
+	if record.Status == EffectLedgerPending {
 		record.Status = EffectLedgerRunning
 		record.Attempts++
 		record.LastAttemptAt = time.Now().UTC()
