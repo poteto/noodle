@@ -38,34 +38,39 @@ func (l *Loop) controlMerge(orderID string) error {
 		}
 	}
 
-	// Emit V2 canonical stage completion (mergeable) before merge attempt.
+	canMerge := l.canMergeStage(cook.stage)
 	l.emitEvent(ingest.EventStageCompleted, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
-		"mergeable":   true,
+		"mergeable":   canMerge,
 	})
 
-	mergeMode, mergeBranch := l.resolveMergeMode(cook)
-	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
-		return err
-	}
-	if l.mergeQueue == nil {
-		if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
-			return err
-		}
-		// Emit V2 canonical merge completion on the main goroutine.
-		l.emitEvent(ingest.EventMergeCompleted, map[string]any{
-			"order_id":    cook.orderID,
-			"stage_index": cook.stageIndex,
-		})
+	if !canMerge {
 		if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 			return err
 		}
 	} else {
-		// Queued path: drainMergeResults emits merge_completed.
-		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
-		if err := l.drainMergeResults(context.Background()); err != nil {
+		mergeMode, mergeBranch := l.resolveMergeMode(cook)
+		if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
 			return err
+		}
+		if l.mergeQueue == nil {
+			if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
+				return err
+			}
+			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+				"order_id":    cook.orderID,
+				"stage_index": cook.stageIndex,
+			})
+			if err := l.advanceAndPersist(context.Background(), cook); err != nil {
+				return err
+			}
+		} else {
+			// Queued path: drainMergeResults emits merge_completed.
+			l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
+			if err := l.drainMergeResults(context.Background()); err != nil {
+				return err
+			}
 		}
 	}
 	delete(l.cooks.pendingReview, orderID)
