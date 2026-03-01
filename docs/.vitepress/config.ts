@@ -4,7 +4,11 @@ export default defineConfig({
   base: "/noodle/",
   title: "Noodle",
   description:
-    "Open-source AI coding framework. Skills as the only extension point, LLM-powered scheduling, kitchen brigade model.",
+    "Skill-based agent orchestration. Built in Go.",
+
+  markdown: {
+    theme: "min-dark",
+  },
   head: [
     [
       "link",
@@ -15,8 +19,10 @@ export default defineConfig({
     ],
   ],
 
+  appearance: false,
+
   themeConfig: {
-    nav: [{ text: "GitHub", link: "https://github.com/noodle-run/noodle" }],
+    nav: [{ text: "GitHub", link: "https://github.com/poteto/noodle" }],
 
     sidebar: [
       {

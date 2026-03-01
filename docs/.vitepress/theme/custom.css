@@ -471,3 +471,93 @@ body {
 .VPNavBarSearch .search-input:hover {
   border-color: var(--noodle-border-active) !important;
 }
+
+
+/* ============================================================
+   Interaction design — transitions, hover states, scroll
+   ============================================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Sidebar link transitions */
+.VPSidebarItem .link {
+  transition: color 0.15s, background 0.15s;
+}
+
+.VPSidebarItem .link:hover {
+  background: var(--noodle-surface) !important;
+}
+
+/* Nav link transitions */
+.VPNavBarMenuLink {
+  transition: color 0.15s !important;
+}
+
+/* Content link transitions */
+.vp-doc a {
+  transition: color 0.15s, text-decoration-color 0.2s;
+}
+
+/* Code block hover glow */
+.vp-doc div[class*="language-"] {
+  transition: border-color 0.2s;
+}
+
+.vp-doc div[class*="language-"]:hover {
+  border-color: var(--noodle-border-active);
+}
+
+/* Copy button polish */
+.vp-doc div[class*="language-"] button.copy {
+  background: var(--noodle-surface) !important;
+  border: 1px solid var(--noodle-border) !important;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+.vp-doc div[class*="language-"] button.copy:hover {
+  border-color: var(--noodle-border-active) !important;
+}
+
+/* TOC link transitions */
+.VPDocAsideOutline .outline-link {
+  transition: color 0.15s;
+}
+
+/* Footer pager transitions */
+.VPDocFooter .pager-link {
+  transition: border-color 0.2s, background 0.2s !important;
+}
+
+.VPDocFooter .pager-link:hover {
+  background: var(--noodle-surface-hover) !important;
+}
+
+/* Table row hover */
+.vp-doc table tr {
+  transition: background 0.15s;
+}
+
+.vp-doc table tr:hover {
+  background: var(--noodle-surface-hover) !important;
+}
+
+/* Custom block hover */
+.vp-doc .custom-block {
+  transition: border-color 0.2s;
+}
+
+.vp-doc .custom-block:hover {
+  border-color: var(--noodle-border-active);
+}
+
+/* Inline code hover */
+.vp-doc :not(pre) > code {
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.vp-doc :not(pre) > code:hover {
+  background: var(--noodle-surface-hover);
+  border-color: var(--noodle-border-active);
+}
