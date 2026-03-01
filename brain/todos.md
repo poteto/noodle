@@ -13,11 +13,13 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 93 -->
+<!-- next-id: 94 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
 ## Onboarding & Getting Started
+
+93. [ ] Publish build to Homebrew — create a Homebrew tap and formula so users can `brew install noodle`.
 
 92. [ ] Publish docs to GitHub Pages via custom GitHub Actions workflow — set up a GH Actions workflow that builds and deploys the docs site on push to main. Reference: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
 
