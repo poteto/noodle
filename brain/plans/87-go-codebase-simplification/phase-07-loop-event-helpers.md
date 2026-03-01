@@ -17,7 +17,7 @@ The 6 call sites share a common state-transition core (build failure metadata, e
 
 **Do NOT create a single polymorphic option-bag helper.** Instead, split into:
 
-1. **`(l *Loop).recordStageFailure(cook *cookHandle, reason string, orderClass OrderFailureClass, mistake *AgentMistakeEnvelope)`** — pure state transition. Builds failure metadata, emits the two loop events (`StageFailed`, `OrderFailed`), and calls `classifyOrderHard`. No side effects beyond event emission.
+1. **`(l *Loop).recordStageFailure(cook *cookHandle, reason string, orderClass OrderFailureClass, mistake *AgentMistakeEnvelope)`** — state transition only. Builds failure metadata and emits the two loop events (`StageFailed`, `OrderFailed`). **Does NOT classify the order** — callers handle their own classification after calling this helper. `control_review` paths use `classifyCookMistake` (preserves `CookReason` semantics for scheduler feedback), while other paths use `classifyOrderHard`.
 
 2. **Source-specific callers** remain responsible for their own side effects (canonical V2 events, scheduler forwarding, worktree cleanup) by calling `recordStageFailure` then handling their specific post-conditions.
 

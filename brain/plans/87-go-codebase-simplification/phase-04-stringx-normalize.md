@@ -1,43 +1,74 @@
 Back to [[plans/87-go-codebase-simplification/overview]]
 
-# Phase 4: Add `stringx.Normalize` + Consolidate PID Liveness
+# Phase 4: Add `stringx.Normalize` + Migrate Callers
 
-## Goal
+Split into sub-phases to limit blast radius (65 files is too many for one atomic change).
 
-Two small utility consolidations in one phase.
+## 4a: Create `stringx.Normalize` + migrate first batch
 
-### 4a: `stringx.Normalize`
+### Goal
 
-Add `Normalize(s string) string` to `internal/stringx/stringx.go` — returns `strings.ToLower(strings.TrimSpace(s))`. Migrate call sites using the double-wrapped pattern.
+Add the helper and migrate the first ~20 call sites (packages `config/`, `internal/`, `mise/`).
 
-### 4b: PID liveness deduplication
+### Changes
 
-Replace `worktree/lock.go:isProcessAlive()` with `procx.IsPIDAlive()`. The implementations are functionally identical (both check `kill -0` + EPERM). Delete the local copy.
-
-## Changes
-
-- **`internal/stringx/stringx.go`** — add `Normalize` function
+- **`internal/stringx/stringx.go`** — add `Normalize(s string) string` returning `strings.ToLower(strings.TrimSpace(s))`
 - **`internal/stringx/stringx_test.go`** — add tests for `Normalize`
-- **All 65 non-test files** — mechanical replacement of `strings.ToLower(strings.TrimSpace(x))` with `stringx.Normalize(x)`. The actual count is 65 non-test sites (not ~20 as originally estimated). Migrate all of them — partial migration leaves dual idioms that defeat the simplification goal. Don't migrate instances where only `TrimSpace` is used (no `ToLower`).
-- **`worktree/lock.go`** — delete `isProcessAlive`, import and use `procx.IsPIDAlive`
+- **~20 files in `config/`, `internal/`, `mise/`** — mechanical replacement of `strings.ToLower(strings.TrimSpace(x))` with `stringx.Normalize(x)`. Don't migrate instances where only `TrimSpace` is used (no `ToLower`).
 
-## Data Structures
+### Data Structures
 
 - `func Normalize(s string) string` — single utility function
 
-## Routing
+### Routing
 
 - Provider: `codex`
 - Model: `gpt-5.3-codex`
-- Fully mechanical replacement. Codex excels at this.
+- Mechanical replacement.
 
-## Verification
+### Verification
 
-### Static
 - `go test ./internal/stringx/...` — new tests pass
-- `go test ./worktree/...` — PID liveness still works
 - `go vet ./...` — clean
+- `go test ./...` — full suite passes
+
+## 4b: Migrate remaining `stringx.Normalize` callers
+
+### Goal
+
+Complete the migration across remaining packages (`loop/`, `monitor/`, `dispatcher/`, `worktree/`, `parse/`, `skill/`, `server/`).
+
+### Changes
+
+- **~45 remaining non-test files** — same mechanical replacement
+
+### Routing
+
+- Provider: `codex`
+- Model: `gpt-5.3-codex`
+
+### Verification
+
+- `go vet ./...` — clean
+- `go test ./...` — full suite passes
 - Grep for `strings.ToLower(strings.TrimSpace(` in non-test files — **must be zero**. Partial migration is not acceptable.
 
-### Runtime
+## 4c: Consolidate PID liveness
+
+### Goal
+
+Replace `worktree/lock.go:isProcessAlive()` with `procx.IsPIDAlive()`. The implementations are functionally identical (both check `kill -0` + EPERM). Delete the local copy.
+
+### Changes
+
+- **`worktree/lock.go`** — delete `isProcessAlive`, import and use `procx.IsPIDAlive`
+
+### Routing
+
+- Provider: `codex`
+- Model: `gpt-5.3-codex`
+
+### Verification
+
+- `go test ./worktree/...` — PID liveness still works
 - `go test ./...` — full suite passes

@@ -12,12 +12,14 @@ Break two long functions in the loop package into focused sub-functions.
 
 This function mixes: orders-next promotion, validation, bootstrapping, mise change detection, and routing defaults.
 
+Extract only the mechanical read/merge step — leave promotion logic (promoted flag, emptyPromotion, promotion failure classification, cooldown updates, canonical promotion emission) in the orchestrator since these outputs drive scheduler state and cannot be lost behind a simple `(*OrdersFile, error)` return.
+
 Extract:
-- `consumeOrdersNext() (*OrdersFile, error)` — read and validate orders-next, merge into current
+- `mergeOrdersNext() (*OrdersFile, bool, error)` — read orders-next file, validate, merge into current orders. Returns merged orders, whether a promotion occurred, and error. Does NOT handle promotion side effects.
 - `ensureScheduleIfNeeded(brief, orders) error` — check if schedule bootstrap is needed
 - `applyRoutingDefaults(orders)` — normalize runtime/provider defaults
 
-Keep `prepareOrdersForCycle` as the orchestrator calling these in sequence.
+Keep `prepareOrdersForCycle` as the orchestrator calling these in sequence and handling promotion metadata (failure classification, cooldown, canonical emission) directly.
 
 Also flatten the nested conditionals at lines 140-157 into early returns.
 

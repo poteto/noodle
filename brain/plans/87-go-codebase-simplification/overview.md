@@ -59,12 +59,19 @@ Static analysis of the Go codebase (~56K lines, 304 files) identified systemic d
 
 ## Adversarial Review
 
-Plan reviewed by 3 Codex reviewers (Skeptic, Architect, Minimalist). **Verdict: CONTESTED** — 3 high-severity findings addressed:
+**Round 1** — 3 Codex reviewers. **Verdict: CONTESTED** — 3 high-severity findings addressed:
 1. Phase 1 `SyncResult` is live production code — narrowed deletion scope
 2. Phase 3 busy/terminal conflation — added distinct `IsBusy()` method
 3. Phase 8 unconditional writes — amended `mutateOrdersState` API
-
 7 medium-severity findings incorporated across phases 4-8, 10, 12.
+
+**Round 2** — 3 Codex reviewers. **Verdict: CONTESTED** — 6 high-severity findings, 6 addressed:
+1. Phase 7 `recordStageFailure` must not classify orders — `control_review` uses `classifyCookMistake`, not `classifyOrderHard`. Fixed: helper emits events only, callers classify.
+2. Phase 9 `consumeOrdersNext` signature missed promotion metadata — scheduler deadlock risk. Fixed: narrowed extraction to mechanical read/merge, promotion logic stays in orchestrator.
+3. Phase 10 "either fail or degrade" is a non-decision at recovery boundary. Fixed: fail deterministically.
+4. Phase 4 touched 65 files in one phase — cost-aware-delegation violation. Fixed: split into 4a/4b/4c.
+5. Phase 8 combined API change with mass migration. Fixed: split into 8a/8b.
+6. Phase 8 verification didn't prove no-op mutations skip writes. Fixed: added mtime/mock-based no-op test.
 
 ## Applicable Skills
 

@@ -12,7 +12,7 @@ Break two long functions in the loop package into focused sub-functions.
 
 Mixed concerns: metadata validation, git branch checks, adoption checks, event emission, state mutation. Deep nesting.
 
-**Also fix:** `reconcile.go:47` swallows `currentOrders()` errors and defaults adopted stage index to `0`. This means a corrupted/unreadable orders file during recovery silently mis-associates adopted sessions to stage 0. Stop swallowing that error — either fail reconciliation deterministically or degrade with explicit fallback and log output.
+**Also fix:** `reconcile.go:47` swallows `currentOrders()` errors and defaults adopted stage index to `0`. This means a corrupted/unreadable orders file during recovery silently mis-associates adopted sessions to stage 0. **Fail deterministically** — return the error and abort reconciliation. At a startup-recovery boundary, silent fallback is worse than a hard stop because corrupted state propagates forward and corrupts canonical recovery history.
 
 Extract:
 - `extractMergeMetadata(stage) (MergeMetadata, error)` — validate and extract
