@@ -830,10 +830,13 @@
   border: 1px solid;
   padding: 6px 8px;
   width: 100px;
+  height: 80px;
+  box-sizing: border-box;
   color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
 }
 foreignObject.node.node-clickable .tree-node-card {
   cursor: pointer;

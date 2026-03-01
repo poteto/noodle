@@ -126,8 +126,19 @@ function renderTree(
     }
   }
 
+  // Use separate groups so nodes always render above edges (SVG z-order).
+  let edgeGroup = g.select<SVGGElement>("g.tree-edges");
+  if (edgeGroup.empty()) {
+    edgeGroup = g.append("g").attr("class", "tree-edges");
+  }
+  let nodeGroup = g.select<SVGGElement>("g.tree-nodes");
+  if (nodeGroup.empty()) {
+    nodeGroup = g.append("g").attr("class", "tree-nodes");
+  }
+
   // Edges — join by index (stateless paths, no identity needed).
-  g.selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
+  edgeGroup
+    .selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
     .data(rootNode.links())
     .join("path")
     .attr("class", "link")
@@ -149,7 +160,8 @@ function renderTree(
     );
 
   // Nodes — join by path key so D3 reuses existing foreignObjects.
-  g.selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
+  nodeGroup
+    .selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
     .data(rootNode.descendants(), (d) => nodeKey(d))
     .join(
       (enter) =>
