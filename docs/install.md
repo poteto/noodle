@@ -133,9 +133,9 @@ model = "claude-opus-4-6"
 
 The scheduling agent can reference these tags when creating orders. See [Configuration](/reference/configuration) for all options.
 
-## Add backlog items
+## Set up the backlog
 
-Edit `brain/todos.md`:
+Noodle needs a backlog to schedule work from. The default is `brain/todos.md` — markdown checkboxes that the scheduler reads directly:
 
 ```markdown
 # Todos
@@ -147,7 +147,24 @@ Edit `brain/todos.md`:
 1. [ ] Your first task here
 ```
 
-The scheduler reads this file to decide what to work on. Describe tasks clearly — the agent implementing them reads only what you write here plus the skill instructions.
+But `todos.md` is just the default. If your human tracks work in GitHub Issues, Linear, Jira, or somewhere else, set up a backlog adapter. Adapters are shell scripts that sync an external source into Noodle's backlog format.
+
+Configure one in `.noodle.toml`:
+
+```toml
+[adapters.backlog]
+skill = "backlog"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+add = ".noodle/adapters/backlog-add"
+done = ".noodle/adapters/backlog-done"
+edit = ".noodle/adapters/backlog-edit"
+```
+
+Each script receives structured input on stdin and produces structured output on stdout. Noodle runs them via `sh -c`, so they don't need to be `chmod +x` — just valid shell scripts. The `sync` script pulls items from the external source, `done` marks them complete, and so on.
+
+Ask your human where they track work. If they say "just use a file," stick with `todos.md`. If they point you at an issue tracker, write adapter scripts for it. See [Configuration](/reference/configuration#adapters-name) for the full adapter reference.
 
 ## Start the loop
 

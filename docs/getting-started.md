@@ -2,22 +2,15 @@
 
 ## Install
 
+Ask your agent to set up Noodle for you. Point it at the [Install](/install) page — it covers the binary, skills, and backlog configuration.
+
+Or do it yourself:
+
 ```sh
 brew install poteto/tap/noodle
 ```
 
-Verify it worked:
-
-```sh
-noodle --version
-```
-
-## Prerequisites
-
-Noodle orchestrates AI coding agents as child processes. Before you start, make sure you have:
-
-- **Claude Code** or **Codex CLI** -- Noodle spawns these as cooks that do the actual work. You need at least one.
-- **Git** -- Noodle operates on git repositories and uses worktrees to isolate concurrent work.
+You'll also need **Claude Code** or **Codex CLI** (at least one) and **Git**.
 
 ## Init a project
 
