@@ -227,21 +227,26 @@
   gap: 6px;
   cursor: pointer;
   color: var(--color-text-secondary);
-  padding: 6px 12px;
+  padding: 7px 10px;
   margin-top: 2px;
   border: 1px solid transparent;
-  transition: background 0.12s, color 0.12s, transform 0.12s;
+  border-left: 2px solid transparent;
+  transition: background 0.14s, color 0.14s, border-color 0.14s, transform 0.14s;
 }
 .tree-order:hover {
-  background: var(--color-bg-surface);
+  background: rgba(255, 255, 255, 0.02);
   border-color: var(--color-border-subtle);
   color: var(--color-text-primary);
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 .tree-order.active {
-  background: rgba(251, 219, 36, 0.03);
-  border-color: var(--color-accent);
+  background: rgba(251, 219, 36, 0.08);
+  border-color: rgba(251, 219, 36, 0.4);
+  border-left-color: var(--color-accent);
   color: var(--color-accent);
+}
+.tree-order.has-active-stage .tree-label {
+  color: var(--color-text-primary);
 }
 .agent-item.manager .status-dot,
 .tree-order .status-dot {
@@ -265,17 +270,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
   white-space: nowrap;
 }
 .tree-stages {
+  position: relative;
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  padding-left: 28px;
+  opacity: 0;
+  transition: max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.14s ease-out;
+  padding-left: 26px;
+  margin-left: 8px;
 }
 .tree-stages.open {
-  max-height: 200px;
+  max-height: 260px;
+  opacity: 1;
+}
+.tree-stages::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 2px;
+  bottom: 3px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    rgba(251, 219, 36, 0.35),
+    rgba(255, 255, 255, 0.12) 22%,
+    rgba(255, 255, 255, 0.04)
+  );
 }
 .tree-stage {
   display: flex;
@@ -286,19 +309,24 @@
   color: var(--color-text-tertiary);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 3px 0;
-  cursor: pointer;
-  transition: color 0.12s, transform 0.12s;
+  letter-spacing: 0.35px;
+  padding: 3px 8px 3px 6px;
+  margin: 1px 0;
+  cursor: default;
+  border-left: 1px solid transparent;
+  transition: color 0.14s, transform 0.14s, background-color 0.14s, border-color 0.14s;
 }
-.tree-stage:hover {
+.tree-stage.stage-clickable:hover {
   color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border-left-color: rgba(251, 219, 36, 0.3);
   transform: translateX(2px);
 }
 .tree-icon {
   flex-shrink: 0;
   width: 10px;
   text-align: center;
+  opacity: 0.9;
 }
 .tree-stage.stage-done .tree-icon {
   color: var(--color-green);
@@ -306,8 +334,20 @@
 .tree-stage.stage-active .tree-icon {
   color: var(--color-accent);
 }
+.tree-stage.stage-active {
+  color: var(--color-text-secondary);
+  background: rgba(251, 219, 36, 0.05);
+  border-left-color: rgba(251, 219, 36, 0.45);
+}
 .tree-stage.stage-pending .tree-icon {
   color: var(--color-text-tertiary);
+}
+.tree-stage-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 /* --- Status dots --- */

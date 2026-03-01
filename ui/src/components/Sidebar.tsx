@@ -179,11 +179,13 @@ export function Sidebar() {
           return (
             <div key={order.id}>
               <div
-                className={`tree-order ${orderActive ? "active" : ""}`}
+                className={`tree-order ${orderActive ? "active" : ""} ${hasActiveStage ? "has-active-stage" : ""}`}
                 onClick={() => toggleOrder(order.id)}
               >
                 <span className={`tree-chevron ${isExpanded ? "open" : ""}`}>▸</span>
-                <span className="tree-label">{order.title || order.id}</span>
+                <span className="tree-label" title={order.title || order.id}>
+                  {order.title || order.id}
+                </span>
                 {hasActiveStage && <div className="status-dot active" />}
               </div>
               <div className={`tree-stages ${isExpanded ? "open" : ""}`}>
@@ -192,11 +194,12 @@ export function Sidebar() {
                     ? { type: "agent", sessionId: stage.session_id }
                     : null;
                   const info = stageStatusIcon[stage.status] || stageStatusIcon.pending;
+                  const stageLabel = stage.task_key || stage.skill || `Stage ${i + 1}`;
 
                   return (
                     <div
                       key={stage.task_key || i}
-                      className={`tree-stage ${info.cls}`}
+                      className={`tree-stage ${info.cls} ${agentChannel ? "stage-clickable" : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (agentChannel) selectChannel(agentChannel);
@@ -204,7 +207,7 @@ export function Sidebar() {
                       style={{ cursor: agentChannel ? "pointer" : "default" }}
                     >
                       <span className="tree-icon">{info.symbol}</span>
-                      <span>{stage.task_key || stage.skill || `Stage ${i + 1}`}</span>
+                      <span className="tree-stage-label" title={stageLabel}>{stageLabel}</span>
                     </div>
                   );
                 })}
