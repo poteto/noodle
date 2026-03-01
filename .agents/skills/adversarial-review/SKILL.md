@@ -48,7 +48,7 @@ Determine which model you are, then spawn reviewers on the opposite:
 **If you are Claude** → spawn Codex reviewers via `codex exec`:
 
 ```sh
-codex exec --skip-git-repo-check --json -o "$REVIEW_DIR/skeptic.md" "prompt" 2>/dev/null
+codex exec --skip-git-repo-check -o "$REVIEW_DIR/skeptic.md" "prompt" 2>/dev/null
 ```
 
 Use `--profile edit` only if the reviewer needs to run tests. Default to read-only.
