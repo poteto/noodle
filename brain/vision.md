@@ -22,14 +22,11 @@ Skills become schedulable by adding frontmatter:
 ---
 name: deploy
 description: Deploy after successful execution on main
-noodle:
-  permissions:
-    merge: false
-  schedule: "After a successful execute completes on main branch"
+schedule: "After a successful execute completes on main branch"
 ---
 ```
 
-The `noodle:` block registers it as a task. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add the noodle field and tell it when you want to run.
+The `schedule:` field registers it as a task type. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add a schedule field and tell it when you want to run.
 
 The Hello World minimal autonomous system in noodle is two skills working together:
 
@@ -40,8 +37,7 @@ The Hello World minimal autonomous system in noodle is two skills working togeth
 ---
 name: schedule
 description: Read the backlog and decide what to work on next
-noodle:
-  schedule: "Start of every cycle"
+schedule: "Start of every cycle"
 ---
 
 Read .noodle/mise.json. It contains the backlog, active agents, recent
@@ -54,8 +50,7 @@ Write .noodle/queue-next.json with the items you want to schedule next based on 
 ---
 name: execute
 description: Pick up a queued item and do the work
-noodle:
-  schedule: "When there are items in the queue"
+schedule: "When there are items in the queue"
 ---
 
 Read the plan. Do the work <the way I like it>. Commit to the worktree.

@@ -10,27 +10,19 @@ Noodle is an open-source AI coding framework. Skills are the only extension poin
 
 ## Task-Type Skill Frontmatter
 
-Skills with a `noodle:` block in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads `task_types[].schedule` from mise to decide when to schedule each type.
+Skills with a top-level `schedule:` field in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads `task_types[].schedule` from mise to decide when to schedule each type.
 
 ```yaml
 ---
 name: my-task-type
 description: What this task type does
-noodle:
-  schedule: "When to schedule this task type"
-  permissions:
-    merge: true
+schedule: "When to schedule this task type"
 ---
 ```
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `noodle.schedule` | yes | — | Hint for the schedule skill on when to schedule this type |
-| `noodle.permissions.merge` | no | `true` | Auto-merge worktree on success. Set `false` to park for human approval |
-
-When `permissions.merge` is `false`, the loop parks the completed worktree instead of auto-merging. The human reviews and approves parked worktrees before they are merged.
-
-The global `mode` config controls the run mode and overrides per-skill merge permissions. In `supervised` or `manual` mode, all worktrees are parked for human approval regardless of the skill's `permissions.merge` value. See the **Mode Contract** section below for the full gate matrix.
+| `schedule` | yes | — | Hint for the schedule skill on when to schedule this type |
 
 ## Config Reference
 
@@ -197,7 +189,6 @@ Projection writes external views:
 |---------|-------------|
 | `noodle start` | Run the scheduling loop |
 | `noodle status` | Show compact runtime status |
-| `noodle debug` | Dump canonical runtime debug state |
 | `noodle skills` | List resolved skills |
 | `noodle skills list` | List all resolved skills |
 | `noodle schema` | Print generated schema docs for Noodle runtime contracts |
@@ -210,9 +201,6 @@ Projection writes external views:
 | `noodle worktree list` | List all worktrees with merge status |
 | `noodle worktree prune` | Remove merged and patch-equivalent worktrees |
 | `noodle worktree hook` | Run worktree session hook |
-| `noodle stamp` | Stamp NDJSON logs and emit canonical sidecar events |
-| `noodle dispatch` | Dispatch a cook session as a child process |
-| `noodle mise` | Build and print the current mise brief |
 | `noodle event` | Manage loop events |
 | `noodle event emit` | Emit an external event |
 | `noodle reset` | Clear all runtime state |
@@ -227,22 +215,6 @@ Projection writes external views:
 
 `noodle worktree cleanup`:
 - `--force` (bool): Remove even when unmerged commits exist
-
-`noodle stamp`:
-- `--output` (`-o`) (string): Output path for stamped NDJSON
-- `--events` (string): Output path for canonical sidecar events
-
-`noodle dispatch`:
-- `--name` (string), default `cook`: Session name
-- `--prompt` (string): Prompt text for the dispatched session
-- `--provider` (string): Provider (claude or codex)
-- `--model` (string): Model name
-- `--skill` (string): Skill name to inject
-- `--reasoning-level` (string): Reasoning level
-- `--worktree` (string): Linked worktree path
-- `--max-turns` (int): Max turns
-- `--budget-cap` (float64): Budget cap
-- `--env` ([]string): Extra env vars (KEY=VALUE)
 
 `noodle event emit`:
 - `--payload` (string): Event payload as JSON

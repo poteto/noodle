@@ -1,10 +1,7 @@
 ---
 name: quality
 description: Post-cook quality gate. Reviews completed cook work for correctness, scope discipline, and principle compliance. Emits stage_message events with findings.
-noodle:
-  schedule: "After each cook session completes"
-  permissions:
-    merge: false
+schedule: "After each cook session completes"
 ---
 
 # Quality

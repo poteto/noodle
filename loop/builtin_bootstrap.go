@@ -36,8 +36,7 @@ Use Skill(skill-creator) to help write the skill file.
 ---
 name: schedule
 description: Work order scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json.
-noodle:
-  schedule: "When no active orders exist, after backlog changes, or when session history suggests re-evaluation"
+schedule: "When no active orders exist, after backlog changes, or when session history suggests re-evaluation"
 ---
 
 # Schedule

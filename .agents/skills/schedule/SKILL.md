@@ -1,8 +1,7 @@
 ---
 name: schedule
 description: Orders scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json. Schedules work orders based on backlog state, plan phases, session history, and task type schedules.
-noodle:
-  schedule: "When orders are empty, after backlog changes, or when session history suggests re-evaluation"
+schedule: "When orders are empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 
 # Schedule

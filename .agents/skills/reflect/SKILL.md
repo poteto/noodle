@@ -4,8 +4,7 @@ description: >-
   Reflect on the conversation and update the brain. Use when wrapping up, after mistakes
   or corrections, or when significant codebase knowledge was gained. Triggers: "reflect",
   "remember this".
-noodle:
-  schedule: "After a cook session completes"
+schedule: "After a cook session completes"
 ---
 
 # Reflect

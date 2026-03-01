@@ -3,8 +3,7 @@ name: meditate
 description: >-
   Audit and evolve the brain vault — prune outdated content, discover cross-cutting principles,
   review skills for structural encoding opportunities. Triggers: "meditate", "audit the brain".
-noodle:
-  schedule: "Periodically after several reflect cycles have accumulated"
+schedule: "Periodically after several reflect cycles have accumulated"
 ---
 
 # Meditate

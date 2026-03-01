@@ -12,7 +12,7 @@ All state lives in `.noodle/` — orders, session events, status, mise context. 
 
 ### 2. Skills as the only extension point
 
-A skill is a markdown file (`SKILL.md`) that tells an agent how to do something. When a skill has `noodle:` frontmatter, it becomes a schedulable task type. This is the *only* way to extend Noodle — no plugin system, no hooks API, no custom Go code. Skills are to Noodle what components are to React. You compose them to build your workflow.
+A skill is a markdown file (`SKILL.md`) that tells an agent how to do something. When a skill has a `schedule:` field in its frontmatter, it becomes a schedulable task type. This is the *only* way to extend Noodle — no plugin system, no hooks API, no custom Go code. Skills are to Noodle what components are to React. You compose them to build your workflow.
 
 ### 3. LLM judgment / Go mechanics split
 
@@ -135,30 +135,17 @@ mise.json --> [Schedule Agent] --> orders-next.json
 
 ### Skills
 
-Skills become schedulable by adding frontmatter:
+Skills become schedulable by adding a `schedule:` field to their frontmatter — that's the only required metadata:
 
 ```yaml
 ---
 name: deploy
 description: Deploy after successful execution on main
-noodle:
-  permissions:
-    merge: false
-  schedule: "After a successful execute completes on main branch"
+schedule: "After a successful execute completes on main branch"
 ---
 ```
 
-Task types that need codebase context declare it in frontmatter — the loop reads `domain_skill` from the registry at dispatch time and bundles the referenced skill:
-
-```yaml
----
-name: execute
-description: Pick up a work item and implement it
-noodle:
-  domain_skill: go-best-practices
-  schedule: "When a backlog item is ready for implementation"
----
-```
+Executing agents invoke domain skills directly via `Skill()` calls — there's no special frontmatter for domain skill bundling.
 
 The minimal autonomous system is two skills:
 
@@ -324,7 +311,7 @@ At dispatch time, the dispatcher assembles the prompt from three pieces:
 
 For Claude: preamble + skill go via `--append-system-prompt`. The task prompt is sent as a user message through a bidirectional streaming controller (`--input-format stream-json`), which also enables live steering of running sessions. For Codex: preamble is inlined into the prompt (Codex handles skills natively via its own config), delivered via stdin.
 
-Task types that declare `domain_skill` in their frontmatter get a second skill bundled — the domain skill is resolved from the registry and appended to the system prompt alongside the methodology skill. This is fully declarative — no hardcoded task key checks in Go.
+Executing agents invoke domain skills directly via `Skill()` calls when they need codebase-specific guidance — there's no frontmatter declaration for domain skill bundling.
 
 **Runtimes:**
 

@@ -218,27 +218,19 @@ Noodle is an open-source AI coding framework. Skills are the only extension poin
 
 ## Task-Type Skill Frontmatter
 
-Skills with a ` + "`" + `noodle:` + "`" + ` block in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads ` + "`" + `task_types[].schedule` + "`" + ` from mise to decide when to schedule each type.
+Skills with a top-level ` + "`" + `schedule:` + "`" + ` field in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads ` + "`" + `task_types[].schedule` + "`" + ` from mise to decide when to schedule each type.
 
 ` + "```" + `yaml
 ---
 name: my-task-type
 description: What this task type does
-noodle:
-  schedule: "When to schedule this task type"
-  permissions:
-    merge: true
+schedule: "When to schedule this task type"
 ---
 ` + "```" + `
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| ` + "`" + `noodle.schedule` + "`" + ` | yes | — | Hint for the schedule skill on when to schedule this type |
-| ` + "`" + `noodle.permissions.merge` + "`" + ` | no | ` + "`" + `true` + "`" + ` | Auto-merge worktree on success. Set ` + "`" + `false` + "`" + ` to park for human approval |
-
-When ` + "`" + `permissions.merge` + "`" + ` is ` + "`" + `false` + "`" + `, the loop parks the completed worktree instead of auto-merging. The human reviews and approves parked worktrees before they are merged.
-
-The global ` + "`" + `mode` + "`" + ` config controls the run mode and overrides per-skill merge permissions. In ` + "`" + `supervised` + "`" + ` or ` + "`" + `manual` + "`" + ` mode, all worktrees are parked for human approval regardless of the skill's ` + "`" + `permissions.merge` + "`" + ` value. See the **Mode Contract** section below for the full gate matrix.
+| ` + "`" + `schedule` + "`" + ` | yes | — | Hint for the schedule skill on when to schedule this type |
 
 ## Config Reference
 
