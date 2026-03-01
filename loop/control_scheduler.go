@@ -41,6 +41,7 @@ func (l *Loop) controlAdvance(orderID string) error {
 		l.emitEvent(ingest.EventStageCompleted, map[string]any{
 			"order_id":    orderID,
 			"stage_index": stageIdx,
+			"mergeable":   false,
 		})
 		return l.advanceAndPersist(context.Background(), cook)
 	}

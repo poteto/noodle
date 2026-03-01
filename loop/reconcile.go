@@ -165,6 +165,16 @@ func (l *Loop) reconcileMergingStages() error {
 				},
 				orderStatus: ms.order.Status,
 			}
+			// Reconstruct canonical state: stage was mergeable and merge completed before crash.
+			l.emitEvent(ingest.EventStageCompleted, map[string]any{
+				"order_id":    ms.order.ID,
+				"stage_index": ms.stageIdx,
+				"mergeable":   true,
+			})
+			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+				"order_id":    ms.order.ID,
+				"stage_index": ms.stageIdx,
+			})
 			if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 				return err
 			}
@@ -186,7 +196,14 @@ func (l *Loop) reconcileMergingStages() error {
 				worktreePath: l.worktreePath(wtName),
 				session:      &adoptedSession{id: "crash-recovery", status: "completed"},
 			}
+			// Emit canonical stage_completed (mergeable) before merge attempt.
+			l.emitEvent(ingest.EventStageCompleted, map[string]any{
+				"order_id":    ms.order.ID,
+				"stage_index": ms.stageIdx,
+				"mergeable":   true,
+			})
 			if l.mergeQueue != nil {
+				// Queued path: drainMergeResults emits merge_completed.
 				l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
 			} else {
 				if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
@@ -196,6 +213,10 @@ func (l *Loop) reconcileMergingStages() error {
 					}
 					continue
 				}
+				l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+					"order_id":    ms.order.ID,
+					"stage_index": ms.stageIdx,
+				})
 				if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 					return err
 				}
