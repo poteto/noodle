@@ -67,7 +67,9 @@ export function useSessionEvents(sessionId: string | undefined) {
     queryFn: () => [],
     enabled: Boolean(sessionId),
     initialData: () => {
-      if (!sessionId) return [];
+      if (!sessionId) {
+        return [];
+      }
       const snapshot = queryClient.getQueryData<Snapshot>(SNAPSHOT_KEY);
       return snapshot?.events_by_session?.[sessionId] ?? [];
     },

@@ -210,8 +210,9 @@
   color: var(--color-text-secondary);
   flex-shrink: 0;
   font-family: var(--font-mono);
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .agent-item:hover .agent-avatar {
   transform: scale(1.05);
@@ -693,7 +694,9 @@
   animation: tool-accent-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 @keyframes tool-accent-in {
-  to { transform: scaleY(1); }
+  to {
+    transform: scaleY(1);
+  }
 }
 /* Tool one-liner — badge + summary on a single line */
 .tool-oneliner {
@@ -989,9 +992,10 @@
 }
 foreignObject.node.node-clickable .tree-node-card {
   cursor: pointer;
-  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 foreignObject.node.node-clickable .tree-node-card:hover {
   border-color: var(--color-accent) !important;
@@ -1088,8 +1092,12 @@ foreignObject.node.node-clickable .tree-node-card:active {
 
 /* Tree enter fade — CSS animation so D3 transitions can't interrupt it */
 @keyframes tree-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .tree-enter {
   animation: tree-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -1097,7 +1105,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
 
 /* Active edge flow animation */
 @keyframes edge-flow {
-  to { stroke-dashoffset: -16; }
+  to {
+    stroke-dashoffset: -16;
+  }
 }
 .edge-active {
   stroke-dasharray: 8 8;
@@ -1225,8 +1235,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
   display: flex;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
-  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .input-row:focus-within {
   border-color: var(--color-border-active);
@@ -1478,7 +1489,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
 .stage-dot.active {
   background: var(--color-accent);
   box-shadow: 0 0 8px var(--color-accent-dim);
-  animation: pulse 2s infinite, status-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation:
+    pulse 2s infinite,
+    status-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .stage-dot.pending {
   background: var(--color-text-tertiary);

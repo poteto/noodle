@@ -216,10 +216,12 @@ function renderTree(
       tip.style.top = `${rect.top}px`;
       tip.style.transform = "translateX(-50%) translateY(-100%) translateY(-6px)";
       tip.dataset.treeTooltip = "1";
-      document.body.appendChild(tip);
+      document.body.append(tip);
     })
     .on("mouseleave", () => {
-      document.querySelectorAll("[data-tree-tooltip]").forEach((el) => el.remove());
+      for (const el of document.querySelectorAll("[data-tree-tooltip]")) {
+        el.remove();
+      }
     })
     .each(function renderNode(this: SVGForeignObjectElement, d) {
       this.innerHTML = nodeHTML(d.data);
