@@ -14,7 +14,6 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
-	"github.com/poteto/noodle/internal/failure"
 )
 
 type Builder struct {
@@ -265,10 +264,10 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 	reason := getString("reason")
 	owner := getNestedString("failure", "owner")
 	failureClass := getNestedString("failure", "class")
-	prefix := failure.OwnerPrefixForDisplay(
-		failure.FailureClass(failureClass),
-		failure.FailureOwner(owner),
-	)
+	prefix := ""
+	if owner != "" && failureClass == "agent_mistake" {
+		prefix = "[" + owner + "] "
+	}
 
 	switch eventType {
 	case "stage.completed":

@@ -61,7 +61,9 @@ func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Co
 				GitToken:      cfg.Runtime.Sprites.GitToken(),
 				Sink:          sink,
 			})
-			runtimes["sprites"] = loopruntime.NewSpritesRuntime(sd, runtimeDir, cfg.Runtime.Sprites.MaxConcurrent)
+			r := loopruntime.NewDispatcherRuntime("sprites", sd, runtimeDir)
+			r.SetMaxConcurrent(cfg.Runtime.Sprites.MaxConcurrent)
+			runtimes["sprites"] = r
 		}
 	}
 
