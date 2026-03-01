@@ -86,15 +86,12 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 	}
 
 	routing := RoutingSnapshot{
-		Defaults: RoutingPolicy{
-			Provider: b.config.Routing.Defaults.Provider,
-			Model:    b.config.Routing.Defaults.Model,
-		},
+		Defaults:          routingPolicyFromModelPolicy(b.config.Routing.Defaults),
 		Tags:              make(map[string]RoutingPolicy, len(b.config.Routing.Tags)),
 		AvailableRuntimes: b.config.AvailableRuntimes(),
 	}
 	for tag, policy := range b.config.Routing.Tags {
-		routing.Tags[tag] = RoutingPolicy{Provider: policy.Provider, Model: policy.Model}
+		routing.Tags[tag] = routingPolicyFromModelPolicy(policy)
 	}
 
 	recentEvents := readRecentEvents(b.runtimeDir)
@@ -127,6 +124,13 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 		b.lastContent = content
 	}
 	return brief, warnings, changed, nil
+}
+
+func routingPolicyFromModelPolicy(policy config.ModelPolicy) RoutingPolicy {
+	return RoutingPolicy{
+		Provider: policy.Provider,
+		Model:    policy.Model,
+	}
 }
 
 func filterActiveBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 var statPath = os.Stat
@@ -35,7 +36,7 @@ func Validate(config Config) ValidationResult {
 		})
 	}
 
-	if rd := strings.ToLower(strings.TrimSpace(config.Runtime.Default)); rd != "" {
+	if rd := stringx.Normalize(config.Runtime.Default); rd != "" {
 		switch rd {
 		case "process", "sprites", "cursor":
 			// Known runtimes — ok.
@@ -156,7 +157,7 @@ func commandLooksPath(token string) bool {
 }
 
 func isKnownProvider(provider string) bool {
-	switch strings.ToLower(strings.TrimSpace(provider)) {
+	switch stringx.Normalize(provider) {
 	case "claude", "codex":
 		return true
 	}

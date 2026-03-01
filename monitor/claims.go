@@ -8,8 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/internal/jsonx"
 	"github.com/poteto/noodle/parse"
 )
+
+type spawnPayload struct {
+	Runtime  string `json:"runtime"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Skill    string `json:"skill"`
+}
 
 const defaultMaxEventLineBytes = 64 << 20
 
@@ -106,22 +114,9 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 
 func (r *CanonicalClaimsReader) readSpawnMetadata(sessionID string) (SessionClaims, error) {
 	path := filepath.Join(r.runtimeDir, "sessions", sessionID, "spawn.json")
-	data, err := os.ReadFile(path)
+	payload, err := jsonx.ReadJSON[spawnPayload](path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return SessionClaims{}, nil
-		}
-		return SessionClaims{}, fmt.Errorf("read spawn metadata: %w", err)
-	}
-
-	var payload struct {
-		Runtime  string `json:"runtime"`
-		Provider string `json:"provider"`
-		Model    string `json:"model"`
-		Skill    string `json:"skill"`
-	}
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return SessionClaims{}, fmt.Errorf("parse spawn metadata: %w", err)
+		return SessionClaims{}, err
 	}
 	return SessionClaims{
 		Skill:    strings.TrimSpace(payload.Skill),

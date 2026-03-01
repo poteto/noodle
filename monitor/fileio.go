@@ -1,13 +1,12 @@
 package monitor
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 
-	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/jsonx"
 )
 
 func listSessionIDs(runtimeDir string) ([]string, error) {
@@ -35,27 +34,9 @@ func sessionMetaPath(runtimeDir, sessionID string) string {
 }
 
 func readSessionMeta(path string) (SessionMeta, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return SessionMeta{}, nil
-		}
-		return SessionMeta{}, fmt.Errorf("read session meta: %w", err)
-	}
-	var meta SessionMeta
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return SessionMeta{}, fmt.Errorf("parse session meta: %w", err)
-	}
-	return meta, nil
+	return jsonx.ReadJSON[SessionMeta](path)
 }
 
 func writeSessionMeta(path string, meta SessionMeta) error {
-	data, err := json.Marshal(meta)
-	if err != nil {
-		return fmt.Errorf("encode session meta: %w", err)
-	}
-	if err := filex.WriteFileAtomic(path, data); err != nil {
-		return fmt.Errorf("replace session meta file: %w", err)
-	}
-	return nil
+	return jsonx.WriteJSON(path, meta)
 }

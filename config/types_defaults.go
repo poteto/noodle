@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 const (
@@ -83,7 +85,7 @@ type RuntimeConfig struct {
 // MaxConcurrentFor returns the per-runtime concurrency cap for a given runtime name.
 // Returns 0 when unlimited (no per-runtime cap; the global MaxCooks ceiling applies).
 func (c RuntimeConfig) MaxConcurrentFor(name string) int {
-	switch strings.ToLower(strings.TrimSpace(name)) {
+	switch stringx.Normalize(name) {
 	case "process":
 		return c.Process.MaxConcurrent
 	case "sprites":

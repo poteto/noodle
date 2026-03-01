@@ -961,34 +961,16 @@ func hashState(t *testing.T, s state.State) projection.ProjectionHash {
 
 func terminalCounts(s state.State) (orders int, stages int) {
 	for _, order := range s.Orders {
-		if isTerminalOrder(order.Status) {
+		if order.Status.IsTerminal() {
 			orders++
 		}
 		for _, stage := range order.Stages {
-			if isTerminalStage(stage.Status) {
+			if stage.Status.IsTerminal() {
 				stages++
 			}
 		}
 	}
 	return orders, stages
-}
-
-func isTerminalOrder(status state.OrderLifecycleStatus) bool {
-	switch status {
-	case state.OrderCompleted, state.OrderFailed, state.OrderCancelled:
-		return true
-	default:
-		return false
-	}
-}
-
-func isTerminalStage(status state.StageLifecycleStatus) bool {
-	switch status {
-	case state.StageCompleted, state.StageFailed, state.StageSkipped, state.StageCancelled:
-		return true
-	default:
-		return false
-	}
 }
 
 func duplicateCount(ids []string) int {

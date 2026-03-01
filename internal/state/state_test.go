@@ -645,6 +645,216 @@ func TestValidatePartiallyActivePipeline(t *testing.T) {
 	}
 }
 
+// --- Clone tests ---
+
+func TestCloneImmutabilityMetadata(t *testing.T) {
+	original := fullState()
+	clone := original.Clone()
+
+	// Mutate clone's metadata.
+	clone.Orders["order-1"] = func() OrderNode {
+		o := clone.Orders["order-1"]
+		o.Metadata["new-key"] = "new-value"
+		return o
+	}()
+
+	// Original must be unchanged.
+	if _, ok := original.Orders["order-1"].Metadata["new-key"]; ok {
+		t.Fatal("mutating clone metadata affected the original")
+	}
+}
+
+func TestCloneImmutabilityExitCode(t *testing.T) {
+	original := fullState()
+	clone := original.Clone()
+
+	// Mutate clone's exit code pointer.
+	cloneOrder := clone.Orders["order-1"]
+	*cloneOrder.Stages[0].Attempts[0].ExitCode = 42
+
+	// Original must be unchanged.
+	origCode := original.Orders["order-1"].Stages[0].Attempts[0].ExitCode
+	if origCode == nil || *origCode != 0 {
+		t.Fatalf("mutating clone exit code affected the original: got %v", origCode)
+	}
+}
+
+func TestCloneImmutabilityModeTransitions(t *testing.T) {
+	original := fullState()
+	clone := original.Clone()
+
+	// Append to clone's mode transitions.
+	clone.ModeTransitions = append(clone.ModeTransitions, ModeTransitionRecord{
+		FromMode: RunModeAuto,
+		ToMode:   RunModeManual,
+		Epoch:    99,
+	})
+
+	// Original must be unchanged.
+	if len(original.ModeTransitions) != 2 {
+		t.Fatalf("mutating clone mode transitions affected the original: got %d", len(original.ModeTransitions))
+	}
+}
+
+func TestCloneImmutabilityStages(t *testing.T) {
+	original := fullState()
+	clone := original.Clone()
+
+	// Append a stage to clone.
+	cloneOrder := clone.Orders["order-1"]
+	cloneOrder.Stages = append(cloneOrder.Stages, StageNode{StageIndex: 99})
+	clone.Orders["order-1"] = cloneOrder
+
+	// Original must be unchanged.
+	if len(original.Orders["order-1"].Stages) != 2 {
+		t.Fatalf("mutating clone stages affected the original: got %d", len(original.Orders["order-1"].Stages))
+	}
+}
+
+func TestCloneNilOrders(t *testing.T) {
+	original := State{Mode: RunModeAuto}
+	clone := original.Clone()
+
+	if clone.Orders != nil {
+		t.Fatal("clone of nil orders should be nil")
+	}
+	if clone.Mode != RunModeAuto {
+		t.Fatalf("expected mode auto, got %q", clone.Mode)
+	}
+}
+
+// --- IsTerminal tests ---
+
+func TestOrderLifecycleStatusIsTerminal(t *testing.T) {
+	terminal := []OrderLifecycleStatus{OrderCompleted, OrderFailed, OrderCancelled}
+	nonTerminal := []OrderLifecycleStatus{OrderPending, OrderActive, ""}
+
+	for _, s := range terminal {
+		if !s.IsTerminal() {
+			t.Errorf("expected %q to be terminal", s)
+		}
+	}
+	for _, s := range nonTerminal {
+		if s.IsTerminal() {
+			t.Errorf("expected %q to not be terminal", s)
+		}
+	}
+}
+
+func TestStageLifecycleStatusIsTerminal(t *testing.T) {
+	terminal := []StageLifecycleStatus{StageCompleted, StageFailed, StageSkipped, StageCancelled}
+	nonTerminal := []StageLifecycleStatus{StagePending, StageDispatching, StageRunning, StageMerging, StageReview, ""}
+
+	for _, s := range terminal {
+		if !s.IsTerminal() {
+			t.Errorf("expected %q to be terminal", s)
+		}
+	}
+	for _, s := range nonTerminal {
+		if s.IsTerminal() {
+			t.Errorf("expected %q to not be terminal", s)
+		}
+	}
+}
+
+// --- IsBusy tests ---
+
+func TestStageLifecycleStatusIsBusy(t *testing.T) {
+	busy := []StageLifecycleStatus{StageDispatching, StageRunning, StageMerging, StageReview}
+	notBusy := []StageLifecycleStatus{StagePending, StageCompleted, StageFailed, StageSkipped, StageCancelled, ""}
+
+	for _, s := range busy {
+		if !s.IsBusy() {
+			t.Errorf("expected %q to be busy", s)
+		}
+	}
+	for _, s := range notBusy {
+		if s.IsBusy() {
+			t.Errorf("expected %q to not be busy", s)
+		}
+	}
+}
+
+func TestStagePendingIsNotBusy(t *testing.T) {
+	// Explicit regression test: StagePending must NOT be classified as busy.
+	// This protects dispatch capacity logic.
+	if StagePending.IsBusy() {
+		t.Fatal("StagePending classified as busy — this breaks dispatch capacity logic")
+	}
+}
+
+// --- LookupStage tests ---
+
+func TestLookupStageFound(t *testing.T) {
+	s := fullState()
+	order, stage, ok := s.LookupStage("order-1", 0)
+	if !ok {
+		t.Fatal("expected to find order-1 stage 0")
+	}
+	if order.OrderID != "order-1" {
+		t.Fatalf("expected order-1, got %q", order.OrderID)
+	}
+	if stage.StageIndex != 0 {
+		t.Fatalf("expected stage index 0, got %d", stage.StageIndex)
+	}
+	if stage.Skill != "lint" {
+		t.Fatalf("expected skill lint, got %q", stage.Skill)
+	}
+}
+
+func TestLookupStageNotFoundOrder(t *testing.T) {
+	s := fullState()
+	_, _, ok := s.LookupStage("nonexistent", 0)
+	if ok {
+		t.Fatal("expected not found for nonexistent order")
+	}
+}
+
+func TestLookupStageNotFoundIndex(t *testing.T) {
+	s := fullState()
+	_, _, ok := s.LookupStage("order-1", 99)
+	if ok {
+		t.Fatal("expected not found for out-of-range stage index")
+	}
+}
+
+func TestLookupStageNegativeIndex(t *testing.T) {
+	s := fullState()
+	_, _, ok := s.LookupStage("order-1", -1)
+	if ok {
+		t.Fatal("expected not found for negative stage index")
+	}
+}
+
+func TestLookupStageNilOrders(t *testing.T) {
+	s := State{}
+	_, _, ok := s.LookupStage("any", 0)
+	if ok {
+		t.Fatal("expected not found for nil orders map")
+	}
+}
+
+// --- ClonedExitCode tests ---
+
+func TestClonedExitCodeNil(t *testing.T) {
+	if got := ClonedExitCode(nil); got != nil {
+		t.Fatalf("expected nil, got %v", got)
+	}
+}
+
+func TestClonedExitCodeValue(t *testing.T) {
+	v := 42
+	got := ClonedExitCode(&v)
+	if got == nil || *got != 42 {
+		t.Fatalf("expected 42, got %v", got)
+	}
+	// Mutate original, clone must be unaffected.
+	v = 99
+	if *got != 42 {
+		t.Fatal("ClonedExitCode did not create independent copy")
+	}
+}
+
 // contains reports whether s contains substr.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && searchString(s, substr)

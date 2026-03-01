@@ -1,8 +1,7 @@
 package taskreg
 
 import (
-	"strings"
-
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/skill"
 )
 
@@ -97,5 +96,5 @@ func (r Registry) ResolveStage(item StageInput) (TaskType, bool) {
 }
 
 func normalize(value string) string {
-	return strings.ToLower(strings.TrimSpace(value))
+	return stringx.Normalize(value)
 }

@@ -2,6 +2,31 @@ package stringx
 
 import "testing"
 
+func TestNormalize(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "empty", in: "", want: ""},
+		{name: "whitespace", in: " \t\n ", want: ""},
+		{name: "mixed case", in: "  HeLLo WoRLD  ", want: "hello world"},
+		{name: "already normalized", in: "already-normalized", want: "already-normalized"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := Normalize(tt.in); got != tt.want {
+				t.Fatalf("Normalize(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMiddleTruncateFitsNoOp(t *testing.T) {
 	got := MiddleTruncate("hello", 10)
 	if got != "hello" {

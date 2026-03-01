@@ -10,6 +10,7 @@ import (
 	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/rtcap"
 	"github.com/poteto/noodle/internal/state"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 type blockedReason string
@@ -120,15 +121,15 @@ func PlanDispatches(s state.State, maxConcurrent int, failedOrders map[string]bo
 // RouteCompletion applies one attempt completion and emits canonical routing
 // events for downstream ingestion.
 func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest.StateEvent, error) {
-	order, stage, ok := lookupOrderStage(s, rec.OrderID, rec.StageIndex)
-	if !ok || isTerminalOrder(order.Status) {
+	order, stage, ok := s.LookupStage(rec.OrderID, rec.StageIndex)
+	if !ok || order.Status.IsTerminal() {
 		return s, nil, nil
 	}
-	if isTerminalStage(stage.Status) {
+	if stage.Status.IsTerminal() {
 		return s, nil, nil
 	}
 
-	next := cloneState(s)
+	next := s.Clone()
 	order = next.Orders[rec.OrderID]
 	stage = order.Stages[rec.StageIndex]
 	updateAttemptFromCompletion(&stage, rec)
@@ -150,7 +151,7 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 			StageIndex: rec.StageIndex,
 			AttemptID:  rec.AttemptID,
 			Error:      strings.TrimSpace(rec.Error),
-			ExitCode:   clonedExitCode(rec.ExitCode),
+			ExitCode:   state.ClonedExitCode(rec.ExitCode),
 		})
 		if err != nil {
 			return s, nil, fmt.Errorf("route completion stage_completed: %w", err)
@@ -175,7 +176,7 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 				StageIndex: rec.StageIndex,
 				AttemptID:  rec.AttemptID,
 				Error:      strings.TrimSpace(rec.Error),
-				ExitCode:   clonedExitCode(rec.ExitCode),
+				ExitCode:   state.ClonedExitCode(rec.ExitCode),
 			})
 			if err != nil {
 				return s, nil, fmt.Errorf("route completion dispatch_requested: %w", err)
@@ -190,7 +191,7 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 			StageIndex: rec.StageIndex,
 			AttemptID:  rec.AttemptID,
 			Error:      strings.TrimSpace(rec.Error),
-			ExitCode:   clonedExitCode(rec.ExitCode),
+			ExitCode:   state.ClonedExitCode(rec.ExitCode),
 		})
 		if err != nil {
 			return s, nil, fmt.Errorf("route completion stage_failed: %w", err)
@@ -208,11 +209,11 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 // order reached completion.
 func AdvanceOrder(s state.State, orderID string) (state.State, bool) {
 	order, ok := s.Orders[orderID]
-	if !ok || isTerminalOrder(order.Status) {
+	if !ok || order.Status.IsTerminal() {
 		return s, false
 	}
 
-	next := cloneState(s)
+	next := s.Clone()
 	order = next.Orders[orderID]
 
 	for i := range order.Stages {
@@ -249,12 +250,12 @@ func AdvanceOrder(s state.State, orderID string) (state.State, bool) {
 // RouteFailure marks stage failure and marks order failure when retry is no
 // longer possible.
 func RouteFailure(s state.State, orderID string, stageIndex int, reason string) state.State {
-	order, stage, ok := lookupOrderStage(s, orderID, stageIndex)
-	if !ok || isTerminalOrder(order.Status) {
+	order, stage, ok := s.LookupStage(orderID, stageIndex)
+	if !ok || order.Status.IsTerminal() {
 		return s
 	}
 
-	next := cloneState(s)
+	next := s.Clone()
 	order = next.Orders[orderID]
 	stage = order.Stages[stageIndex]
 	stage.Status = state.StageFailed
@@ -280,7 +281,7 @@ func RouteFailure(s state.State, orderID string, stageIndex int, reason string) 
 
 // RetryCandidate reports whether a stage can retry under the provided policy.
 func RetryCandidate(s state.State, orderID string, stageIndex int, policy RetryPolicy) (bool, string) {
-	order, stage, ok := lookupOrderStage(s, orderID, stageIndex)
+	order, stage, ok := s.LookupStage(orderID, stageIndex)
 	if !ok {
 		if _, exists := s.Orders[orderID]; !exists {
 			return false, retryReasonOrderNotFound
@@ -288,11 +289,11 @@ func RetryCandidate(s state.State, orderID string, stageIndex int, policy RetryP
 		return false, retryReasonStageNotFound
 	}
 
-	if isTerminalOrder(order.Status) {
+	if order.Status.IsTerminal() {
 		return false, retryReasonOrderTerminal
 	}
 
-	if isTerminalStage(stage.Status) && stage.Status != state.StageFailed {
+	if stage.Status.IsTerminal() && stage.Status != state.StageFailed {
 		return false, retryReasonStageTerminal
 	}
 
@@ -335,32 +336,6 @@ func isPendingStage(status state.StageLifecycleStatus) bool {
 	return status == "" || status == state.StagePending
 }
 
-func resolvedRuntimeName(raw string) string {
-	name := strings.ToLower(strings.TrimSpace(raw))
-	if name == "" {
-		return rtcap.ProcessCaps.Name
-	}
-	return name
-}
-
-func isTerminalOrder(status state.OrderLifecycleStatus) bool {
-	switch status {
-	case state.OrderCompleted, state.OrderFailed, state.OrderCancelled:
-		return true
-	default:
-		return false
-	}
-}
-
-func isTerminalStage(status state.StageLifecycleStatus) bool {
-	switch status {
-	case state.StageCompleted, state.StageFailed, state.StageSkipped, state.StageCancelled:
-		return true
-	default:
-		return false
-	}
-}
-
 func allStagesCompleted(stages []state.StageNode) bool {
 	for _, stage := range stages {
 		switch stage.Status {
@@ -382,18 +357,12 @@ func anyStageFailed(stages []state.StageNode) bool {
 	return false
 }
 
-func lookupOrderStage(s state.State, orderID string, stageIndex int) (state.OrderNode, state.StageNode, bool) {
-	if stageIndex < 0 {
-		return state.OrderNode{}, state.StageNode{}, false
+func resolvedRuntimeName(raw string) string {
+	name := stringx.Normalize(raw)
+	if name == "" {
+		return rtcap.ProcessCaps.Name
 	}
-	order, ok := s.Orders[orderID]
-	if !ok {
-		return state.OrderNode{}, state.StageNode{}, false
-	}
-	if stageIndex >= len(order.Stages) {
-		return state.OrderNode{}, state.StageNode{}, false
-	}
-	return order, order.Stages[stageIndex], true
+	return name
 }
 
 func updateAttemptFromCompletion(stage *state.StageNode, rec CompletionRecord) {
@@ -426,7 +395,7 @@ func updateAttemptFromCompletion(stage *state.StageNode, rec CompletionRecord) {
 		attempt.CompletedAt = rec.CompletedAt
 	}
 	if rec.ExitCode != nil {
-		attempt.ExitCode = clonedExitCode(rec.ExitCode)
+		attempt.ExitCode = state.ClonedExitCode(rec.ExitCode)
 	}
 	if trimmed := strings.TrimSpace(rec.Error); trimmed != "" {
 		attempt.Error = trimmed
@@ -447,7 +416,7 @@ func latestCompletionRecord(orderID string, stageIndex int, stage state.StageNod
 		StageIndex:  stageIndex,
 		AttemptID:   last.AttemptID,
 		Status:      last.Status,
-		ExitCode:    clonedExitCode(last.ExitCode),
+		ExitCode:    state.ClonedExitCode(last.ExitCode),
 		Error:       last.Error,
 		CompletedAt: last.CompletedAt,
 	}
@@ -474,53 +443,4 @@ func buildInternalEvent(eventType ingest.EventType, timestamp time.Time, payload
 		Payload:        data,
 		IdempotencyKey: fmt.Sprintf("%s:%s:%d:%s", eventType, payload.OrderID, payload.StageIndex, payload.AttemptID),
 	}, nil
-}
-
-func clonedExitCode(code *int) *int {
-	if code == nil {
-		return nil
-	}
-	v := *code
-	return &v
-}
-
-func cloneState(in state.State) state.State {
-	out := in
-	if in.Orders == nil {
-		out.Orders = nil
-		return out
-	}
-
-	out.Orders = make(map[string]state.OrderNode, len(in.Orders))
-	for orderID, order := range in.Orders {
-		orderCopy := order
-		if order.Metadata != nil {
-			metadata := make(map[string]string, len(order.Metadata))
-			for key, value := range order.Metadata {
-				metadata[key] = value
-			}
-			orderCopy.Metadata = metadata
-		}
-
-		if order.Stages != nil {
-			stages := make([]state.StageNode, len(order.Stages))
-			for i := range order.Stages {
-				stageCopy := order.Stages[i]
-				if order.Stages[i].Attempts != nil {
-					attempts := make([]state.AttemptNode, len(order.Stages[i].Attempts))
-					for j := range order.Stages[i].Attempts {
-						attemptCopy := order.Stages[i].Attempts[j]
-						attemptCopy.ExitCode = clonedExitCode(attemptCopy.ExitCode)
-						attempts[j] = attemptCopy
-					}
-					stageCopy.Attempts = attempts
-				}
-				stages[i] = stageCopy
-			}
-			orderCopy.Stages = stages
-		}
-
-		out.Orders[orderID] = orderCopy
-	}
-	return out
 }

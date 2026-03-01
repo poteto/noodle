@@ -121,7 +121,7 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 	}
 	_ = json.Unmarshal(payload, &action)
 
-	tool := strings.ToLower(strings.TrimSpace(stringx.NonEmpty(action.Tool, action.Action)))
+	tool := stringx.Normalize(stringx.NonEmpty(action.Tool, action.Action))
 	switch tool {
 	case "read":
 		label = "Read"

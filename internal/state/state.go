@@ -118,9 +118,19 @@ type AttemptNode struct {
 	Error        string        `json:"error"`
 }
 
-// isTerminalStageStatus reports whether the stage status is terminal
+// IsTerminal reports whether the order status is terminal
 // (no further transitions expected).
-func isTerminalStageStatus(s StageLifecycleStatus) bool {
+func (s OrderLifecycleStatus) IsTerminal() bool {
+	switch s {
+	case OrderCompleted, OrderFailed, OrderCancelled:
+		return true
+	}
+	return false
+}
+
+// IsTerminal reports whether the stage status is terminal
+// (no further transitions expected).
+func (s StageLifecycleStatus) IsTerminal() bool {
 	switch s {
 	case StageCompleted, StageFailed, StageSkipped, StageCancelled:
 		return true
@@ -128,13 +138,95 @@ func isTerminalStageStatus(s StageLifecycleStatus) bool {
 	return false
 }
 
-// isBusyStageStatus reports whether the stage is in an active/busy state.
-func isBusyStageStatus(s StageLifecycleStatus) bool {
+// IsBusy reports whether the stage is in an active/busy state.
+// Busy and terminal are distinct categories — StagePending is NOT busy.
+func (s StageLifecycleStatus) IsBusy() bool {
 	switch s {
 	case StageDispatching, StageRunning, StageMerging, StageReview:
 		return true
 	}
 	return false
+}
+
+// Clone returns a deep copy of the State. Mutations to the clone do not
+// affect the original.
+func (s State) Clone() State {
+	out := s
+
+	// Deep-copy mode transitions slice.
+	if s.ModeTransitions != nil {
+		transitionsCopy := make([]ModeTransitionRecord, len(s.ModeTransitions))
+		copy(transitionsCopy, s.ModeTransitions)
+		out.ModeTransitions = transitionsCopy
+	}
+
+	if s.Orders == nil {
+		out.Orders = nil
+		return out
+	}
+
+	out.Orders = make(map[string]OrderNode, len(s.Orders))
+	for orderID, order := range s.Orders {
+		orderCopy := order
+
+		if order.Metadata != nil {
+			metadataCopy := make(map[string]string, len(order.Metadata))
+			for key, value := range order.Metadata {
+				metadataCopy[key] = value
+			}
+			orderCopy.Metadata = metadataCopy
+		}
+
+		if order.Stages != nil {
+			stagesCopy := make([]StageNode, len(order.Stages))
+			for i := range order.Stages {
+				stageCopy := order.Stages[i]
+				if order.Stages[i].Attempts != nil {
+					attemptsCopy := make([]AttemptNode, len(order.Stages[i].Attempts))
+					for j := range order.Stages[i].Attempts {
+						attemptCopy := order.Stages[i].Attempts[j]
+						if attemptCopy.ExitCode != nil {
+							exitCode := *attemptCopy.ExitCode
+							attemptCopy.ExitCode = &exitCode
+						}
+						attemptsCopy[j] = attemptCopy
+					}
+					stageCopy.Attempts = attemptsCopy
+				}
+				stagesCopy[i] = stageCopy
+			}
+			orderCopy.Stages = stagesCopy
+		}
+
+		out.Orders[orderID] = orderCopy
+	}
+
+	return out
+}
+
+// LookupStage finds an order and stage by order ID and stage index.
+// Returns the order, stage, and true if found; zero values and false otherwise.
+func (s State) LookupStage(orderID string, stageIndex int) (OrderNode, StageNode, bool) {
+	if stageIndex < 0 {
+		return OrderNode{}, StageNode{}, false
+	}
+	order, ok := s.Orders[orderID]
+	if !ok {
+		return OrderNode{}, StageNode{}, false
+	}
+	if stageIndex >= len(order.Stages) {
+		return OrderNode{}, StageNode{}, false
+	}
+	return order, order.Stages[stageIndex], true
+}
+
+// ClonedExitCode returns a deep copy of an exit code pointer.
+func ClonedExitCode(code *int) *int {
+	if code == nil {
+		return nil
+	}
+	v := *code
+	return &v
 }
 
 // OrderBusyIndex returns a map from order ID to stage index for stages in
@@ -144,7 +236,7 @@ func (s *State) OrderBusyIndex() map[string]int {
 	idx := make(map[string]int)
 	for orderID, order := range s.Orders {
 		for _, stage := range order.Stages {
-			if isBusyStageStatus(stage.Status) {
+			if stage.Status.IsBusy() {
 				idx[orderID] = stage.StageIndex
 				break
 			}
@@ -219,7 +311,7 @@ func (s *State) Validate() error {
 		if order.Status == OrderActive {
 			hasNonTerminal := false
 			for _, stage := range order.Stages {
-				if !isTerminalStageStatus(stage.Status) {
+				if !stage.Status.IsTerminal() {
 					hasNonTerminal = true
 					break
 				}

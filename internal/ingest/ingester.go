@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 var knownEventTypes = map[string]struct{}{
@@ -110,7 +112,7 @@ type normalizedEnvelope struct {
 }
 
 func normalizeEnvelope(envelope InputEnvelope) (normalizedEnvelope, error) {
-	source := strings.ToLower(strings.TrimSpace(envelope.Source))
+	source := stringx.Normalize(envelope.Source)
 	if source == "" {
 		return normalizedEnvelope{}, fmt.Errorf("ingestion source unavailable")
 	}

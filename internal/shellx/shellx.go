@@ -1,6 +1,10 @@
 package shellx
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/poteto/noodle/internal/stringx"
+)
 
 // Quote wraps a shell token in single quotes and escapes embedded single quotes.
 func Quote(value string) string {
@@ -9,7 +13,7 @@ func Quote(value string) string {
 
 // SanitizeToken normalizes a free-form token into lowercase dash-separated text.
 func SanitizeToken(value, fallback string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
+	value = stringx.Normalize(value)
 	if value == "" {
 		value = fallback
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/state"
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 // Reduce is the default reducer implementation.
@@ -91,12 +92,12 @@ func reduceDispatchRequested(current state.State, event ingest.StateEvent) (stat
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageDispatching
@@ -122,14 +123,14 @@ func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (stat
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
 	attemptID := normalizedAttemptID(payload.AttemptID, event)
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageRunning
@@ -165,12 +166,12 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	order.UpdatedAt = event.Timestamp
@@ -223,12 +224,12 @@ func reduceStageFailed(current state.State, event ingest.StateEvent) (state.Stat
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageFailed
@@ -255,11 +256,11 @@ func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.S
 		return current, nil, nil
 	}
 	order, ok := current.Orders[payload.OrderID]
-	if !ok || isTerminalOrder(order.Status) {
+	if !ok || order.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	order.Status = state.OrderCompleted
 	order.UpdatedAt = event.Timestamp
@@ -283,11 +284,11 @@ func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.Stat
 		return current, nil, nil
 	}
 	order, ok := current.Orders[payload.OrderID]
-	if !ok || isTerminalOrder(order.Status) {
+	if !ok || order.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	order.Status = state.OrderFailed
 	order.UpdatedAt = event.Timestamp
@@ -315,7 +316,7 @@ func reduceModeChanged(current state.State, event ingest.StateEvent) (state.Stat
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	oldMode := next.Mode
 	next.Mode = mode
 	next.ModeEpoch++
@@ -344,13 +345,13 @@ func reduceControlReceived(current state.State, event ingest.StateEvent) (state.
 		return current, nil, nil
 	}
 
-	switch strings.ToLower(strings.TrimSpace(payload.Command)) {
+	switch stringx.Normalize(payload.Command) {
 	case "mode_change":
 		mode, ok := parseRunMode(payload.Mode)
 		if !ok {
 			return current, nil, nil
 		}
-		next := cloneState(current)
+		next := current.Clone()
 		oldMode := next.Mode
 		next.Mode = mode
 		next.ModeEpoch++
@@ -391,7 +392,7 @@ func reduceSchedulePromoted(current state.State, event ingest.StateEvent) (state
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	if next.Orders == nil {
 		next.Orders = make(map[string]state.OrderNode)
 	}
@@ -425,8 +426,8 @@ func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.S
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
 		return current, nil, nil
 	}
 
@@ -436,7 +437,7 @@ func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.S
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 
@@ -471,15 +472,15 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() {
 		return current, nil, nil
 	}
 	if stage.Status != state.StageMerging {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageCompleted
@@ -506,15 +507,15 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 	if !decodeEventPayload(event, &payload) {
 		return current, nil, nil
 	}
-	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
-	if !ok || isTerminalOrder(order.Status) {
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() {
 		return current, nil, nil
 	}
 	if stage.Status != state.StageMerging {
 		return current, nil, nil
 	}
 
-	next := cloneState(current)
+	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageReview
@@ -544,27 +545,13 @@ func decodeEventPayload(event ingest.StateEvent, out any) bool {
 }
 
 func parseRunMode(raw string) (state.RunMode, bool) {
-	normalized := strings.ToLower(strings.TrimSpace(raw))
+	normalized := stringx.Normalize(raw)
 	switch state.RunMode(normalized) {
 	case state.RunModeAuto, state.RunModeSupervised, state.RunModeManual:
 		return state.RunMode(normalized), true
 	default:
 		return "", false
 	}
-}
-
-func lookupOrderStage(s state.State, orderID string, stageIndex int) (state.OrderNode, state.StageNode, bool) {
-	if stageIndex < 0 {
-		return state.OrderNode{}, state.StageNode{}, false
-	}
-	order, ok := s.Orders[orderID]
-	if !ok {
-		return state.OrderNode{}, state.StageNode{}, false
-	}
-	if stageIndex >= len(order.Stages) {
-		return state.OrderNode{}, state.StageNode{}, false
-	}
-	return order, order.Stages[stageIndex], true
 }
 
 func normalizedAttemptID(raw string, event ingest.StateEvent) string {
@@ -636,81 +623,10 @@ func stageMergeable(stage state.StageNode, payload orderStagePayload) bool {
 
 func allStagesTerminal(order state.OrderNode) bool {
 	for _, stage := range order.Stages {
-		if !isTerminalStage(stage.Status) {
+		if !stage.Status.IsTerminal() {
 			return false
 		}
 	}
 	return true
 }
 
-func isTerminalOrder(status state.OrderLifecycleStatus) bool {
-	switch status {
-	case state.OrderCompleted, state.OrderFailed, state.OrderCancelled:
-		return true
-	default:
-		return false
-	}
-}
-
-func isTerminalStage(status state.StageLifecycleStatus) bool {
-	switch status {
-	case state.StageCompleted, state.StageFailed, state.StageSkipped, state.StageCancelled:
-		return true
-	default:
-		return false
-	}
-}
-
-func cloneState(in state.State) state.State {
-	out := in
-
-	// Deep-copy mode transitions slice.
-	if in.ModeTransitions != nil {
-		transitionsCopy := make([]state.ModeTransitionRecord, len(in.ModeTransitions))
-		copy(transitionsCopy, in.ModeTransitions)
-		out.ModeTransitions = transitionsCopy
-	}
-
-	if in.Orders == nil {
-		out.Orders = nil
-		return out
-	}
-
-	out.Orders = make(map[string]state.OrderNode, len(in.Orders))
-	for orderID, order := range in.Orders {
-		orderCopy := order
-
-		if order.Metadata != nil {
-			metadataCopy := make(map[string]string, len(order.Metadata))
-			for key, value := range order.Metadata {
-				metadataCopy[key] = value
-			}
-			orderCopy.Metadata = metadataCopy
-		}
-
-		if order.Stages != nil {
-			stagesCopy := make([]state.StageNode, len(order.Stages))
-			for i := range order.Stages {
-				stageCopy := order.Stages[i]
-				if order.Stages[i].Attempts != nil {
-					attemptsCopy := make([]state.AttemptNode, len(order.Stages[i].Attempts))
-					for j := range order.Stages[i].Attempts {
-						attemptCopy := order.Stages[i].Attempts[j]
-						if attemptCopy.ExitCode != nil {
-							exitCode := *attemptCopy.ExitCode
-							attemptCopy.ExitCode = &exitCode
-						}
-						attemptsCopy[j] = attemptCopy
-					}
-					stageCopy.Attempts = attemptsCopy
-				}
-				stagesCopy[i] = stageCopy
-			}
-			orderCopy.Stages = stagesCopy
-		}
-
-		out.Orders[orderID] = orderCopy
-	}
-
-	return out
-}

@@ -1,8 +1,9 @@
 package rtcap
 
 import (
-	"strings"
 	"sync"
+
+	"github.com/poteto/noodle/internal/stringx"
 )
 
 // Default capability profiles for known runtimes.
@@ -57,7 +58,7 @@ func NewRegistry() *RuntimeRegistry {
 
 // Register adds or replaces a runtime's capability profile.
 func (r *RuntimeRegistry) Register(name string, caps RuntimeCapabilities) {
-	name = strings.ToLower(strings.TrimSpace(name))
+	name = stringx.Normalize(name)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	caps.Name = name
@@ -66,7 +67,7 @@ func (r *RuntimeRegistry) Register(name string, caps RuntimeCapabilities) {
 
 // Get returns the capabilities for a named runtime.
 func (r *RuntimeRegistry) Get(name string) (RuntimeCapabilities, bool) {
-	name = strings.ToLower(strings.TrimSpace(name))
+	name = stringx.Normalize(name)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	caps, ok := r.runtimes[name]

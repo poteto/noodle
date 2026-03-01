@@ -5,6 +5,11 @@ import (
 	"unicode/utf8"
 )
 
+// Normalize trims surrounding whitespace and lowercases a value.
+func Normalize(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
 // FirstNonEmpty returns the first non-empty trimmed value.
 func FirstNonEmpty(values ...string) string {
 	for _, value := range values {

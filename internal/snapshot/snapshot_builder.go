@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 )
 
@@ -24,11 +24,11 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 
 	reader := event.NewEventReader(runtimeDir)
 	for _, cook := range state.ActiveCooks {
-		status := strings.ToLower(strings.TrimSpace(cook.Status))
+		status := stringx.Normalize(cook.Status)
 		if status == "" {
 			status = "running"
 		}
-		runtime := strings.ToLower(strings.TrimSpace(cook.Runtime))
+		runtime := stringx.Normalize(cook.Runtime)
 		var remoteHost string
 		if runtime != "" && runtime != "process" {
 			remoteHost = runtime
@@ -55,7 +55,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		session := Session{
 			ID:           item.SessionID,
 			DisplayName:  item.SessionID,
-			Status:       strings.ToLower(strings.TrimSpace(item.Status)),
+			Status:       stringx.Normalize(item.Status),
 			LastActivity: item.CompletedAt,
 			TaskKey:      item.TaskKey,
 		}
@@ -183,7 +183,7 @@ func enrichActiveSession(reader *event.EventReader, sessionID string, session *S
 
 // NormalizeLoopState maps a raw loop state string to a canonical constant.
 func NormalizeLoopState(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
+	switch stringx.Normalize(value) {
 	case "idle":
 		return LoopStateIdle
 	case "running":
