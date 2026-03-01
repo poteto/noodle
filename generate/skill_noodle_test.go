@@ -48,12 +48,8 @@ func TestGeneratedSkillContainsAllCommands(t *testing.T) {
 	requiredCommands := []string{
 		"noodle start",
 		"noodle status",
-		"noodle debug",
 		"noodle skills",
 		"noodle worktree",
-		"noodle mise",
-		"noodle stamp",
-		"noodle dispatch",
 		"noodle schema",
 	}
 

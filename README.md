@@ -86,13 +86,9 @@ Script templates are project-defined in `.noodle.toml`.
 | `noodle start` | Run scheduling loop |
 | `noodle start --once` | Run one cycle and exit |
 | `noodle status` | Show compact runtime status |
-| `noodle debug` | Dump canonical runtime debug state |
 | `noodle skills list` | List resolved skills with precedence |
 | `noodle worktree <subcommand>` | Worktree operations (`create`, `merge`, `cleanup`, `list`, `prune`, `hook`) |
 | `noodle schema [target]` | Print generated runtime schema docs (`list`, `mise`, `orders`, `status`) |
-| `noodle mise` | Build and print current mise brief (internal) |
-| `noodle dispatch` | Dispatch a cook session in tmux (internal) |
-| `noodle stamp` | Stamp NDJSON logs (internal) |
 | `noodle --help` | List all available commands |
 
 ## Contributing

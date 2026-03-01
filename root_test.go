@@ -12,8 +12,8 @@ func TestRootCommandRegistersAllSubcommands(t *testing.T) {
 	root := NewRootCmd()
 
 	expected := []string{
-		"start", "skills", "schema", "status", "debug",
-		"worktree", "stamp", "dispatch", "mise",
+		"start", "skills", "schema", "status",
+		"worktree", "event", "reset",
 	}
 
 	found := map[string]bool{}

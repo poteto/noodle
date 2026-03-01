@@ -60,11 +60,7 @@ func NewRootCmd() *cobra.Command {
 		newSkillsCmd(&app),
 		newSchemaCmd(&app),
 		newStatusCmd(&app),
-		newDebugCmd(&app),
 		newWorktreeCmd(&app),
-		newStampCmd(&app),
-		newDispatchCmd(&app),
-		newMiseCmd(&app),
 		newEventCmd(&app),
 		newResetCmd(&app),
 	)

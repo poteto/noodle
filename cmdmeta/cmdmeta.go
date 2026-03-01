@@ -27,7 +27,6 @@ func Commands() []Command {
 			{Name: "once", Type: "bool", Desc: "Run one scheduling cycle and exit"},
 		}},
 		{Name: "status", Short: "Show compact runtime status"},
-		{Name: "debug", Short: "Dump canonical runtime debug state"},
 		{Name: "skills", Short: "List resolved skills", Subcommands: []Command{
 			{Name: "list", Short: "List all resolved skills"},
 		}},
@@ -47,23 +46,6 @@ func Commands() []Command {
 			{Name: "prune", Short: "Remove merged and patch-equivalent worktrees"},
 			{Name: "hook", Short: "Run worktree session hook"},
 		}},
-		{Name: "stamp", Short: "Stamp NDJSON logs and emit canonical sidecar events", Flags: []Flag{
-			{Name: "output", Short: "o", Type: "string", Desc: "Output path for stamped NDJSON"},
-			{Name: "events", Type: "string", Desc: "Output path for canonical sidecar events"},
-		}},
-		{Name: "dispatch", Short: "Dispatch a cook session as a child process", Flags: []Flag{
-			{Name: "name", Type: "string", Default: "cook", Desc: "Session name"},
-			{Name: "prompt", Type: "string", Desc: "Prompt text for the dispatched session"},
-			{Name: "provider", Type: "string", Desc: "Provider (claude or codex)"},
-			{Name: "model", Type: "string", Desc: "Model name"},
-			{Name: "skill", Type: "string", Desc: "Skill name to inject"},
-			{Name: "reasoning-level", Type: "string", Desc: "Reasoning level"},
-			{Name: "worktree", Type: "string", Desc: "Linked worktree path"},
-			{Name: "max-turns", Type: "int", Desc: "Max turns"},
-			{Name: "budget-cap", Type: "float64", Desc: "Budget cap"},
-			{Name: "env", Type: "[]string", Desc: "Extra env vars (KEY=VALUE)"},
-		}},
-		{Name: "mise", Short: "Build and print the current mise brief"},
 		{Name: "event", Short: "Manage loop events", Subcommands: []Command{
 			{Name: "emit", Short: "Emit an external event", Flags: []Flag{
 				{Name: "payload", Type: "string", Desc: "Event payload as JSON"},
