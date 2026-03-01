@@ -32,6 +32,15 @@ function deriveSessionRows(snapshot: Snapshot): SessionRow[] {
   return rows;
 }
 
+function isCompletedStatus(status: string): boolean {
+  const normalized = status.toLowerCase();
+  return normalized === "merged" || normalized === "completed" || normalized === "done";
+}
+
+function needsReview(snapshot: Snapshot, sessionID: string): boolean {
+  return (snapshot.pending_reviews ?? []).some((review) => review.session_id === sessionID);
+}
+
 function sortRows(rows: SessionRow[], key: SortKey, dir: SortDir): SessionRow[] {
   const sorted = [...rows];
   sorted.sort((a, b) => {
@@ -92,6 +101,14 @@ export function Dashboard() {
     }
   }
 
+  function handleRowClick(row: SessionRow) {
+    if (isCompletedStatus(row.status) || needsReview(snapshot, row.id)) {
+      navigate({ to: "/review" });
+      return;
+    }
+    navigate({ to: "/actor/$id", params: { id: row.id } });
+  }
+
   return (
     <div className="flex flex-col h-full bg-bg-depth text-text-primary">
       {/* Header */}
@@ -135,7 +152,11 @@ export function Dashboard() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-border-subtle hover:bg-bg-surface transition-[background,border-left] duration-[120ms] hover:border-l-2 hover:border-l-accent">
+              <tr
+                key={row.id}
+                onClick={() => handleRowClick(row)}
+                className="border-b border-border-subtle hover:bg-bg-surface transition-[background,border-left] duration-[120ms] hover:border-l-2 hover:border-l-accent cursor-pointer"
+              >
                 <td className="px-3 py-2 font-mono text-sm">{row.id}</td>
                 <td className="px-3 py-2 font-mono text-sm max-w-[300px] truncate">{row.title}</td>
                 <td className="px-3 py-2">

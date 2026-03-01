@@ -5,6 +5,7 @@ import { buildSnapshot, buildSession } from "~/test-utils";
 import type { Snapshot } from "~/client";
 
 let mockSnapshot: Snapshot = buildSnapshot();
+const mockNavigate = vi.fn();
 
 vi.mock("~/client", async () => {
   const actual = await vi.importActual<typeof import("~/client")>("~/client");
@@ -15,7 +16,7 @@ vi.mock("~/client", async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
   createFileRoute: () => () => ({}),
 }));
 
@@ -26,6 +27,58 @@ function setSnapshot(overrides: Partial<Snapshot>) {
 }
 
 describe("Dashboard", () => {
+  it("clicking an active session row navigates to actor route", async () => {
+    const user = userEvent.setup();
+    setSnapshot({
+      active: [buildSession({ id: "s1", status: "running", title: "Active Session" })],
+      recent: [],
+    });
+    mockNavigate.mockReset();
+
+    render(<Dashboard />);
+    await user.click(screen.getByText("s1"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
+  });
+
+  it("clicking a completed session row navigates to review route", async () => {
+    const user = userEvent.setup();
+    setSnapshot({
+      active: [],
+      recent: [buildSession({ id: "s2", status: "completed", title: "Completed Session" })],
+    });
+    mockNavigate.mockReset();
+
+    render(<Dashboard />);
+    await user.click(screen.getByText("s2"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/review" });
+  });
+
+  it("clicking a pending-review session row navigates to review route", async () => {
+    const user = userEvent.setup();
+    setSnapshot({
+      active: [buildSession({ id: "s3", status: "running", title: "Needs Review Session" })],
+      recent: [],
+      pending_reviews: [
+        {
+          order_id: "order-1",
+          stage_index: 0,
+          worktree_name: "wt-order-1",
+          worktree_path: "/tmp/wt-order-1",
+          session_id: "s3",
+        },
+      ],
+      pending_review_count: 1,
+    });
+    mockNavigate.mockReset();
+
+    render(<Dashboard />);
+    await user.click(screen.getByText("s3"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/review" });
+  });
+
   it("renders stats bar with correct totals", () => {
     const active = [
       buildSession({ id: "s1", status: "running" }),
