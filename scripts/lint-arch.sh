@@ -115,6 +115,46 @@ while IFS= read -r file; do
     "Use directory fixtures with expected.md and state-XX inputs."
 done <"$LEGACY_FIXTURES"
 
+# 4) Boundary failure messages in migrated plan 83 paths must describe failure
+# state, not unmet expectations.
+MIGRATED_BOUNDARY_FILES="$TMP_DIR/migrated-boundary-files.txt"
+cat >"$MIGRATED_BOUNDARY_FILES" <<'EOF'
+cmd_start.go
+main.go
+start_boundary.go
+server/server.go
+loop/control.go
+loop/control_review.go
+loop/cook_completion.go
+loop/cook_spawn.go
+loop/dispatch_failure_envelope.go
+loop/failure_envelope.go
+loop/failure_projection.go
+loop/orders.go
+loop/schedule.go
+loop/agent_mistake_envelope.go
+EOF
+
+EXPECTATION_STYLE_PATTERN='(fmt\.Errorf|errors\.New|http\.Error|newStartAbortEnvelope|newStartRepairPromptEnvelope|newStartWarningOnlyEnvelope|newSystemHardLoopFailure|newOrderHardLoopFailure|newDegradeLoopFailure)[^\n]*"[^"]*\b(must|required|requires|expected)\b[^"]*"'
+MATCH_FILE="$TMP_DIR/expectation-style-matches.txt"
+
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  [ -f "$file" ] || continue
+
+  if rg -n --no-heading "$EXPECTATION_STYLE_PATTERN" "$file" >"$MATCH_FILE" 2>/dev/null; then
+    while IFS= read -r match; do
+      [ -z "$match" ] && continue
+      line=$(printf '%s' "$match" | cut -d: -f1)
+      report_error \
+        "$file" \
+        "$line" \
+        "Expectation-style wording found in a boundary failure message." \
+        "Rewrite the message to describe the observed failure state (for example, '... missing' or '... failed')."
+    done <"$MATCH_FILE"
+  fi
+done <"$MIGRATED_BOUNDARY_FILES"
+
 if [ "$ERROR_COUNT" -gt 0 ]; then
   printf '[ARCH] Failed with %s error(s), %s warning(s).\n' "$ERROR_COUNT" "$WARN_COUNT"
   exit 1

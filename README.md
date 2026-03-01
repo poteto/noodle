@@ -112,3 +112,7 @@ Repository layout:
 - `.noodle/` project-level runtime state and local config
 - `brain/` project memory and implementation plans
 - `worktree/` git worktree lifecycle helpers
+
+Contributor policy references:
+
+- [Failure Message Policy](docs/failure-message-policy.md)

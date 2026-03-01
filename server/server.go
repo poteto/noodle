@@ -176,7 +176,7 @@ func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("id")
 	if strings.TrimSpace(sessionID) == "" {
-		http.Error(w, "session ID required", http.StatusBadRequest)
+		http.Error(w, "session ID missing", http.StatusBadRequest)
 		return
 	}
 	events, err := snapshot.ReadSessionEvents(s.runtimeDir, sessionID)
@@ -245,7 +245,7 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) processControl(req controlRequest) (loop.ControlAck, error) {
 	action := strings.TrimSpace(req.Action)
 	if action == "" {
-		return loop.ControlAck{}, fmt.Errorf("action required")
+		return loop.ControlAck{}, fmt.Errorf("control action missing")
 	}
 
 	cmd, err := parseControlRequest(action, req)

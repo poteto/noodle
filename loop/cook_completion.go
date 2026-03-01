@@ -380,7 +380,7 @@ func (l *Loop) readStageMessage(sessionID string) *event.StageMessagePayload {
 func (l *Loop) removeOrder(id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return fmt.Errorf("remove requires order ID")
+		return fmt.Errorf("remove order ID missing")
 	}
 	orders, err := l.currentOrders()
 	if err != nil {

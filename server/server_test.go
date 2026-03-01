@@ -87,6 +87,29 @@ func TestGetSessionEvents(t *testing.T) {
 	}
 }
 
+func TestGetSessionEventsMissingSessionID(t *testing.T) {
+	s, _ := testServer(t)
+
+	req := httptest.NewRequest("GET", "/api/sessions/missing/events", nil)
+	req.SetPathValue("id", " ")
+	w := httptest.NewRecorder()
+	s.handleSessionEvents(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	message := strings.TrimSpace(string(body))
+	if message != "session ID missing" {
+		t.Fatalf("message = %q, want %q", message, "session ID missing")
+	}
+	assertFailureStateMessage(t, message)
+}
+
 func TestPostControl(t *testing.T) {
 	s, dir := testServer(t)
 
@@ -141,9 +164,19 @@ func TestPostControlMissingAction(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.httpServer.Handler.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", w.Result().StatusCode)
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	message := strings.TrimSpace(string(rawBody))
+	if message != "control action missing" {
+		t.Fatalf("message = %q, want %q", message, "control action missing")
+	}
+	assertFailureStateMessage(t, message)
 }
 
 func TestPostControlInvalidJSON(t *testing.T) {
@@ -581,5 +614,15 @@ func TestSessionEventsAfterFilter(t *testing.T) {
 	}
 	if len(events) != 0 {
 		t.Fatalf("event count = %d, want 0", len(events))
+	}
+}
+
+func assertFailureStateMessage(t *testing.T, message string) {
+	t.Helper()
+	lower := strings.ToLower(message)
+	for _, term := range []string{"must", "required", "requires", "expected"} {
+		if strings.Contains(lower, term) {
+			t.Fatalf("message %q contains expectation-style term %q", message, term)
+		}
 	}
 }

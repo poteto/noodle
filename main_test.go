@@ -82,6 +82,7 @@ func TestReportConfigDiagnosticsFailsStartOnFatal(t *testing.T) {
 	if envelope.Recoverability != failure.FailureRecoverabilityHard {
 		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityHard)
 	}
+	assertFailureStateMessage(t, envelope.Message)
 }
 
 func TestReportConfigDiagnosticsGroupsMissingScripts(t *testing.T) {
@@ -472,4 +473,14 @@ func requireStartFailureEnvelope(t *testing.T, err error) StartFailureEnvelope {
 		t.Fatalf("error = %T (%v), want StartFailureEnvelope", err, err)
 	}
 	return envelope
+}
+
+func assertFailureStateMessage(t *testing.T, message string) {
+	t.Helper()
+	lower := strings.ToLower(message)
+	for _, term := range []string{"must", "required", "requires", "expected"} {
+		if strings.Contains(lower, term) {
+			t.Fatalf("message %q contains expectation-style term %q", message, term)
+		}
+	}
 }

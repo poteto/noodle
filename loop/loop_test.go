@@ -121,6 +121,53 @@ func testOrder(id, taskKey, skill, provider, model string) Order {
 	}
 }
 
+func processSingleControlCommand(t *testing.T, commandJSON string) ControlAck {
+	t.Helper()
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	control := filepath.Join(runtimeDir, "control.ndjson")
+	if err := os.WriteFile(control, []byte(commandJSON+"\n"), 0o644); err != nil {
+		t.Fatalf("write control command: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
+	})
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("process commands: %v", err)
+	}
+
+	ackPath := filepath.Join(runtimeDir, "control-ack.ndjson")
+	data, err := os.ReadFile(ackPath)
+	if err != nil {
+		t.Fatalf("read ack file: %v", err)
+	}
+	var ack ControlAck
+	if err := json.Unmarshal(data[:len(data)-1], &ack); err != nil {
+		t.Fatalf("parse ack: %v", err)
+	}
+	return ack
+}
+
+func assertFailureStateMessage(t *testing.T, message string) {
+	t.Helper()
+	lower := strings.ToLower(message)
+	for _, term := range []string{"must", "required", "requires", "expected"} {
+		if strings.Contains(lower, term) {
+			t.Fatalf("message %q contains expectation-style term %q", message, term)
+		}
+	}
+}
+
 func TestCycleSpawnsCookFromOrders(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
@@ -782,38 +829,7 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 }
 
 func TestProcessControlCommandsInvalidJSONWritesTypedFailureAck(t *testing.T) {
-	projectDir := t.TempDir()
-	runtimeDir := filepath.Join(projectDir, ".noodle")
-	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
-		t.Fatalf("mkdir runtime: %v", err)
-	}
-	control := filepath.Join(runtimeDir, "control.ndjson")
-	if err := os.WriteFile(control, []byte(`{"id":"cmd-1","action":"pause"`+"\n"), 0o644); err != nil {
-		t.Fatalf("write control: %v", err)
-	}
-
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree: &fakeWorktree{},
-		Adapter:  &fakeAdapterRunner{},
-		Mise:     &fakeMise{},
-		Monitor:  fakeMonitor{},
-		Registry: testLoopRegistry(),
-		Now:      func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
-	})
-	if err := l.processControlCommands(); err != nil {
-		t.Fatalf("process commands: %v", err)
-	}
-
-	ackPath := filepath.Join(runtimeDir, "control-ack.ndjson")
-	data, err := os.ReadFile(ackPath)
-	if err != nil {
-		t.Fatalf("read ack file: %v", err)
-	}
-	var ack ControlAck
-	if err := json.Unmarshal(data[:len(data)-1], &ack); err != nil {
-		t.Fatalf("parse ack: %v", err)
-	}
+	ack := processSingleControlCommand(t, `{"id":"cmd-1","action":"pause"`)
 	if ack.Status != "error" {
 		t.Fatalf("status = %q, want error", ack.Status)
 	}
@@ -835,6 +851,54 @@ func TestProcessControlCommandsInvalidJSONWritesTypedFailureAck(t *testing.T) {
 	if ack.Failure.Scope != failure.FailureScopeSystem {
 		t.Fatalf("scope = %q, want %q", ack.Failure.Scope, failure.FailureScopeSystem)
 	}
+}
+
+func TestProcessControlCommandsMissingStopTargetUsesFailureStateMessage(t *testing.T) {
+	ack := processSingleControlCommand(t, `{"id":"cmd-1","action":"stop"}`)
+	if ack.Status != "error" {
+		t.Fatalf("status = %q, want error", ack.Status)
+	}
+	if ack.Message != "stop target missing" {
+		t.Fatalf("message = %q, want %q", ack.Message, "stop target missing")
+	}
+	assertFailureStateMessage(t, ack.Message)
+	if ack.Failure == nil {
+		t.Fatal("failure metadata missing from stop ack")
+	}
+	if ack.Failure.Class != failure.FailureClassBackendRecoverable {
+		t.Fatalf("failure class = %q, want %q", ack.Failure.Class, failure.FailureClassBackendRecoverable)
+	}
+	if ack.Failure.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("recoverability = %q, want %q", ack.Failure.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+	if ack.Failure.Owner != failure.FailureOwnerBackend {
+		t.Fatalf("owner = %q, want %q", ack.Failure.Owner, failure.FailureOwnerBackend)
+	}
+	if ack.Failure.Scope != failure.FailureScopeSystem {
+		t.Fatalf("scope = %q, want %q", ack.Failure.Scope, failure.FailureScopeSystem)
+	}
+}
+
+func TestRemoveOrderMissingIDUsesFailureStateMessage(t *testing.T) {
+	projectDir := t.TempDir()
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	err := l.removeOrder("")
+	if err == nil {
+		t.Fatal("expected removeOrder to fail for empty ID")
+	}
+	if err.Error() != "remove order ID missing" {
+		t.Fatalf("message = %q, want %q", err.Error(), "remove order ID missing")
+	}
+	assertFailureStateMessage(t, err.Error())
 }
 
 func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {

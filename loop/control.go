@@ -292,7 +292,7 @@ func (l *Loop) controlStopAll() {
 func (l *Loop) controlStop(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return fmt.Errorf("stop requires name")
+		return fmt.Errorf("stop target missing")
 	}
 	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName != name && cook.session.ID() != name {
