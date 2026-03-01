@@ -1,6 +1,9 @@
 {
   "private": true,
-  "workspaces": ["ui", "e2e/ui"],
+  "workspaces": [
+    "ui",
+    "e2e/ui"
+  ],
   "scripts": {
     "setup": "pnpm install",
     "build": "pnpm --filter noodle-ui build && go build -o ./bin/noodle .",
@@ -27,6 +30,6 @@
     "test:smoke": "go test -tags e2e -timeout 600s -count=1 ./e2e/"
   },
   "devDependencies": {
-    "concurrently": "^9"
+    "concurrently": "^9.2.1"
   }
 }

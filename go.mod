@@ -3,12 +3,12 @@ module github.com/poteto/noodle
 go 1.25.0
 
 require (
-	github.com/BurntSushi/toml v1.5.0
+	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
-	github.com/superfly/sprites-go v0.0.0-20260206213632-8176adff485b
+	github.com/superfly/sprites-go v0.0.0-20260226040941-951bb2e6b07d
 	golang.org/x/sys v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
