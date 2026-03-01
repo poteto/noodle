@@ -38,8 +38,14 @@ func TestReducerPureDeterministic(t *testing.T) {
 		"attempt_id":  "attempt-1",
 	}, at)
 
-	firstState, firstEffects := r(input, event)
-	secondState, secondEffects := r(input, event)
+	firstState, firstEffects, err := r(input, event)
+	if err != nil {
+		t.Fatalf("first reduce: %v", err)
+	}
+	secondState, secondEffects, err := r(input, event)
+	if err != nil {
+		t.Fatalf("second reduce: %v", err)
+	}
 
 	if !reflect.DeepEqual(firstState, secondState) {
 		t.Fatalf("reducer output state changed across identical runs:\nfirst=%+v\nsecond=%+v", firstState, secondState)
@@ -58,7 +64,10 @@ func TestReducerUnknownEventNoop(t *testing.T) {
 	current := fixtureStateForLifecycle()
 	event := mustStateEvent(1, ingest.EventType("not_known"), map[string]any{"x": "y"}, fixtureTime())
 
-	next, effects := Reduce(current, event)
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce unknown event: %v", err)
+	}
 	if !reflect.DeepEqual(current, next) {
 		t.Fatalf("unknown event changed state:\ncurrent=%+v\nnext=%+v", current, next)
 	}
@@ -324,14 +333,38 @@ func TestReducerTransitionsTable(t *testing.T) {
 			},
 		},
 		{
-			name: "mode_changed updates run mode",
+			name: "mode_changed updates run mode and increments epoch",
 			current: state.State{
-				Mode: state.RunModeAuto,
+				Mode:      state.RunModeAuto,
+				ModeEpoch: 0,
 			},
-			event: mustStateEvent(17, ingest.EventModeChanged, map[string]any{"mode": "manual"}, ts),
+			event: mustStateEvent(17, ingest.EventModeChanged, map[string]any{
+				"mode":         "manual",
+				"requested_by": "user:alice",
+				"reason":       "incident",
+			}, ts),
 			assertFn: func(t *testing.T, next state.State, effects []Effect) {
 				if next.Mode != state.RunModeManual {
 					t.Fatalf("mode mismatch: got %q", next.Mode)
+				}
+				if next.ModeEpoch != 1 {
+					t.Fatalf("mode epoch mismatch: got %d, want 1", next.ModeEpoch)
+				}
+				if len(next.ModeTransitions) != 1 {
+					t.Fatalf("transition count mismatch: got %d, want 1", len(next.ModeTransitions))
+				}
+				tr := next.ModeTransitions[0]
+				if tr.FromMode != state.RunModeAuto || tr.ToMode != state.RunModeManual {
+					t.Fatalf("transition mismatch: %s -> %s", tr.FromMode, tr.ToMode)
+				}
+				if tr.Epoch != 1 {
+					t.Fatalf("transition epoch mismatch: got %d, want 1", tr.Epoch)
+				}
+				if tr.RequestedBy != "user:alice" {
+					t.Fatalf("transition requested_by mismatch: got %q", tr.RequestedBy)
+				}
+				if tr.Reason != "incident" {
+					t.Fatalf("transition reason mismatch: got %q", tr.Reason)
 				}
 				if len(effects) != 0 {
 					t.Fatalf("mode_changed should emit no effects, got %d", len(effects))
@@ -415,7 +448,10 @@ func TestReducerTransitionsTable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			next, effects := Reduce(tt.current, tt.event)
+			next, effects, err := Reduce(tt.current, tt.event)
+			if err != nil {
+				t.Fatalf("reduce: %v", err)
+			}
 			tt.assertFn(t, next, effects)
 			if next.LastEventID != "" {
 				want := strconv.FormatUint(uint64(tt.event.ID), 10)
@@ -466,7 +502,10 @@ func TestReducerEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			next, effects := Reduce(tt.current, tt.event)
+			next, effects, err := Reduce(tt.current, tt.event)
+			if err != nil {
+				t.Fatalf("reduce: %v", err)
+			}
 			if !reflect.DeepEqual(next, tt.current) {
 				t.Fatalf("edge-case event should no-op:\ncurrent=%+v\nnext=%+v", tt.current, next)
 			}
@@ -491,8 +530,14 @@ func TestEffectIDDeterministic(t *testing.T) {
 		"order_id": "order-1", "stage_index": 0,
 	}, fixtureTime())
 
-	_, effectsA := Reduce(current, event)
-	_, effectsB := Reduce(current, event)
+	_, effectsA, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce A: %v", err)
+	}
+	_, effectsB, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce B: %v", err)
+	}
 
 	if len(effectsA) != len(effectsB) {
 		t.Fatalf("effect count mismatch: %d vs %d", len(effectsA), len(effectsB))
@@ -542,6 +587,366 @@ func mustStateEvent(id ingest.EventID, eventType ingest.EventType, payload map[s
 		Payload:   data,
 		Timestamp: ts,
 		Applied:   true,
+	}
+}
+
+// --- Finding 6: control_received, schedule_promoted, session_adopted ---
+
+func TestControlReceivedModeChange(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Mode:      state.RunModeAuto,
+		ModeEpoch: 0,
+	}
+
+	event := mustStateEvent(50, ingest.EventControlReceived, map[string]any{
+		"command": "mode_change",
+		"mode":    "supervised",
+	}, ts)
+
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if next.Mode != state.RunModeSupervised {
+		t.Fatalf("mode mismatch: got %q, want supervised", next.Mode)
+	}
+	if next.ModeEpoch != 1 {
+		t.Fatalf("mode epoch mismatch: got %d, want 1", next.ModeEpoch)
+	}
+	if len(next.ModeTransitions) != 1 {
+		t.Fatalf("transition count: got %d, want 1", len(next.ModeTransitions))
+	}
+	tr := next.ModeTransitions[0]
+	if tr.RequestedBy != "control" || tr.Reason != "control_received" {
+		t.Fatalf("transition metadata: requested_by=%q reason=%q", tr.RequestedBy, tr.Reason)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("control mode_change should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestControlReceivedUnknownCommand(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{Mode: state.RunModeAuto}
+
+	event := mustStateEvent(51, ingest.EventControlReceived, map[string]any{
+		"command": "shutdown",
+	}, ts)
+
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatal("unknown control command changed state")
+	}
+	if len(effects) != 0 {
+		t.Fatalf("unknown control command should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestControlReceivedInvalidMode(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{Mode: state.RunModeAuto}
+
+	event := mustStateEvent(52, ingest.EventControlReceived, map[string]any{
+		"command": "mode_change",
+		"mode":    "turbo",
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatal("invalid mode in control_received changed state")
+	}
+}
+
+func TestSchedulePromotedAddsNewOrder(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{},
+	}
+
+	event := mustStateEvent(60, ingest.EventSchedulePromoted, map[string]any{
+		"order_id": "new-order",
+		"stages": []map[string]any{
+			{"skill": "lint", "runtime": "node"},
+			{"skill": "test", "runtime": "go"},
+		},
+		"metadata": map[string]string{"branch": "feat/x"},
+	}, ts)
+
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	order, ok := next.Orders["new-order"]
+	if !ok {
+		t.Fatal("order not found in state")
+	}
+	if order.Status != state.OrderPending {
+		t.Fatalf("order status: got %q, want pending", order.Status)
+	}
+	if len(order.Stages) != 2 {
+		t.Fatalf("stage count: got %d, want 2", len(order.Stages))
+	}
+	if order.Stages[0].StageIndex != 0 || order.Stages[1].StageIndex != 1 {
+		t.Fatalf("stage indexes: got %d, %d", order.Stages[0].StageIndex, order.Stages[1].StageIndex)
+	}
+	if order.Stages[0].Status != state.StagePending {
+		t.Fatalf("stage 0 status: got %q, want pending", order.Stages[0].Status)
+	}
+	if order.Metadata["branch"] != "feat/x" {
+		t.Fatalf("metadata mismatch: got %v", order.Metadata)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("schedule_promoted should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestSchedulePromotedRejectsDuplicate(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"existing": {
+				OrderID: "existing",
+				Status:  state.OrderActive,
+			},
+		},
+	}
+
+	event := mustStateEvent(61, ingest.EventSchedulePromoted, map[string]any{
+		"order_id": "existing",
+		"stages":   []map[string]any{},
+	}, ts)
+
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatal("duplicate schedule_promoted changed state")
+	}
+	if len(effects) != 0 {
+		t.Fatalf("duplicate schedule_promoted should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestSchedulePromotedEmptyOrderID(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{}
+
+	event := mustStateEvent(62, ingest.EventSchedulePromoted, map[string]any{
+		"order_id": "",
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatal("empty order_id schedule_promoted changed state")
+	}
+}
+
+func TestSchedulePromotedNilOrders(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{}
+
+	event := mustStateEvent(63, ingest.EventSchedulePromoted, map[string]any{
+		"order_id": "fresh",
+		"stages":   []map[string]any{{"skill": "build"}},
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if _, ok := next.Orders["fresh"]; !ok {
+		t.Fatal("order not created when state.Orders was nil")
+	}
+}
+
+func TestSessionAdoptedUpdatesExistingAttempt(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"o1": {
+				OrderID: "o1",
+				Status:  state.OrderActive,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StageRunning,
+					Attempts: []state.AttemptNode{{
+						AttemptID: "att-1",
+						SessionID: "old-session",
+						Status:    state.AttemptLaunching,
+					}},
+				}},
+			},
+		},
+	}
+
+	event := mustStateEvent(70, ingest.EventSessionAdopted, map[string]any{
+		"order_id":    "o1",
+		"stage_index": 0,
+		"attempt_id":  "att-1",
+		"session_id":  "new-session",
+	}, ts)
+
+	next, effects, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	attempt := next.Orders["o1"].Stages[0].Attempts[0]
+	if attempt.SessionID != "new-session" {
+		t.Fatalf("session id mismatch: got %q", attempt.SessionID)
+	}
+	if attempt.Status != state.AttemptRunning {
+		t.Fatalf("attempt status mismatch: got %q, want running", attempt.Status)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("session_adopted should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestSessionAdoptedCreatesNewAttempt(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"o1": {
+				OrderID: "o1",
+				Status:  state.OrderActive,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StageDispatching,
+				}},
+			},
+		},
+	}
+
+	event := mustStateEvent(71, ingest.EventSessionAdopted, map[string]any{
+		"order_id":    "o1",
+		"stage_index": 0,
+		"attempt_id":  "att-new",
+		"session_id":  "sess-new",
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	stage := next.Orders["o1"].Stages[0]
+	if len(stage.Attempts) != 1 {
+		t.Fatalf("attempt count: got %d, want 1", len(stage.Attempts))
+	}
+	if stage.Attempts[0].AttemptID != "att-new" || stage.Attempts[0].SessionID != "sess-new" {
+		t.Fatalf("attempt mismatch: %+v", stage.Attempts[0])
+	}
+	if stage.Status != state.StageRunning {
+		t.Fatalf("stage status: got %q, want running", stage.Status)
+	}
+}
+
+func TestSessionAdoptedPromotesPendingOrder(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"o1": {
+				OrderID: "o1",
+				Status:  state.OrderPending,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StagePending,
+				}},
+			},
+		},
+	}
+
+	event := mustStateEvent(72, ingest.EventSessionAdopted, map[string]any{
+		"order_id":    "o1",
+		"stage_index": 0,
+		"attempt_id":  "att-adopt",
+		"session_id":  "sess-adopt",
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if next.Orders["o1"].Status != state.OrderActive {
+		t.Fatalf("order status: got %q, want active", next.Orders["o1"].Status)
+	}
+	if next.Orders["o1"].Stages[0].Status != state.StageRunning {
+		t.Fatalf("stage status: got %q, want running", next.Orders["o1"].Stages[0].Status)
+	}
+}
+
+func TestSessionAdoptedMissingFields(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"o1": {
+				OrderID: "o1",
+				Status:  state.OrderActive,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StagePending,
+				}},
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		payload map[string]any
+	}{
+		{"empty attempt_id", map[string]any{"order_id": "o1", "stage_index": 0, "attempt_id": "", "session_id": "s"}},
+		{"empty session_id", map[string]any{"order_id": "o1", "stage_index": 0, "attempt_id": "a", "session_id": ""}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event := mustStateEvent(73, ingest.EventSessionAdopted, tt.payload, ts)
+			next, _, err := Reduce(current, event)
+			if err != nil {
+				t.Fatalf("reduce: %v", err)
+			}
+			if !reflect.DeepEqual(next, current) {
+				t.Fatalf("session_adopted with %s changed state", tt.name)
+			}
+		})
+	}
+}
+
+func TestSessionAdoptedTerminalOrder(t *testing.T) {
+	ts := fixtureTime()
+	current := state.State{
+		Orders: map[string]state.OrderNode{
+			"o1": {
+				OrderID: "o1",
+				Status:  state.OrderCompleted,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StageCompleted,
+				}},
+			},
+		},
+	}
+
+	event := mustStateEvent(74, ingest.EventSessionAdopted, map[string]any{
+		"order_id": "o1", "stage_index": 0, "attempt_id": "a", "session_id": "s",
+	}, ts)
+
+	next, _, err := Reduce(current, event)
+	if err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatal("session_adopted on terminal order changed state")
 	}
 }
 

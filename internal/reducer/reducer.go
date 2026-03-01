@@ -11,7 +11,7 @@ import (
 )
 
 // Reduce is the default reducer implementation.
-func Reduce(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func Reduce(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	switch ingest.EventType(event.Type) {
 	case ingest.EventDispatchRequested:
 		return reduceDispatchRequested(current, event)
@@ -31,8 +31,14 @@ func Reduce(current state.State, event ingest.StateEvent) (state.State, []Effect
 		return reduceMergeCompleted(current, event)
 	case ingest.EventMergeFailed:
 		return reduceMergeFailed(current, event)
+	case ingest.EventControlReceived:
+		return reduceControlReceived(current, event)
+	case ingest.EventSchedulePromoted:
+		return reduceSchedulePromoted(current, event)
+	case ingest.EventSessionAdopted:
+		return reduceSessionAdopted(current, event)
 	default:
-		return current, nil
+		return current, nil, nil
 	}
 }
 
@@ -57,17 +63,37 @@ type orderPayload struct {
 }
 
 type modePayload struct {
-	Mode string `json:"mode"`
+	Mode        string `json:"mode"`
+	RequestedBy string `json:"requested_by"`
+	Reason      string `json:"reason"`
 }
 
-func reduceDispatchRequested(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+type controlPayload struct {
+	Command string `json:"command"`
+	Mode    string `json:"mode"`
+}
+
+type schedulePromotedPayload struct {
+	OrderID  string            `json:"order_id"`
+	Stages   []state.StageNode `json:"stages"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+type sessionAdoptedPayload struct {
+	OrderID    string `json:"order_id"`
+	StageIndex int    `json:"stage_index"`
+	AttemptID  string `json:"attempt_id"`
+	SessionID  string `json:"session_id"`
+}
+
+func reduceDispatchRequested(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -80,24 +106,25 @@ func reduceDispatchRequested(current state.State, event ingest.StateEvent) (stat
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	effects := []Effect{
-		makeEffect(event, 0, EffectDispatch, map[string]any{
-			"order_id":    payload.OrderID,
-			"stage_index": payload.StageIndex,
-			"attempt_id":  normalizedAttemptID(payload.AttemptID, event),
-		}),
+	effect, err := makeEffect(event, 0, EffectDispatch, map[string]any{
+		"order_id":    payload.OrderID,
+		"stage_index": payload.StageIndex,
+		"attempt_id":  normalizedAttemptID(payload.AttemptID, event),
+	})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce dispatch_requested: %w", err)
 	}
-	return next, effects
+	return next, []Effect{effect}, nil
 }
 
-func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	attemptID := normalizedAttemptID(payload.AttemptID, event)
@@ -130,17 +157,17 @@ func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (stat
 	order.Stages[payload.StageIndex] = stage
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
-	return next, nil
+	return next, nil, nil
 }
 
-func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -155,14 +182,15 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 		next.Orders[payload.OrderID] = order
 		next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-		effects := []Effect{
-			makeEffect(event, 0, EffectMerge, map[string]any{
-				"order_id":      payload.OrderID,
-				"stage_index":   payload.StageIndex,
-				"worktree_name": latestWorktreeName(stage),
-			}),
+		effect, err := makeEffect(event, 0, EffectMerge, map[string]any{
+			"order_id":      payload.OrderID,
+			"stage_index":   payload.StageIndex,
+			"worktree_name": latestWorktreeName(stage),
+		})
+		if err != nil {
+			return current, nil, fmt.Errorf("reduce stage_completed merge: %w", err)
 		}
-		return next, effects
+		return next, []Effect{effect}, nil
 	}
 
 	// Non-mergeable: complete immediately and check order advancement.
@@ -177,23 +205,27 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
 	if order.Status == state.OrderCompleted {
-		effects := []Effect{
-			makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID}),
-			makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID}),
+		e0, err := makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID})
+		if err != nil {
+			return current, nil, fmt.Errorf("reduce stage_completed projection: %w", err)
 		}
-		return next, effects
+		e1, err := makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID})
+		if err != nil {
+			return current, nil, fmt.Errorf("reduce stage_completed ack: %w", err)
+		}
+		return next, []Effect{e0, e1}, nil
 	}
-	return next, nil
+	return next, nil, nil
 }
 
-func reduceStageFailed(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceStageFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -206,24 +238,25 @@ func reduceStageFailed(current state.State, event ingest.StateEvent) (state.Stat
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	effects := []Effect{
-		makeEffect(event, 0, EffectCleanup, map[string]any{
-			"order_id":      payload.OrderID,
-			"stage_index":   payload.StageIndex,
-			"worktree_name": latestWorktreeName(stage),
-		}),
+	effect, err := makeEffect(event, 0, EffectCleanup, map[string]any{
+		"order_id":      payload.OrderID,
+		"stage_index":   payload.StageIndex,
+		"worktree_name": latestWorktreeName(stage),
+	})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce stage_failed cleanup: %w", err)
 	}
-	return next, effects
+	return next, []Effect{effect}, nil
 }
 
-func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderPayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, ok := current.Orders[payload.OrderID]
 	if !ok || isTerminalOrder(order.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -233,21 +266,25 @@ func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.S
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	effects := []Effect{
-		makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID}),
-		makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID}),
+	e0, err := makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce order_completed projection: %w", err)
 	}
-	return next, effects
+	e1, err := makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce order_completed ack: %w", err)
+	}
+	return next, []Effect{e0, e1}, nil
 }
 
-func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderPayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, ok := current.Orders[payload.OrderID]
 	if !ok || isTerminalOrder(order.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -257,40 +294,189 @@ func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.Stat
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	effects := []Effect{
-		makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID}),
-		makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID}),
+	e0, err := makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce order_failed projection: %w", err)
 	}
-	return next, effects
+	e1, err := makeEffect(event, 1, EffectAck, map[string]any{"order_id": payload.OrderID})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce order_failed ack: %w", err)
+	}
+	return next, []Effect{e0, e1}, nil
 }
 
-func reduceModeChanged(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceModeChanged(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload modePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	mode, ok := parseRunMode(payload.Mode)
 	if !ok {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
+	oldMode := next.Mode
 	next.Mode = mode
+	next.ModeEpoch++
+
+	record := state.ModeTransitionRecord{
+		FromMode:    oldMode,
+		ToMode:      mode,
+		Epoch:       next.ModeEpoch,
+		RequestedBy: strings.TrimSpace(payload.RequestedBy),
+		Reason:      strings.TrimSpace(payload.Reason),
+		AppliedAt:   event.Timestamp,
+	}
+	next.ModeTransitions = append(next.ModeTransitions, record)
+
+	if len(next.ModeTransitions) > state.MaxModeTransitionHistory {
+		next.ModeTransitions = next.ModeTransitions[len(next.ModeTransitions)-state.MaxModeTransitionHistory:]
+	}
+
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
-	return next, nil
+	return next, nil, nil
 }
 
-func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceControlReceived(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload controlPayload
+	if !decodeEventPayload(event, &payload) {
+		return current, nil, nil
+	}
+
+	switch strings.ToLower(strings.TrimSpace(payload.Command)) {
+	case "mode_change":
+		mode, ok := parseRunMode(payload.Mode)
+		if !ok {
+			return current, nil, nil
+		}
+		next := cloneState(current)
+		oldMode := next.Mode
+		next.Mode = mode
+		next.ModeEpoch++
+
+		record := state.ModeTransitionRecord{
+			FromMode:    oldMode,
+			ToMode:      mode,
+			Epoch:       next.ModeEpoch,
+			RequestedBy: "control",
+			Reason:      "control_received",
+			AppliedAt:   event.Timestamp,
+		}
+		next.ModeTransitions = append(next.ModeTransitions, record)
+
+		if len(next.ModeTransitions) > state.MaxModeTransitionHistory {
+			next.ModeTransitions = next.ModeTransitions[len(next.ModeTransitions)-state.MaxModeTransitionHistory:]
+		}
+
+		next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+		return next, nil, nil
+	default:
+		// Unrecognized control command — no-op.
+		return current, nil, nil
+	}
+}
+
+func reduceSchedulePromoted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload schedulePromotedPayload
+	if !decodeEventPayload(event, &payload) {
+		return current, nil, nil
+	}
+	orderID := strings.TrimSpace(payload.OrderID)
+	if orderID == "" {
+		return current, nil, nil
+	}
+	// Reject if order already exists.
+	if _, exists := current.Orders[orderID]; exists {
+		return current, nil, nil
+	}
+
+	next := cloneState(current)
+	if next.Orders == nil {
+		next.Orders = make(map[string]state.OrderNode)
+	}
+
+	stages := payload.Stages
+	if stages == nil {
+		stages = []state.StageNode{}
+	}
+	// Ensure stage indexes are sequential starting at 0.
+	for i := range stages {
+		stages[i].StageIndex = i
+		if stages[i].Status == "" {
+			stages[i].Status = state.StagePending
+		}
+	}
+
+	next.Orders[orderID] = state.OrderNode{
+		OrderID:   orderID,
+		Status:    state.OrderPending,
+		Stages:    stages,
+		CreatedAt: event.Timestamp,
+		UpdatedAt: event.Timestamp,
+		Metadata:  payload.Metadata,
+	}
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
+func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload sessionAdoptedPayload
+	if !decodeEventPayload(event, &payload) {
+		return current, nil, nil
+	}
+	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
+	if !ok || isTerminalOrder(order.Status) || isTerminalStage(stage.Status) {
+		return current, nil, nil
+	}
+
+	attemptID := strings.TrimSpace(payload.AttemptID)
+	sessionID := strings.TrimSpace(payload.SessionID)
+	if attemptID == "" || sessionID == "" {
+		return current, nil, nil
+	}
+
+	next := cloneState(current)
+	order = next.Orders[payload.OrderID]
+	stage = order.Stages[payload.StageIndex]
+
+	if idx, found := attemptIndexByID(stage.Attempts, attemptID); found {
+		stage.Attempts[idx].SessionID = sessionID
+		stage.Attempts[idx].Status = state.AttemptRunning
+	} else {
+		stage.Attempts = append(stage.Attempts, state.AttemptNode{
+			AttemptID: attemptID,
+			SessionID: sessionID,
+			Status:    state.AttemptRunning,
+			StartedAt: event.Timestamp,
+		})
+	}
+
+	if stage.Status == state.StagePending || stage.Status == state.StageDispatching {
+		stage.Status = state.StageRunning
+	}
+
+	order.Stages[payload.StageIndex] = stage
+	order.UpdatedAt = event.Timestamp
+	if order.Status == state.OrderPending {
+		order.Status = state.OrderActive
+	}
+	next.Orders[payload.OrderID] = order
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
+func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 	if stage.Status != state.StageMerging {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -312,20 +498,20 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
-	return next, nil
+	return next, nil, nil
 }
 
-func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.State, []Effect) {
+func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
 	if !decodeEventPayload(event, &payload) {
-		return current, nil
+		return current, nil, nil
 	}
 	order, stage, ok := lookupOrderStage(current, payload.OrderID, payload.StageIndex)
 	if !ok || isTerminalOrder(order.Status) {
-		return current, nil
+		return current, nil, nil
 	}
 	if stage.Status != state.StageMerging {
-		return current, nil
+		return current, nil, nil
 	}
 
 	next := cloneState(current)
@@ -337,13 +523,14 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
-	effects := []Effect{
-		makeEffect(event, 0, EffectAck, map[string]any{
-			"order_id":    payload.OrderID,
-			"stage_index": payload.StageIndex,
-		}),
+	effect, err := makeEffect(event, 0, EffectAck, map[string]any{
+		"order_id":    payload.OrderID,
+		"stage_index": payload.StageIndex,
+	})
+	if err != nil {
+		return current, nil, fmt.Errorf("reduce merge_failed ack: %w", err)
 	}
-	return next, effects
+	return next, []Effect{effect}, nil
 }
 
 func decodeEventPayload(event ingest.StateEvent, out any) bool {
@@ -476,6 +663,14 @@ func isTerminalStage(status state.StageLifecycleStatus) bool {
 
 func cloneState(in state.State) state.State {
 	out := in
+
+	// Deep-copy mode transitions slice.
+	if in.ModeTransitions != nil {
+		transitionsCopy := make([]state.ModeTransitionRecord, len(in.ModeTransitions))
+		copy(transitionsCopy, in.ModeTransitions)
+		out.ModeTransitions = transitionsCopy
+	}
+
 	if in.Orders == nil {
 		out.Orders = nil
 		return out
