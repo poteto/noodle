@@ -29,6 +29,7 @@ export default defineConfig({
           { text: "Scheduling", link: "/concepts/scheduling" },
           { text: "Brain", link: "/concepts/brain" },
           { text: "Modes", link: "/concepts/modes" },
+          { text: "Philosophy", link: "/concepts/philosophy" },
         ],
       },
       {
