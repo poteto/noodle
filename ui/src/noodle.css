@@ -676,7 +676,6 @@
 .message-row.type-tool {
   padding-left: 44px;
   border-left: 1px solid var(--color-border-subtle);
-  margin-left: 28px;
 }
 /* Tool one-liner — badge + summary on a single line */
 .tool-oneliner {
@@ -701,7 +700,6 @@
   opacity: 0.6;
   padding-left: 44px;
   border-left: 1px solid var(--color-border-subtle);
-  margin-left: 28px;
 }
 
 .msg-meta {
@@ -830,7 +828,6 @@
   font-size: 13px;
   color: var(--color-text-secondary);
   border-left: 1px solid var(--color-border-subtle);
-  margin-left: 28px;
   transition: background 0.15s;
 }
 .tool-group-summary:hover {
