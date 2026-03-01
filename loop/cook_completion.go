@@ -116,105 +116,124 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 	if status == "" {
 		status = stringx.Normalize(cook.session.Status())
 	}
-	success := resultStatus == StageResultCompleted
-	if success {
-		if isScheduleStage(cook.stage) {
-			l.logger.Info("schedule completed", "session", cook.session.ID())
-			_ = l.events.Emit(LoopEventScheduleCompleted, ScheduleCompletedPayload{
-				SessionID: cook.session.ID(),
-			})
-			return l.removeOrder(cook.orderID)
-		}
 
-		// Read stage_message events from the session.
-		stageMsg := l.readStageMessage(cook.session.ID())
-		if stageMsg != nil && stageMsg.IsBlocking() {
-			l.logger.Info("stage message blocks advance", "order", cook.orderID, "session", cook.session.ID())
-			l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message, nil)
-			_ = l.parkPendingReview(cook, "blocked by stage message: "+stageMsg.Message)
+	if resultStatus == StageResultCompleted {
+		if isScheduleStage(cook.stage) {
+			return l.handleScheduleCompletion(cook)
+		}
+		blocked, msg := l.processStageMessage(cook)
+		if blocked {
 			return nil
 		}
-		// Non-blocking message or no message — auto-advance.
-		var msg *string
-		if stageMsg != nil {
-			msg = &stageMsg.Message
-			l.forwardToScheduler(cook, "stage_message", stageMsg.Message, nil)
-		}
-
 		canMerge := l.canMergeStage(cook.stage)
-
-		// Emit V2 canonical stage completion event. For mergeable stages
-		// this transitions canonical state to StageMerging; for non-mergeable
-		// it transitions directly to StageCompleted.
 		l.emitEvent(ingest.EventStageCompleted, map[string]any{
 			"order_id":    cook.orderID,
 			"stage_index": cook.stageIndex,
 			"mergeable":   canMerge,
 		})
+		if canMerge {
+			return l.completeWithMerge(ctx, cook, msg)
+		}
+		return l.completeWithoutMerge(ctx, cook, msg)
+	}
 
-		if !canMerge {
-			// Non-mergeable stage (e.g., debate, schedule) — advance without merge.
-			return l.advanceAndPersist(ctx, cook, msg)
-		}
+	return l.handleStageFailure(ctx, cook, resultStatus, status)
+}
 
-		mergeMode, mergeBranch := l.resolveMergeMode(cook)
-		if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
-			return err
-		}
-		l.logger.Info("cook completing", "order", cook.orderID, "session", cook.session.ID())
-		if l.mergeQueue == nil {
-			if err := l.mergeCookWorktree(ctx, cook); err != nil {
-				return err
-			}
-			// Emit merge completion on the main goroutine after successful merge.
-			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
-				"order_id":    cook.orderID,
-				"stage_index": cook.stageIndex,
-			})
-			return l.advanceAndPersist(ctx, cook, msg)
-		}
+// handleScheduleCompletion handles a successful schedule stage completion.
+func (l *Loop) handleScheduleCompletion(cook *cookHandle) error {
+	l.logger.Info("schedule completed", "session", cook.session.ID())
+	_ = l.events.Emit(LoopEventScheduleCompleted, ScheduleCompletedPayload{
+		SessionID: cook.session.ID(),
+	})
+	return l.removeOrder(cook.orderID)
+}
+
+// processStageMessage reads stage_message events from the session and handles
+// blocking messages. Returns (blocked, message) where blocked is true if the
+// stage message prevents advancement, and message is the non-blocking message
+// pointer (nil if no message).
+func (l *Loop) processStageMessage(cook *cookHandle) (bool, *string) {
+	stageMsg := l.readStageMessage(cook.session.ID())
+	if stageMsg == nil {
+		return false, nil
+	}
+	if stageMsg.IsBlocking() {
+		l.logger.Info("stage message blocks advance",
+			"order", cook.orderID, "session", cook.session.ID())
+		l.forwardToScheduler(cook, "stage_message_blocked", stageMsg.Message, nil)
+		_ = l.parkPendingReview(cook, "blocked by stage message: "+stageMsg.Message)
+		return true, nil
+	}
+	l.forwardToScheduler(cook, "stage_message", stageMsg.Message, nil)
+	return false, &stageMsg.Message
+}
+
+// completeWithMerge handles a successful mergeable stage by persisting merge
+// metadata and either directly merging or enqueueing to the merge queue.
+func (l *Loop) completeWithMerge(ctx context.Context, cook *cookHandle, msg *string) error {
+	mergeMode, mergeBranch := l.resolveMergeMode(cook)
+	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
+		return err
+	}
+	l.logger.Info("cook completing",
+		"order", cook.orderID, "session", cook.session.ID())
+	if l.mergeQueue != nil {
 		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
-		l.logger.Info("cook queued for merge", "order", cook.orderID, "session", cook.session.ID(), "stage", cook.stageIndex)
+		l.logger.Info("cook queued for merge",
+			"order", cook.orderID,
+			"session", cook.session.ID(),
+			"stage", cook.stageIndex)
 		return nil
 	}
-	// Schedule cooks may write orders-next.json before exiting non-cleanly
-	// (e.g., codex validation step fails after the file is written). If the
-	// deliverable exists or was already promoted, treat the schedule as done.
+	if err := l.mergeCookWorktree(ctx, cook); err != nil {
+		return err
+	}
+	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+	})
+	return l.advanceAndPersist(ctx, cook, msg)
+}
+
+// completeWithoutMerge handles a successful non-mergeable stage (e.g. debate,
+// review) by advancing directly without merge.
+func (l *Loop) completeWithoutMerge(ctx context.Context, cook *cookHandle, msg *string) error {
+	return l.advanceAndPersist(ctx, cook, msg)
+}
+
+// handleStageFailure handles a cook that exited with a non-success status.
+func (l *Loop) handleStageFailure(_ context.Context, cook *cookHandle, resultStatus StageResultStatus, status string) error {
+	// Schedule cooks may write orders-next.json before exiting non-cleanly.
 	if isScheduleStage(cook.stage) {
 		if _, statErr := os.Stat(l.deps.OrdersNextFile); statErr == nil {
-			l.logger.Info("schedule wrote orders-next before failing, treating as complete", "session", cook.session.ID())
+			l.logger.Info("schedule wrote orders-next before failing, treating as complete",
+				"session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
-		// consumeOrdersNext sets schedulePromoted when it promotes
-		// orders-next.json. Only treat the schedule as done if we know
-		// the promotion actually happened — pre-existing non-schedule
-		// orders should not suppress a retry.
 		if l.schedulePromoted {
-			l.logger.Info("schedule already promoted, removing schedule order", "session", cook.session.ID())
+			l.logger.Info("schedule already promoted, removing schedule order",
+				"session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
 	}
+
 	reason := "cook exited with status " + status
-	// Cancellation is intentionally classified as stage-terminal order-hard.
-	// It terminates the current stage while keeping the loop recoverable for
-	// other orders and future retries.
 	if resultStatus == StageResultCancelled {
 		reason = "cook cancelled with status " + status
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	orders, err = failStage(orders, cook.orderID, reason)
-	if err != nil {
-		return err
-	}
-	if err := l.writeOrdersState(orders); err != nil {
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := failStage(*orders, cook.orderID, reason)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		return true, nil
+	}); err != nil {
 		return err
 	}
 	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 
-	// Emit V2 canonical state event for stage failure.
 	l.emitEvent(ingest.EventStageFailed, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
@@ -237,15 +256,16 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 // advanceAndPersist advances the order stage and persists the result.
 // The optional message is included in the stage.completed event payload.
 func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message ...*string) error {
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	orders, removed, err := advanceOrder(orders, cook.orderID)
-	if err != nil {
-		return err
-	}
-	if err := l.writeOrdersState(orders); err != nil {
+	removed := false
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, orderRemoved, err := advanceOrder(*orders, cook.orderID)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		removed = orderRemoved
+		return true, nil
+	}); err != nil {
 		return err
 	}
 	var msg *string
@@ -371,21 +391,26 @@ func (l *Loop) removeOrder(id string) error {
 	if id == "" {
 		return fmt.Errorf("remove order ID missing")
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	filtered := make([]Order, 0, len(orders.Orders))
-	for _, order := range orders.Orders {
-		if order.ID == id {
-			continue
+	removed := false
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		filtered := make([]Order, 0, len(orders.Orders))
+		for _, order := range orders.Orders {
+			if order.ID == id {
+				removed = true
+				continue
+			}
+			filtered = append(filtered, order)
 		}
-		filtered = append(filtered, order)
-	}
-	orders.Orders = filtered
-	if err := l.writeOrdersState(orders); err != nil {
+		if !removed {
+			return false, nil
+		}
+		orders.Orders = filtered
+		return true, nil
+	}); err != nil {
 		return err
 	}
-	l.logger.Info("order removed", "order", id)
+	if removed {
+		l.logger.Info("order removed", "order", id)
+	}
 	return nil
 }

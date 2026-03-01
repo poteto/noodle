@@ -225,16 +225,15 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 	}
 
 	reason := "dispatch failed: " + envelope.Error()
-	orders, ordersErr := l.currentOrders()
-	if ordersErr != nil {
-		return ordersErr
-	}
-	orders, ordersErr = failStage(orders, cand.OrderID, reason)
-	if ordersErr != nil {
-		return ordersErr
-	}
-	if writeErr := l.writeOrdersState(orders); writeErr != nil {
-		return writeErr
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := failStage(*orders, cand.OrderID, reason)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		return true, nil
+	}); err != nil {
+		return err
 	}
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{

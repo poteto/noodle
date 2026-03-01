@@ -69,21 +69,11 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	}
 	req.Runtime = reqRuntime
 
-	if req.AllowPrimaryCheckout {
-		req.WorktreePath = strings.TrimSpace(req.WorktreePath)
-		if req.WorktreePath == "" {
-			req.WorktreePath = d.projectDir
-		}
-		if strings.TrimSpace(req.WorktreePath) == "" {
-			return nil, fmt.Errorf("project directory not set")
-		}
-	} else {
-		validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
-		if err != nil {
-			return nil, fmt.Errorf("worktree enforcement: %w", err)
-		}
-		req.WorktreePath = validWorktree
+	worktree, err := d.resolveWorktreeForDispatch(req)
+	if err != nil {
+		return nil, err
 	}
+	req.WorktreePath = worktree
 
 	if d.runtimeDir == "" {
 		return nil, fmt.Errorf("runtime directory not set")
@@ -93,69 +83,16 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("generate session ID: %w", err)
 	}
+
 	sessionDir, promptPath, stampedPath, canonicalPath, stderrPath := sessionPaths(d.runtimeDir, sessionID)
-
-	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create session directory: %w", err)
-	}
-	eventWriter, err := event.NewEventWriter(d.runtimeDir, sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("create event writer: %w", err)
-	}
-
-	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
+	eventWriter, skillBundle, systemPrompt, composedPrompt, err := d.prepareSessionDir(sessionID, sessionDir, promptPath, req)
 	if err != nil {
 		return nil, err
 	}
 
-	preamble := buildSessionPreamble()
-	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
-
-	if _, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt); err != nil {
+	controller, process, err := d.startSessionProcess(ctx, req, systemPrompt, composedPrompt, sessionID, sessionDir, stderrPath)
+	if err != nil {
 		return nil, err
-	}
-
-	cmd, err := d.buildCmd(req, systemPrompt)
-	if err != nil {
-		return nil, fmt.Errorf("build command: %w", err)
-	}
-	cmd.Dir = req.WorktreePath
-	cmd.Env = append(buildDispatchEnv(req), "NOODLE_SESSION_ID="+sessionID)
-
-	process, err := StartProcess(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("start process: %w", err)
-	}
-
-	// For Claude, create a controller that owns stdin for live steering.
-	// The prompt is sent as the first user message via stream-json.
-	// For other providers, write the prompt to stdin and close.
-	var controller *claudeController
-	provider := stringx.Normalize(req.Provider)
-	if provider != "codex" {
-		controller = newClaudeController(process.Stdin())
-		// Send the composed prompt as the first user message.
-		if err := controller.SendMessage(ctx, composedPrompt); err != nil {
-			_ = process.Kill()
-			return nil, fmt.Errorf("send initial prompt: %w", err)
-		}
-	} else {
-		go func() {
-			_, _ = io.WriteString(process.Stdin(), composedPrompt)
-			_ = process.Stdin().Close()
-		}()
-	}
-
-	// Drain stderr to file.
-	go drainToFile(process.Stderr(), stderrPath)
-
-	if err := WriteProcessMetadata(sessionDir, sessionID, process.PID(), nowUTC()); err != nil {
-		_ = process.Kill()
-		return nil, fmt.Errorf("write process metadata: %w", err)
-	}
-	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
-		_ = process.Kill()
-		return nil, fmt.Errorf("write spawn metadata: %w", err)
 	}
 
 	session := newProcessSession(processSessionConfig{
@@ -171,6 +108,113 @@ func (d *ProcessDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	})
 	session.start(ctx)
 	return session, nil
+}
+
+// resolveWorktreeForDispatch validates or resolves the worktree path for a
+// dispatch request. Primary checkout is allowed when explicitly opted in;
+// otherwise we require a linked worktree.
+func (d *ProcessDispatcher) resolveWorktreeForDispatch(req DispatchRequest) (string, error) {
+	if req.AllowPrimaryCheckout {
+		path := strings.TrimSpace(req.WorktreePath)
+		if path == "" {
+			path = d.projectDir
+		}
+		if strings.TrimSpace(path) == "" {
+			return "", fmt.Errorf("project directory not set")
+		}
+		return path, nil
+	}
+	validWorktree, err := wt.ValidateLinkedCheckout(req.WorktreePath)
+	if err != nil {
+		return "", fmt.Errorf("worktree enforcement: %w", err)
+	}
+	return validWorktree, nil
+}
+
+// prepareSessionDir creates the session directory, resolves skills, composes
+// prompts, and writes prompt files. Returns all artifacts needed for process
+// startup.
+func (d *ProcessDispatcher) prepareSessionDir(
+	sessionID, sessionDir, promptPath string, req DispatchRequest,
+) (*event.EventWriter, loadedSkill, string, string, error) {
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		return nil, loadedSkill{}, "", "", fmt.Errorf("create session directory: %w", err)
+	}
+	eventWriter, err := event.NewEventWriter(d.runtimeDir, sessionID)
+	if err != nil {
+		return nil, loadedSkill{}, "", "", fmt.Errorf("create event writer: %w", err)
+	}
+
+	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
+	if err != nil {
+		return nil, loadedSkill{}, "", "", err
+	}
+
+	preamble := buildSessionPreamble()
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
+
+	if _, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt); err != nil {
+		return nil, loadedSkill{}, "", "", err
+	}
+	return eventWriter, skillBundle, systemPrompt, composedPrompt, nil
+}
+
+// startSessionProcess builds the command, starts the child process, configures
+// the controller for stdin steering, drains stderr, and writes metadata.
+func (d *ProcessDispatcher) startSessionProcess(
+	ctx context.Context, req DispatchRequest,
+	systemPrompt, composedPrompt, sessionID, sessionDir, stderrPath string,
+) (*claudeController, *ProcessHandle, error) {
+	cmd, err := d.buildCmd(req, systemPrompt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("build command: %w", err)
+	}
+	cmd.Dir = req.WorktreePath
+	cmd.Env = append(buildDispatchEnv(req), "NOODLE_SESSION_ID="+sessionID)
+
+	process, err := StartProcess(cmd)
+	if err != nil {
+		return nil, nil, fmt.Errorf("start process: %w", err)
+	}
+
+	controller, err := d.configureStdin(ctx, process, req.Provider, composedPrompt)
+	if err != nil {
+		_ = process.Kill()
+		return nil, nil, err
+	}
+
+	go drainToFile(process.Stderr(), stderrPath)
+
+	if err := WriteProcessMetadata(sessionDir, sessionID, process.PID(), nowUTC()); err != nil {
+		_ = process.Kill()
+		return nil, nil, fmt.Errorf("write process metadata: %w", err)
+	}
+	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
+		_ = process.Kill()
+		return nil, nil, fmt.Errorf("write spawn metadata: %w", err)
+	}
+	return controller, process, nil
+}
+
+// configureStdin sets up stdin handling for the started process. For Claude,
+// creates a controller that owns stdin for live steering and sends the prompt
+// as the first stream-json user message. For other providers (codex), writes
+// the prompt to stdin and closes it.
+func (d *ProcessDispatcher) configureStdin(
+	ctx context.Context, process *ProcessHandle, provider, composedPrompt string,
+) (*claudeController, error) {
+	if stringx.Normalize(provider) == "codex" {
+		go func() {
+			_, _ = io.WriteString(process.Stdin(), composedPrompt)
+			_ = process.Stdin().Close()
+		}()
+		return nil, nil
+	}
+	controller := newClaudeController(process.Stdin())
+	if err := controller.SendMessage(ctx, composedPrompt); err != nil {
+		return nil, fmt.Errorf("send initial prompt: %w", err)
+	}
+	return controller, nil
 }
 
 // buildCmd constructs an exec.Cmd for the provider. The stamp processor runs

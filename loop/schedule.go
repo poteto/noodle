@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/poteto/noodle/config"
@@ -270,12 +271,18 @@ func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 }
 
 func (l *Loop) rescheduleForChefPrompt(prompt string) error {
-	orders := OrdersFile{
+	next := OrdersFile{
 		Orders: []Order{
 			scheduleOrder(l.config, prompt),
 		},
 	}
-	return l.writeOrdersState(orders)
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		if reflect.DeepEqual(*orders, next) {
+			return false, nil
+		}
+		*orders = next
+		return true, nil
+	})
 }
 
 func ordersSchemaPrompt() string {

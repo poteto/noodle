@@ -40,10 +40,6 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		taskKey = "execute"
 	}
 
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
 	newOrder := Order{
 		ID:     orderID,
 		Title:  titleFromPrompt(prompt, 8),
@@ -57,8 +53,10 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 			Status:   StageStatusPending,
 		}},
 	}
-	orders.Orders = append(orders.Orders, newOrder)
-	if err := l.writeOrdersState(orders); err != nil {
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		orders.Orders = append(orders.Orders, newOrder)
+		return true, nil
+	}); err != nil {
 		return err
 	}
 
@@ -88,46 +86,51 @@ func (l *Loop) controlEditItem(cmd ControlCommand) error {
 	if _, active := l.cooks.activeCooksByOrder[orderID]; active {
 		return fmt.Errorf("order %q is currently cooking", orderID)
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	found := false
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
-			continue
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		for i := range orders.Orders {
+			if orders.Orders[i].ID != orderID {
+				continue
+			}
+			changed := false
+
+			// Edit order-level fields.
+			if title := strings.TrimSpace(cmd.Prompt); title != "" {
+				nextTitle := titleFromPrompt(title, 8)
+				if orders.Orders[i].Title != nextTitle {
+					orders.Orders[i].Title = nextTitle
+					changed = true
+				}
+			}
+
+			// Edit stage-level fields on the current pending stage.
+			stageIdx, stage := activeStageForOrder(orders.Orders[i])
+			if stageIdx < 0 || stage == nil {
+				return false, fmt.Errorf("order %q has no editable stage", orderID)
+			}
+			if prompt := strings.TrimSpace(cmd.Prompt); prompt != "" && orders.Orders[i].Stages[stageIdx].Prompt != prompt {
+				orders.Orders[i].Stages[stageIdx].Prompt = prompt
+				changed = true
+			}
+			if taskKey := strings.TrimSpace(cmd.TaskKey); taskKey != "" && orders.Orders[i].Stages[stageIdx].TaskKey != taskKey {
+				orders.Orders[i].Stages[stageIdx].TaskKey = taskKey
+				changed = true
+			}
+			if provider := strings.TrimSpace(cmd.Provider); provider != "" && orders.Orders[i].Stages[stageIdx].Provider != provider {
+				orders.Orders[i].Stages[stageIdx].Provider = provider
+				changed = true
+			}
+			if model := strings.TrimSpace(cmd.Model); model != "" && orders.Orders[i].Stages[stageIdx].Model != model {
+				orders.Orders[i].Stages[stageIdx].Model = model
+				changed = true
+			}
+			if skill := strings.TrimSpace(cmd.Skill); skill != "" && orders.Orders[i].Stages[stageIdx].Skill != skill {
+				orders.Orders[i].Stages[stageIdx].Skill = skill
+				changed = true
+			}
+			return changed, nil
 		}
-		found = true
-		// Edit order-level fields.
-		if title := strings.TrimSpace(cmd.Prompt); title != "" {
-			orders.Orders[i].Title = titleFromPrompt(title, 8)
-		}
-		// Edit stage-level fields on the current pending stage.
-		stageIdx, stage := activeStageForOrder(orders.Orders[i])
-		if stageIdx < 0 || stage == nil {
-			return fmt.Errorf("order %q has no editable stage", orderID)
-		}
-		if prompt := strings.TrimSpace(cmd.Prompt); prompt != "" {
-			orders.Orders[i].Stages[stageIdx].Prompt = prompt
-		}
-		if taskKey := strings.TrimSpace(cmd.TaskKey); taskKey != "" {
-			orders.Orders[i].Stages[stageIdx].TaskKey = taskKey
-		}
-		if provider := strings.TrimSpace(cmd.Provider); provider != "" {
-			orders.Orders[i].Stages[stageIdx].Provider = provider
-		}
-		if model := strings.TrimSpace(cmd.Model); model != "" {
-			orders.Orders[i].Stages[stageIdx].Model = model
-		}
-		if skill := strings.TrimSpace(cmd.Skill); skill != "" {
-			orders.Orders[i].Stages[stageIdx].Skill = skill
-		}
-		break
-	}
-	if !found {
-		return fmt.Errorf("order %q not found", orderID)
-	}
-	return l.writeOrdersState(orders)
+		return false, fmt.Errorf("order %q not found", orderID)
+	})
 }
 
 func (l *Loop) controlSkip(orderID string) error {
@@ -135,15 +138,14 @@ func (l *Loop) controlSkip(orderID string) error {
 	if orderID == "" {
 		return fmt.Errorf("skip requires order_id")
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	orders, err = cancelOrder(orders, orderID)
-	if err != nil {
-		return err
-	}
-	return l.writeOrdersState(orders)
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := cancelOrder(*orders, orderID)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		return true, nil
+	})
 }
 
 func (l *Loop) controlRequeue(orderID string) error {
@@ -153,33 +155,23 @@ func (l *Loop) controlRequeue(orderID string) error {
 	}
 
 	// Reset failed/cancelled stages to pending and reactivate the order.
-	orders, err := l.currentOrders()
-	if err != nil {
-		return fmt.Errorf("requeue: read orders: %w", err)
-	}
-	found := false
-	updated := false
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
-			continue
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		for i := range orders.Orders {
+			if orders.Orders[i].ID != orderID {
+				continue
+			}
+			wasFailed := orders.Orders[i].Status == OrderStatusFailed
+			orders.Orders[i].Status = OrderStatusActive
+			changed := resetStages(&orders.Orders[i].Stages)
+			updated := changed || wasFailed
+			if !updated {
+				return false, fmt.Errorf("order %q not in failed state", orderID)
+			}
+			return true, nil
 		}
-		found = true
-		wasFailed := orders.Orders[i].Status == OrderStatusFailed
-		orders.Orders[i].Status = OrderStatusActive
-		changed := resetStages(&orders.Orders[i].Stages)
-		updated = changed || wasFailed
-		break
-	}
-	if !found {
-		return fmt.Errorf("order %q not found", orderID)
-	}
-	if !updated {
-		return fmt.Errorf("order %q not in failed state", orderID)
-	}
-	if updated {
-		if err := l.writeOrdersState(orders); err != nil {
-			return err
-		}
+		return false, fmt.Errorf("order %q not found", orderID)
+	}); err != nil {
+		return err
 	}
 	_ = l.events.Emit(LoopEventOrderRequeued, OrderRequeuedPayload{
 		OrderID: orderID,
@@ -214,30 +206,32 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 		}
 		newIndex = n
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	srcIdx := -1
-	for i := range orders.Orders {
-		if orders.Orders[i].ID == orderID {
-			srcIdx = i
-			break
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		srcIdx := -1
+		for i := range orders.Orders {
+			if orders.Orders[i].ID == orderID {
+				srcIdx = i
+				break
+			}
 		}
-	}
-	if srcIdx < 0 {
-		return fmt.Errorf("order %q not found", orderID)
-	}
-	order := orders.Orders[srcIdx]
-	orders.Orders = append(orders.Orders[:srcIdx], orders.Orders[srcIdx+1:]...)
-	if newIndex < 0 {
-		newIndex = 0
-	}
-	if newIndex > len(orders.Orders) {
-		newIndex = len(orders.Orders)
-	}
-	orders.Orders = append(orders.Orders[:newIndex], append([]Order{order}, orders.Orders[newIndex:]...)...)
-	return l.writeOrdersState(orders)
+		if srcIdx < 0 {
+			return false, fmt.Errorf("order %q not found", orderID)
+		}
+		targetIdx := newIndex
+		if targetIdx < 0 {
+			targetIdx = 0
+		}
+		if targetIdx >= len(orders.Orders) {
+			targetIdx = len(orders.Orders) - 1
+		}
+		if srcIdx == targetIdx {
+			return false, nil
+		}
+		order := orders.Orders[srcIdx]
+		orders.Orders = append(orders.Orders[:srcIdx], orders.Orders[srcIdx+1:]...)
+		orders.Orders = append(orders.Orders[:targetIdx], append([]Order{order}, orders.Orders[targetIdx:]...)...)
+		return true, nil
+	})
 }
 
 func (l *Loop) controlSetMaxCooks(value string) error {

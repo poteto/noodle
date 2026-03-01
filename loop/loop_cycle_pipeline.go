@@ -24,71 +24,153 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 	return brief, warnings, true, miseChanged, nil
 }
 
-func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
-	// Consume orders-next.json if the schedule session wrote one.
-	promoted, emptyPromotion, err := consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
-	if err != nil {
-		payload := PromotionFailedPayload{Reason: err.Error()}
-		if isOrdersNextRejectedError(err) {
-			mistake := newSchedulerMistakeEnvelope(SchedulerMistakeReasonOrdersNextRejected)
-			l.classifySchedulerMistake(
-				"build.promote_orders_next",
-				"orders-next promotion failed",
-				err,
-				SchedulerMistakeReasonOrdersNextRejected,
-			)
-			payload.AgentMistake = &mistake
-			failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", &mistake)
-			payload.Failure = &failureMetadata
-		} else {
-			l.classifyDegrade(
-				"build.promote_orders_next",
-				"orders-next promotion failed",
-				err,
-			)
-			failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
-			payload.Failure = &failureMetadata
-		}
-		l.logger.Warn("orders-next promotion failed", "error", err)
-		l.lastPromotionError = err.Error()
-		_ = l.events.Emit(LoopEventPromotionFailed, payload)
-		// Mark promoted so the schedule order can complete and a new
-		// schedule can be spawned. Without this, the schedule order
-		// stays active forever and the loop deadlocks.
-		l.schedulePromoted = true
-	} else if promoted {
-		l.logger.Info("orders-next promoted")
-		l.schedulePromoted = true
-		l.lastPromotionError = ""
-		if emptyPromotion {
-			l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
-			l.logger.Info("schedule produced no orders, entering cooldown")
-		} else {
-			l.scheduleNothingUntil = time.Time{}
-		}
-		if err := l.loadOrdersState(); err != nil {
-			return OrdersFile{}, false, err
-		}
+// mergeOrdersNext reads orders-next.json, validates it, and merges into
+// current orders. Returns whether promotion occurred and whether the incoming
+// orders array was empty. Does NOT handle promotion side effects (cooldown,
+// canonical emission, failure classification).
+func (l *Loop) mergeOrdersNext() (promoted bool, emptyPromotion bool, err error) {
+	return consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
+}
 
-		// Emit V2 canonical state events for each newly promoted order.
-		promotedOrders, _ := l.currentOrders()
-		for _, order := range promotedOrders.Orders {
-			if _, exists := l.canonical.Orders[order.ID]; !exists {
-				stages := make([]map[string]any, len(order.Stages))
-				for i, s := range order.Stages {
-					stages[i] = map[string]any{
-						"stage_index": i,
-						"status":      "pending",
-						"skill":       s.Skill,
-						"runtime":     s.Runtime,
-					}
-				}
-				l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
-					"order_id": order.ID,
-					"stages":   stages,
-				})
+// handlePromotionResult processes the side effects of an orders-next
+// promotion: error classification, cooldown management, and canonical
+// event emission.
+func (l *Loop) handlePromotionResult(promoted, emptyPromotion bool, err error) error {
+	if err != nil {
+		l.handlePromotionError(err)
+		return nil
+	}
+	if !promoted {
+		return nil
+	}
+
+	l.logger.Info("orders-next promoted")
+	l.schedulePromoted = true
+	l.lastPromotionError = ""
+	if emptyPromotion {
+		l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
+		l.logger.Info("schedule produced no orders, entering cooldown")
+	} else {
+		l.scheduleNothingUntil = time.Time{}
+	}
+	if err := l.loadOrdersState(); err != nil {
+		return err
+	}
+	l.emitPromotedOrders()
+	return nil
+}
+
+// handlePromotionError classifies and emits events for a failed orders-next
+// promotion. Always marks schedulePromoted so the schedule order can complete.
+func (l *Loop) handlePromotionError(err error) {
+	payload := PromotionFailedPayload{Reason: err.Error()}
+	if isOrdersNextRejectedError(err) {
+		mistake := newSchedulerMistakeEnvelope(SchedulerMistakeReasonOrdersNextRejected)
+		l.classifySchedulerMistake(
+			"build.promote_orders_next",
+			"orders-next promotion failed",
+			err,
+			SchedulerMistakeReasonOrdersNextRejected,
+		)
+		payload.AgentMistake = &mistake
+		failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", &mistake)
+		payload.Failure = &failureMetadata
+	} else {
+		l.classifyDegrade(
+			"build.promote_orders_next",
+			"orders-next promotion failed",
+			err,
+		)
+		failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
+		payload.Failure = &failureMetadata
+	}
+	l.logger.Warn("orders-next promotion failed", "error", err)
+	l.lastPromotionError = err.Error()
+	_ = l.events.Emit(LoopEventPromotionFailed, payload)
+	// Mark promoted so the schedule order can complete and a new
+	// schedule can be spawned. Without this, the schedule order
+	// stays active forever and the loop deadlocks.
+	l.schedulePromoted = true
+}
+
+// emitPromotedOrders emits V2 canonical state events for each newly promoted
+// order not yet tracked in canonical state.
+func (l *Loop) emitPromotedOrders() {
+	promotedOrders, _ := l.currentOrders()
+	for _, order := range promotedOrders.Orders {
+		if _, exists := l.canonical.Orders[order.ID]; exists {
+			continue
+		}
+		stages := make([]map[string]any, len(order.Stages))
+		for i, s := range order.Stages {
+			stages[i] = map[string]any{
+				"stage_index": i,
+				"status":      "pending",
+				"skill":       s.Skill,
+				"runtime":     s.Runtime,
 			}
 		}
+		l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
+			"order_id": order.ID,
+			"stages":   stages,
+		})
+	}
+}
+
+// ensureScheduleIfNeeded checks whether a schedule order needs to be
+// bootstrapped or injected. Handles idle transition, empty-backlog bootstrap,
+// and mise-change injection.
+func (l *Loop) ensureScheduleIfNeeded(brief mise.Brief, orders *OrdersFile, miseChanged bool) (idle bool, err error) {
+	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 && !hasNonScheduleOrders(*orders) {
+		idle, err = l.bootstrapScheduleIfEmpty(brief, orders)
+		if err != nil || idle {
+			return idle, err
+		}
+	}
+	if miseChanged && !l.hasActiveScheduleCook() && !hasScheduleOrder(*orders) {
+		orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
+		if err := l.writeOrdersState(*orders); err != nil {
+			return false, err
+		}
+		l.logger.Info("mise changed, injecting schedule order")
+	}
+	return false, nil
+}
+
+// bootstrapScheduleIfEmpty handles the case where no non-schedule orders
+// exist and no cooks are active. If no schedule order exists, either
+// transitions to idle or bootstraps one.
+func (l *Loop) bootstrapScheduleIfEmpty(brief mise.Brief, orders *OrdersFile) (idle bool, err error) {
+	if hasScheduleOrder(*orders) {
+		return false, nil
+	}
+	if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
+		l.setState(StateIdle)
+		return true, nil
+	}
+	*orders = bootstrapScheduleOrder(l.config)
+	if err := l.writeOrdersState(*orders); err != nil {
+		return false, err
+	}
+	l.logger.Info("orders empty, bootstrapping schedule")
+	return false, nil
+}
+
+// applyRoutingDefaults normalizes runtime and provider defaults on orders,
+// persisting if any changed.
+func (l *Loop) applyRoutingDefaults(orders *OrdersFile) error {
+	updated, changed := ApplyOrderRoutingDefaults(*orders, l.registry, l.config)
+	if !changed {
+		return nil
+	}
+	*orders = updated
+	return l.writeOrdersState(*orders)
+}
+
+func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
+	promoted, emptyPromotion, err := l.mergeOrdersNext()
+	if err := l.handlePromotionResult(promoted, emptyPromotion, err); err != nil {
+		return OrdersFile{}, false, err
 	}
 
 	// Reset cooldown when backlog changes (mise content changed).
@@ -101,83 +183,69 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 		return OrdersFile{}, false, err
 	}
 
-	// Normalize and validate orders.
-	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, l.registry, l.config)
-	if normErr != nil {
-		// Rebuild registry and retry on unknown task type.
-		l.rebuildRegistry()
-		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
-		if normErr != nil {
-			l.auditOrders()
-			orders, err = l.currentOrders()
-			if err != nil {
-				return OrdersFile{}, false, err
-			}
-			normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
-			if normErr != nil {
-				return OrdersFile{}, false, normErr
-			}
-		}
-	}
-	if changed {
-		orders = normalizedOrders
-		if err := l.writeOrdersState(orders); err != nil {
-			return OrdersFile{}, false, err
-		}
-		l.logger.Info("orders normalized")
+	orders, err = l.normalizeOrders(orders)
+	if err != nil {
+		return OrdersFile{}, false, err
 	}
 
-	if hasSyncWarnings(warnings) {
-		failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
-		l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
-		_ = l.events.Emit(LoopEventSyncDegraded, SyncDegradedPayload{
-			Reason:  strings.Join(warnings, "; "),
-			Failure: &failureMetadata,
-		})
+	l.emitSyncWarnings(warnings)
+
+	idle, err := l.ensureScheduleIfNeeded(brief, &orders, miseChanged)
+	if err != nil {
+		return OrdersFile{}, false, err
+	}
+	if idle {
+		return OrdersFile{}, false, nil
 	}
 
-	// Simplified filtering (#60): check for non-schedule orders.
-	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 {
-		if !hasNonScheduleOrders(orders) {
-			// If schedule already exists, allow it to dispatch even with empty backlog.
-			// Startup reconciliation injects schedule so scheduler is always available.
-			if !hasScheduleOrder(orders) {
-				if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
-					l.setState(StateIdle)
-					return OrdersFile{}, false, nil
-				}
-				// Bootstrap only when a schedule order is truly absent.
-				// Rewriting an existing schedule order creates a file-watch hot loop.
-				orders = bootstrapScheduleOrder(l.config)
-				if err := l.writeOrdersState(orders); err != nil {
-					return OrdersFile{}, false, err
-				}
-				l.logger.Info("orders empty, bootstrapping schedule")
-			}
-		}
-	}
-
-	// Spawn schedule on mise.json change: if content changed and no schedule
-	// cook is already active, inject a schedule order so the schedule agent
-	// can react to new events mid-cycle.
-	if miseChanged && !l.hasActiveScheduleCook() {
-		if !hasScheduleOrder(orders) {
-			orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
-			if err := l.writeOrdersState(orders); err != nil {
-				return OrdersFile{}, false, err
-			}
-			l.logger.Info("mise changed, injecting schedule order")
-		}
-	}
-
-	if updatedOrders, changed := ApplyOrderRoutingDefaults(orders, l.registry, l.config); changed {
-		orders = updatedOrders
-		if err := l.writeOrdersState(orders); err != nil {
-			return OrdersFile{}, false, err
-		}
+	if err := l.applyRoutingDefaults(&orders); err != nil {
+		return OrdersFile{}, false, err
 	}
 	l.setOrdersState(orders)
 	return orders, true, nil
+}
+
+// normalizeOrders validates and normalizes orders, rebuilding the registry
+// and auditing on repeated failures.
+func (l *Loop) normalizeOrders(orders OrdersFile) (OrdersFile, error) {
+	normalizedOrders, changed, normErr := NormalizeAndValidateOrders(orders, l.registry, l.config)
+	if normErr != nil {
+		l.rebuildRegistry()
+		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
+	}
+	if normErr != nil {
+		l.auditOrders()
+		var err error
+		orders, err = l.currentOrders()
+		if err != nil {
+			return OrdersFile{}, err
+		}
+		normalizedOrders, changed, normErr = NormalizeAndValidateOrders(orders, l.registry, l.config)
+	}
+	if normErr != nil {
+		return OrdersFile{}, normErr
+	}
+	if !changed {
+		return orders, nil
+	}
+	if err := l.writeOrdersState(normalizedOrders); err != nil {
+		return OrdersFile{}, err
+	}
+	l.logger.Info("orders normalized")
+	return normalizedOrders, nil
+}
+
+// emitSyncWarnings emits a degraded event if the sync script reported warnings.
+func (l *Loop) emitSyncWarnings(warnings []string) {
+	if !hasSyncWarnings(warnings) {
+		return
+	}
+	failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
+	l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
+	_ = l.events.Emit(LoopEventSyncDegraded, SyncDegradedPayload{
+		Reason:  strings.Join(warnings, "; "),
+		Failure: &failureMetadata,
+	})
 }
 
 func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {

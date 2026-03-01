@@ -90,90 +90,17 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("generate session ID: %w", err)
 	}
-	sessionDir, promptPath, stampedPath, canonicalPath, _ := sessionPaths(d.runtimeDir, sessionID)
+	sessionDir, _, stampedPath, canonicalPath, _ := sessionPaths(d.runtimeDir, sessionID)
 
-	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create session directory: %w", err)
-	}
-	eventWriter, err := event.NewEventWriter(d.runtimeDir, sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("create event writer: %w", err)
-	}
-
-	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
-	if err != nil {
-		return nil, err
-	}
-
-	preamble := buildSessionPreamble()
-	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
-
-	inputFile, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt)
+	eventWriter, skillBundle, systemPrompt, inputFile, err := d.prepareSpriteSessionDir(sessionID, sessionDir, req)
 	if err != nil {
 		return nil, err
 	}
 
 	sprite := d.newSprite(d.spriteName)
-
-	// Push worktree branch to GitHub, then clone on the sprite.
-	remoteURL := gitRemoteURL(req.WorktreePath)
-	if remoteURL == "" {
-		return nil, fmt.Errorf("git remote URL not found for %s", req.WorktreePath)
-	}
-	branch := gitCurrentBranch(req.WorktreePath)
-	if branch == "" {
-		return nil, fmt.Errorf("git branch not found for %s", req.WorktreePath)
-	}
-	if err := pushWorktreeBranch(ctx, req.WorktreePath, branch); err != nil {
-		return nil, fmt.Errorf("push worktree branch: %w", err)
-	}
-	cloneURL := remoteURL
-	if d.gitToken != "" {
-		cloneURL = authenticatedRemoteURL(remoteURL, d.gitToken)
-	}
-	if err := cloneOnSprite(ctx, sprite, cloneURL, branch); err != nil {
-		msg := err.Error()
-		if d.gitToken != "" {
-			msg = strings.ReplaceAll(msg, d.gitToken, "REDACTED")
-		}
-		return nil, fmt.Errorf("clone on sprite: %s", msg)
-	}
-
-	// Upload prompt file to sprite.
-	if err := uploadFileToSprite(ctx, sprite, inputFile, "/work/prompt.txt"); err != nil {
-		return nil, fmt.Errorf("upload prompt to sprite: %w", err)
-	}
-
-	// Build the provider command to run on the sprite.
-	var agentArgs []string
-	if strings.EqualFold(strings.TrimSpace(req.Provider), "codex") {
-		agentArgs = buildSpriteCodexArgs(req)
-	} else {
-		agentArgs = buildSpriteClaudeArgs(req, systemPrompt)
-	}
-
-	// Start agent on the sprite, reading prompt from the uploaded file.
-	// Sprites stdin doesn't reliably forward data, so we use shell redirect.
-	quotedArgs := make([]string, len(agentArgs))
-	for i, arg := range agentArgs {
-		quotedArgs[i] = shellx.Quote(arg)
-	}
-	shellCmd := fmt.Sprintf("cat /work/prompt.txt | %s", strings.Join(quotedArgs, " "))
-
-	// Create command + pipe inside closure so a fresh Cmd is used on retry.
-	var cmd *sprites.Cmd
-	var stdout io.ReadCloser
-	if err := recoverSpritePool(func() error {
-		cmd = sprite.CommandContext(ctx, "sh", "-c", shellCmd)
-		cmd.Dir = spriteWorkDir
-		var pipeErr error
-		stdout, pipeErr = cmd.StdoutPipe()
-		if pipeErr != nil {
-			return fmt.Errorf("stdout pipe: %w", pipeErr)
-		}
-		return cmd.Start()
-	}); err != nil {
-		return nil, fmt.Errorf("start agent on sprite: %w", err)
+	cmd, stdout, remoteURL, err := d.startSpriteAgent(ctx, sprite, req, systemPrompt, inputFile)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
@@ -198,6 +125,128 @@ func (d *SpritesDispatcher) Dispatch(ctx context.Context, req DispatchRequest) (
 	})
 	session.start(ctx)
 	return session, nil
+}
+
+// startSpriteAgent prepares the remote repository, uploads the prompt file,
+// and starts the agent command on the sprite. Returns the running command,
+// its stdout pipe, and the remote URL for later sync.
+func (d *SpritesDispatcher) startSpriteAgent(
+	ctx context.Context, sprite spriteHandle, req DispatchRequest, systemPrompt, inputFile string,
+) (*sprites.Cmd, io.ReadCloser, string, error) {
+	remoteURL, err := d.prepareRemoteRepo(ctx, sprite, req)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	if err := d.uploadPromptFile(ctx, sprite, inputFile); err != nil {
+		return nil, nil, "", err
+	}
+	cmd, stdout, err := d.buildSpriteCommand(ctx, sprite, req, systemPrompt)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return cmd, stdout, remoteURL, nil
+}
+
+// prepareSpriteSessionDir creates the session directory, resolves skills,
+// composes prompts, and writes prompt files for a sprites dispatch.
+func (d *SpritesDispatcher) prepareSpriteSessionDir(
+	sessionID, sessionDir string, req DispatchRequest,
+) (*event.EventWriter, loadedSkill, string, string, error) {
+	promptPath := filepath.Join(sessionDir, "prompt.txt")
+
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		return nil, loadedSkill{}, "", "", fmt.Errorf("create session directory: %w", err)
+	}
+	eventWriter, err := event.NewEventWriter(d.runtimeDir, sessionID)
+	if err != nil {
+		return nil, loadedSkill{}, "", "", fmt.Errorf("create event writer: %w", err)
+	}
+
+	skillBundle, err := resolveSkillBundle(d.skillResolver, req)
+	if err != nil {
+		return nil, loadedSkill{}, "", "", err
+	}
+
+	preamble := buildSessionPreamble()
+	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
+
+	inputFile, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt)
+	if err != nil {
+		return nil, loadedSkill{}, "", "", err
+	}
+	return eventWriter, skillBundle, systemPrompt, inputFile, nil
+}
+
+// prepareRemoteRepo pushes the worktree branch to GitHub and clones it on the
+// sprite. Returns the remote URL for later sync operations.
+func (d *SpritesDispatcher) prepareRemoteRepo(ctx context.Context, sprite spriteHandle, req DispatchRequest) (string, error) {
+	remoteURL := gitRemoteURL(req.WorktreePath)
+	if remoteURL == "" {
+		return "", fmt.Errorf("git remote URL not found for %s", req.WorktreePath)
+	}
+	branch := gitCurrentBranch(req.WorktreePath)
+	if branch == "" {
+		return "", fmt.Errorf("git branch not found for %s", req.WorktreePath)
+	}
+	if err := pushWorktreeBranch(ctx, req.WorktreePath, branch); err != nil {
+		return "", fmt.Errorf("push worktree branch: %w", err)
+	}
+	cloneURL := remoteURL
+	if d.gitToken != "" {
+		cloneURL = authenticatedRemoteURL(remoteURL, d.gitToken)
+	}
+	if err := cloneOnSprite(ctx, sprite, cloneURL, branch); err != nil {
+		msg := err.Error()
+		if d.gitToken != "" {
+			msg = strings.ReplaceAll(msg, d.gitToken, "REDACTED")
+		}
+		return "", fmt.Errorf("clone on sprite: %s", msg)
+	}
+	return remoteURL, nil
+}
+
+// uploadPromptFile uploads the composed prompt file to the sprite.
+func (d *SpritesDispatcher) uploadPromptFile(ctx context.Context, sprite spriteHandle, localPath string) error {
+	if err := uploadFileToSprite(ctx, sprite, localPath, "/work/prompt.txt"); err != nil {
+		return fmt.Errorf("upload prompt to sprite: %w", err)
+	}
+	return nil
+}
+
+// buildSpriteCommand assembles the provider command, quotes it for shell
+// execution, and starts the agent process on the sprite. Returns the running
+// command and its stdout pipe.
+func (d *SpritesDispatcher) buildSpriteCommand(
+	ctx context.Context, sprite spriteHandle, req DispatchRequest, systemPrompt string,
+) (*sprites.Cmd, io.ReadCloser, error) {
+	var agentArgs []string
+	if strings.EqualFold(strings.TrimSpace(req.Provider), "codex") {
+		agentArgs = buildSpriteCodexArgs(req)
+	} else {
+		agentArgs = buildSpriteClaudeArgs(req, systemPrompt)
+	}
+
+	quotedArgs := make([]string, len(agentArgs))
+	for i, arg := range agentArgs {
+		quotedArgs[i] = shellx.Quote(arg)
+	}
+	shellCmd := fmt.Sprintf("cat /work/prompt.txt | %s", strings.Join(quotedArgs, " "))
+
+	var cmd *sprites.Cmd
+	var stdout io.ReadCloser
+	if err := recoverSpritePool(func() error {
+		cmd = sprite.CommandContext(ctx, "sh", "-c", shellCmd)
+		cmd.Dir = spriteWorkDir
+		var pipeErr error
+		stdout, pipeErr = cmd.StdoutPipe()
+		if pipeErr != nil {
+			return fmt.Errorf("stdout pipe: %w", pipeErr)
+		}
+		return cmd.Start()
+	}); err != nil {
+		return nil, nil, fmt.Errorf("start agent on sprite: %w", err)
+	}
+	return cmd, stdout, nil
 }
 
 // gitCurrentBranch returns the current branch name for a git repo.

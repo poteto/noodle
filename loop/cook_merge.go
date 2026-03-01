@@ -178,16 +178,15 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	l.logger.Warn("merge failed, forwarding to scheduler", "order", cook.orderID, "reason", reason)
 	l.forwardToScheduler(cook, "merge_failed", schedulerHint, nil)
 
-	orders, ordersErr := l.currentOrders()
-	if ordersErr != nil {
-		return ordersErr
-	}
-	orders, ordersErr = failStage(orders, cook.orderID, reason)
-	if ordersErr != nil {
-		return ordersErr
-	}
-	if writeErr := l.writeOrdersState(orders); writeErr != nil {
-		return writeErr
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := failStage(*orders, cook.orderID, reason)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		return true, nil
+	}); err != nil {
+		return err
 	}
 	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 	l.emitEvent(ingest.EventMergeFailed, map[string]any{

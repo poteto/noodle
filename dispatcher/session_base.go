@@ -95,6 +95,13 @@ func (s *sessionBase) publish(ev SessionEvent) {
 		return
 	default:
 	}
+	s.tryPublishEvent(ev)
+}
+
+// tryPublishEvent attempts a non-blocking send on the events channel. If the
+// channel is full, it drops the oldest event (drop-oldest-on-full backpressure)
+// to keep the producer unblocked, then retries the send once.
+func (s *sessionBase) tryPublishEvent(ev SessionEvent) {
 	select {
 	case s.events <- ev:
 	default:

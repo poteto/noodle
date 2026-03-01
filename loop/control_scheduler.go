@@ -60,44 +60,39 @@ func (l *Loop) controlAddStage(cmd ControlCommand) error {
 		return fmt.Errorf("add-stage requires task_key")
 	}
 
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	found := false
-	for i := range orders.Orders {
-		if orders.Orders[i].ID != orderID {
-			continue
-		}
-		found = true
-		newStage := Stage{
-			TaskKey:  taskKey,
-			Prompt:   strings.TrimSpace(cmd.Prompt),
-			Skill:    strings.TrimSpace(cmd.Skill),
-			Provider: strings.TrimSpace(cmd.Provider),
-			Model:    strings.TrimSpace(cmd.Model),
-			Status:   StageStatusPending,
-		}
-		// Insert after the last completed or failed stage.
-		insertAt := 0
-		for j, s := range orders.Orders[i].Stages {
-			if s.Status == StageStatusCompleted || s.Status == StageStatusFailed {
-				insertAt = j + 1
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		for i := range orders.Orders {
+			if orders.Orders[i].ID != orderID {
+				continue
 			}
+			changed := false
+			newStage := Stage{
+				TaskKey:  taskKey,
+				Prompt:   strings.TrimSpace(cmd.Prompt),
+				Skill:    strings.TrimSpace(cmd.Skill),
+				Provider: strings.TrimSpace(cmd.Provider),
+				Model:    strings.TrimSpace(cmd.Model),
+				Status:   StageStatusPending,
+			}
+			// Insert after the last completed or failed stage.
+			insertAt := 0
+			for j, s := range orders.Orders[i].Stages {
+				if s.Status == StageStatusCompleted || s.Status == StageStatusFailed {
+					insertAt = j + 1
+				}
+			}
+			stages := orders.Orders[i].Stages
+			stages = append(stages[:insertAt], append([]Stage{newStage}, stages[insertAt:]...)...)
+			orders.Orders[i].Stages = stages
+			changed = true
+			// Ensure order is active so the new stage can be dispatched.
+			if orders.Orders[i].Status == OrderStatusFailed {
+				orders.Orders[i].Status = OrderStatusActive
+			}
+			return changed, nil
 		}
-		stages := orders.Orders[i].Stages
-		stages = append(stages[:insertAt], append([]Stage{newStage}, stages[insertAt:]...)...)
-		orders.Orders[i].Stages = stages
-		// Ensure order is active so the new stage can be dispatched.
-		if orders.Orders[i].Status == OrderStatusFailed {
-			orders.Orders[i].Status = OrderStatusActive
-		}
-		break
-	}
-	if !found {
-		return fmt.Errorf("order %q not found", orderID)
-	}
-	return l.writeOrdersState(orders)
+		return false, fmt.Errorf("order %q not found", orderID)
+	})
 }
 
 // controlParkReview parks an order for human review. The scheduler uses this

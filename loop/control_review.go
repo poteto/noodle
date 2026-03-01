@@ -90,18 +90,17 @@ func (l *Loop) controlReject(orderID string) error {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
 	}
 	// Cancel and remove the order directly.
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
-	orders, err = cancelOrder(orders, orderID)
-	if err != nil {
-		// Order may already be gone — not fatal.
-		l.logger.Warn("controlReject: cancelOrder", "error", err)
-	} else {
-		if err := l.writeOrdersState(orders); err != nil {
-			return err
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := cancelOrder(*orders, orderID)
+		if err != nil {
+			// Order may already be gone — not fatal.
+			l.logger.Warn("controlReject: cancelOrder", "error", err)
+			return false, nil
 		}
+		*orders = updated
+		return true, nil
+	}); err != nil {
+		return err
 	}
 	mistake := newCookMistakeEnvelope(cookRejectReasonForTask(pending.stage.TaskKey), orderID, pending.stageIndex)
 	cook := &cookHandle{
@@ -136,21 +135,20 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		return nil
 	}
 
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
-	}
 	reason := "changes requested"
 	trimmedFeedback := strings.TrimSpace(feedback)
 	if trimmedFeedback != "" {
 		reason += ": " + trimmedFeedback
 	}
 	mistake := newCookMistakeEnvelope(CookMistakeReasonRequestChanges, orderID, pending.stageIndex)
-	orders, err = failStage(orders, orderID, reason)
-	if err != nil {
-		return err
-	}
-	if err := l.writeOrdersState(orders); err != nil {
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		updated, err := failStage(*orders, orderID, reason)
+		if err != nil {
+			return false, err
+		}
+		*orders = updated
+		return true, nil
+	}); err != nil {
 		return err
 	}
 	cook := &cookHandle{

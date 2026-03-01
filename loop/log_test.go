@@ -411,7 +411,7 @@ func TestLogOrderRemoved(t *testing.T) {
 	tc := newTestLoop(t, logger)
 
 	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}
-	if err := writeOrdersAtomic(tc.ordersPath, orders); err != nil {
+	if err := tc.loop.writeOrdersState(orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 

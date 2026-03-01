@@ -97,50 +97,8 @@ func (l *Loop) processControlCommands() error {
 		}
 		return fmt.Errorf("read control file: %w", err)
 	}
-	lines := strings.Split(string(data), "\n")
-	acks := make([]ControlAck, 0, len(lines))
-	for _, raw := range lines {
-		line := strings.TrimSpace(raw)
-		if line == "" {
-			continue
-		}
-		var cmd ControlCommand
-		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
-			failure := controlAckFailureForInvalidCommandJSON()
-			acks = append(acks, ControlAck{
-				ID:      "",
-				Action:  "unknown",
-				Status:  "error",
-				Message: "invalid command JSON",
-				Failure: &failure,
-				At:      l.deps.Now(),
-			})
-			continue
-		}
-		if cmd.ID == "" {
-			cmd.ID = fmt.Sprintf("cmd-%d", l.deps.Now().UnixNano())
-		}
 
-		// Assign a monotonic sequence number.
-		l.cmds.cmdSeqCounter++
-		seq := l.cmds.cmdSeqCounter
-
-		// Skip commands already applied (ID-based dedup or sequence-based).
-		if _, seen := l.cmds.processedIDs[cmd.ID]; seen {
-			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
-			continue
-		}
-		if seq <= l.cmds.lastAppliedSeq {
-			acks = append(acks, ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()})
-			l.cmds.processedIDs[cmd.ID] = struct{}{}
-			continue
-		}
-
-		ack := l.applyControlCommand(cmd)
-		acks = append(acks, ack)
-		l.cmds.processedIDs[cmd.ID] = struct{}{}
-		l.cmds.lastAppliedSeq = seq
-	}
+	acks := l.processControlLines(data)
 	if l.TestControlAckBarrier != nil {
 		l.TestControlAckBarrier()
 	}
@@ -153,6 +111,60 @@ func (l *Loop) processControlCommands() error {
 		return fmt.Errorf("truncate control file: %w", err)
 	}
 	return nil
+}
+
+// processControlLines parses NDJSON command lines, deduplicates, and applies
+// each command. Returns the accumulated acks.
+func (l *Loop) processControlLines(data []byte) []ControlAck {
+	lines := strings.Split(string(data), "\n")
+	acks := make([]ControlAck, 0, len(lines))
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		ack := l.processControlLine(line)
+		acks = append(acks, ack)
+	}
+	return acks
+}
+
+// processControlLine parses a single NDJSON line into a command, deduplicates,
+// and applies it. Returns the ack for this command.
+func (l *Loop) processControlLine(line string) ControlAck {
+	var cmd ControlCommand
+	if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+		failure := controlAckFailureForInvalidCommandJSON()
+		return ControlAck{
+			ID:      "",
+			Action:  "unknown",
+			Status:  "error",
+			Message: "invalid command JSON",
+			Failure: &failure,
+			At:      l.deps.Now(),
+		}
+	}
+	if cmd.ID == "" {
+		cmd.ID = fmt.Sprintf("cmd-%d", l.deps.Now().UnixNano())
+	}
+
+	// Assign a monotonic sequence number.
+	l.cmds.cmdSeqCounter++
+	seq := l.cmds.cmdSeqCounter
+
+	// Skip commands already applied (ID-based dedup or sequence-based).
+	if _, seen := l.cmds.processedIDs[cmd.ID]; seen {
+		return ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()}
+	}
+	if seq <= l.cmds.lastAppliedSeq {
+		l.cmds.processedIDs[cmd.ID] = struct{}{}
+		return ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()}
+	}
+
+	ack := l.applyControlCommand(cmd)
+	l.cmds.processedIDs[cmd.ID] = struct{}{}
+	l.cmds.lastAppliedSeq = seq
+	return ack
 }
 
 func appendAcks(path string, acks []ControlAck) error {
@@ -179,100 +191,10 @@ func appendAcks(path string, acks []ControlAck) error {
 
 func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 	ack := ControlAck{ID: cmd.ID, Action: cmd.Action, Status: "ok", At: l.deps.Now()}
-	switch stringx.Normalize(cmd.Action) {
-	case "pause":
-		l.setState(StatePaused)
-	case "resume":
-		l.setState(StateRunning)
-	case "drain":
-		l.setState(StateDraining)
-	case "skip":
-		if err := l.controlSkip(cmd.OrderID); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "kill":
-		if err := l.killCook(cmd.Name); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "steer":
-		if err := l.steer(cmd.Target, cmd.Prompt); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "merge":
-		if err := l.controlMerge(cmd.OrderID); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "reject":
-		if err := l.controlReject(cmd.OrderID); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "request-changes":
-		if err := l.controlRequestChanges(cmd.OrderID, cmd.Prompt); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "mode":
-		if err := l.controlMode(cmd.Value); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "enqueue":
-		if err := l.controlEnqueue(cmd); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "stop-all":
-		l.controlStopAll()
-	case "requeue":
-		if err := l.controlRequeue(cmd.OrderID); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "edit-item":
-		if err := l.controlEditItem(cmd); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "reorder":
-		if err := l.controlReorder(cmd); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "stop":
-		if err := l.controlStop(cmd.Name); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "set-max-cooks":
-		if err := l.controlSetMaxCooks(cmd.Value); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "advance":
-		if err := l.controlAdvance(cmd.OrderID); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "add-stage":
-		if err := l.controlAddStage(cmd); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	case "park-review":
-		if err := l.controlParkReview(cmd.OrderID, cmd.Prompt); err != nil {
-			ack.Status = "error"
-			ack.Message = err.Error()
-		}
-	default:
+	err := l.dispatchControlCommand(cmd)
+	if err != nil {
 		ack.Status = "error"
-		ack.Message = "unsupported action"
-	}
-	if ack.Status == "error" {
+		ack.Message = err.Error()
 		if ack.Failure == nil {
 			failure := controlAckFailureForCommand(cmd)
 			ack.Failure = &failure
@@ -282,6 +204,77 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 		l.logger.Info("control command", "action", cmd.Action, "status", ack.Status)
 	}
 	return ack
+}
+
+func (l *Loop) dispatchControlCommand(cmd ControlCommand) error {
+	switch stringx.Normalize(cmd.Action) {
+	case "pause":
+		return l.controlPause()
+	case "resume":
+		return l.controlResume()
+	case "drain":
+		return l.controlDrain()
+	case "skip":
+		return l.controlSkip(cmd.OrderID)
+	case "kill":
+		return l.controlKill(cmd.Name)
+	case "steer":
+		return l.controlSteer(cmd.Target, cmd.Prompt)
+	case "merge":
+		return l.controlMerge(cmd.OrderID)
+	case "reject":
+		return l.controlReject(cmd.OrderID)
+	case "request-changes":
+		return l.controlRequestChanges(cmd.OrderID, cmd.Prompt)
+	case "mode":
+		return l.controlMode(cmd.Value)
+	case "enqueue":
+		return l.controlEnqueue(cmd)
+	case "stop-all":
+		l.controlStopAll()
+		return nil
+	case "requeue":
+		return l.controlRequeue(cmd.OrderID)
+	case "edit-item":
+		return l.controlEditItem(cmd)
+	case "reorder":
+		return l.controlReorder(cmd)
+	case "stop":
+		return l.controlStop(cmd.Name)
+	case "set-max-cooks":
+		return l.controlSetMaxCooks(cmd.Value)
+	case "advance":
+		return l.controlAdvance(cmd.OrderID)
+	case "add-stage":
+		return l.controlAddStage(cmd)
+	case "park-review":
+		return l.controlParkReview(cmd.OrderID, cmd.Prompt)
+	default:
+		return fmt.Errorf("unsupported action")
+	}
+}
+
+func (l *Loop) controlPause() error {
+	l.setState(StatePaused)
+	return nil
+}
+
+func (l *Loop) controlResume() error {
+	l.setState(StateRunning)
+	return nil
+}
+
+func (l *Loop) controlDrain() error {
+	l.setState(StateDraining)
+	return nil
+}
+
+func (l *Loop) controlKill(name string) error {
+	return l.killCook(name)
+}
+
+func (l *Loop) controlSteer(target, prompt string) error {
+	return l.steer(target, prompt)
 }
 
 func (l *Loop) controlStopAll() {
