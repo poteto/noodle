@@ -19,10 +19,6 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function initials(label: string): string {
-  return label.slice(0, 2).toUpperCase();
-}
-
 function typeClass(event: EventLine): string {
   if (event.category === "ticket") {
     return "type-system";
@@ -45,13 +41,12 @@ function typeClass(event: EventLine): string {
   return "";
 }
 
-function tryFormatJson(text: string): string | null {
-  try {
-    const parsed = JSON.parse(text);
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return null;
-  }
+function badgeClass(event: EventLine): string {
+  if (event.label === "User") return "badge-user";
+  if (event.label === "Manager") return "badge-manager";
+  if (TOOL_LABELS.has(event.label)) return TOOL_BADGE_CLASS[event.label] ?? "";
+  // Agent names, Spawned, Think, etc. — default filled style
+  return "badge-agent";
 }
 
 function BodyContent({ event }: { event: EventLine }) {
@@ -61,13 +56,6 @@ function BodyContent({ event }: { event: EventLine }) {
 
   if (MARKDOWN_LABELS.has(event.label)) {
     return <MarkdownBody text={event.body} />;
-  }
-
-  if (event.label === "Spawned") {
-    const formatted = tryFormatJson(event.body);
-    if (formatted) {
-      return <pre className="msg-body msg-json">{formatted}</pre>;
-    }
   }
 
   return <div className="msg-body">{event.body}</div>;
@@ -82,6 +70,15 @@ export function MessageRow({ event, hideBadge }: { event: EventLine; hideBadge?:
     );
   }
 
+  // Spawned events render as section dividers
+  if (event.label === "Spawned") {
+    return (
+      <div className="spawn-divider">
+        <span>{event.body || "Session spawned"}</span>
+      </div>
+    );
+  }
+
   if (event.label === "Cost") {
     return (
       <div className="message-row type-cost">
@@ -92,7 +89,7 @@ export function MessageRow({ event, hideBadge }: { event: EventLine; hideBadge?:
     );
   }
 
-  const badgeCls = TOOL_BADGE_CLASS[event.label] ?? "";
+  const badgeCls = badgeClass(event);
   const tc = typeClass(event);
 
   if (tc === "type-tool") {
@@ -106,14 +103,11 @@ export function MessageRow({ event, hideBadge }: { event: EventLine; hideBadge?:
 
   return (
     <div className={`message-row ${tc}`}>
-      <div className="msg-avatar">{initials(event.label)}</div>
-      <div>
-        <div className="msg-meta">
-          <span className={`msg-badge ${badgeCls}`}>{event.label}</span>
-          <span>{formatTime(event.at)}</span>
-        </div>
-        <BodyContent event={event} />
+      <div className="msg-meta">
+        <span className={`msg-badge ${badgeCls}`}>{event.label}</span>
+        <span>{formatTime(event.at)}</span>
       </div>
+      <BodyContent event={event} />
     </div>
   );
 }

@@ -641,8 +641,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 28px 8px 78px;
-  margin-left: 28px;
+  padding: 8px 28px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-text-tertiary);
@@ -660,30 +659,8 @@
 .message-row {
   position: relative;
   padding: 12px 28px;
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 14px;
   transition: background 0.15s;
   animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  border-left: 1px solid var(--color-border-subtle);
-  margin-left: 28px;
-}
-.message-row::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--color-accent);
-  opacity: 0;
-  transition: opacity 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.message-row > :nth-child(2) {
-  min-width: 0;
-}
-.message-row:hover::before {
-  opacity: 1;
 }
 .message-row:hover {
   background: rgba(255, 255, 255, 0.02);
@@ -695,28 +672,11 @@
   padding-bottom: 6px;
   opacity: 0.8;
 }
-/* Tool events — indented (Read, Edit, Write, Bash, etc.) */
+/* Tool events — left-border indent */
 .message-row.type-tool {
-  position: relative;
-  padding-left: 78px;
-  grid-template-columns: 1fr;
-}
-.message-row.type-tool::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--color-accent-dim);
-  transform: scaleY(0);
-  transform-origin: top;
-  animation: tool-accent-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
-}
-@keyframes tool-accent-in {
-  to {
-    transform: scaleY(1);
-  }
+  padding-left: 44px;
+  border-left: 1px solid var(--color-border-subtle);
+  margin-left: 28px;
 }
 /* Tool one-liner — badge + summary on a single line */
 .tool-oneliner {
@@ -729,45 +689,19 @@
 .tool-oneliner .tool-summary {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Cost line — even more compact */
+/* Cost line — compact */
 .message-row.type-cost {
   padding-top: 4px;
   padding-bottom: 4px;
   opacity: 0.6;
-  grid-template-columns: 1fr;
-  padding-left: 78px;
-}
-
-.msg-avatar {
-  width: 28px;
-  height: 28px;
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-/* Manager avatar — accent */
-.message-row.from-manager .msg-avatar {
-  background: var(--color-accent);
-  color: var(--color-bg-depth);
-}
-/* User prompt avatar */
-.message-row.from-user .msg-avatar {
-  background: transparent;
-  border: 1px dashed var(--color-text-tertiary);
-  color: var(--color-text-tertiary);
+  padding-left: 44px;
+  border-left: 1px solid var(--color-border-subtle);
+  margin-left: 28px;
 }
 
 .msg-meta {
@@ -787,44 +721,45 @@
   letter-spacing: 1px;
   padding: 2px 7px;
   font-weight: 600;
-  background: #111;
-  border: 1px solid var(--color-border-subtle);
+  background: #222;
+  border: none;
   color: var(--color-text-primary);
-  animation: badge-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* User badge — white on dark */
+.msg-badge.badge-user {
+  background: #222;
+  color: var(--color-text-primary);
+}
+/* Manager badge — black on accent yellow */
+.msg-badge.badge-manager {
+  background: var(--color-accent);
+  color: black;
+}
+/* Agent badge — black on white */
+.msg-badge.badge-agent {
+  background: white;
+  color: black;
+}
+/* Tool badges — bordered, no fill */
 .msg-badge.badge-read {
-  color: var(--color-blue);
-  border-color: var(--color-blue);
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--color-border-active);
   background: transparent;
 }
 .msg-badge.badge-edit {
   color: var(--color-yellow);
-  border-color: var(--color-yellow);
+  border: 1px solid var(--color-yellow);
   background: transparent;
 }
 .msg-badge.badge-write {
   color: var(--color-green);
-  border-color: var(--color-green);
+  border: 1px solid var(--color-green);
   background: transparent;
 }
 .msg-badge.badge-bash {
-  color: var(--color-green);
-  border-color: var(--color-green);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
   background: transparent;
-}
-@keyframes badge-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1.03);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .msg-body {
@@ -844,15 +779,38 @@
   padding: 2px 5px;
 }
 
-/* JSON body — spawned events */
-.msg-json {
-  background: #0a0a0a;
+/* Code block with > prompt prefix */
+.msg-code-block {
+  background: #0e0e0e;
   border: 1px solid var(--color-border-subtle);
-  padding: 10px 14px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
   overflow-x: auto;
+}
+.code-prompt {
+  color: var(--color-accent);
+}
+
+/* Spawn divider — section separator when agents are spawned */
+.spawn-divider {
+  text-align: center;
+  padding: 24px 28px 16px;
+  border-top: 1px dashed var(--color-border-subtle);
+  animation: fade-in 0.3s ease-out;
+}
+.spawn-divider span {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  background: var(--color-bg-feed);
+  padding: 0 8px;
+  position: relative;
+  top: -12px;
 }
 
 /* Tool group — accordion for consecutive same-type tool calls */
@@ -866,7 +824,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 28px 6px 78px;
+  padding: 6px 28px 6px 44px;
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 13px;
@@ -1190,7 +1148,7 @@ foreignObject.node.node-clickable .tree-node-card:active {
 
 /* Cost line */
 .cost-line {
-  padding: 4px 28px 4px 78px;
+  padding: 4px 28px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-text-tertiary);
@@ -1198,7 +1156,7 @@ foreignObject.node.node-clickable .tree-node-card:active {
 
 /* Typing indicator */
 .typing-row {
-  padding: 8px 28px 8px 78px;
+  padding: 8px 28px;
 }
 .typing-indicator {
   font-family: var(--font-mono);

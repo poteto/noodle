@@ -114,13 +114,10 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
         </div>
       )}
       <div ref={wrapperRef} className="message-row type-system" style={{ display: "none" }}>
-        <div className="msg-avatar">TH</div>
-        <div>
-          <div className="msg-meta">
-            <span className="msg-badge">Think</span>
-          </div>
-          <div ref={containerRef} className="msg-body msg-markdown" />
+        <div className="msg-meta">
+          <span className="msg-badge">Think</span>
         </div>
+        <div ref={containerRef} className="msg-body msg-markdown" />
       </div>
     </>
   );
