@@ -15,7 +15,6 @@ With `Permissions` unused (phase 2) and `DomainSkill` deleted (phase 3), `Noodle
 - Delete `Noodle *NoodleMeta` field from `Frontmatter`
 - Change `IsTaskType()` from `return f.Noodle != nil` to `return f.Schedule != ""`
 - Update validation: remove `noodle.schedule is required` error (presence of `schedule` IS the discriminator, no wrapper to validate)
-- Add migration guard: if the parser sees a `noodle:` key in frontmatter YAML, return a parse error pointing the user to the new top-level `schedule:` format. This catches unmigrated skills immediately instead of silently dropping them from the registry.
 
 **`skill/frontmatter_test.go`**:
 - Rewrite all tests to use top-level `schedule:` instead of `noodle: schedule:`
@@ -72,4 +71,3 @@ go vet ./...
 - Confirm `NoodleMeta` and `Permissions` are fully gone (grep for both in Go source)
 - Confirm `CanMerge` appears nowhere except tests that explicitly test its absence
 - Confirm `IsTaskType()` returns true for skills with `schedule:` and false without
-- Confirm migration guard: a skill with `noodle: schedule:` returns a parse error, not silent non-registration

@@ -11,7 +11,7 @@ Swap the static `canMergeStage()` registry lookup for a runtime `worktreeHasChan
 **`loop/cook_merge.go`**:
 - Delete `canMergeStage()` method (lines 101-110)
 - Add `worktreeHasChanges(cook *cookHandle) (bool, error)` with three-path check:
-  1. Check persisted merge metadata first — if the stage's `Extra` map already has `merge_branch` (set by a previous `persistMergeMetadata` before a crash), use that. This handles `controlMerge` after restart when `spawn.json` may be gone.
+  1. Check persisted merge metadata first — if the stage's status is `"merging"` AND its `Extra` map has `merge_branch`, use that. The status check is critical: only `"merging"` indicates a crash mid-merge. A freshly completed or requeued stage may have stale `Extra` from a previous failed attempt — `failStage`/`resetStages` don't clear `Extra`. This handles `controlMerge` after restart when `spawn.json` may be gone.
   2. Check sync result — if `readSessionSyncResult` returns a `SyncResultTypeBranch` with a non-empty branch, return `true` (sprites pushed to a remote branch)
   3. Check local worktree — if `cook.worktreeName` is empty, return `false`; otherwise call `l.deps.Worktree.HasUnmergedCommits(cook.worktreeName)` and propagate errors
 

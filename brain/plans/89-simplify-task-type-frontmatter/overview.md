@@ -40,7 +40,7 @@ schedule: "When backlog items with linked plans are ready"
 
 **In scope:**
 - Add `HasUnmergedCommits(name string) (bool, error)` to `WorktreeManager` interface
-- Replace `canMergeStage()` with runtime `worktreeHasChanges()` (two-path: sync result + local worktree)
+- Replace `canMergeStage()` with runtime `worktreeHasChanges()` (three-path: persisted merge metadata for crash recovery, sync result for remote branches, local worktree)
 - Remove `DomainSkill` from dispatch pipeline (registry, loop, dispatcher)
 - Delete `NoodleMeta` struct entirely — promote `Schedule` to `Frontmatter`, delete `Permissions`, `CanMerge`, `DomainSkill`
 - Update all skill frontmatter files to top-level `schedule:`
@@ -56,7 +56,7 @@ schedule: "When backlog items with linked plans are ready"
 
 - Runtime merge check must go upstream of `persistMergeMetadata` / merge queue — not inside `mergeCookWorktree`.
 - `HasUnmergedCommits` must return `(bool, error)` — git failures must not silently become "no changes" (adversarial review finding).
-- `worktreeHasChanges` must check sync result first (sprites remote branches), then local worktree (adversarial review finding).
+- `worktreeHasChanges` must check: (1) persisted merge metadata with status "merging" for crash recovery, (2) sync result for sprites remote branches, (3) local worktree. Stale `Extra` from failed/requeued stages must not trigger false positives — only status "merging" activates the persisted-metadata path (adversarial review finding).
 - `fakeWorktree` and `noOpWorktree` both implement `WorktreeManager` — both need the new method.
 
 ## Alternatives considered
