@@ -131,7 +131,7 @@
   font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 1.5px;
-  color: #666;
+  color: var(--color-text-tertiary);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -605,6 +605,8 @@
   gap: 14px;
   transition: background 0.15s;
   animation: message-enter 0.2s ease-out both;
+  border-left: 1px solid var(--color-border-subtle);
+  margin-left: 28px;
 }
 .message-row > :nth-child(2) {
   min-width: 0;
@@ -619,11 +621,9 @@
   padding-bottom: 6px;
   opacity: 0.8;
 }
-/* Tool events — indented with left border (Read, Edit, Write, Bash, etc.) */
+/* Tool events — indented (Read, Edit, Write, Bash, etc.) */
 .message-row.type-tool {
   padding-left: calc(28px + 16px);
-  border-left: 1px solid var(--color-border-subtle);
-  margin-left: 28px;
   grid-template-columns: 1fr;
 }
 /* Cost line — even more compact */
@@ -996,10 +996,6 @@ foreignObject.node.node-clickable .tree-node-card:hover {
    INPUT AREA — inline layout matching design
    ============================================================ */
 .input-area {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
   padding: 16px;
   background: var(--color-bg-depth);
   border-top: 1px solid var(--color-border-subtle);
@@ -1030,7 +1026,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 .input-row-field {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .input-row-field textarea {
@@ -1049,7 +1045,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   padding: 8px 12px;
 }
 .input-row-field textarea::placeholder {
-  color: #444;
+  color: #555;
 }
 
 .input-hint {
@@ -1057,10 +1053,11 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   align-items: center;
   gap: 4px;
   padding-right: 8px;
+  padding-bottom: 10px;
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 500;
-  color: #444;
+  color: #555;
   white-space: nowrap;
   flex-shrink: 0;
 }

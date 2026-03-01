@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
@@ -55,7 +55,15 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const { mutate: send } = useSendControl();
   const [input, setInput] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
 
   const session = snapshot.sessions.find((s) => s.id === sessionId);
   const pendingReview = snapshot.pending_reviews?.find((r) => r.session_id === sessionId);
@@ -82,6 +90,9 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
     }
     send({ action: "steer", target: sessionId, prompt });
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -170,8 +181,12 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
         <div className="input-row">
           <div className="input-row-field">
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                resizeTextarea();
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Enter instructions or critique..."
               rows={1}

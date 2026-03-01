@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
@@ -21,7 +21,15 @@ export function SchedulerFeed() {
   const { data: events = [] } = useSessionEvents(schedulerSession?.id);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
 
   useEffect(() => {
     if (autoScroll && containerRef.current) {
@@ -45,6 +53,9 @@ export function SchedulerFeed() {
     }
     send({ action: "steer", target: "schedule", prompt });
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -141,8 +152,12 @@ export function SchedulerFeed() {
         <div className="input-row">
           <div className="input-row-field">
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                resizeTextarea();
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Enter instructions or critique..."
               rows={1}
