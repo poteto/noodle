@@ -6,7 +6,7 @@ import type { ChannelId } from "./types";
 
 function createWrapper(channel: ChannelId, onChange = vi.fn()) {
   return ({ children }: { children: React.ReactNode }) =>
-    createElement(ActiveChannelProvider, { channel, onChannelChange: onChange, children });
+    createElement(ActiveChannelProvider, { channel, onChannelChange: onChange }, children);
 }
 
 describe("useActiveChannel", () => {
