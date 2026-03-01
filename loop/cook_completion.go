@@ -222,6 +222,14 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		"stage_index": cook.stageIndex,
 		"error":       reason,
 	})
+	l.classifyOrderHard(
+		"cycle.stage_terminal",
+		OrderFailureClassStageTerminal,
+		cook.orderID,
+		cook.stageIndex,
+		reason,
+		nil,
+	)
 
 	l.forwardToScheduler(cook, "stage_failed", reason)
 	if strings.TrimSpace(cook.worktreeName) != "" {

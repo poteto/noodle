@@ -15,16 +15,28 @@ import (
 
 func (l *Loop) reconcile(ctx context.Context) error {
 	if err := l.loadPendingReview(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.load_pending_review",
+			"reconcile load pending review failed",
+			err,
+		)
 	}
 	// Prune pending reviews for orders that no longer exist in orders.json.
 	// This handles the crash window between advancing orders.json and updating
 	// pending-review.json (finding #5).
 	if err := l.reconcilePendingReview(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.pending_review_prune",
+			"reconcile pending review prune failed",
+			err,
+		)
 	}
 	if err := os.MkdirAll(filepath.Join(l.runtimeDir, "sessions"), 0o755); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.sessions_dir",
+			"reconcile create sessions directory failed",
+			err,
+		)
 	}
 
 	l.cooks.adoptedTargets = map[string]string{}
@@ -41,6 +53,11 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	for _, rt := range l.deps.Runtimes {
 		recovered, err := rt.Recover(ctx)
 		if err != nil {
+			l.classifyDegrade(
+				"reconcile.runtime_recover",
+				"runtime recovery degraded",
+				err,
+			)
 			l.logger.Warn("runtime recovery failed", "err", err)
 			continue
 		}
@@ -70,12 +87,20 @@ func (l *Loop) reconcile(ctx context.Context) error {
 
 	// Scheduler must be present after startup reconciliation.
 	if err := l.ensureScheduleOrderPresent(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.ensure_schedule",
+			"reconcile ensure schedule order failed",
+			err,
+		)
 	}
 	// If any stage was left "active" by a crash but no live session was
 	// recovered for that order, reset it to pending so startup can dispatch.
 	if err := l.reconcileStaleActiveStages(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.stale_active",
+			"reconcile stale active stages failed",
+			err,
+		)
 	}
 
 	if len(l.cooks.adoptedSessions) > 0 {
@@ -86,7 +111,11 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	// Recover stages stuck in "merging" status from a previous crash.
 	// Must run after adopted session index is built.
 	if err := l.reconcileMergingStages(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.merging",
+			"reconcile merging stages failed",
+			err,
+		)
 	}
 
 	return nil
@@ -298,14 +327,26 @@ func (l *Loop) reconcileMergingStages() error {
 func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) error {
 	orders, err := l.currentOrders()
 	if err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.fail_merging_stage_read",
+			"reconcile load orders for merging-stage failure failed",
+			err,
+		)
 	}
 	orders, err = failStage(orders, orderID, reason)
 	if err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.fail_merging_stage_mark",
+			"reconcile mark merging stage failed",
+			err,
+		)
 	}
 	if err := l.writeOrdersState(orders); err != nil {
-		return err
+		return l.classifySystemHard(
+			"reconcile.fail_merging_stage_persist",
+			"reconcile persist merging-stage failure",
+			err,
+		)
 	}
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:    orderID,
@@ -316,6 +357,14 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) err
 		OrderID: orderID,
 		Reason:  reason,
 	})
+	l.classifyOrderHard(
+		"reconcile.merging_stage_terminal",
+		OrderFailureClassStageTerminal,
+		orderID,
+		stageIdx,
+		reason,
+		nil,
+	)
 	return nil
 }
 

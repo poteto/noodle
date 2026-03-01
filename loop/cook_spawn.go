@@ -143,6 +143,14 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 				stage:      stage,
 			},
 		}, "dispatch_failed", reason)
+		l.classifyOrderHard(
+			"cycle.dispatch_terminal",
+			OrderFailureClassStageTerminal,
+			cand.OrderID,
+			cand.StageIndex,
+			reason,
+			err,
+		)
 		l.logger.Warn("cook dispatch failed; order marked failed",
 			"order", cand.OrderID, "stage", cand.StageIndex, "error", err)
 		return nil

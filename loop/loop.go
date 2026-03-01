@@ -264,7 +264,11 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		l.registryStale.Store(false)
 	}
 	if err := l.loadOrdersState(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"cycle.load_orders",
+			formatCycleFailureMessage("cycle.load_orders", "load orders"),
+			err,
+		)
 	}
 
 	// Snapshot capacity before control commands can mutate it.
@@ -272,38 +276,86 @@ func (l *Loop) Cycle(ctx context.Context) error {
 
 	ready, err := l.runCycleMaintenance(ctx)
 	if err != nil {
-		return err
+		return l.classifySystemHard(
+			"cycle.maintenance",
+			formatCycleFailureMessage("cycle.maintenance", "maintenance"),
+			err,
+		)
 	}
 	if !ready {
-		return l.stampStatus()
+		if err := l.stampStatus(); err != nil {
+			return l.classifySystemHard(
+				"persist.status_stamp",
+				formatCycleFailureMessage("persist.status_stamp", "stamp status"),
+				err,
+			)
+		}
+		return nil
 	}
 
 	brief, warnings, running, miseChanged, err := l.buildCycleBrief(ctx)
 	if err != nil {
-		return err
+		return l.classifySystemHard(
+			"build.brief",
+			formatCycleFailureMessage("build.brief", "build cycle brief"),
+			err,
+		)
 	}
 	if !running {
-		return l.stampStatus()
+		if err := l.stampStatus(); err != nil {
+			return l.classifySystemHard(
+				"persist.status_stamp",
+				formatCycleFailureMessage("persist.status_stamp", "stamp status"),
+				err,
+			)
+		}
+		return nil
 	}
 
 	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings, miseChanged)
 	if err != nil {
-		return err
+		return l.classifySystemHard(
+			"build.prepare_orders",
+			formatCycleFailureMessage("build.prepare_orders", "prepare orders"),
+			err,
+		)
 	}
 	if !shouldContinue {
-		return l.stampStatus()
+		if err := l.stampStatus(); err != nil {
+			return l.classifySystemHard(
+				"persist.status_stamp",
+				formatCycleFailureMessage("persist.status_stamp", "stamp status"),
+				err,
+			)
+		}
+		return nil
 	}
 
 	candidates := l.planCycleSpawns(orders, brief, cycleCapacity)
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
-		return err
+		return l.classifySystemHard(
+			"cycle.spawn",
+			formatCycleFailureMessage("cycle.spawn", "spawn cooks"),
+			err,
+		)
 	}
 	// Flush all in-memory state to disk at cycle end.
 	if err := l.flushState(); err != nil {
-		return err
+		return l.classifySystemHard(
+			"persist.flush_state",
+			formatCycleFailureMessage("persist.flush_state", "flush state"),
+			err,
+		)
 	}
 	l.publishState()
-	return l.stampStatus()
+	if err := l.stampStatus(); err != nil {
+		return l.classifySystemHard(
+			"persist.status_stamp",
+			formatCycleFailureMessage("persist.status_stamp", "stamp status"),
+			err,
+		)
+	}
+	return nil
 }
 
 func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {

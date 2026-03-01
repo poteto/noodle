@@ -187,11 +187,11 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
-	orders           OrdersFile
-	ordersLoaded     bool
-	schedulePromoted       bool      // set when consumeOrdersNext promotes after a schedule dispatch
-	scheduleNothingUntil   time.Time // cooldown: suppress schedule re-spawn until this time
-	lastPromotionError     string    // validation error from last failed orders-next.json promotion
+	orders               OrdersFile
+	ordersLoaded         bool
+	schedulePromoted     bool      // set when consumeOrdersNext promotes after a schedule dispatch
+	scheduleNothingUntil time.Time // cooldown: suppress schedule re-spawn until this time
+	lastPromotionError   string    // validation error from last failed orders-next.json promotion
 
 	activeSummary  mise.ActiveSummary
 	recentHistory  []mise.HistoryItem
@@ -203,6 +203,8 @@ type Loop struct {
 	// V2 canonical state — event-sourced pipeline.
 	canonical    state.State
 	eventCounter atomic.Uint64
+
+	lastLoopFailure *LoopFailureEnvelope
 
 	// Test hooks — nil in production. These allow tests to simulate crashes
 	// at specific points in the state-persistence pipeline.

@@ -203,6 +203,14 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 		"stage_index": cook.stageIndex,
 		"error":       reason,
 	})
+	l.classifyOrderHard(
+		"cycle.merge_terminal",
+		OrderFailureClassStageTerminal,
+		cook.orderID,
+		cook.stageIndex,
+		reason,
+		err,
+	)
 	if strings.TrimSpace(cook.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}

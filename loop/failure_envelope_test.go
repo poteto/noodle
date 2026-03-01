@@ -1,0 +1,173 @@
+package loop
+
+import (
+	"context"
+	stderrors "errors"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/failure"
+	loopruntime "github.com/poteto/noodle/runtime"
+)
+
+func TestCycleClassifiesOrdersNextPromotionFailureAsDegrade(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	ordersNextPath := filepath.Join(runtimeDir, "orders-next.json")
+	if err := os.WriteFile(ordersNextPath, []byte("{not-json"), 0o644); err != nil {
+		t.Fatalf("write orders-next: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Path != "build.promote_orders_next" {
+		t.Fatalf("path = %q, want %q", envelope.Path, "build.promote_orders_next")
+	}
+	if envelope.Class != CycleFailureClassDegradeContinue {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassDegradeContinue)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityDegrade {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityDegrade)
+	}
+}
+
+func TestCycleClassifiesDispatchFailureAsOrderHard(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{
+		Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")},
+	}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	rt.dispatchErr = stderrors.New("dispatch failed")
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": rt},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Path != "cycle.dispatch_terminal" {
+		t.Fatalf("path = %q, want %q", envelope.Path, "cycle.dispatch_terminal")
+	}
+	if envelope.Class != CycleFailureClassOrderHard {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassOrderHard)
+	}
+	if envelope.OrderClass != OrderFailureClassStageTerminal {
+		t.Fatalf("order class = %q, want %q", envelope.OrderClass, OrderFailureClassStageTerminal)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+}
+
+func TestCycleClassifiesFlushFailureAsSystemHard(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{
+		Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")},
+	}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	brokenRuntimePath := filepath.Join(projectDir, "runtime-file")
+	if err := os.WriteFile(brokenRuntimePath, []byte("not-a-directory"), 0o644); err != nil {
+		t.Fatalf("write broken runtime path: %v", err)
+	}
+
+	barrierCalls := 0
+	l.TestFlushBarrier = func() {
+		barrierCalls++
+		if barrierCalls == 1 {
+			l.runtimeDir = brokenRuntimePath
+		}
+	}
+
+	err := l.Cycle(context.Background())
+	if err == nil {
+		t.Fatal("cycle should fail when flushState cannot write pending-review")
+	}
+	if barrierCalls == 0 {
+		t.Fatal("flush barrier was not called")
+	}
+
+	envelope := requireLoopFailureEnvelope(t, err)
+	if envelope.Path != "persist.flush_state" {
+		t.Fatalf("path = %q, want %q", envelope.Path, "persist.flush_state")
+	}
+	if envelope.Class != CycleFailureClassSystemHard {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassSystemHard)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityHard {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityHard)
+	}
+}
+
+func requireLoopFailureEnvelope(t *testing.T, err error) LoopFailureEnvelope {
+	t.Helper()
+	var envelope LoopFailureEnvelope
+	if !stderrors.As(err, &envelope) {
+		t.Fatalf("error = %T (%v), want LoopFailureEnvelope", err, err)
+	}
+	return envelope
+}
+
+func requireLastLoopFailureEnvelope(t *testing.T, l *Loop) LoopFailureEnvelope {
+	t.Helper()
+	if l.lastLoopFailure == nil {
+		t.Fatal("lastLoopFailure should be set")
+	}
+	return *l.lastLoopFailure
+}
