@@ -191,7 +191,8 @@ func cancelOrder(orders OrdersFile, orderID string) (OrdersFile, error) {
 }
 
 // dispatchableStages finds the first pending stage per order that is ready for dispatch.
-// Orders in busy/adopted/ticketed sets are skipped. Orders in the failed set are skipped.
+// Orders in busy/adopted/ticketed sets are skipped. Orders in the failed set are skipped,
+// except the system schedule order.
 func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[string]struct{}) []dispatchCandidate {
 	var candidates []dispatchCandidate
 
@@ -210,7 +211,7 @@ func dispatchableStages(orders OrdersFile, busy, failed, adopted, ticketed map[s
 		if _, ok := ticketed[order.ID]; ok {
 			continue
 		}
-		if _, ok := failed[order.ID]; ok {
+		if _, ok := failed[order.ID]; ok && !isScheduleOrder(order) {
 			continue
 		}
 

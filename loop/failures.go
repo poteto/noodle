@@ -35,6 +35,11 @@ func (l *Loop) loadFailedTargets() error {
 		if id == "" {
 			continue
 		}
+		// Schedule is a system order, not a sticky user failure target.
+		// Ignore stale entries so scheduler dispatch is never blocked on restart.
+		if strings.EqualFold(id, scheduleOrderID) {
+			continue
+		}
 		l.cooks.failedTargets[id] = strings.TrimSpace(reason)
 	}
 	return nil
@@ -43,6 +48,10 @@ func (l *Loop) loadFailedTargets() error {
 func (l *Loop) markFailed(id string, reason string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
+		return nil
+	}
+	// Schedule failures should not become sticky failed targets.
+	if strings.EqualFold(id, scheduleOrderID) {
 		return nil
 	}
 	if l.cooks.failedTargets == nil {

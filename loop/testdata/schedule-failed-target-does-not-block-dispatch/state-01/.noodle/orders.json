@@ -1,0 +1,18 @@
+{
+  "orders": [
+    {
+      "id": "schedule",
+      "title": "scheduling tasks based on your backlog",
+      "stages": [
+        {
+          "task_key": "schedule",
+          "skill": "schedule",
+          "provider": "codex",
+          "model": "gpt-5.3-codex",
+          "status": "pending"
+        }
+      ],
+      "status": "active"
+    }
+  ]
+}
