@@ -198,7 +198,7 @@ func TestProcessSessionTerminalStatusCompleted(t *testing.T) {
 		stampedPath:   filepath.Join(dir, "raw.ndjson"),
 	})
 
-	if got := session.terminalStatus(); got != "completed" {
+	if got := session.terminalStatus(1); got != "completed" {
 		t.Fatalf("terminal status = %q, want completed", got)
 	}
 }
@@ -218,7 +218,61 @@ func TestProcessSessionTerminalStatusFailed(t *testing.T) {
 		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
 	})
 
-	if got := session.terminalStatus(); got != "failed" {
+	if got := session.terminalStatus(1); got != "failed" {
+		t.Fatalf("terminal status = %q, want failed", got)
+	}
+}
+
+func TestProcessSessionTerminalStatusCompletedWithLifecycleEvents(t *testing.T) {
+	dir := t.TempDir()
+	canonicalPath := filepath.Join(dir, "canonical.ndjson")
+	line := `{"type":"action","message":"$ npm test","timestamp":"2026-02-27T01:00:00Z"}`
+	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
+		t.Fatalf("write canonical: %v", err)
+	}
+
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		canonicalPath: canonicalPath,
+		stampedPath:   filepath.Join(dir, "raw.ndjson"),
+	})
+
+	if got := session.terminalStatus(1); got != "completed" {
+		t.Fatalf("terminal status = %q, want completed", got)
+	}
+}
+
+func TestProcessSessionTerminalStatusSignalExitFails(t *testing.T) {
+	dir := t.TempDir()
+	canonicalPath := filepath.Join(dir, "canonical.ndjson")
+	line := `{"type":"action","message":"$ npm test","timestamp":"2026-02-27T01:00:00Z"}`
+	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
+		t.Fatalf("write canonical: %v", err)
+	}
+
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		canonicalPath: canonicalPath,
+		stampedPath:   filepath.Join(dir, "raw.ndjson"),
+	})
+
+	if got := session.terminalStatus(-1); got != "failed" {
 		t.Fatalf("terminal status = %q, want failed", got)
 	}
 }

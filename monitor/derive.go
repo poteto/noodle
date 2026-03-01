@@ -46,6 +46,8 @@ func DeriveSessionMeta(
 		status = SessionStatusFailed
 	case claims.Completed:
 		status = SessionStatusExited
+	case !observation.Alive && claims.HasEvents:
+		status = SessionStatusExited
 	default:
 		status = SessionStatusFailed
 	}

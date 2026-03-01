@@ -97,8 +97,8 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 		}, true
 	case parse.EventError:
 		return event.Event{
-			Type:      event.EventStateChange,
-			Payload:   makePayload(map[string]any{"to_status": "failed", "reason": canonical.Message}),
+			Type:      event.EventAction,
+			Payload:   makePayload(map[string]any{"message": canonical.Message, "tool": "Error", "summary": canonical.Message}),
 			Timestamp: timestamp,
 			SessionID: sessionID,
 		}, true

@@ -96,7 +96,7 @@ func (s *processSession) waitForExit(ctx context.Context) {
 	exitCode, _ := s.process.ExitCode()
 	status := "completed"
 	if exitCode != 0 {
-		status = s.terminalStatus()
+		status = s.terminalStatus(exitCode)
 	}
 	if ctx.Err() != nil {
 		status = "cancelled"
@@ -104,16 +104,27 @@ func (s *processSession) waitForExit(ctx context.Context) {
 	s.markDone(status)
 }
 
-func (s *processSession) terminalStatus() string {
+func (s *processSession) terminalStatus(exitCode int) string {
+	// Negative exit codes represent signal-based termination.
+	// Treat these as runtime crashes.
+	if exitCode < 0 {
+		return "failed"
+	}
 	events, err := readCanonicalEvents(s.canonicalPath)
 	if err != nil {
 		return "failed"
 	}
+	sawLifecycleEvent := false
 	for _, ev := range events {
 		switch ev.Type {
 		case parse.EventComplete, parse.EventResult:
 			return "completed"
+		case parse.EventInit, parse.EventAction, parse.EventError, parse.EventDelta:
+			sawLifecycleEvent = true
 		}
+	}
+	if sawLifecycleEvent {
+		return "completed"
 	}
 	return "failed"
 }

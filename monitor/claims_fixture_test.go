@@ -161,7 +161,7 @@ func TestReadSessionMarksResultAsCompleted(t *testing.T) {
 	}
 }
 
-func TestReadSessionErrorStillMarksFailedWithResult(t *testing.T) {
+func TestReadSessionErrorDoesNotMarkFailedWithResult(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -184,7 +184,7 @@ func TestReadSessionErrorStillMarksFailedWithResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if !claims.Failed {
-		t.Fatal("expected failed=true when error event is present")
+	if claims.Failed {
+		t.Fatal("expected failed=false when error event is present")
 	}
 }

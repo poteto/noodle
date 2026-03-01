@@ -86,6 +86,25 @@ func TestDeriveSessionMetaNoCompletionIsFailed(t *testing.T) {
 	}
 }
 
+func TestDeriveSessionMetaNoCompletionWithEventsIsExited(t *testing.T) {
+	now := time.Date(2026, 2, 22, 15, 10, 0, 0, time.UTC)
+
+	meta := DeriveSessionMeta(
+		"cook-e",
+		Observation{SessionID: "cook-e", Alive: false},
+		SessionClaims{SessionID: "cook-e", HasEvents: true},
+		SessionMeta{},
+		now,
+		120*time.Second,
+	)
+	if meta.Status != SessionStatusExited {
+		t.Fatalf("status = %q", meta.Status)
+	}
+	if meta.Health != HealthYellow {
+		t.Fatalf("health = %q", meta.Health)
+	}
+}
+
 func TestDeriveSessionMetaFailed(t *testing.T) {
 	now := time.Date(2026, 2, 22, 15, 10, 0, 0, time.UTC)
 

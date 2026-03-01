@@ -34,6 +34,7 @@
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/schedule-bootstrap-hot-loop]]
+- [[codebase/session-failure-classification-crash-only]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/unix-process-liveness-eperm]]

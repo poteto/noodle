@@ -15,7 +15,7 @@ source_hash: 70d334f9851df7b447cd7e83c1ea55005e280c8ddb896b9a2c636fe537b988f4
       "ticket_count": 2,
       "status_by_session": {
         "cook-a": "running",
-        "cook-b": "failed"
+        "cook-b": "exited"
       },
       "action_by_session": {
         "cook-a": "apply patch",
