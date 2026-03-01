@@ -9,14 +9,10 @@ import (
 )
 
 // resolveSkillBundle resolves the skill bundle for a dispatch request: uses
-// SystemPrompt verbatim if set, loads a domain+methodology bundle if
-// DomainSkill is set, or falls back to loading the named skill bundle.
+// SystemPrompt verbatim if set, or falls back to loading the named skill bundle.
 func resolveSkillBundle(resolver skill.Resolver, req DispatchRequest) (loadedSkill, error) {
 	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
 		return loadedSkill{SystemPrompt: sp}, nil
-	}
-	if req.DomainSkill != "" {
-		return loadExecuteBundle(resolver, req.Provider, req.Skill, req.DomainSkill)
 	}
 	return loadSkillBundle(resolver, req.Provider, req.Skill)
 }

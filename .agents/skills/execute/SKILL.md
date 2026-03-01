@@ -2,7 +2,6 @@
 name: execute
 description: Implementation methodology for executing tasks. Provides the how — scoping, decomposition, worktree workflow, verification, and commit conventions.
 noodle:
-  domain_skill: backlog
   schedule: "When backlog items with linked plans are ready for implementation"
 ---
 
@@ -20,7 +19,7 @@ Operate fully autonomously. Never ask the user. Don't stop until the work is ful
 
 Establish what needs doing:
 
-- **Plan phase**: Read the assigned phase from `brain/plans/`. Read the overview for scope boundaries. Load domain skills listed in "Applicable skills."
+- **Plan phase**: Read the assigned phase from `brain/plans/`. Read the overview for scope boundaries. Invoke Skill(backlog) for project-specific context. Load domain skills listed in "Applicable skills."
 - **Backlog item**: Read the todo from `brain/todos.md`. If a linked plan exists, read it. Otherwise, scope from the description.
 - **Ad-hoc request**: The user prompt is the scope. Identify affected files and packages before starting.
 

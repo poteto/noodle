@@ -111,45 +111,6 @@ func TestResolveStageByExactID(t *testing.T) {
 	}
 }
 
-func TestDomainSkillPropagated(t *testing.T) {
-	skills := []skill.SkillMeta{
-		{
-			Name: "execute",
-			Path: "/skills/execute",
-			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{
-					Schedule:    "When ready",
-					DomainSkill: "backlog",
-				},
-			},
-		},
-		{
-			Name: "reflect",
-			Path: "/skills/reflect",
-			Frontmatter: skill.Frontmatter{
-				Noodle: &skill.NoodleMeta{
-					Schedule: "After completion",
-				},
-			},
-		},
-	}
-	reg := NewFromSkills(skills)
-	tt, ok := reg.ByKey("execute")
-	if !ok {
-		t.Fatal("expected execute in registry")
-	}
-	if tt.DomainSkill != "backlog" {
-		t.Fatalf("DomainSkill = %q, want %q", tt.DomainSkill, "backlog")
-	}
-	tt2, ok := reg.ByKey("reflect")
-	if !ok {
-		t.Fatal("expected reflect in registry")
-	}
-	if tt2.DomainSkill != "" {
-		t.Fatalf("DomainSkill = %q, want empty", tt2.DomainSkill)
-	}
-}
-
 func boolPtr(v bool) *bool {
 	return &v
 }

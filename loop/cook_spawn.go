@@ -94,9 +94,6 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		Title:        order.Title,
 		RetryCount:   opts.attempt,
 	}
-	if taskType.DomainSkill != "" {
-		req.DomainSkill = taskType.DomainSkill
-	}
 
 	// Persist active status BEFORE spawning session — restart safety.
 	if err := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusActive); err != nil {
