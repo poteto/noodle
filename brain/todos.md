@@ -1,9 +1,9 @@
 ---
-priority: [84, 87, 88, 20, 69, 77]
-# 84 sub-agent tracking (foundational infra, in progress),
-# 87 go simplification (subtract before you add — phases 1-2 delete dead
-#    backend stubs that 69 will redesign, phase 3 consolidates state
-#    utilities dispatchers depend on),
+priority: [87, 84, 88, 20, 69, 77]
+# 87 go simplification (subtract before you add — clean the substrate
+#    before building new features. Phases 1-2 delete dead backend stubs
+#    that 69 will redesign, phase 3 consolidates state utilities),
+# 84 sub-agent tracking (foundational infra),
 # 88 sub-agent tracking v2 (extends 84),
 # 20 skill-path defaults (small docs fix),
 # 69 cursor dispatcher (feature, benefits from cleaned dispatcher package),
