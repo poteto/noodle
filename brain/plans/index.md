@@ -7,7 +7,7 @@
 - [x] ~~[[archive/plans/68-unified-involvement-levels/overview]]~~ — superseded by #82
 - [ ] [[plans/69-cursor-dispatcher/overview]]
 - [x] ~~[[archive/plans/82-backend-v2-first-principles/overview]]~~
-- [ ] [[plans/83-error-recoverability-taxonomy/overview]]
+- [x] ~~[[archive/plans/83-error-recoverability-taxonomy/overview]]~~
 - [x] ~~[[archive/plans/75-channel-ui-redesign/overview]]~~
 - [x] ~~[[plans/76-websocket-streaming/overview]]~~
 - [ ] [[plans/81-stage-groups/overview]]

@@ -1,6 +1,6 @@
 ---
-priority: [83, 84, 20, 69, 77]
-# 83 error taxonomy → 84 sub-agent tracking (both foundational infra),
+priority: [84, 20, 69, 77]
+# 84 sub-agent tracking (foundational infra),
 # 20 skill-path defaults (small docs fix), 69 cursor dispatcher (feature),
 # 77 react-window (UI polish)
 ---
@@ -8,6 +8,8 @@ priority: [83, 84, 20, 69, 77]
 # Todos
 
 <!-- next-id: 87 -->
+<!-- completed todos live in archive/completed_todos.md -->
+<!-- completed plans live in archive/plans/ -->
 
 ## Bootstrap Skill Fixes
 
@@ -23,6 +25,5 @@ priority: [83, 84, 20, 69, 77]
 86. [ ] Investigate adding https://diffs.com/ to the web UI — every code change can be represented as a diff, making it easier for users to review code changes inline
 
 ## Backend
-83. [ ] Error recoverability taxonomy
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
