@@ -12,6 +12,10 @@ Spawn reviewers on the **opposite model** to challenge work. Reviewers attack fr
 lenses grounded in brain principles. The deliverable is a synthesized verdict — do NOT make
 changes.
 
+**Hard constraint:** Reviewers MUST run via the opposite model's CLI (`codex exec` or
+`claude -p`). Do NOT use subagents, the Agent tool, or any internal delegation mechanism as
+reviewers — those run on *your own* model, which defeats the purpose.
+
 ## Step 1 — Load Principles
 
 Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked principle file.
@@ -79,7 +83,17 @@ Each reviewer gets a single prompt containing:
 
 Spawn all reviewers in parallel.
 
-## Step 4 — Synthesize Verdict
+## Step 4 — Verify and Synthesize Verdict
+
+Before reading reviewer output, log which CLI was used and confirm the output files exist:
+
+```sh
+echo "reviewer_cli=codex|claude"
+ls "$REVIEW_DIR"/*.md
+```
+
+If any output file is missing or empty, note the failure in the verdict — do not silently skip
+a reviewer.
 
 Read each reviewer's output file from `$REVIEW_DIR/`. Deduplicate overlapping findings.
 Produce a single verdict:
