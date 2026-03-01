@@ -125,7 +125,10 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		if blocked {
 			return nil
 		}
-		canMerge := l.canMergeStage(cook.stage)
+		canMerge, err := l.worktreeHasChanges(cook)
+		if err != nil {
+			return l.failStage(ctx, cook, fmt.Sprintf("merge check: %v", err))
+		}
 		l.emitEvent(ingest.EventStageCompleted, map[string]any{
 			"order_id":    cook.orderID,
 			"stage_index": cook.stageIndex,
@@ -222,6 +225,10 @@ func (l *Loop) handleStageFailure(_ context.Context, cook *cookHandle, resultSta
 	if resultStatus == StageResultCancelled {
 		reason = "cook cancelled with status " + status
 	}
+	return l.failStage(nil, cook, reason)
+}
+
+func (l *Loop) failStage(_ context.Context, cook *cookHandle, reason string) error {
 	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
 		updated, err := failStage(*orders, cook.orderID, reason)
 		if err != nil {

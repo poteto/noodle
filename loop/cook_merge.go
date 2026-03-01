@@ -11,7 +11,6 @@ import (
 
 	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/stringx"
-	"github.com/poteto/noodle/internal/taskreg"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
 )
@@ -99,15 +98,49 @@ func jsonQuote(s string) json.RawMessage {
 	return json.RawMessage(b)
 }
 
-func (l *Loop) canMergeStage(stage Stage) bool {
-	taskType, ok := l.registry.ResolveStage(taskreg.StageInput{
-		TaskKey: stage.TaskKey,
-		Skill:   stage.Skill,
-	})
-	if !ok {
-		return true
+func (l *Loop) worktreeHasChanges(cook *cookHandle) (bool, error) {
+	if cook == nil {
+		return false, nil
 	}
-	return taskType.CanMerge
+
+	// Path 1: crash recovery from persisted merge metadata.
+	orders, err := l.currentOrders()
+	if err != nil {
+		return false, err
+	}
+	for _, order := range orders.Orders {
+		if order.ID != cook.orderID {
+			continue
+		}
+		if cook.stageIndex < 0 || cook.stageIndex >= len(order.Stages) {
+			break
+		}
+		stage := order.Stages[cook.stageIndex]
+		if stage.Status == StageStatusMerging && strings.TrimSpace(extraString(stage.Extra, mergeExtraBranch)) != "" {
+			return true, nil
+		}
+		break
+	}
+
+	// Path 2: runtime sync metadata (remote branch push).
+	sessionID := ""
+	if cook.session != nil {
+		sessionID = cook.session.ID()
+	}
+	syncResult, hasSyncResult, err := l.readSessionSyncResult(sessionID)
+	if err != nil {
+		return false, err
+	}
+	if hasSyncResult && syncResult.Type == loopruntime.SyncResultTypeBranch && strings.TrimSpace(syncResult.Branch) != "" {
+		return true, nil
+	}
+
+	// Path 3: local worktree branch status.
+	worktreeName := strings.TrimSpace(cook.worktreeName)
+	if worktreeName == "" {
+		return false, nil
+	}
+	return l.deps.Worktree.HasUnmergedCommits(worktreeName)
 }
 
 func (l *Loop) readSessionSyncResult(sessionID string) (loopruntime.SyncResult, bool, error) {

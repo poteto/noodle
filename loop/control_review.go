@@ -39,7 +39,10 @@ func (l *Loop) controlMerge(orderID string) error {
 		}
 	}
 
-	canMerge := l.canMergeStage(cook.stage)
+	canMerge, err := l.worktreeHasChanges(cook)
+	if err != nil {
+		return fmt.Errorf("merge check: %w", err)
+	}
 	l.emitEvent(ingest.EventStageCompleted, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,

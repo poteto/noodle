@@ -9,7 +9,6 @@ func TestBuildOrderTaskTypesPromptIncludesKeyAndSchedule(t *testing.T) {
 	prompt := buildOrderTaskTypesPrompt([]TaskType{
 		{
 			Key:      "schedule",
-			CanMerge: false,
 			Schedule: "When orders are empty",
 		},
 	})

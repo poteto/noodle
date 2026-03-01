@@ -154,7 +154,7 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	}
 }
 
-func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
+func TestAutoMergeWithLocalChanges(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -202,13 +202,13 @@ func TestApprovalAutoCanMergeTrueAutoMerges(t *testing.T) {
 	}
 }
 
-func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
+func TestAutoAdvanceWithoutChanges(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
-	// review task type has CanMerge=false — in auto mode, non-mergeable stages advance without merge.
+	// In auto mode, stages without local or remote changes advance without merge.
 	orders := OrdersFile{Orders: []Order{testOrder("42", "review", "review", "claude", "claude-opus-4-6")}}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
 	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
@@ -219,7 +219,11 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 	cfg.Mode = "auto"
 
 	rt := newMockRuntime()
-	wt := &fakeWorktree{}
+	wt := &fakeWorktree{
+		hasUnmergedCommits: map[string]bool{
+			"42-0-review": false,
+		},
+	}
 	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
@@ -243,11 +247,11 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 		t.Fatalf("completion cycle: %v", err)
 	}
 	if len(wt.merged) != 0 {
-		t.Fatalf("worktree merges = %d, want 0 (task disallows merge)", len(wt.merged))
+		t.Fatalf("worktree merges = %d, want 0 (no changes)", len(wt.merged))
 	}
-	// In auto mode, non-mergeable stages advance without parking.
+	// In auto mode, stages without changes advance without parking.
 	if len(l.cooks.pendingReview) != 0 {
-		t.Fatalf("pendingReview = %d, want 0 (auto mode advances non-mergeable stages)", len(l.cooks.pendingReview))
+		t.Fatalf("pendingReview = %d, want 0 (auto mode advances stages without changes)", len(l.cooks.pendingReview))
 	}
 	// Verify the order was removed from orders.json after completion.
 	updatedOrders, err := readOrders(ordersPath)
@@ -258,6 +262,71 @@ func TestApprovalAutoCanMergeFalseAdvances(t *testing.T) {
 		if order.ID == "42" {
 			t.Fatal("order 42 should have been removed after non-mergeable stage completion")
 		}
+	}
+}
+
+func TestAutoMergeWithRemoteSyncResult(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+
+	rt := newMockRuntime()
+	wt := &fakeWorktree{
+		hasUnmergedCommits: map[string]bool{
+			"42-0-execute": false,
+		},
+	}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
+	}
+
+	sessionID := rt.sessions[0].id
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sessionPath, "spawn.json"),
+		[]byte(`{"sync":{"type":"branch","branch":"noodle/session-a"}}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
+	}
+
+	rt.sessions[0].complete("completed")
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.remoteMerged) != 1 || wt.remoteMerged[0] != "noodle/session-a" {
+		t.Fatalf("remote merges = %#v, want [noodle/session-a]", wt.remoteMerged)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("worktree merges = %d, want 0 (remote merge path)", len(wt.merged))
 	}
 }
 
