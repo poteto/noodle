@@ -8,7 +8,7 @@ priority: [84, 88, 20, 69]
 
 # Todos
 
-<!-- next-id: 90 -->
+<!-- next-id: 91 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -29,3 +29,7 @@ priority: [84, 88, 20, 69]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
 88. [ ] Sub-agent tracking v2 — add out-of-band ingestion (Codex child sessions + Claude team inbox), harden canonical identity reconciliation, lifecycle-safe bounded pollers, robust `steer-agent` control behavior, and expanded hardening tests. [[plans/88-subagent-tracking-v2/overview]]
 89. [ ] Simplify task type frontmatter — replace `permissions.merge` with runtime worktree detection, remove `domain_skill` from dispatch pipeline, promote `schedule` to top-level field, delete `NoodleMeta` struct entirely. [[plans/89-simplify-task-type-frontmatter/overview]]
+
+## Features
+
+90. [ ] Interactive agent sessions — spawn a human-in-the-loop agent session outside the order system for collaborative work (planning, exploration, design decisions) where full automation is wrong. Separate from orders: no order ID, no stage pipeline, no quality/reflect lifecycle. Backend: new control action (not `enqueue`) that spawns a provider session with user-chosen provider/model, streams canonical events, and accepts user messages mid-flight via the existing steering mechanism. Runs on primary checkout by default, opt-in worktree for code-change tasks. UI: web chat panel in Noodle UI — real-time streamed agent output with a user input field for back-and-forth conversation. Launcher placement (replace scheduler feed input vs. new top-level action vs. separate panel) is undecided — design should emerge during planning. Long-term: unify the spawn surface so both structured orders and interactive sessions launch from the same place.
