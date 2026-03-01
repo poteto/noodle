@@ -277,3 +277,22 @@ func TestReadRecentEventsSummaryIncludesOwnerForAgentMistake(t *testing.T) {
 		t.Fatalf("summary[1] = %q", events[1].Summary)
 	}
 }
+
+func TestReadRecentEventsSummaryDoesNotPrefixBackendOwner(t *testing.T) {
+	dir := t.TempDir()
+	eventsPath := filepath.Join(dir, "loop-events.ndjson")
+	lines := []string{
+		`{"seq":1,"type":"order.failed","at":"2026-02-22T16:00:00Z","payload":{"order_id":"43","reason":"merge failed","failure":{"class":"backend_recoverable","recoverability":"recoverable","owner":"backend","scope":"order","cycle_class":"order-hard","order_class":"stage-terminal"}}}`,
+	}
+	if err := os.WriteFile(eventsPath, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	events := readRecentEvents(dir)
+	if len(events) != 1 {
+		t.Fatalf("got %d events, want 1", len(events))
+	}
+	if events[0].Summary != "order 43 failed: merge failed" {
+		t.Fatalf("summary[0] = %q", events[0].Summary)
+	}
+}

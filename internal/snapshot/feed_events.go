@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/internal/failure"
 	"github.com/poteto/noodle/loop"
 )
 
@@ -265,7 +266,7 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 }
 
 func failureOwnerPrefix(metadata *loop.EventFailureMetadata) string {
-	if metadata == nil || metadata.Owner == "" {
+	if metadata == nil || metadata.Owner == "" || metadata.Class != failure.FailureClassAgentMistake {
 		return ""
 	}
 	return "[" + string(metadata.Owner) + "] "

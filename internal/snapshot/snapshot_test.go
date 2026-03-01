@@ -266,6 +266,26 @@ func TestReadLoopEventsAgentOwnershipPrefix(t *testing.T) {
 	}
 }
 
+func TestReadLoopEventsBackendOwnerDoesNotPrefixBody(t *testing.T) {
+	dir := t.TempDir()
+	ndjson := `{"seq":1,"type":"stage.failed","at":"2026-02-24T10:00:00Z","payload":{"order_id":"order-1","reason":"merge failed","failure":{"class":"backend_recoverable","recoverability":"recoverable","owner":"backend","scope":"order","cycle_class":"order-hard","order_class":"stage-terminal"}}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
+		t.Fatalf("write loop-events: %v", err)
+	}
+
+	events := readLoopEvents(dir)
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1", len(events))
+	}
+	if events[0].Body != "merge failed" {
+		t.Fatalf("event body = %q, want merge failed", events[0].Body)
+	}
+	if events[0].Failure == nil || events[0].Failure.Owner != "backend" {
+		t.Fatalf("event failure = %#v", events[0].Failure)
+	}
+}
+
 func TestReadLoopEventsUnknownTypeSkipped(t *testing.T) {
 	dir := t.TempDir()
 	ndjson := `{"seq":1,"type":"unknown.event","at":"2026-02-24T10:00:00Z"}
