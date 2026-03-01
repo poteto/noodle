@@ -155,6 +155,9 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 			return OrdersFile{}, false, err
 		}
 	}
+	if err := l.clearFailedTargetsForQueuedOrders(orders); err != nil {
+		return OrdersFile{}, false, err
+	}
 	l.setOrdersState(orders)
 	return orders, true, nil
 }

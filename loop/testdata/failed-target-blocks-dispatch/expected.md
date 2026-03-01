@@ -12,10 +12,15 @@ source_hash: 35717051ebdc40f44b08c8d62ba1748f18055e6a58eb1bd1b67f19fe7748bf87
   "states": {
     "state-01": {
       "transition": "running",
-      "normal_task_scheduled": false,
-      "spawn_calls": 0,
-      "normal_spawn_calls": 0,
-      "created_worktrees": 0
+      "normal_task_scheduled": true,
+      "spawn_calls": 1,
+      "normal_spawn_calls": 1,
+      "created_worktrees": 1,
+      "first_spawn": {
+        "name": "blocked-1-0-execute",
+        "provider": "claude",
+        "model": "claude-opus-4-6"
+      }
     }
   }
 }

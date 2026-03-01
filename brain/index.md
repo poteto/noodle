@@ -28,6 +28,7 @@
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
 - [[codebase/control-api-snake-camel-compat]]
+- [[codebase/failed-target-auto-repair-for-requeued-orders]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
 - [[codebase/root-tests-require-ui-dist-assets]]
