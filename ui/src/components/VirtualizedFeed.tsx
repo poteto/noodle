@@ -46,13 +46,16 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
     getItemKey: (index) => itemKey(items[index]),
   });
 
-  // Auto-scroll to bottom when new items arrive and user is at bottom.
+  // Auto-scroll to true bottom (past tail/thinking indicator) when new items arrive.
   useEffect(() => {
     if (autoScroll && items.length > 0 && items.length !== prevItemCount.current) {
-      virtualizer.scrollToIndex(items.length - 1, { align: "end" });
+      const el = scrollRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
     prevItemCount.current = items.length;
-  }, [items.length, autoScroll, virtualizer]);
+  }, [items.length, autoScroll]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -62,11 +65,12 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    if (items.length > 0) {
-      virtualizer.scrollToIndex(items.length - 1, { align: "end" });
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
     }
     setAutoScroll(true);
-  }, [items.length, virtualizer]);
+  }, []);
 
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
@@ -114,6 +118,8 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
           </div>
         )}
         {tail}
+        {/* Bottom spacer so content doesn't clip under input area */}
+        <div style={{ height: 128, flexShrink: 0 }} />
       </div>
 
       {!autoScroll && (

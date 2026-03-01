@@ -15,7 +15,10 @@ export function SchedulerFeed() {
   const [input, setInput] = useState("");
 
   const schedulerSession = findSchedulerSession(snapshot.sessions);
-  const { data: events = [] } = useSessionEvents(schedulerSession?.id);
+  const initialEvents = schedulerSession?.id
+    ? snapshot.events_by_session[schedulerSession.id]
+    : undefined;
+  const { data: events = [] } = useSessionEvents(schedulerSession?.id, initialEvents);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

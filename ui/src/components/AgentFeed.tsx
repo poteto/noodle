@@ -48,7 +48,8 @@ function AgentHeader({ session, onStopAll }: { session: Session; onStopAll: () =
 
 export function AgentFeed({ sessionId }: { sessionId: string }) {
   const { data: snapshot } = useSuspenseSnapshot();
-  const { data: events = [] } = useSessionEvents(sessionId);
+  const initialEvents = snapshot.events_by_session[sessionId];
+  const { data: events = [] } = useSessionEvents(sessionId, initialEvents);
   const { mutate: send } = useSendControl();
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);

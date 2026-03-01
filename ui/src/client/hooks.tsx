@@ -51,7 +51,7 @@ export function useSuspenseSnapshot() {
   });
 }
 
-export function useSessionEvents(sessionId: string | undefined) {
+export function useSessionEvents(sessionId: string | undefined, initialData?: EventLine[]) {
   useEffect(() => {
     if (!sessionId) {
       return;
@@ -64,6 +64,7 @@ export function useSessionEvents(sessionId: string | undefined) {
     queryKey: ["sessionEvents", sessionId],
     queryFn: () => (sessionId ? fetchSessionEvents(sessionId) : []),
     enabled: Boolean(sessionId),
+    initialData,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

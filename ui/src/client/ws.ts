@@ -101,7 +101,9 @@ function handleMessage(event: MessageEvent) {
       break;
     }
     case "backfill": {
-      // Replaces cache -- not append
+      // Cancel any in-flight HTTP fetch to prevent it from overwriting
+      // the backfill with stale data (race between HTTP seed and WS backfill).
+      void queryClientRef?.cancelQueries({ queryKey: ["sessionEvents", msg.session_id] });
       queryClientRef?.setQueryData(["sessionEvents", msg.session_id], msg.data);
       break;
     }

@@ -672,9 +672,9 @@
   padding-bottom: 6px;
   opacity: 0.8;
 }
-/* Tool events — left-border indent */
+/* Tool events — left border for nesting, aligned with messages */
 .message-row.type-tool {
-  padding-left: 44px;
+  padding-left: 28px;
   border-left: 1px solid var(--color-border-subtle);
 }
 /* Tool one-liner — badge + summary on a single line */
@@ -698,7 +698,7 @@
   padding-top: 4px;
   padding-bottom: 4px;
   opacity: 0.6;
-  padding-left: 44px;
+  padding-left: 28px;
   border-left: 1px solid var(--color-border-subtle);
 }
 
@@ -822,7 +822,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 28px 6px 44px;
+  padding: 6px 28px;
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 13px;
