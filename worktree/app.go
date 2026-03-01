@@ -161,6 +161,14 @@ func (a *App) countUnmergedCommits(name string) int {
 	return unmerged
 }
 
+func (a *App) HasUnmergedCommits(name string) (bool, error) {
+	unmerged, _, err := a.cherryStatus(name)
+	if err != nil {
+		return false, err
+	}
+	return unmerged > 0, nil
+}
+
 func (a *App) branchExists(branch string) bool {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {

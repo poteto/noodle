@@ -29,6 +29,7 @@ type fakeWorktree struct {
 	remoteMergeErr  error
 	createErr       error
 	createErrByName map[string]error
+	hasUnmergedCommits map[string]bool
 }
 
 func (f *fakeWorktree) Create(name string, _ ...worktree.CreateOpts) error {
@@ -51,6 +52,14 @@ func (f *fakeWorktree) MergeRemoteBranch(branch string) error {
 func (f *fakeWorktree) Cleanup(name string, _ ...worktree.CleanupOpts) error {
 	f.cleaned = append(f.cleaned, name)
 	return nil
+}
+func (f *fakeWorktree) HasUnmergedCommits(name string) (bool, error) {
+	if f.hasUnmergedCommits != nil {
+		if v, ok := f.hasUnmergedCommits[name]; ok {
+			return v, nil
+		}
+	}
+	return true, nil
 }
 
 type fakeAdapterRunner struct {

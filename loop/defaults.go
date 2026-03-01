@@ -19,10 +19,11 @@ import (
 
 type noOpWorktree struct{}
 
-func (noOpWorktree) Create(string, ...worktree.CreateOpts) error { return nil }
-func (noOpWorktree) Merge(string, ...worktree.MergeOpts) error   { return nil }
-func (noOpWorktree) MergeRemoteBranch(string) error              { return nil }
+func (noOpWorktree) Create(string, ...worktree.CreateOpts) error   { return nil }
+func (noOpWorktree) Merge(string, ...worktree.MergeOpts) error     { return nil }
+func (noOpWorktree) MergeRemoteBranch(string) error                { return nil }
 func (noOpWorktree) Cleanup(string, ...worktree.CleanupOpts) error { return nil }
+func (noOpWorktree) HasUnmergedCommits(string) (bool, error)       { return false, nil }
 
 func defaultDependencies(projectDir, runtimeDir, noodleBin string, cfg config.Config, logger *slog.Logger, sink dispatcher.SessionEventSink) Dependencies {
 	resolver := skill.Resolver{SearchPaths: cfg.Skills.Paths}

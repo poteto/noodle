@@ -133,6 +133,7 @@ type WorktreeManager interface {
 	Merge(name string, opts ...worktree.MergeOpts) error
 	MergeRemoteBranch(branch string) error
 	Cleanup(name string, opts ...worktree.CleanupOpts) error
+	HasUnmergedCommits(name string) (bool, error)
 }
 
 type AdapterRunner interface {
