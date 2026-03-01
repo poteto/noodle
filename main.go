@@ -13,6 +13,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/dispatcher"
+	"github.com/poteto/noodle/internal/failure"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/worktree"
 )
@@ -102,7 +103,15 @@ func reportConfigDiagnostics(
 					result.SessionID,
 					result.WorktreePath,
 				)
-				return fmt.Errorf("repair session started; rerun `noodle start` after repair completes")
+				return newStartRepairPromptEnvelope(
+					"repair session started; rerun `noodle start` after repair completes",
+					RepairPromptOutcome{
+						Kind:         RepairPromptKindMissingScripts,
+						Provider:     provider,
+						SessionID:    result.SessionID,
+						WorktreePath: result.WorktreePath,
+					},
+				)
 			}
 		}
 	}
@@ -127,12 +136,24 @@ func reportConfigDiagnostics(
 				result.SessionID,
 				result.WorktreePath,
 			)
-			return fmt.Errorf("backlog bootstrap started; rerun `noodle start` after setup completes")
+			return newStartRepairPromptEnvelope(
+				"backlog bootstrap started; rerun `noodle start` after setup completes",
+				RepairPromptOutcome{
+					Kind:         RepairPromptKindBacklogBootstrap,
+					Provider:     provider,
+					SessionID:    result.SessionID,
+					WorktreePath: result.WorktreePath,
+				},
+			)
 		}
 	}
 
 	if commandName == "start" && len(validation.Fatals()) > 0 {
-		return fmt.Errorf("fatal config diagnostics prevent start")
+		return newStartAbortEnvelope(
+			"fatal config diagnostics prevent start",
+			failure.FailureClassBackendInvariant,
+			nil,
+		)
 	}
 
 	return nil

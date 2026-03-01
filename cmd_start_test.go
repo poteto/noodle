@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/failure"
 	"github.com/poteto/noodle/internal/statever"
 	"github.com/poteto/noodle/loop"
 )
@@ -190,5 +192,30 @@ func TestNormalizeLoopbackHost(t *testing.T) {
 				t.Fatalf("normalizeLoopbackHost(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestOpenBrowserClassifiesBestEffortAsWarningOnly(t *testing.T) {
+	originalLaunch := launchBrowserCommandFunc
+	launchBrowserCommandFunc = func(string) error {
+		return errors.New("display unavailable")
+	}
+	t.Cleanup(func() { launchBrowserCommandFunc = originalLaunch })
+
+	envelope := openBrowser("http://localhost:3000")
+	if envelope.Outcome != StartBoundaryOutcomeWarningOnly {
+		t.Fatalf("outcome = %q, want %q", envelope.Outcome, StartBoundaryOutcomeWarningOnly)
+	}
+	if envelope.Class != failure.FailureClassWarningOnly {
+		t.Fatalf("class = %q, want %q", envelope.Class, failure.FailureClassWarningOnly)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityDegrade {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityDegrade)
+	}
+	if envelope.Cause == nil {
+		t.Fatal("cause missing for browser launch failure")
+	}
+	if !strings.Contains(envelope.Error(), "display unavailable") {
+		t.Fatalf("error = %q, want launch failure details", envelope.Error())
 	}
 }

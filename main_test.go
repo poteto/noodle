@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/failure"
 )
 
 func TestReportConfigDiagnosticsWarnsForReadOnlyCommands(t *testing.T) {
@@ -70,6 +71,16 @@ func TestReportConfigDiagnosticsFailsStartOnFatal(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "fatal config diagnostics prevent start") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	envelope := requireStartFailureEnvelope(t, err)
+	if envelope.Outcome != StartBoundaryOutcomeAbort {
+		t.Fatalf("outcome = %q, want %q", envelope.Outcome, StartBoundaryOutcomeAbort)
+	}
+	if envelope.Class != failure.FailureClassBackendInvariant {
+		t.Fatalf("class = %q, want %q", envelope.Class, failure.FailureClassBackendInvariant)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityHard {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityHard)
 	}
 }
 
@@ -181,6 +192,25 @@ func TestReportConfigDiagnosticsStartPromptsAndLaunchesRepair(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "repair session started") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	envelope := requireStartFailureEnvelope(t, err)
+	if envelope.Outcome != StartBoundaryOutcomePromptRepair {
+		t.Fatalf("outcome = %q, want %q", envelope.Outcome, StartBoundaryOutcomePromptRepair)
+	}
+	if envelope.Class != failure.FailureClassBackendRecoverable {
+		t.Fatalf("class = %q, want %q", envelope.Class, failure.FailureClassBackendRecoverable)
+	}
+	if envelope.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("recoverability = %q, want %q", envelope.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+	if envelope.RepairPrompt == nil {
+		t.Fatal("repair prompt metadata not captured")
+	}
+	if envelope.RepairPrompt.Kind != RepairPromptKindMissingScripts {
+		t.Fatalf("repair prompt kind = %q, want %q", envelope.RepairPrompt.Kind, RepairPromptKindMissingScripts)
+	}
+	if envelope.RepairPrompt.Provider != "codex" {
+		t.Fatalf("repair prompt provider = %q, want codex", envelope.RepairPrompt.Provider)
 	}
 	if !strings.Contains(stderr.String(), "started codex session repair-session-1") {
 		t.Fatalf("expected launch confirmation in output: %q", stderr.String())
@@ -432,4 +462,14 @@ func TestBuildBacklogBootstrapPromptContainsWorkSource(t *testing.T) {
 			t.Fatalf("source %q: prompt missing toml config: %q", tt.source, prompt)
 		}
 	}
+}
+
+func requireStartFailureEnvelope(t *testing.T, err error) StartFailureEnvelope {
+	t.Helper()
+
+	var envelope StartFailureEnvelope
+	if !errors.As(err, &envelope) {
+		t.Fatalf("error = %T (%v), want StartFailureEnvelope", err, err)
+	}
+	return envelope
 }

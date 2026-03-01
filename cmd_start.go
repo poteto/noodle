@@ -38,6 +38,7 @@ var newStartRuntimeLoop = func(projectDir, noodleBin string, cfg config.Config, 
 }
 
 var openBrowserFunc = openBrowser
+var launchBrowserCommandFunc = launchBrowserCommand
 
 type startOptions struct {
 	once bool
@@ -183,7 +184,7 @@ func runWebServer(
 	}
 	if os.Getenv("NOODLE_NO_BROWSER") != "1" {
 		logger.Info("opening browser", "url", url)
-		openBrowserFunc(url)
+		_ = openBrowserFunc(url)
 	} else {
 		logger.Info("browser launch skipped", "reason", "NOODLE_NO_BROWSER=1", "url", url)
 	}
@@ -216,7 +217,12 @@ func newAPILogger(w io.Writer) *charmlog.Logger {
 	})
 }
 
-func openBrowser(url string) {
+func openBrowser(url string) StartFailureEnvelope {
+	err := launchBrowserCommandFunc(url)
+	return newStartWarningOnlyEnvelope("browser launch handled as best-effort", err)
+}
+
+func launchBrowserCommand(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -226,6 +232,5 @@ func openBrowser(url string) {
 	default:
 		cmd = exec.Command("xdg-open", url)
 	}
-	// Best-effort; ignore errors (e.g. no display, no browser).
-	_ = cmd.Start()
+	return cmd.Start()
 }
