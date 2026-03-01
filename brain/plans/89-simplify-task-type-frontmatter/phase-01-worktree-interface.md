@@ -1,4 +1,4 @@
-Back to [[plans/89-runtime-merge-detection/overview]]
+Back to [[plans/89-simplify-task-type-frontmatter/overview]]
 
 # Phase 1 — Add `HasUnmergedCommits` to worktree interface
 
@@ -24,6 +24,11 @@ Expose the existing `countUnmergedCommits` logic through the `WorktreeManager` i
 ## Data structures
 
 - No new types. One method addition to an existing interface. Signature returns `(bool, error)` — git failures must not silently become "no changes."
+
+## Principles
+
+- **boundary-discipline** — error at the boundary (git call), don't swallow it internally
+- **make-operations-idempotent** — same worktree state always produces same result
 
 ## Routing
 

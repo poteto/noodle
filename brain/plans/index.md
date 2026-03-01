@@ -4,4 +4,5 @@
 - [ ] [[plans/81-stage-groups/overview]]
 - [ ] [[plans/84-subagent-tracking/overview]]
 - [ ] [[plans/88-subagent-tracking-v2/overview]]
-- [ ] [[plans/89-runtime-merge-detection/overview]]
+- [ ] [[plans/86-diffs-integration/overview]]
+- [ ] [[plans/89-simplify-task-type-frontmatter/overview]]

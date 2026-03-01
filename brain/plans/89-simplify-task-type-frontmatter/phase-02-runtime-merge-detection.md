@@ -1,4 +1,4 @@
-Back to [[plans/89-runtime-merge-detection/overview]]
+Back to [[plans/89-simplify-task-type-frontmatter/overview]]
 
 # Phase 2 — Replace `canMergeStage` with runtime detection
 
@@ -28,11 +28,17 @@ This mirrors the existing two-path merge in `mergeCookWorktree` (local vs `Merge
 - Add `TestAutoMergeWithRemoteSyncResult` — local worktree has no commits, but spawn.json contains a sync result with `type: "branch"`. Verify the stage enters the merge pipeline and calls `MergeRemoteBranch`.
 
 **`loop/sous_chef_test.go`**:
-- Remove `CanMerge: false` from test task type fixtures (field will be deleted in phase 3, but stop using it here)
+- Remove `CanMerge: false` from test task type fixtures (field will be deleted in phase 4, but stop using it here)
 
 ## Data structures
 
 - `worktreeHasChanges` method on `*Loop` — returns `(bool, error)`, no new types
+
+## Principles
+
+- **prove-it-works** — test both local and remote-sync paths; test error propagation
+- **fix-root-causes** — errors fail the stage instead of silently advancing
+- **redesign-from-first-principles** — if we had runtime detection from day one, we'd never have added a static declaration
 
 ## Routing
 
@@ -46,8 +52,7 @@ This mirrors the existing two-path merge in `mergeCookWorktree` (local vs `Merge
 go test ./loop/...
 ```
 
-- Tests that previously relied on `CanMerge: false` now use `hasUnmergedCommits` map on `fakeWorktree`
-- Verify the "execute stage with no commits" case: set `hasUnmergedCommits[name] = false`, confirm stage advances without entering merge pipeline
-- Verify the "execute stage with commits" case: default `true`, confirm merge pipeline runs
-- Verify the "sprites remote-sync" case: local worktree has no commits, spawn.json has sync result with branch — confirm stage enters merge pipeline and calls `MergeRemoteBranch`
+- Verify "no commits" case: `hasUnmergedCommits[name] = false` → stage advances without entering merge pipeline
+- Verify "has commits" case: default `true` → merge pipeline runs
+- Verify "sprites remote-sync" case: local worktree has no commits, spawn.json has sync result with branch → stage enters merge pipeline and calls `MergeRemoteBranch`
 - Verify error propagation: `HasUnmergedCommits` returns error → stage fails, does not advance
