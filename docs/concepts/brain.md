@@ -42,7 +42,7 @@ The brain powers Noodle's self-learning loop through three skills — reflect, m
 
 The brain lives in git because it should evolve with the project. Architecture changes, the brain updates. A principle proves wrong, it gets deleted. When you roll back code, you roll back knowledge too.
 
-Because the brain is markdown files, agents interact with it the same way they interact with code — read a file, write a file. No special API, no database queries.
+Because the brain is markdown, agents interact with it the same way they interact with code. No special API, no database queries.
 
 ## Wikilinks
 

@@ -145,6 +145,6 @@ The scheduling agent now sees `greet` as an available task type and can create o
 
 ## Composition
 
-Skills compose through the file system. The `schedule` skill reads `.noodle/mise.json` and writes orders. The `execute` skill picks up a task and does the work. The `reflect` skill reviews what happened and writes to the brain. Each skill reads from and writes to disk — the contract between skills is files.
+Skills compose naturally. The `schedule` skill reads project state and writes orders. The `execute` skill picks up a task and does the work. The `reflect` skill reviews what happened and writes to the brain. Each skill has a clear input and output, and they coordinate through shared state.
 
-This is intentional. No skill imports another skill. No skill calls another skill's API. They coordinate through shared state on the file system, which means you can swap out any piece without touching the others.
+No skill imports another skill. No skill calls another skill directly. They're independent, which means you can swap out any piece without touching the others.

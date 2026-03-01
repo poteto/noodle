@@ -1,8 +1,6 @@
 # Vision
 
-Agents read files. Agents write files. That's the one thing every coding agent already does well.
-
-Noodle takes a big bet on this. Instead of building another SDK or protocol for agents to learn, Noodle makes the file system the entire API. Every piece of system state is a file on disk. Your agent already knows how to read it, modify it, and act on it. There's no client library to install, no wire protocol to implement, no integration layer sitting between your agent and the work.
+Skills drive everything in Noodle. Every behavior an agent can perform — scheduling work, executing tasks, reviewing code, learning from mistakes — is a skill. There are no plugins, no hooks, no configuration DSL. You extend Noodle by writing skills, and skills are just markdown files.
 
 This sounds almost too simple. It is simple. That's the point.
 
@@ -83,19 +81,15 @@ When an agent reflects after a session, it might notice that a certain test patt
 
 Your principles live here too. If you care about subtracting before you add, or redesigning from first principles instead of patching, the meditate skill finds those themes in your brain and encodes them into your skills. Every future decision an agent makes gets grounded by what your project actually values.
 
-## Everything is really a file
+## Run anywhere
 
-All of Noodle's state lives in your project's `.noodle/` directory. The backlog, the queue, session history, agent status — all files. If it's not on disk, it doesn't exist.
+Noodle can orchestrate agents locally or in the cloud. Local agents run as child processes on your machine. Remote agents run in VMs or containers. The scheduling agent picks the runtime for each task and can match the model to the work — use a powerful model for architecture decisions, a fast one for straightforward implementation.
 
-This has a side effect that matters: composition happens through the file system. Skills don't call other skills through an API. Agents pass state by writing files, and Noodle picks up the changes on the next cycle. A scheduling agent sees new state, evaluates it, and creates follow-up work. There's no task composition API because there doesn't need to be one.
-
-And because all coordination happens through files, Noodle can orchestrate agents anywhere. Local agents run as child processes on your machine. Remote agents run in VMs or containers in the cloud. The scheduling agent picks the runtime for each task and can even match the model to the work — use a powerful model for architecture decisions, a fast one for straightforward implementation.
-
-Run twenty agents in parallel on cloud VMs while your laptop sits idle. Route expensive tasks to powerful remote machines and keep cheap ones local. The agents work on branches, push their changes, and Noodle merges them back. The file-based architecture means there's no difference between local and remote orchestration. It's files either way.
+Run twenty agents in parallel on cloud VMs while your laptop sits idle. Route expensive tasks to powerful remote machines and keep cheap ones local. The agents work on branches, push their changes, and Noodle merges them back.
 
 ## What this means for you
 
-You don't learn Noodle by reading API docs. You learn it by reading a few markdown files and writing your own. Your agents already know how to do the rest.
+You don't learn Noodle by reading API docs. You learn it by reading a few skills and writing your own.
 
 Each skill you write captures how you want work done. Each reflection captures what your agents learned. Each meditation sharpens the whole system. The framework gets better at your project specifically, not at projects in general.
 
