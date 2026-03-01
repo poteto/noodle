@@ -34,6 +34,10 @@ export default defineConfig({
         link: "/getting-started",
       },
       {
+        text: "Install (for Agents)",
+        link: "/install",
+      },
+      {
         text: "Concepts",
         items: [
           { text: "Skills", link: "/concepts/skills" },
