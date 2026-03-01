@@ -4,6 +4,8 @@ import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
 import { ReviewBanner } from "./ReviewBanner";
 import { StreamingDelta } from "./StreamingDelta";
+import { groupConsecutiveTools } from "./group-tools";
+import { ToolGroup } from "./ToolGroup";
 
 function statusColor(status: string): string {
   if (status === "running") {
@@ -148,9 +150,13 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
             No events yet.
           </div>
         )}
-        {events.map((event) => (
-          <MessageRow key={eventKey(event)} event={event} />
-        ))}
+        {groupConsecutiveTools(events).map((item) =>
+          "kind" in item ? (
+            <ToolGroup key={`group-${item.events[0].at}-${item.label}`} group={item} />
+          ) : (
+            <MessageRow key={eventKey(item)} event={item} />
+          ),
+        )}
         {session.status === "running" && <StreamingDelta sessionId={sessionId} />}
       </div>
 

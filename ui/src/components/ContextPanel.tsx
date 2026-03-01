@@ -1,20 +1,14 @@
 import {
   useActiveChannel,
   useSuspenseSnapshot,
-  useSessionEvents,
   useReviewDiff,
   formatCost,
   formatDuration,
 } from "~/client";
-import type { Snapshot, Session, Order, EventLine, PendingReviewItem } from "~/client";
+import type { Snapshot, Session, Order, PendingReviewItem } from "~/client";
 import { MetricCard } from "./MetricCard";
 import { StageRail } from "./StageRail";
 import { DiffViewer } from "./DiffViewer";
-
-interface FileTouched {
-  path: string;
-  action: "read" | "edit" | "write";
-}
 
 function keyByOccurrence(values: string[]): { key: string; value: string }[] {
   const counts = new Map<string, number>();
@@ -33,25 +27,6 @@ function contextFillColor(cwPct: number): string {
     return "var(--color-accent)";
   }
   return "var(--color-green)";
-}
-
-function deriveFilesTouched(events: EventLine[]): FileTouched[] {
-  const files: FileTouched[] = [];
-  const seen = new Set<string>();
-  for (const e of events) {
-    if (["Read", "Edit", "Write"].includes(e.label)) {
-      const path = e.body.split("\n")[0].trim();
-      if (!path) {
-        continue;
-      }
-      const key = `${e.label.toLowerCase()}:${path}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        files.push({ path, action: e.label.toLowerCase() as "read" | "edit" | "write" });
-      }
-    }
-  }
-  return files;
 }
 
 function findOrderForSession(sessionId: string, snapshot: Snapshot): Order | undefined {
@@ -163,9 +138,7 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
 }
 
 function AgentContext({ session, snapshot }: { session: Session; snapshot: Snapshot }) {
-  const { data: events } = useSessionEvents(session.id);
   const order = findOrderForSession(session.id, snapshot);
-  const filesTouched = deriveFilesTouched(events ?? []);
 
   const completedStages = order ? order.stages.filter((s) => s.status === "completed").length : 0;
   const totalStages = order ? order.stages.length : 0;
@@ -220,26 +193,6 @@ function AgentContext({ session, snapshot }: { session: Session; snapshot: Snaps
               </div>
             </div>
           )}
-        </>
-      )}
-
-      {/* Files touched */}
-      {filesTouched.length > 0 && (
-        <>
-          <div className="ctx-section-label">Files ({filesTouched.length})</div>
-          <div className="file-list">
-            {filesTouched.map((f) => (
-              <div key={`${f.action}:${f.path}`} className="file-item">
-                <span className={`file-action ${f.action}`}>{f.action}</span>
-                <span
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  title={f.path}
-                >
-                  {f.path}
-                </span>
-              </div>
-            ))}
-          </div>
         </>
       )}
     </>

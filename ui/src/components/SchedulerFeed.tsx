@@ -3,6 +3,8 @@ import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } fro
 import type { Session } from "~/client";
 import { MessageRow } from "./MessageRow";
 import { StreamingDelta } from "./StreamingDelta";
+import { groupConsecutiveTools } from "./group-tools";
+import { ToolGroup } from "./ToolGroup";
 
 function findSchedulerSession(sessions: Session[]): Session | undefined {
   return sessions.find((s) => s.task_key?.toLowerCase().trim() === "schedule");
@@ -119,9 +121,13 @@ export function SchedulerFeed() {
               : "No scheduler session found. Send a prompt to start."}
           </div>
         )}
-        {events.map((event) => (
-          <MessageRow key={eventKey(event)} event={event} />
-        ))}
+        {groupConsecutiveTools(events).map((item) =>
+          "kind" in item ? (
+            <ToolGroup key={`group-${item.events[0].at}-${item.label}`} group={item} />
+          ) : (
+            <MessageRow key={eventKey(item)} event={item} />
+          ),
+        )}
         {schedulerSession?.status === "running" && schedulerSession.id && (
           <StreamingDelta sessionId={schedulerSession.id} />
         )}
