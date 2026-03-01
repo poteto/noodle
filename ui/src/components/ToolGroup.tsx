@@ -28,13 +28,13 @@ export function ToolGroup({ group }: { group: ToolGroupData }) {
         </span>
         <span className={`tool-group-chevron ${open ? "open" : ""}`}>&#x25B8;</span>
       </button>
-      {open && (
-        <div className="tool-group-children">
+      <div className={`tool-group-children ${open ? "open" : ""}`}>
+        <div>
           {group.events.map((event) => (
             <MessageRow key={eventKey(event)} event={event} hideBadge />
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

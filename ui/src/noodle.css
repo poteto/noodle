@@ -495,6 +495,16 @@
     transform: translateY(0);
   }
 }
+@keyframes thinking-wave {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
 
 /* ============================================================
    FEED — main message area
@@ -587,7 +597,10 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .feed-action-btn:active {
   transform: scale(0.96);
@@ -647,23 +660,45 @@
   color: var(--color-text-tertiary);
   animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .thinking-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 5px;
+  height: 5px;
   background: var(--color-accent);
-  animation: pulse-dot 1.5s ease-in-out infinite;
+  opacity: 0.3;
+  animation: thinking-wave 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 /* --- Message rows --- */
 .message-row {
   position: relative;
   padding: 12px 28px;
-  transition: background 0.15s;
+  border-left: 2px solid transparent;
+  transition:
+    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .message-row:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+/* Manager rows — yellow accent on hover */
+.message-row.type-manager:hover {
+  border-left-color: var(--color-accent);
+}
+/* User rows — gray accent on hover */
+.message-row.type-user:hover {
+  border-left-color: var(--color-border-active);
 }
 
 /* System messages — compact */
@@ -692,6 +727,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tool-oneliner:hover .tool-summary {
+  color: var(--color-text-primary);
 }
 /* Cost line — compact */
 .message-row.type-cost {
@@ -722,43 +761,54 @@
   background: #222;
   border: none;
   color: var(--color-text-primary);
+  transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 /* User badge — white on dark */
 .msg-badge.badge-user {
   background: #222;
   color: var(--color-text-primary);
 }
+.msg-badge.badge-user:hover { background: #2a2a2a; }
 /* Manager badge — black on accent yellow */
 .msg-badge.badge-manager {
   background: var(--color-accent);
   color: black;
 }
+.msg-badge.badge-manager:hover { background: #d4a810; }
 /* Agent badge — black on white */
 .msg-badge.badge-agent {
   background: white;
   color: black;
 }
+.msg-badge.badge-agent:hover { background: #e5e5e5; }
 /* Tool badges — bordered, no fill */
 .msg-badge.badge-read {
   color: var(--color-text-tertiary);
   border: 1px solid var(--color-border-active);
   background: transparent;
 }
+.msg-badge.badge-read:hover { background: rgba(51, 51, 51, 0.3); }
 .msg-badge.badge-edit {
   color: var(--color-yellow);
   border: 1px solid var(--color-yellow);
   background: transparent;
 }
+.msg-badge.badge-edit:hover { background: rgba(245, 197, 24, 0.1); }
 .msg-badge.badge-write {
   color: var(--color-green);
   border: 1px solid var(--color-green);
   background: transparent;
 }
+.msg-badge.badge-write:hover { background: rgba(74, 222, 128, 0.1); }
 .msg-badge.badge-bash {
   color: var(--color-accent);
   border: 1px solid var(--color-accent);
   background: transparent;
 }
+.msg-badge.badge-bash:hover { background: rgba(245, 197, 24, 0.1); }
 
 .msg-body {
   font-family: var(--font-mono);
@@ -795,8 +845,18 @@
 .spawn-divider {
   text-align: center;
   padding: 24px 28px 16px;
-  border-top: 1px dashed var(--color-border-subtle);
-  animation: fade-in 0.3s ease-out;
+  position: relative;
+}
+.spawn-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100%;
+  height: 1px;
+  background: var(--color-border-subtle);
+  transform: translateX(-50%) scaleX(0);
+  animation: spawn-line-draw 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .spawn-divider span {
   display: inline-block;
@@ -809,6 +869,8 @@
   padding: 0 8px;
   position: relative;
   top: -12px;
+  opacity: 0;
+  animation: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
 }
 
 /* Tool group — accordion for consecutive same-type tool calls */
@@ -856,8 +918,22 @@
 .tool-group-chevron.open {
   transform: rotate(90deg);
 }
+.tool-group-children {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tool-group-children > * {
+  overflow: hidden;
+}
+.tool-group-children.open {
+  grid-template-rows: 1fr;
+}
 .tool-group-children .message-row {
   animation: message-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.tool-group-summary:hover .msg-badge {
+  transform: scale(1.05);
 }
 
 /* Suppress entrance animations inside virtualized containers —
@@ -866,6 +942,17 @@
 [data-virtualized] .message-row,
 [data-virtualized] .tool-group {
   animation: none;
+}
+[data-virtualized] .tool-group-children {
+  transition: none;
+}
+[data-virtualized] .spawn-divider::before {
+  animation: none;
+  transform: translateX(-50%) scaleX(1);
+}
+[data-virtualized] .spawn-divider span {
+  animation: none;
+  opacity: 1;
 }
 
 /* Markdown body — rendered Think/Prompt messages */
@@ -1142,6 +1229,14 @@ foreignObject.node.node-clickable .tree-node-card:active {
     padding-right: 16px;
   }
 }
+@keyframes spawn-line-draw {
+  from {
+    transform: translateX(-50%) scaleX(0);
+  }
+  to {
+    transform: translateX(-50%) scaleX(1);
+  }
+}
 
 /* Cost line */
 .cost-line {
@@ -1222,9 +1317,20 @@ foreignObject.node.node-clickable .tree-node-card:active {
     border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes focus-glow-settle {
+  0% {
+    box-shadow: 0 0 0 1px rgba(245, 197, 24, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 1px rgba(245, 197, 24, 0.08);
+  }
+}
 .input-row:focus-within {
   border-color: var(--color-border-active);
-  box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.08);
+  animation: focus-glow-settle 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .input-row-field {
@@ -1291,8 +1397,8 @@ foreignObject.node.node-clickable .tree-node-card:active {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   transition:
-    background 0.12s,
-    transform 0.1s;
+    background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-submit:hover {
   background: #d4a810;
@@ -1318,8 +1424,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   transition:
-    background 0.12s,
-    color 0.12s;
+    background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-stop:hover {
   background: var(--color-border-subtle);
@@ -1588,7 +1695,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
   padding: 4px 10px;
   border: none;
   cursor: pointer;
-  transition: opacity 0.12s;
+  transition:
+    opacity 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-new-order:active {
   transform: scale(0.96);
@@ -1857,13 +1966,5 @@ foreignObject.node.node-clickable .tree-node-card:active {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-@keyframes focus-glow-settle {
-  from {
-    box-shadow: 0 0 0 2px rgba(251, 219, 36, 0.2);
-  }
-  to {
-    box-shadow: 0 0 0 1px rgba(251, 219, 36, 0.15);
   }
 }
