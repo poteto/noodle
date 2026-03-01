@@ -1,0 +1,17 @@
+{
+  "orders": [
+    {
+      "id": "fix-uncommitted-ui-changes",
+      "stages": [
+        {
+          "task_key": "oops",
+          "skill": "oops",
+          "provider": "codex",
+          "model": "gpt-5.3-codex",
+          "status": "active"
+        }
+      ],
+      "status": "active"
+    }
+  ]
+}

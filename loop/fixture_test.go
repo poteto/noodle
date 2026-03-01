@@ -29,6 +29,7 @@ type loopFixtureSetup struct {
 	FailedTargets            map[string]string          `json:"failed_targets"`
 	ActiveSessions           []loopFixtureActiveSession `json:"active_sessions"`
 	AdoptedTargets           []loopFixtureAdoptedTarget `json:"adopted_targets"`
+	RunStartupReconcile      bool                       `json:"run_startup_reconcile"`
 	RecoveryMaxRetries       *int                       `json:"recovery_max_retries"`
 	BootstrapAttempts        int                        `json:"bootstrap_attempts"`
 	BootstrapExhausted       bool                       `json:"bootstrap_exhausted"`
@@ -184,13 +185,21 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			observed := loopFixtureRuntimeDump{
 				States: make(map[string]loopFixtureStateDump, len(fixtureCase.States)),
 			}
-			for _, state := range fixtureCase.States {
+			for idx, state := range fixtureCase.States {
 				applyStateRuntimeSnapshot(t, state, runtimeDir)
-					cfg := cloneConfig(baseCfg)
+				cfg := cloneConfig(baseCfg)
 				if path := strings.TrimSpace(state.ConfigScope.StateOverridePath); path != "" {
 					applyConfigOverride(t, &cfg, path)
 				}
 				l.config = cfg
+				if setup.RunStartupReconcile && idx == 0 {
+					if err := l.loadOrdersState(); err != nil {
+						t.Fatalf("loadOrdersState before reconcile: %v", err)
+					}
+					if err := l.reconcile(context.Background()); err != nil {
+						t.Fatalf("startup reconcile in fixture: %v", err)
+					}
+				}
 
 				err := l.Cycle(context.Background())
 

@@ -72,9 +72,9 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	if err := l.ensureScheduleOrderPresent(); err != nil {
 		return err
 	}
-	// If the schedule stage was left "active" by a crash but no live session
-	// was recovered, reset it to pending so startup can dispatch immediately.
-	if err := l.reconcileStaleActiveScheduleStage(); err != nil {
+	// If any stage was left "active" by a crash but no live session was
+	// recovered for that order, reset it to pending so startup can dispatch.
+	if err := l.reconcileStaleActiveStages(); err != nil {
 		return err
 	}
 
@@ -108,7 +108,7 @@ func (l *Loop) ensureScheduleOrderPresent() error {
 	return nil
 }
 
-func (l *Loop) reconcileStaleActiveScheduleStage() error {
+func (l *Loop) reconcileStaleActiveStages() error {
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (l *Loop) reconcileStaleActiveScheduleStage() error {
 	changed := false
 	for oi := range orders.Orders {
 		order := &orders.Orders[oi]
-		if !isScheduleOrder(*order) || order.Status != OrderStatusActive {
+		if order.Status != OrderStatusActive {
 			continue
 		}
 		if _, adopted := l.cooks.adoptedTargets[order.ID]; adopted {
@@ -127,10 +127,11 @@ func (l *Loop) reconcileStaleActiveScheduleStage() error {
 			if order.Stages[si].Status == StageStatusActive {
 				order.Stages[si].Status = StageStatusPending
 				changed = true
-				l.logger.Info("startup reset stale active schedule stage",
-					"order", order.ID,
-					"stage", si,
-				)
+				if isScheduleOrder(*order) {
+					l.logger.Info("startup reset stale active schedule stage", "order", order.ID, "stage", si)
+				} else {
+					l.logger.Info("startup reset stale active stage", "order", order.ID, "stage", si)
+				}
 			}
 		}
 	}

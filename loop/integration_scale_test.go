@@ -409,6 +409,86 @@ func TestReconcilePreservesActiveScheduleStageWhenRecovered(t *testing.T) {
 	}
 }
 
+func TestReconcileResetsStaleActiveNonScheduleStageAndCycleDispatches(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	const staleOrderID = "fix-uncommitted-ui-changes"
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     staleOrderID,
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "oops",
+						Skill:    "oops",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusActive,
+					},
+				},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	foundPending := false
+	for _, order := range updated.Orders {
+		if order.ID == staleOrderID && len(order.Stages) == 1 && order.Stages[0].Status == StageStatusPending {
+			foundPending = true
+			break
+		}
+	}
+	if !foundPending {
+		t.Fatalf("expected stale active stage reset to pending for %q, got %#v", staleOrderID, updated.Orders)
+	}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+
+	dispatched := false
+	for _, call := range rt.calls {
+		if call.Name == "fix-uncommitted-ui-changes-0-oops" {
+			dispatched = true
+			break
+		}
+	}
+	if !dispatched {
+		t.Fatalf("expected stale order %q to dispatch after reconcile; calls=%#v", staleOrderID, rt.calls)
+	}
+}
+
 // TestMockRuntimeScaleBurstViaRuntimes mirrors TestScaleBurstCompletionProcessesAllOrders
 // but dispatches through the Runtimes map instead of the legacy Dispatcher fallback.
 func TestMockRuntimeScaleBurstViaRuntimes(t *testing.T) {
