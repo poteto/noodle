@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { snapshotToHierarchy } from "./tree-utils";
 import { buildSnapshot, buildOrder, buildSession, buildStage } from "~/test-utils";
 
+function must<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 describe("snapshotToHierarchy", () => {
   it("returns scheduler root with no children for empty snapshot", () => {
     const snapshot = buildSnapshot();
@@ -30,9 +37,7 @@ describe("snapshotToHierarchy", () => {
           id: "o2",
           title: "Add logging",
           status: "active",
-          stages: [
-            buildStage({ task_key: "execute", status: "active", session_id: "s2" }),
-          ],
+          stages: [buildStage({ task_key: "execute", status: "active", session_id: "s2" })],
         }),
       ],
       sessions: [session1, session2],
@@ -43,28 +48,28 @@ describe("snapshotToHierarchy", () => {
     expect(tree.name).toBe("Scheduler");
     expect(tree.children).toHaveLength(2);
 
-    const order1 = tree.children![0]!;
+    const order1 = must(tree.children?.[0], "missing first order");
     expect(order1.name).toBe("Fix auth");
     expect(order1.type).toBe("order");
     expect(order1.status).toBe("active");
     expect(order1.children).toHaveLength(2);
 
-    const stage1 = order1.children![0]!;
+    const stage1 = must(order1.children?.[0], "missing first stage");
     expect(stage1.name).toBe("execute");
     expect(stage1.type).toBe("stage");
     expect(stage1.status).toBe("active");
     expect(stage1.cost).toBe(1.23);
     expect(stage1.model).toBe("opus");
 
-    const stage2 = order1.children![1]!;
+    const stage2 = must(order1.children?.[1], "missing second stage");
     expect(stage2.name).toBe("quality");
     expect(stage2.status).toBe("pending");
     expect(stage2.cost).toBeUndefined();
 
-    const order2 = tree.children![1]!;
+    const order2 = must(tree.children?.[1], "missing second order");
     expect(order2.name).toBe("Add logging");
     expect(order2.children).toHaveLength(1);
-    expect(order2.children![0]!.currentAction).toBe("Write tests");
+    expect(must(order2.children?.[0], "missing order2 stage").currentAction).toBe("Write tests");
   });
 
   it("uses order id when title is missing", () => {
@@ -72,7 +77,7 @@ describe("snapshotToHierarchy", () => {
       orders: [buildOrder({ id: "o-abc", title: undefined })],
     });
     const tree = snapshotToHierarchy(snapshot);
-    expect(tree.children![0]!.name).toBe("o-abc");
+    expect(must(tree.children?.[0], "missing fallback order").name).toBe("o-abc");
   });
 
   it("uses 'stage' as fallback name when task_key is missing", () => {
@@ -84,7 +89,12 @@ describe("snapshotToHierarchy", () => {
       ],
     });
     const tree = snapshotToHierarchy(snapshot);
-    expect(tree.children![0]!.children![0]!.name).toBe("stage");
+    expect(
+      must(
+        must(tree.children?.[0], "missing fallback stage order").children?.[0],
+        "missing fallback stage",
+      ).name,
+    ).toBe("stage");
   });
 
   it("attaches session data to stages with session_id", () => {
@@ -103,7 +113,10 @@ describe("snapshotToHierarchy", () => {
       sessions: [session],
     });
 
-    const stage = snapshotToHierarchy(snapshot).children![0]!.children![0]!;
+    const stage = must(
+      must(snapshotToHierarchy(snapshot).children?.[0], "missing session order").children?.[0],
+      "missing session stage",
+    );
     expect(stage.cost).toBe(5.67);
     expect(stage.model).toBe("haiku");
     expect(stage.currentAction).toBe("Reading file");
@@ -120,7 +133,10 @@ describe("snapshotToHierarchy", () => {
       sessions: [],
     });
 
-    const stage = snapshotToHierarchy(snapshot).children![0]!.children![0]!;
+    const stage = must(
+      must(snapshotToHierarchy(snapshot).children?.[0], "missing actor order").children?.[0],
+      "missing actor stage",
+    );
     expect(stage.sessionId).toBe("actor-42");
   });
 });

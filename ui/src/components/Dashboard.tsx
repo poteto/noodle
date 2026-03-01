@@ -115,9 +115,14 @@ export function Dashboard() {
       <header className="feed-header">
         <div className="feed-title">Dashboard</div>
         <button
+          type="button"
           onClick={() => navigate({ to: "/" })}
           className="feed-action-btn"
-          style={{ background: "var(--color-accent)", color: "var(--color-bg-depth)", fontWeight: 700 }}
+          style={{
+            background: "var(--color-accent)",
+            color: "var(--color-bg-depth)",
+            fontWeight: 700,
+          }}
         >
           New Order
         </button>
@@ -175,7 +180,10 @@ export function Dashboard() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center font-mono text-sm text-border-subtle">
+                <td
+                  colSpan={7}
+                  className="px-3 py-8 text-center font-mono text-sm text-border-subtle"
+                >
                   No sessions
                 </td>
               </tr>
@@ -191,7 +199,9 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="border border-border-subtle bg-bg-surface px-4 py-3 transition-[border-color] duration-150 hover:border-border-active">
       <div className="font-mono text-xl font-bold text-text-primary">{value}</div>
-      <div className="font-display text-xs font-semibold text-text-secondary uppercase tracking-wider">{label}</div>
+      <div className="font-display text-xs font-semibold text-text-secondary uppercase tracking-wider">
+        {label}
+      </div>
     </div>
   );
 }

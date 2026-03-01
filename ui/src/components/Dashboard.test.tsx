@@ -2,15 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { buildSnapshot, buildSession } from "~/test-utils";
+import { Dashboard } from "./Dashboard";
 import type { Snapshot } from "~/client";
 
 let mockSnapshot: Snapshot = buildSnapshot();
 const mockNavigate = vi.fn();
 
 vi.mock("~/client", async () => {
-  const actual = await vi.importActual<typeof import("~/client")>("~/client");
+  const actual = await vi.importActual("~/client");
   return {
-    ...actual,
+    ...(actual as object),
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
   };
 });
@@ -19,8 +20,6 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   createFileRoute: () => () => ({}),
 }));
-
-import { Dashboard } from "./Dashboard";
 
 function setSnapshot(overrides: Partial<Snapshot>) {
   mockSnapshot = buildSnapshot(overrides);
@@ -115,7 +114,7 @@ describe("Dashboard", () => {
         status: "merged",
         model: "sonnet",
         duration_seconds: 300,
-        total_cost_usd: 3.0,
+        total_cost_usd: 3,
       }),
     ];
     setSnapshot({ active, recent });
@@ -190,9 +189,7 @@ describe("Dashboard", () => {
   });
 
   it("uses display_name as title fallback", () => {
-    const active = [
-      buildSession({ id: "s1", display_name: "my-agent", title: undefined }),
-    ];
+    const active = [buildSession({ id: "s1", display_name: "my-agent", title: undefined })];
     setSnapshot({ active, recent: [] });
 
     render(<Dashboard />);
@@ -201,9 +198,7 @@ describe("Dashboard", () => {
   });
 
   it("shows local as host fallback", () => {
-    const active = [
-      buildSession({ id: "s1", remote_host: undefined }),
-    ];
+    const active = [buildSession({ id: "s1", remote_host: undefined })];
     setSnapshot({ active, recent: [] });
 
     render(<Dashboard />);

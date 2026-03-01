@@ -12,9 +12,9 @@ let mockSnapshot: Snapshot = buildSnapshot();
 let mockPathname = "/";
 
 vi.mock("~/client", async () => {
-  const actual = await vi.importActual<typeof import("~/client")>("~/client");
+  const actual = await vi.importActual("~/client");
   return {
-    ...actual,
+    ...(actual as object),
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
     useWSStatus: () => "connected" as const,
     useActiveChannel: () => ({
@@ -27,8 +27,18 @@ vi.mock("~/client", async () => {
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: mockPathname }),
   useNavigate: () => mockNavigate,
-  Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
-    <a href={to} className={className}>{children}</a>
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
   ),
 }));
 
@@ -86,9 +96,7 @@ describe("Sidebar", () => {
           id: "order-1",
           title: "Test order",
           status: "active",
-          stages: [
-            buildStage({ status: "active", task_key: "execute", session_id: "s1" }),
-          ],
+          stages: [buildStage({ status: "active", task_key: "execute", session_id: "s1" })],
         }),
       ],
     });
@@ -121,9 +129,7 @@ describe("Sidebar", () => {
           id: "order-1",
           title: "Test order",
           status: "active",
-          stages: [
-            buildStage({ status: "active", task_key: "execute", session_id: "s1" }),
-          ],
+          stages: [buildStage({ status: "active", task_key: "execute", session_id: "s1" })],
         }),
       ],
     });

@@ -46,16 +46,23 @@
 .sidebar-header:hover .logo-mark {
   transform: rotate(90deg);
 }
-.logo-mark::before, .logo-mark::after {
-  content: '';
+.logo-mark::before,
+.logo-mark::after {
+  content: "";
   position: absolute;
   background: var(--color-accent);
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) rotate(45deg);
 }
-.logo-mark::before { width: 2px; height: 100%; }
-.logo-mark::after { width: 100%; height: 2px; }
+.logo-mark::before {
+  width: 2px;
+  height: 100%;
+}
+.logo-mark::after {
+  width: 100%;
+  height: 2px;
+}
 
 .header-status {
   margin-left: auto;
@@ -88,7 +95,11 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s,
+    transform 0.12s;
   text-decoration: none;
 }
 .nav-item:hover {
@@ -147,10 +158,16 @@
   align-items: center;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.15s, transform 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.15s,
+    transform 0.12s;
   margin-bottom: 1px;
   border: 1px solid transparent;
   gap: 12px;
+  width: 100%;
+  background: transparent;
+  text-align: left;
 }
 .agent-item:hover {
   background: var(--color-bg-surface);
@@ -188,7 +205,10 @@
   border-color: var(--color-accent);
 }
 
-.agent-info { flex: 1; min-width: 0; }
+.agent-info {
+  flex: 1;
+  min-width: 0;
+}
 .agent-name {
   display: block;
   font-family: var(--font-display);
@@ -231,7 +251,14 @@
   margin-top: 2px;
   border: 1px solid transparent;
   border-left: 2px solid transparent;
-  transition: background 0.14s, color 0.14s, border-color 0.14s, transform 0.14s;
+  transition:
+    background 0.14s,
+    color 0.14s,
+    border-color 0.14s,
+    transform 0.14s;
+  width: 100%;
+  text-align: left;
+  background: transparent;
 }
 .tree-order:hover {
   background: rgba(255, 255, 255, 0.02);
@@ -278,7 +305,9 @@
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.14s ease-out;
+  transition:
+    max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.14s ease-out;
   padding-left: 26px;
   margin-left: 8px;
 }
@@ -314,13 +343,27 @@
   margin: 1px 0;
   cursor: default;
   border-left: 1px solid transparent;
-  transition: color 0.14s, transform 0.14s, background-color 0.14s, border-color 0.14s;
+  transition:
+    color 0.14s,
+    transform 0.14s,
+    background-color 0.14s,
+    border-color 0.14s;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
 }
 .tree-stage.stage-clickable:hover {
   color: var(--color-text-secondary);
   background: rgba(255, 255, 255, 0.03);
   border-left-color: rgba(251, 219, 36, 0.3);
   transform: translateX(2px);
+}
+.tree-stage:disabled {
+  cursor: default;
+  opacity: 1;
 }
 .tree-icon {
   flex-shrink: 0;
@@ -357,7 +400,9 @@
   border-radius: 0;
   background: var(--color-text-tertiary);
   flex-shrink: 0;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 .status-dot.active {
   background: var(--color-accent);
@@ -372,8 +417,13 @@
   background: var(--color-text-tertiary);
 }
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* --- Sidebar footer --- */
@@ -399,8 +449,14 @@
 }
 
 @keyframes message-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================================
@@ -504,9 +560,15 @@
 }
 
 /* Scrollbar */
-.feed-content::-webkit-scrollbar { width: 4px; }
-.feed-content::-webkit-scrollbar-track { background: transparent; }
-.feed-content::-webkit-scrollbar-thumb { background: var(--color-border-subtle); }
+.feed-content::-webkit-scrollbar {
+  width: 4px;
+}
+.feed-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.feed-content::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+}
 
 .scroll-fade {
   position: absolute;
@@ -599,10 +661,26 @@
   color: var(--color-text-primary);
   animation: scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.msg-badge.badge-read { color: var(--color-blue); border-color: var(--color-blue); background: transparent; }
-.msg-badge.badge-edit { color: var(--color-yellow); border-color: var(--color-yellow); background: transparent; }
-.msg-badge.badge-write { color: var(--color-green); border-color: var(--color-green); background: transparent; }
-.msg-badge.badge-bash { color: var(--color-green); border-color: var(--color-green); background: transparent; }
+.msg-badge.badge-read {
+  color: var(--color-blue);
+  border-color: var(--color-blue);
+  background: transparent;
+}
+.msg-badge.badge-edit {
+  color: var(--color-yellow);
+  border-color: var(--color-yellow);
+  background: transparent;
+}
+.msg-badge.badge-write {
+  color: var(--color-green);
+  border-color: var(--color-green);
+  background: transparent;
+}
+.msg-badge.badge-bash {
+  color: var(--color-green);
+  border-color: var(--color-green);
+  background: transparent;
+}
 
 .msg-body {
   font-family: var(--font-mono);
@@ -851,11 +929,23 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border-radius: 50%;
   animation: typing-bounce 1.2s infinite;
 }
-.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 @keyframes typing-bounce {
-  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
 
 /* ============================================================
@@ -874,7 +964,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
   padding: 12px 16px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .input-wrapper:focus-within {
   border-color: var(--color-accent);
@@ -895,7 +987,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   max-height: 120px;
   width: 100%;
 }
-.input-wrapper textarea::placeholder { color: var(--color-text-tertiary); }
+.input-wrapper textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
 
 .input-footer {
   display: flex;
@@ -928,11 +1022,20 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   cursor: pointer;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  transition: opacity 0.12s, transform 0.1s;
+  transition:
+    opacity 0.12s,
+    transform 0.1s;
 }
-.btn-submit:hover { opacity: 0.9; }
-.btn-submit:active { transform: scale(0.96); }
-.btn-submit:disabled { opacity: 0.4; cursor: default; }
+.btn-submit:hover {
+  opacity: 0.9;
+}
+.btn-submit:active {
+  transform: scale(0.96);
+}
+.btn-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .btn-stop {
   background: transparent;
@@ -956,8 +1059,12 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 }
 
 @keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
 
 /* ============================================================
@@ -1048,7 +1155,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   gap: 8px;
   padding: 6px 8px;
   border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .stage-item.current {
   background: var(--color-bg-surface);
@@ -1060,12 +1169,24 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   height: 6px;
   border-radius: 0;
   flex-shrink: 0;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
-.stage-dot.done { background: var(--color-green); }
-.stage-dot.active { background: var(--color-accent); box-shadow: 0 0 8px var(--color-accent-dim); animation: pulse 2s infinite; }
-.stage-dot.pending { background: var(--color-text-tertiary); }
-.stage-dot.failed { background: var(--color-red); }
+.stage-dot.done {
+  background: var(--color-green);
+}
+.stage-dot.active {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent-dim);
+  animation: pulse 2s infinite;
+}
+.stage-dot.pending {
+  background: var(--color-text-tertiary);
+}
+.stage-dot.failed {
+  background: var(--color-red);
+}
 
 /* Files touched */
 .file-list {
@@ -1088,9 +1209,15 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border: 1px solid currentColor;
   background: transparent;
 }
-.file-action.read { color: var(--color-blue); }
-.file-action.edit { color: var(--color-yellow); }
-.file-action.write { color: var(--color-green); }
+.file-action.read {
+  color: var(--color-blue);
+}
+.file-action.edit {
+  color: var(--color-yellow);
+}
+.file-action.write {
+  color: var(--color-green);
+}
 
 /* Progress bar */
 .ctx-progress {
@@ -1110,7 +1237,7 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   overflow: hidden;
 }
 .ctx-progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
@@ -1152,7 +1279,6 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   overflow-y: auto;
   padding: 0;
 }
-
 
 .review-session-name {
   color: var(--color-accent);
@@ -1235,7 +1361,11 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   text-transform: uppercase;
   cursor: pointer;
   border: 1.5px solid transparent;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    opacity 0.12s,
+    transform 0.12s;
 }
 
 .review-action-btn:hover {
@@ -1266,11 +1396,11 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 .review-action-danger {
   background: transparent;
   color: var(--color-red);
-  border-color: rgba(248, 113, 113, 0.10);
+  border-color: rgba(248, 113, 113, 0.1);
 }
 
 .review-action-danger:hover {
-  background: rgba(248, 113, 113, 0.10);
+  background: rgba(248, 113, 113, 0.1);
   border-color: var(--color-red);
 }
 
@@ -1293,7 +1423,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border: 1px solid var(--color-border-active);
   color: var(--color-text-primary);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .review-feedback-input:focus {
@@ -1326,7 +1458,9 @@ foreignObject.node.node-clickable .tree-node-card:hover {
   border-bottom: 2px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.12s, border-color 0.2s;
+  transition:
+    color 0.12s,
+    border-color 0.2s;
 }
 
 .review-tab:hover {

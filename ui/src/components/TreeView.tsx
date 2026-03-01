@@ -1,5 +1,13 @@
 import { useRef, useEffect, useCallback } from "react";
-import * as d3 from "d3";
+import { hierarchy, select, tree, zoom as createZoom, zoomIdentity } from "d3";
+import type {
+  D3ZoomEvent,
+  HierarchyNode,
+  HierarchyPointLink,
+  HierarchyPointNode,
+  ZoomBehavior,
+  ZoomTransform,
+} from "d3";
 import { useSuspenseSnapshot, formatCost } from "~/client";
 import { useNavigate } from "@tanstack/react-router";
 import type { Snapshot } from "~/client";
@@ -11,7 +19,7 @@ const NODE_HEIGHT = 70;
 const NODE_HORIZONTAL_GAP = 20;
 const NODE_VERTICAL_GAP = 60;
 
-type PointNode = d3.HierarchyPointNode<TreeNodeData>;
+type PointNode = HierarchyPointNode<TreeNodeData>;
 
 const statusDotColors: Record<string, string> = {
   active: "var(--color-accent)",
@@ -23,14 +31,14 @@ const statusDotColors: Record<string, string> = {
 };
 
 // Persist zoom transform across route navigations.
-let savedTransform: d3.ZoomTransform | null = null;
+let savedTransform: ZoomTransform | null = null;
 
 function esc(s: string): string {
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function nodeHTML(data: TreeNodeData): string {
@@ -46,17 +54,17 @@ function nodeHTML(data: TreeNodeData): string {
   }
 
   const costLine =
-    data.cost != null
+    typeof data.cost === "number"
       ? `<div class="tree-node-detail" style="margin-top:2px">${formatCost(data.cost)}</div>`
       : "";
 
   return `<div xmlns="http://www.w3.org/1999/xhtml" class="tree-node-card" style="border-color:${borderColor}"><div class="tree-node-header"><span class="tree-node-dot" style="background:${dotColor}"></span><span class="tree-node-name">${esc(data.name)}</span></div>${detail}${costLine}</div>`;
 }
 
-function nodeKey(d: d3.HierarchyNode<TreeNodeData>): string {
+function nodeKey(d: HierarchyNode<TreeNodeData>): string {
   return d
     .ancestors()
-    .reverse()
+    .toReversed()
     .map((a) => a.data.name)
     .join("/");
 }
@@ -71,47 +79,54 @@ function actorSessionId(data: TreeNodeData): string | null {
 function renderTree(
   svgEl: SVGSVGElement,
   snapshot: Snapshot,
-  zoomRef: React.MutableRefObject<d3.ZoomBehavior<SVGSVGElement, unknown> | null>,
-  onActorClick: (sessionId: string) => void,
+  options: {
+    zoomRef: React.MutableRefObject<ZoomBehavior<SVGSVGElement, unknown> | null>;
+    onActorClick: (sessionId: string) => void;
+  },
 ) {
-  const root = d3.hierarchy(snapshotToHierarchy(snapshot));
-  const treeLayout = d3
-    .tree<TreeNodeData>()
-    .nodeSize([NODE_WIDTH + NODE_HORIZONTAL_GAP, NODE_HEIGHT + NODE_VERTICAL_GAP]);
-  treeLayout(root);
+  const { zoomRef, onActorClick } = options;
+  const rootNode = hierarchy(snapshotToHierarchy(snapshot));
+  const treeLayout = tree<TreeNodeData>().nodeSize([
+    NODE_WIDTH + NODE_HORIZONTAL_GAP,
+    NODE_HEIGHT + NODE_VERTICAL_GAP,
+  ]);
+  treeLayout(rootNode);
 
-  const svg = d3.select(svgEl);
+  const svg = select(svgEl);
 
   // Reuse or create the pan/zoom group.
   let g = svg.select<SVGGElement>("g.tree-content");
   if (g.empty()) {
     g = svg.append("g").attr("class", "tree-content");
 
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
+    const width = svgEl.clientWidth || 800;
+    const height = svgEl.clientHeight || 600;
+    const zoomBehavior = createZoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 3])
-      .on("zoom", (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
+      .extent([
+        [0, 0],
+        [width, height],
+      ])
+      .on("zoom", (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr("transform", event.transform.toString());
         savedTransform = event.transform;
       });
-    svg.call(zoom);
-    zoomRef.current = zoom;
+    svg.call(zoomBehavior);
+    zoomRef.current = zoomBehavior;
 
     if (savedTransform) {
       // Restore previous position.
-      svg.call(zoom.transform, savedTransform);
+      svg.call(zoomBehavior.transform, savedTransform);
     } else {
       // Center on the scheduler (root) node.
-      const width = svgEl.clientWidth || 800;
-      const height = svgEl.clientHeight || 600;
-      const t = d3.zoomIdentity.translate(width / 2, height / 2);
-      svg.call(zoom.transform, t);
+      const t = zoomIdentity.translate(width / 2, height / 2);
+      svg.call(zoomBehavior.transform, t);
     }
   }
 
   // Edges — join by index (stateless paths, no identity needed).
-  g.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNodeData>>("path.link")
-    .data(root.links())
+  g.selectAll<SVGPathElement, HierarchyPointLink<TreeNodeData>>("path.link")
+    .data(rootNode.links())
     .join("path")
     .attr("class", "link")
     .attr("d", (d) => {
@@ -121,7 +136,7 @@ function renderTree(
     })
     .attr("fill", "none")
     .attr("stroke", (d) => {
-      const status = (d.target as PointNode).data.status;
+      const { status } = (d.target as PointNode).data;
       return status === "active" || status === "running"
         ? "var(--color-accent)"
         : "var(--color-border-subtle)";
@@ -133,7 +148,7 @@ function renderTree(
 
   // Nodes — join by path key so D3 reuses existing foreignObjects.
   g.selectAll<SVGForeignObjectElement, PointNode>("foreignObject.node")
-    .data(root.descendants(), nodeKey)
+    .data(rootNode.descendants(), (d) => nodeKey(d))
     .join(
       (enter) =>
         enter
@@ -154,7 +169,7 @@ function renderTree(
         onActorClick(sessionId);
       }
     })
-    .each(function (d) {
+    .each(function renderNode(this: SVGForeignObjectElement, d) {
       this.innerHTML = nodeHTML(d.data);
     });
 }
@@ -163,7 +178,7 @@ export function TreeView() {
   const { data: snapshot } = useSuspenseSnapshot();
   const navigate = useNavigate();
   const svgRef = useRef<SVGSVGElement>(null);
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const handleActorClick = useCallback(
     (sessionId: string) => {
       navigate({ to: "/actor/$id", params: { id: sessionId } });
@@ -173,19 +188,22 @@ export function TreeView() {
 
   useEffect(() => {
     if (svgRef.current) {
-      renderTree(svgRef.current, snapshot, zoomRef, handleActorClick);
+      renderTree(svgRef.current, snapshot, { zoomRef, onActorClick: handleActorClick });
     }
   }, [snapshot, handleActorClick]);
 
   const handleZoomIn = useCallback(() => {
     if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
+      select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
     }
   }, []);
 
   const handleZoomOut = useCallback(() => {
     if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1 / 1.4);
+      select(svgRef.current)
+        .transition()
+        .duration(200)
+        .call(zoomRef.current.scaleBy, 1 / 1.4);
     }
   }, []);
 
@@ -194,19 +212,18 @@ export function TreeView() {
       className="h-full w-full relative"
       style={{
         background: "var(--color-bg-depth)",
-        backgroundImage:
-          "radial-gradient(circle, var(--color-border-subtle) 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(circle, var(--color-border-subtle) 1px, transparent 1px)",
         backgroundSize: "24px 24px",
       }}
     >
-      <svg
-        ref={svgRef}
-        className="w-full h-full"
-        style={{ display: "block" }}
-      />
+      <svg ref={svgRef} className="w-full h-full" style={{ display: "block" }} />
       <div className="tree-zoom-controls">
-        <button type="button" onClick={handleZoomIn}>+</button>
-        <button type="button" onClick={handleZoomOut}>&minus;</button>
+        <button type="button" onClick={handleZoomIn}>
+          +
+        </button>
+        <button type="button" onClick={handleZoomOut}>
+          &minus;
+        </button>
       </div>
     </div>
   );

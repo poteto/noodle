@@ -22,11 +22,21 @@ function initials(label: string): string {
 }
 
 function typeClass(event: EventLine): string {
-  if (event.category === "ticket") return "type-system";
-  if (event.label === "Cost") return "type-cost";
-  if (event.label === "Think") return "type-system";
-  if (event.label === "Manager") return "from-manager";
-  if (event.label === "User") return "from-user";
+  if (event.category === "ticket") {
+    return "type-system";
+  }
+  if (event.label === "Cost") {
+    return "type-cost";
+  }
+  if (event.label === "Think") {
+    return "type-system";
+  }
+  if (event.label === "Manager") {
+    return "from-manager";
+  }
+  if (event.label === "User") {
+    return "from-user";
+  }
   return "";
 }
 
@@ -40,7 +50,9 @@ function tryFormatJson(text: string): string | null {
 }
 
 function BodyContent({ event }: { event: EventLine }) {
-  if (!event.body) return null;
+  if (!event.body) {
+    return null;
+  }
 
   if (MARKDOWN_LABELS.has(event.label)) {
     return <MarkdownBody text={event.body} />;
@@ -68,7 +80,9 @@ export function MessageRow({ event }: { event: EventLine }) {
   if (event.label === "Cost") {
     return (
       <div className="message-row type-cost">
-        <span className="msg-body" style={{ fontSize: 12 }}>{event.body}</span>
+        <span className="msg-body" style={{ fontSize: 12 }}>
+          {event.body}
+        </span>
       </div>
     );
   }

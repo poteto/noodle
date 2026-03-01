@@ -10,14 +10,20 @@ const dotClass: Record<StageStatus, string> = {
 };
 
 export function StageRail({ stages }: { stages: Stage[] }) {
-  if (stages.length === 0) return null;
+  if (stages.length === 0) {
+    return null;
+  }
 
   return (
     <div className="stage-rail">
       {stages.map((stage, i) => {
         const isActive = stage.status === "active";
+        const stageKey =
+          stage.session_id ||
+          stage.task_key ||
+          `${stage.skill || "stage"}:${stage.provider}:${stage.model}:${stage.group ?? "none"}`;
         return (
-          <div key={stage.task_key || i} className={`stage-item ${isActive ? "current" : ""}`}>
+          <div key={stageKey} className={`stage-item ${isActive ? "current" : ""}`}>
             <div className={`stage-dot ${dotClass[stage.status] || "pending"}`} />
             <span>{stage.task_key || stage.skill || `Stage ${i + 1}`}</span>
           </div>

@@ -9,9 +9,9 @@ const mockSend = vi.fn();
 let mockSnapshot: Snapshot = buildSnapshot();
 
 vi.mock("~/client", async () => {
-  const actual = await vi.importActual<typeof import("~/client")>("~/client");
+  const actual = await vi.importActual("~/client");
   return {
-    ...actual,
+    ...(actual as Record<string, unknown>),
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
     useSendControl: () => ({ mutate: mockSend, isPending: false }),
     useSessionEvents: () => ({ data: [] }),

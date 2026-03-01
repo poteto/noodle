@@ -9,7 +9,7 @@ beforeEach(() => {
 });
 
 function jsonResponse(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
+  return Response.json(data, {
     status,
     headers: { "Content-Type": "application/json" },
   });

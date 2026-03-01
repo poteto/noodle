@@ -36,7 +36,9 @@ export function DiffViewer({ diff, stat, isLoading, error }: DiffViewerProps) {
     <div className="flex flex-col h-full">
       {stat && (
         <div className="px-3 py-2 bg-bg-surface border-b border-border-subtle shrink-0">
-          <pre className="whitespace-pre font-mono text-sm text-text-primary leading-relaxed">{stat}</pre>
+          <pre className="whitespace-pre font-mono text-sm text-text-primary leading-relaxed">
+            {stat}
+          </pre>
         </div>
       )}
       <div className="overflow-y-auto flex-1">

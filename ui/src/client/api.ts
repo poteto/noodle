@@ -22,7 +22,7 @@ export function normalizeSnapshot(raw: Snapshot): Snapshot {
     sessions: raw.sessions ?? [],
     active: raw.active ?? [],
     recent: raw.recent ?? [],
-    orders: (raw.orders ?? []).map(normalizeOrder),
+    orders: (raw.orders ?? []).map((order) => normalizeOrder(order)),
     active_order_ids: raw.active_order_ids ?? [],
     action_needed: raw.action_needed ?? [],
     events_by_session: raw.events_by_session ?? {},

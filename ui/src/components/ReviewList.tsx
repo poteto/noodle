@@ -10,10 +10,21 @@ function ReviewReport({ review }: { review: PendingReviewItem }) {
     <main className="review-report">
       <header className="feed-header">
         <div className="feed-title">
-          Quality Review: <span className="review-session-name">{review.session_id || review.order_id}</span>
+          Quality Review:{" "}
+          <span className="review-session-name">{review.session_id || review.order_id}</span>
           {review.task_key && <span className="feed-badge badge-task">{review.task_key}</span>}
         </div>
-        {review.reason && <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>{review.reason}</span>}
+        {review.reason && (
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              color: "var(--color-text-tertiary)",
+            }}
+          >
+            {review.reason}
+          </span>
+        )}
       </header>
 
       <section className="review-section">
@@ -90,20 +101,36 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleRequestChanges();
-              if (e.key === "Escape") setShowFeedback(false);
+              if (e.key === "Enter") {
+                handleRequestChanges();
+              }
+              if (e.key === "Escape") {
+                setShowFeedback(false);
+              }
             }}
             autoFocus
           />
         )}
-        <button type="button" className="review-action-btn review-action-primary" onClick={handleMerge}>
+        <button
+          type="button"
+          className="review-action-btn review-action-primary"
+          onClick={handleMerge}
+        >
           Approve &amp; Merge
         </button>
         <div className="review-action-row">
-          <button type="button" className="review-action-btn review-action-outline" onClick={handleRequestChanges}>
+          <button
+            type="button"
+            className="review-action-btn review-action-outline"
+            onClick={handleRequestChanges}
+          >
             {showFeedback ? "Send" : "Request Changes"}
           </button>
-          <button type="button" className="review-action-btn review-action-danger" onClick={handleReject}>
+          <button
+            type="button"
+            className="review-action-btn review-action-danger"
+            onClick={handleReject}
+          >
             Dismiss Order
           </button>
         </div>

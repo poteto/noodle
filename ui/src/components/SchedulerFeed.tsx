@@ -8,6 +8,10 @@ function findSchedulerSession(sessions: Session[]): Session | undefined {
   return sessions.find((s) => s.task_key?.toLowerCase().trim() === "schedule");
 }
 
+function eventKey(event: { at: string; category: string; label: string; body: string }): string {
+  return `${event.at}:${event.category}:${event.label}:${event.body}`;
+}
+
 export function SchedulerFeed() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send, isPending } = useSendControl();
@@ -100,8 +104,8 @@ export function SchedulerFeed() {
               : "No scheduler session found. Send a prompt to start."}
           </div>
         )}
-        {events.map((event, i) => (
-          <MessageRow key={`${event.at}:${i}`} event={event} />
+        {events.map((event) => (
+          <MessageRow key={eventKey(event)} event={event} />
         ))}
         {schedulerSession?.status === "running" && schedulerSession.id && (
           <StreamingDelta sessionId={schedulerSession.id} />

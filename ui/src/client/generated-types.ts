@@ -5,7 +5,6 @@ export type { PendingReviewItem } from "./generated-loop-types";
 //////////
 // source: snapshot_builder.go
 
-
 //////////
 // source: types.go
 
@@ -57,7 +56,7 @@ export interface Snapshot {
   orders: Order[];
   active_order_ids: string[];
   action_needed: string[];
-  events_by_session: { [key: string]: EventLine[]};
+  events_by_session: Record<string, EventLine[]>;
   feed_events: FeedEvent[];
   total_cost_usd: number /* float64 */;
   pending_reviews: PendingReviewItem[];
@@ -115,7 +114,7 @@ export interface Stage {
   runtime?: string;
   group?: number /* int */;
   status: string;
-  extra?: { [key: string]: unknown};
+  extra?: Record<string, unknown>;
   session_id?: string;
 }
 /**

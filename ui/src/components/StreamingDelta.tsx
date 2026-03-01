@@ -47,6 +47,7 @@ function createRenderer(root: HTMLElement) {
         if (currentLang && getScopeFromLang(currentLang)) {
           void highlightCode(raw, currentLang).then((html) => {
             node.innerHTML = html;
+            return html;
           });
         }
         codeNode = null;

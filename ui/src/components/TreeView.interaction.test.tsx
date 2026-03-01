@@ -8,19 +8,17 @@ const mockNavigate = vi.fn();
 let mockSnapshot: Snapshot = buildSnapshot();
 
 vi.mock("~/client", async () => {
-  const actual = await vi.importActual<typeof import("~/client")>("~/client");
+  const actual = await vi.importActual("~/client");
   return {
-    ...actual,
+    ...(actual as object),
     useSuspenseSnapshot: () => ({ data: mockSnapshot }),
   };
 });
 
 vi.mock("@tanstack/react-router", async () => {
-  const actual = await vi.importActual<typeof import("@tanstack/react-router")>(
-    "@tanstack/react-router",
-  );
+  const actual = await vi.importActual("@tanstack/react-router");
   return {
-    ...actual,
+    ...(actual as object),
     useNavigate: () => mockNavigate,
   };
 });
@@ -28,14 +26,6 @@ vi.mock("@tanstack/react-router", async () => {
 beforeEach(() => {
   mockNavigate.mockReset();
   mockSnapshot = buildSnapshot();
-  Object.defineProperty(SVGSVGElement.prototype, "width", {
-    configurable: true,
-    value: { baseVal: { value: 1200 } },
-  });
-  Object.defineProperty(SVGSVGElement.prototype, "height", {
-    configurable: true,
-    value: { baseVal: { value: 800 } },
-  });
 });
 
 describe("TreeView actor navigation", () => {
@@ -63,7 +53,12 @@ describe("TreeView actor navigation", () => {
     const clickableNodes = container.querySelectorAll(".node.node-clickable");
     expect(clickableNodes).toHaveLength(1);
 
-    fireEvent.click(clickableNodes[0]!);
+    const firstClickable = clickableNodes.item(0);
+    expect(firstClickable).not.toBeNull();
+    if (!firstClickable) {
+      throw new Error("expected clickable actor node");
+    }
+    fireEvent.click(firstClickable);
 
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/actor/$id",

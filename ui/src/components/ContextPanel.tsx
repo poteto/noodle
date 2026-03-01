@@ -1,4 +1,11 @@
-import { useActiveChannel, useSuspenseSnapshot, useSessionEvents, useReviewDiff, formatCost, formatDuration } from "~/client";
+import {
+  useActiveChannel,
+  useSuspenseSnapshot,
+  useSessionEvents,
+  useReviewDiff,
+  formatCost,
+  formatDuration,
+} from "~/client";
 import type { Snapshot, Session, Order, EventLine, PendingReviewItem } from "~/client";
 import { MetricCard } from "./MetricCard";
 import { StageRail } from "./StageRail";
@@ -9,13 +16,34 @@ interface FileTouched {
   action: "read" | "edit" | "write";
 }
 
+function keyByOccurrence(values: string[]): { key: string; value: string }[] {
+  const counts = new Map<string, number>();
+  return values.map((value) => {
+    const next = (counts.get(value) ?? 0) + 1;
+    counts.set(value, next);
+    return { key: `${value}:${next}`, value };
+  });
+}
+
+function contextFillColor(cwPct: number): string {
+  if (cwPct > 80) {
+    return "var(--color-red)";
+  }
+  if (cwPct > 50) {
+    return "var(--color-accent)";
+  }
+  return "var(--color-green)";
+}
+
 function deriveFilesTouched(events: EventLine[]): FileTouched[] {
   const files: FileTouched[] = [];
   const seen = new Set<string>();
   for (const e of events) {
     if (["Read", "Edit", "Write"].includes(e.label)) {
       const path = e.body.split("\n")[0].trim();
-      if (!path) continue;
+      if (!path) {
+        continue;
+      }
       const key = `${e.label.toLowerCase()}:${path}`;
       if (!seen.has(key)) {
         seen.add(key);
@@ -26,10 +54,7 @@ function deriveFilesTouched(events: EventLine[]): FileTouched[] {
   return files;
 }
 
-function findOrderForSession(
-  sessionId: string,
-  snapshot: Snapshot,
-): Order | undefined {
+function findOrderForSession(sessionId: string, snapshot: Snapshot): Order | undefined {
   return snapshot.orders.find((order) =>
     order.stages.some((stage) => stage.session_id === sessionId),
   );
@@ -39,6 +64,7 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
   const activeCount = snapshot.active.length;
   const orderCount = snapshot.orders.length;
   const warningCount = snapshot.warnings?.length ?? 0;
+  const warningsWithKeys = keyByOccurrence(snapshot.warnings ?? []);
 
   return (
     <>
@@ -56,13 +82,13 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
           <>
             <div className="ctx-section-label">Warnings</div>
             <div className="file-list">
-              {snapshot.warnings.map((w, i) => (
+              {warningsWithKeys.map((warning) => (
                 <div
-                  key={i}
+                  key={warning.key}
                   className="file-item"
                   style={{ color: "var(--color-red)", lineHeight: 1.8 }}
                 >
-                  {w}
+                  {warning.value}
                 </div>
               ))}
             </div>
@@ -73,20 +99,12 @@ function SchedulerContext({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function AgentContext({
-  session,
-  snapshot,
-}: {
-  session: Session;
-  snapshot: Snapshot;
-}) {
+function AgentContext({ session, snapshot }: { session: Session; snapshot: Snapshot }) {
   const { data: events } = useSessionEvents(session.id);
   const order = findOrderForSession(session.id, snapshot);
   const filesTouched = deriveFilesTouched(events ?? []);
 
-  const completedStages = order
-    ? order.stages.filter((s) => s.status === "completed").length
-    : 0;
+  const completedStages = order ? order.stages.filter((s) => s.status === "completed").length : 0;
   const totalStages = order ? order.stages.length : 0;
   const progressPct = totalStages > 0 ? (completedStages / totalStages) * 100 : 0;
   const cwPct = Math.round(session.context_window_usage_pct);
@@ -110,7 +128,7 @@ function AgentContext({
               className="ctx-progress-fill"
               style={{
                 width: `${Math.min(cwPct, 100)}%`,
-                background: cwPct > 80 ? "var(--color-red)" : cwPct > 50 ? "var(--color-accent)" : "var(--color-green)",
+                background: contextFillColor(cwPct),
               }}
             />
           </div>
@@ -134,7 +152,9 @@ function AgentContext({
                   />
                 </div>
                 <div className="ctx-progress-label">
-                  <span>{completedStages}/{totalStages} stages</span>
+                  <span>
+                    {completedStages}/{totalStages} stages
+                  </span>
                 </div>
               </div>
             )}
@@ -146,10 +166,13 @@ function AgentContext({
           <>
             <div className="ctx-section-label">Files ({filesTouched.length})</div>
             <div className="file-list">
-              {filesTouched.map((f, i) => (
-                <div key={i} className="file-item">
+              {filesTouched.map((f) => (
+                <div key={`${f.action}:${f.path}`} className="file-item">
                   <span className={`file-action ${f.action}`}>{f.action}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.path}>
+                  <span
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    title={f.path}
+                  >
                     {f.path}
                   </span>
                 </div>
@@ -189,31 +212,37 @@ export function ContextPanel() {
 
   const pendingReview =
     activeChannel.type === "agent"
-      ? snapshot.pending_reviews?.find(
-          (r) => r.session_id === activeChannel.sessionId,
-        )
+      ? snapshot.pending_reviews?.find((r) => r.session_id === activeChannel.sessionId)
       : undefined;
+
+  let content = (
+    <>
+      <div className="context-header">Agent</div>
+      <div className="context-body">
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            color: "var(--color-text-tertiary)",
+          }}
+        >
+          Session not found
+        </span>
+      </div>
+    </>
+  );
+
+  if (activeChannel.type === "scheduler") {
+    content = <SchedulerContext snapshot={snapshot} />;
+  } else if (pendingReview) {
+    content = <ReviewDiffPanel review={pendingReview} />;
+  } else if (session) {
+    content = <AgentContext session={session} snapshot={snapshot} />;
+  }
 
   return (
     <aside className="context-panel">
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {activeChannel.type === "scheduler" ? (
-          <SchedulerContext snapshot={snapshot} />
-        ) : pendingReview ? (
-          <ReviewDiffPanel review={pendingReview} />
-        ) : session ? (
-          <AgentContext session={session} snapshot={snapshot} />
-        ) : (
-          <>
-            <div className="context-header">Agent</div>
-            <div className="context-body">
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-tertiary)" }}>
-                Session not found
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+      <div style={{ flex: 1, overflowY: "auto" }}>{content}</div>
     </aside>
   );
 }

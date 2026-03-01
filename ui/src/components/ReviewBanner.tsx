@@ -35,9 +35,7 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
         Ready for review
       </div>
       {review.reason && (
-        <div className="text-xs font-body text-neutral-400 mb-3">
-          {review.reason}
-        </div>
+        <div className="text-xs font-body text-neutral-400 mb-3">{review.reason}</div>
       )}
 
       {showFeedback && (
@@ -49,8 +47,12 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleRequestChanges();
-              if (e.key === "Escape") setShowFeedback(false);
+              if (e.key === "Enter") {
+                handleRequestChanges();
+              }
+              if (e.key === "Escape") {
+                setShowFeedback(false);
+              }
             }}
             autoFocus
           />

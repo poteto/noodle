@@ -22,9 +22,7 @@ export function AppError({ error, reset }: ErrorComponentProps) {
 
       <div className="flex flex-1 items-center justify-center bg-bg-depth min-h-0 p-10">
         <div className="bg-bg-surface border border-border-subtle border-l-4 border-l-red p-10 max-w-[480px] w-full animate-fade-in">
-          <h2 className="font-display font-bold text-xl text-text-primary mb-1">
-            Something broke
-          </h2>
+          <h2 className="font-display font-bold text-xl text-text-primary mb-1">Something broke</h2>
           <p className="text-neutral-500 text-sm mb-6">
             The dashboard couldn&apos;t load. This usually means the noodle server is down or
             restarting.

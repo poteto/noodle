@@ -3,7 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useActiveChannel, useSuspenseSnapshot } from "~/client";
 import type { ChannelId } from "~/client";
 
-function buildChannelList(snapshot: { orders: Array<{ stages: Array<{ session_id?: string }> }> }): ChannelId[] {
+function buildChannelList(snapshot: {
+  orders: { stages: { session_id?: string }[] }[];
+}): ChannelId[] {
   const channels: ChannelId[] = [{ type: "scheduler" }];
   for (const order of snapshot.orders) {
     for (const stage of order.stages) {
@@ -17,8 +19,12 @@ function buildChannelList(snapshot: { orders: Array<{ stages: Array<{ session_id
 
 function channelIndex(channels: ChannelId[], active: ChannelId): number {
   return channels.findIndex((ch) => {
-    if (ch.type !== active.type) return false;
-    if (ch.type === "agent" && active.type === "agent") return ch.sessionId === active.sessionId;
+    if (ch.type !== active.type) {
+      return false;
+    }
+    if (ch.type === "agent" && active.type === "agent") {
+      return ch.sessionId === active.sessionId;
+    }
     return true;
   });
 }
@@ -43,7 +49,9 @@ export function FeedKeyboardHandler() {
       if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !inInput) {
         e.preventDefault();
         const channels = buildChannelList(snapshot);
-        if (channels.length < 2) return;
+        if (channels.length < 2) {
+          return;
+        }
         const idx = channelIndex(channels, activeChannel);
         const next =
           e.key === "ArrowDown"
@@ -61,8 +69,8 @@ export function FeedKeyboardHandler() {
   );
 
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    globalThis.addEventListener("keydown", handleKeyDown);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
   return null;

@@ -9,31 +9,27 @@ import type {
   Stage as RawStage,
   EventLine as RawEventLine,
 } from "./generated-types";
+import type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
 export type { FeedEvent } from "./generated-types";
 export type { PendingReviewItem } from "./generated-loop-types";
 
-export type {
-  LoopState,
-  Health,
-  TraceFilter,
-  StageStatus,
-  OrderStatus,
-} from "./enums";
-
-import type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
+export type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
 
 export interface EventLine extends Omit<RawEventLine, "category"> {
   category: TraceFilter;
 }
 
 // Narrow the `string` fields that correspond to enum-like Go constants.
-export interface Snapshot extends Omit<RawSnapshot, "loop_state" | "sessions" | "active" | "recent" | "orders" | "events_by_session"> {
+export interface Snapshot extends Omit<
+  RawSnapshot,
+  "loop_state" | "sessions" | "active" | "recent" | "orders" | "events_by_session"
+> {
   loop_state: LoopState;
   sessions: Session[];
   active: Session[];
   recent: Session[];
   orders: Order[];
-  events_by_session: { [key: string]: EventLine[] };
+  events_by_session: Record<string, EventLine[]>;
 }
 
 export interface Session extends Omit<RawSession, "health" | "loop_state"> {
@@ -84,9 +80,9 @@ export type ControlCommand = { id?: string } & (
   | { action: "mode"; value: string }
   | { action: "set-max-cooks"; value: string }
   | { action: "reorder"; order_id: string; value: string }
-  | { action: "enqueue"; order_id: string } & StageFields
-  | { action: "edit-item"; order_id: string } & StageFields
-  | { action: "add-stage"; order_id: string; task_key: string } & Omit<StageFields, "task_key">
+  | ({ action: "enqueue"; order_id: string } & StageFields)
+  | ({ action: "edit-item"; order_id: string } & StageFields)
+  | ({ action: "add-stage"; order_id: string; task_key: string } & Omit<StageFields, "task_key">)
 );
 
 export type ControlAction = ControlCommand["action"];
@@ -106,6 +102,4 @@ export interface ConfigDefaults {
   task_types: string[];
 }
 
-export type ChannelId =
-  | { type: "scheduler" }
-  | { type: "agent"; sessionId: string };
+export type ChannelId = { type: "scheduler" } | { type: "agent"; sessionId: string };

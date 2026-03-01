@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useActiveChannel, ActiveChannelProvider } from "./hooks";
@@ -5,7 +6,7 @@ import type { ChannelId } from "./types";
 
 function createWrapper(channel: ChannelId, onChange = vi.fn()) {
   return ({ children }: { children: React.ReactNode }) =>
-    ActiveChannelProvider({ channel, onChannelChange: onChange, children });
+    createElement(ActiveChannelProvider, { channel, onChannelChange: onChange }, children);
 }
 
 describe("useActiveChannel", () => {

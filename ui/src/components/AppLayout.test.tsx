@@ -4,9 +4,9 @@ import { AppLayout } from "./AppLayout";
 import { buildSnapshot } from "../test-utils";
 
 vi.mock("~/client", async () => {
-  const actual = await vi.importActual<typeof import("~/client")>("~/client");
+  const actual = await vi.importActual("~/client");
   return {
-    ...actual,
+    ...(actual as Record<string, unknown>),
     useSuspenseSnapshot: () => ({ data: buildSnapshot() }),
     useWSStatus: () => "connected" as const,
     useSendControl: () => ({ mutate: vi.fn(), isPending: false }),
@@ -21,8 +21,18 @@ vi.mock("~/client", async () => {
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/" }),
   useNavigate: () => vi.fn(),
-  Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
-    <a href={to} className={className}>{children}</a>
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
   ),
 }));
 

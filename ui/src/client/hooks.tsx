@@ -1,9 +1,24 @@
 import { createElement, createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { connectWS, SNAPSHOT_KEY, subscribeSession, unsubscribeSession, sendWSControl, subscribeWSStatus, getWSStatus } from "./ws";
+import {
+  connectWS,
+  SNAPSHOT_KEY,
+  subscribeSession,
+  unsubscribeSession,
+  sendWSControl,
+  subscribeWSStatus,
+  getWSStatus,
+} from "./ws";
 import type { WSStatus } from "./ws";
 import { fetchSnapshot, sendControl, fetchReviewDiff } from "./api";
-import type { Snapshot, EventLine, ControlCommand, ControlAck, DiffResponse, ChannelId } from "./types";
+import type {
+  Snapshot,
+  EventLine,
+  ControlCommand,
+  ControlAck,
+  DiffResponse,
+  ChannelId,
+} from "./types";
 
 // Connects WS on mount, seeds cache with initial fetch, and keeps
 // snapshot data live via WebSocket.
@@ -38,7 +53,9 @@ export function useSuspenseSnapshot() {
 
 export function useSessionEvents(sessionId: string | undefined) {
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     subscribeSession(sessionId);
     return () => unsubscribeSession(sessionId);
   }, [sessionId]);
@@ -90,7 +107,9 @@ export function ActiveChannelProvider({
 
 export function useActiveChannel() {
   const ctx = useContext(ActiveChannelContext);
-  if (!ctx) throw new Error("useActiveChannel used outside ActiveChannelProvider");
+  if (!ctx) {
+    throw new Error("useActiveChannel used outside ActiveChannelProvider");
+  }
   return ctx;
 }
 
