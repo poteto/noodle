@@ -14,3 +14,4 @@
 - [ ] [[plans/84-subagent-tracking/overview]]
 - [ ] [[plans/87-go-codebase-simplification/overview]]
 - [ ] [[plans/88-subagent-tracking-v2/overview]]
+- [ ] [[plans/89-runtime-merge-detection/overview]]

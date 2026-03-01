@@ -11,7 +11,7 @@ priority: [87, 84, 88, 20, 69]
 
 # Todos
 
-<!-- next-id: 89 -->
+<!-- next-id: 90 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -32,3 +32,4 @@ priority: [87, 84, 88, 20, 69]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
 87. [ ] Go codebase simplification — deduplicate state utilities, extract loop helpers, decompose long functions, delete dead code, create shared jsonx/stringx utilities. [[plans/87-go-codebase-simplification/overview]]
 88. [ ] Sub-agent tracking v2 — add out-of-band ingestion (Codex child sessions + Claude team inbox), harden canonical identity reconciliation, lifecycle-safe bounded pollers, robust `steer-agent` control behavior, and expanded hardening tests. [[plans/88-subagent-tracking-v2/overview]]
+89. [ ] Runtime merge detection — replace static `permissions.merge` frontmatter with runtime `HasUnmergedCommits` check on the worktree. Removes `Permissions` struct, `CanMerge` from taskreg/mise, and simplifies skill frontmatter. [[plans/89-runtime-merge-detection/overview]]
