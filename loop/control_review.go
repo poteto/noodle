@@ -103,27 +103,12 @@ func (l *Loop) controlReject(orderID string) error {
 			return err
 		}
 	}
-	sid := pending.sessionID
 	mistake := newCookMistakeEnvelope(cookRejectReasonForTask(pending.stage.TaskKey), orderID, pending.stageIndex)
-	failureMetadata := eventFailureMetadataForLoop(
-		CycleFailureClassOrderHard,
-		OrderFailureClassOrderTerminal,
-		&mistake,
-	)
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:      orderID,
-		StageIndex:   pending.stageIndex,
-		Reason:       "rejected by user",
-		SessionID:    &sid,
-		AgentMistake: &mistake,
-		Failure:      &failureMetadata,
-	})
-	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-		OrderID:      orderID,
-		Reason:       "rejected by user",
-		AgentMistake: &mistake,
-		Failure:      &failureMetadata,
-	})
+	cook := &cookHandle{
+		cookIdentity: pending.cookIdentity,
+		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
+	}
+	l.recordStageFailure(cook, "rejected by user", OrderFailureClassOrderTerminal, &mistake)
 	l.classifyCookMistake(
 		"control.review_reject",
 		OrderFailureClassOrderTerminal,
@@ -132,7 +117,7 @@ func (l *Loop) controlReject(orderID string) error {
 		"rejected by user",
 		mistake.CookReason,
 	)
-	l.forwardToScheduler(&cookHandle{cookIdentity: pending.cookIdentity}, "review_rejected", "rejected by user", &mistake)
+	l.forwardToScheduler(cook, "review_rejected", "rejected by user", &mistake)
 	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()
 }
@@ -168,26 +153,12 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
-	sid := pending.sessionID
-	failureMetadata := eventFailureMetadataForLoop(
-		CycleFailureClassOrderHard,
-		OrderFailureClassStageTerminal,
-		&mistake,
-	)
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:      orderID,
-		StageIndex:   pending.stageIndex,
-		Reason:       reason,
-		SessionID:    &sid,
-		AgentMistake: &mistake,
-		Failure:      &failureMetadata,
-	})
-	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-		OrderID:      orderID,
-		Reason:       reason,
-		AgentMistake: &mistake,
-		Failure:      &failureMetadata,
-	})
+	cook := &cookHandle{
+		cookIdentity: pending.cookIdentity,
+		worktreeName: pending.worktreeName,
+		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
+	}
+	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, &mistake)
 	l.classifyCookMistake(
 		"control.request_changes",
 		OrderFailureClassStageTerminal,
@@ -196,12 +167,10 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		reason,
 		mistake.CookReason,
 	)
-	l.forwardToScheduler(&cookHandle{cookIdentity: pending.cookIdentity}, "request_changes", reason, &mistake)
+	l.forwardToScheduler(cook, "request_changes", reason, &mistake)
 
 	// Clean up the worktree for the failed stage.
-	if strings.TrimSpace(pending.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(pending.worktreeName, true)
-	}
+	l.cleanupCookWorktree(cook)
 
 	delete(l.cooks.pendingReview, orderID)
 	return l.writePendingReview()

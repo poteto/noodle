@@ -328,9 +328,7 @@ func (l *Loop) controlStopKill(cook *cookHandle) error {
 		CompletedAt: l.deps.Now(),
 	})
 	delete(l.cooks.activeCooksByOrder, cook.orderID)
-	if cook.worktreeName != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
-	}
+	l.cleanupCookWorktree(cook)
 	return nil
 }
 

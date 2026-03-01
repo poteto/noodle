@@ -212,23 +212,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
-	failureMetadata := eventFailureMetadataForLoop(
-		CycleFailureClassOrderHard,
-		OrderFailureClassStageTerminal,
-		nil,
-	)
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:    cook.orderID,
-		StageIndex: cook.stageIndex,
-		Reason:     reason,
-		SessionID:  sessionIDPtr(cook),
-		Failure:    &failureMetadata,
-	})
-	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-		OrderID: cook.orderID,
-		Reason:  reason,
-		Failure: &failureMetadata,
-	})
+	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 
 	// Emit V2 canonical state event for stage failure.
 	l.emitEvent(ingest.EventStageFailed, map[string]any{
@@ -246,9 +230,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 	)
 
 	l.forwardToScheduler(cook, "stage_failed", reason, nil)
-	if strings.TrimSpace(cook.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
-	}
+	l.cleanupCookWorktree(cook)
 	return nil
 }
 

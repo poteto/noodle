@@ -69,14 +69,14 @@ func (l *Loop) resolveMergeMode(cook *cookHandle) (mode string, branch string) {
 // and sets the status to "merging" atomically. On crash recovery, reconcile
 // reads these fields to decide how to resume or fail the merge.
 func (l *Loop) persistMergeMetadata(cook *cookHandle, mode string, branch string) error {
-	return l.mutateOrdersState(func(orders *OrdersFile) error {
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
 		for i := range orders.Orders {
 			if orders.Orders[i].ID != cook.orderID {
 				continue
 			}
 			stages := &orders.Orders[i].Stages
 			if cook.stageIndex < 0 || cook.stageIndex >= len(*stages) {
-				return nil
+				return false, nil
 			}
 			s := &(*stages)[cook.stageIndex]
 			if s.Extra == nil {
@@ -87,9 +87,9 @@ func (l *Loop) persistMergeMetadata(cook *cookHandle, mode string, branch string
 			s.Extra[mergeExtraGeneration] = jsonQuote(fmt.Sprintf("%d", cook.generation))
 			s.Extra[mergeExtraMode] = jsonQuote(mode)
 			s.Status = StageStatusMerging
-			return nil
+			return true, nil
 		}
-		return nil
+		return true, nil
 	})
 }
 
@@ -189,23 +189,7 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	if writeErr := l.writeOrdersState(orders); writeErr != nil {
 		return writeErr
 	}
-	failureMetadata := eventFailureMetadataForLoop(
-		CycleFailureClassOrderHard,
-		OrderFailureClassStageTerminal,
-		nil,
-	)
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:    cook.orderID,
-		StageIndex: cook.stageIndex,
-		Reason:     reason,
-		SessionID:  sessionIDPtr(cook),
-		Failure:    &failureMetadata,
-	})
-	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-		OrderID: cook.orderID,
-		Reason:  reason,
-		Failure: &failureMetadata,
-	})
+	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 	l.emitEvent(ingest.EventMergeFailed, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
@@ -219,8 +203,6 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 		reason,
 		err,
 	)
-	if strings.TrimSpace(cook.worktreeName) != "" {
-		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
-	}
+	l.cleanupCookWorktree(cook)
 	return nil
 }

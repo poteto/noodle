@@ -34,13 +34,17 @@ func (l *Loop) writeOrdersState(orders OrdersFile) error {
 	return nil
 }
 
-func (l *Loop) mutateOrdersState(mutator func(*OrdersFile) error) error {
+func (l *Loop) mutateOrdersState(mutator func(*OrdersFile) (bool, error)) error {
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err
 	}
-	if err := mutator(&orders); err != nil {
+	changed, err := mutator(&orders)
+	if err != nil {
 		return err
+	}
+	if !changed {
+		return nil
 	}
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
@@ -57,7 +61,7 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, status ord
 	if orderID == "" {
 		return fmt.Errorf("order id not set")
 	}
-	return l.mutateOrdersState(func(orders *OrdersFile) error {
+	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
 		for i := range orders.Orders {
 			if orders.Orders[i].ID != orderID {
 				continue
@@ -65,9 +69,9 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, status ord
 			if stageIndex >= 0 && stageIndex < len(orders.Orders[i].Stages) {
 				orders.Orders[i].Stages[stageIndex].Status = status
 			}
-			return nil
+			return true, nil
 		}
-		return nil
+		return true, nil
 	})
 }
 

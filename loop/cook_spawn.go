@@ -236,30 +236,20 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 	if writeErr := l.writeOrdersState(orders); writeErr != nil {
 		return writeErr
 	}
-	failureMetadata := eventFailureMetadataForDispatch(envelope, OrderFailureClassStageTerminal)
-	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
-		OrderID:    cand.OrderID,
-		StageIndex: cand.StageIndex,
-		Reason:     reason,
-		Failure:    &failureMetadata,
-	})
-	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
-		OrderID: cand.OrderID,
-		Reason:  reason,
-		Failure: &failureMetadata,
-	})
-	l.emitEvent(ingest.EventStageFailed, map[string]any{
-		"order_id":    cand.OrderID,
-		"stage_index": cand.StageIndex,
-		"error":       reason,
-	})
-	l.forwardToScheduler(&cookHandle{
+	cook := &cookHandle{
 		cookIdentity: cookIdentity{
 			orderID:    cand.OrderID,
 			stageIndex: cand.StageIndex,
 			stage:      stage,
 		},
-	}, "dispatch_failed", reason, nil)
+	}
+	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
+	l.emitEvent(ingest.EventStageFailed, map[string]any{
+		"order_id":    cand.OrderID,
+		"stage_index": cand.StageIndex,
+		"error":       reason,
+	})
+	l.forwardToScheduler(cook, "dispatch_failed", reason, nil)
 	l.classifyOrderHard(
 		"cycle.dispatch_terminal",
 		OrderFailureClassStageTerminal,
