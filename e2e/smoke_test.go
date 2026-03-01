@@ -141,13 +141,13 @@ func TestSmokeAgentLoop(t *testing.T) {
 	}
 }
 
-func TestSmokeInvalidRuntimeFallback(t *testing.T) {
+func TestSmokeProcessRuntimeDefault(t *testing.T) {
 	preflight(t)
 
 	noodleBin := buildNoodle(t)
 	dir := t.TempDir()
 
-	// Scaffold a minimal project with invalid runtime.default.
+	// Scaffold a minimal project with explicit runtime.default.
 	run(t, dir, "git", "init", "-b", "main")
 	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
 	run(t, dir, "git", "config", "user.name", "Noodle Test")
@@ -182,7 +182,7 @@ func TestSmokeInvalidRuntimeFallback(t *testing.T) {
 	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
 	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
 
-	// Config with invalid runtime.default = "tmux".
+	// Config with runtime.default = "process".
 	writeFile(t, filepath.Join(dir, ".noodle.toml"), `mode = "auto"
 
 [routing.defaults]
@@ -208,7 +208,7 @@ edit = ".noodle/adapters/backlog-edit"
 max_cooks = 1
 
 [runtime]
-default = "tmux"
+default = "process"
 
 [server]
 enabled = true
@@ -238,7 +238,7 @@ port = 13738
 		t.Fatalf("server not reachable: %v", err)
 	}
 
-	// Verify snapshot contains warning about tmux runtime.
+	// Verify snapshot does not report runtime.default as unknown.
 	resp, err := http.Get(baseURL + "/api/snapshot")
 	if err != nil {
 		t.Fatalf("GET snapshot: %v", err)
@@ -251,18 +251,10 @@ port = 13738
 	if err := json.NewDecoder(resp.Body).Decode(&snap); err != nil {
 		t.Fatalf("decode snapshot: %v", err)
 	}
-	if len(snap.Warnings) == 0 {
-		t.Fatal("expected warnings in snapshot for invalid runtime.default")
-	}
-	found := false
 	for _, w := range snap.Warnings {
-		if strings.Contains(w, "tmux") {
-			found = true
-			break
+		if strings.Contains(w, "unknown runtime") || strings.Contains(w, "runtime.default") {
+			t.Fatalf("unexpected runtime.default warning: %v", snap.Warnings)
 		}
-	}
-	if !found {
-		t.Fatalf("expected warning mentioning tmux, got %v", snap.Warnings)
 	}
 	t.Logf("snapshot warnings: %v", snap.Warnings)
 }
