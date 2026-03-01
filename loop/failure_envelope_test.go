@@ -11,6 +11,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/failure"
+	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
@@ -83,6 +84,71 @@ func TestCycleClassifiesOrdersNextPromotionFailureAsDegrade(t *testing.T) {
 	}
 	if payload.AgentMistake.SchedulerReason != SchedulerMistakeReasonOrdersNextRejected {
 		t.Fatalf("payload scheduler reason = %q, want %q", payload.AgentMistake.SchedulerReason, SchedulerMistakeReasonOrdersNextRejected)
+	}
+}
+
+func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	ordersNextPath := filepath.Join(runtimeDir, "orders-next.json")
+	if err := writeOrdersAtomic(ordersNextPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders-next: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("load orders: %v", err)
+	}
+	if err := os.Remove(ordersPath); err != nil {
+		t.Fatalf("remove orders.json: %v", err)
+	}
+	if err := os.Mkdir(ordersPath, 0o755); err != nil {
+		t.Fatalf("replace orders.json with directory: %v", err)
+	}
+
+	_, _, err := l.prepareOrdersForCycle(mise.Brief{}, nil, false)
+	if err != nil {
+		t.Fatalf("prepareOrdersForCycle: %v", err)
+	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Path != "build.promote_orders_next" {
+		t.Fatalf("path = %q, want %q", envelope.Path, "build.promote_orders_next")
+	}
+	if envelope.Class != CycleFailureClassDegradeContinue {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassDegradeContinue)
+	}
+	if envelope.AgentMistake != nil {
+		t.Fatalf("agent mistake = %#v, want nil for backend promotion failure", envelope.AgentMistake)
+	}
+
+	events := readNDJSON(t, filepath.Join(runtimeDir, "loop-events.ndjson"))
+	promotions := findEvents(events, LoopEventPromotionFailed)
+	if len(promotions) == 0 {
+		t.Fatal("expected promotion.failed event")
+	}
+	var payload PromotionFailedPayload
+	if err := json.Unmarshal(promotions[len(promotions)-1].Payload, &payload); err != nil {
+		t.Fatalf("parse promotion payload: %v", err)
+	}
+	if payload.AgentMistake != nil {
+		t.Fatalf("payload agent mistake = %#v, want nil for backend promotion failure", payload.AgentMistake)
 	}
 }
 

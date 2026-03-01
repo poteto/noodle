@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -261,6 +262,26 @@ func writeOrdersAtomic(path string, of OrdersFile) error {
 	return orderx.WriteOrdersAtomic(path, of)
 }
 
+type ordersNextRejectedError struct {
+	cause error
+}
+
+func (e ordersNextRejectedError) Error() string {
+	if e.cause == nil {
+		return "orders-next rejected"
+	}
+	return e.cause.Error()
+}
+
+func (e ordersNextRejectedError) Unwrap() error {
+	return e.cause
+}
+
+func isOrdersNextRejectedError(err error) bool {
+	var target ordersNextRejectedError
+	return errors.As(err, &target)
+}
+
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
 //
 // Returns (promoted, emptyPromotion, error). emptyPromotion is true when the
@@ -286,7 +307,8 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		// Rename invalid proposal so it doesn't block future cycles.
 		// Preserve the file for debugging rather than deleting it.
 		_ = os.Rename(nextPath, nextPath+".bad")
-		return false, false, fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
+		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
+		return false, false, ordersNextRejectedError{cause: cause}
 	}
 
 	emptyPromotion := len(incoming.Orders) == 0
