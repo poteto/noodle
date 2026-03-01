@@ -1,3 +1,10 @@
+---
+priority: [83, 84, 20, 69, 77]
+# 83 error taxonomy → 84 sub-agent tracking (both foundational infra),
+# 20 skill-path defaults (small docs fix), 69 cursor dispatcher (feature),
+# 77 react-window (UI polish)
+---
+
 # Todos
 
 <!-- next-id: 85 -->
