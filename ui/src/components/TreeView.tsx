@@ -17,7 +17,8 @@ import type { TreeNodeData } from "./tree-utils";
 const NODE_WIDTH = 100;
 const NODE_HEIGHT = 90;
 const NODE_HORIZONTAL_GAP = 6;
-const NODE_VERTICAL_GAP = 30;
+const NODE_VERTICAL_GAP = 60;
+const JITTER_MAX = 20;
 
 type PointNode = HierarchyPointNode<TreeNodeData>;
 
@@ -71,6 +72,16 @@ function nodeKey(d: HierarchyNode<TreeNodeData>): string {
     .join("/");
 }
 
+/** Deterministic jitter from a string key — returns value in [-1, 1]. */
+function jitter(key: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) / 0xffffffff) * 2 - 1;
+}
+
 function actorSessionId(data: TreeNodeData): string | null {
   if (data.type !== "stage" || !data.sessionId) {
     return null;
@@ -93,6 +104,13 @@ function renderTree(
     NODE_HEIGHT + NODE_VERTICAL_GAP,
   ]);
   treeLayout(rootNode);
+
+  // Add deterministic vertical jitter so same-level nodes aren't perfectly aligned.
+  for (const node of rootNode.descendants()) {
+    if (node.depth > 0) {
+      (node as PointNode).y += jitter(nodeKey(node)) * JITTER_MAX;
+    }
+  }
 
   const svg = select(svgEl);
 
