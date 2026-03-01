@@ -14,7 +14,7 @@ priority: [89, 20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 91 -->
+<!-- next-id: 92 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -29,6 +29,10 @@ priority: [89, 20, 84, 90, 86, 88, 85, 69]
 ## UI
 
 86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, collapsed by default with a click-to-expand interaction (avoid noise in the feed), and (2) in a dedicated diff tab/panel that collects all code changes from a session (expanded by default). Ship-ready: fully integrated, styled, and tested. [[plans/86-diffs-integration/overview]]
+
+## Simplification
+
+91. [ ] Remove `debate` as a first-class concept — delete the `debate/` Go package (unused, zero imports), remove the `.agents/skills/debate/` skill, and clean up any debate references in the loop (e.g. comment in `cook_completion.go`). The adversarial-review skill proves structured multi-perspective review works purely as a skill without framework-level support.
 
 ## Backend
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
