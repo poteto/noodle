@@ -75,7 +75,7 @@ Configures where Noodle discovers skill definitions.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `paths` | string[] | `[".agents/skills"]` | Directories to scan for skill YAML files |
+| `paths` | string[] | `[".agents/skills"]` | Directories to scan for SKILL.md files |
 
 ```toml
 [skills]

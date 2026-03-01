@@ -11,7 +11,7 @@ import { withBase } from "vitepress";
           <a :href="withBase('/')" class="brand">NOODLE</a>
           <nav class="header-nav">
             <a :href="withBase('/getting-started')" class="nav-link">Docs</a>
-            <a :href="withBase('/examples')" class="nav-link">Examples</a>
+            <a :href="withBase('/cookbook/minimal-loop')" class="nav-link">Cookbook</a>
           </nav>
         </div>
         <div class="header-right">
@@ -305,8 +305,8 @@ import { withBase } from "vitepress";
             <a :href="withBase('/reference/configuration')" class="quickstart-link"
               >Configuration →</a
             >
-            <a :href="withBase('/examples')" class="quickstart-link"
-              >Examples →</a
+            <a :href="withBase('/cookbook/minimal-loop')" class="quickstart-link"
+              >Cookbook →</a
             >
           </div>
         </div>

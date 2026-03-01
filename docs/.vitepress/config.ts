@@ -26,6 +26,10 @@ export default defineConfig({
 
     sidebar: [
       {
+        text: "Why Noodle",
+        link: "/why-noodle",
+      },
+      {
         text: "Getting Started",
         link: "/getting-started",
       },
@@ -36,18 +40,26 @@ export default defineConfig({
           { text: "Scheduling", link: "/concepts/scheduling" },
           { text: "Brain", link: "/concepts/brain" },
           { text: "Modes", link: "/concepts/modes" },
-          { text: "Philosophy", link: "/concepts/philosophy" },
+          { text: "Runtimes", link: "/concepts/runtimes" },
         ],
       },
       {
         text: "Reference",
         items: [
+          { text: "CLI", link: "/reference/cli" },
           { text: "Configuration", link: "/reference/configuration" },
+          { text: "Skill Frontmatter", link: "/reference/skill-frontmatter" },
         ],
       },
       {
-        text: "Examples",
-        link: "/examples",
+        text: "Cookbook",
+        collapsed: false,
+        items: [
+          { text: "Minimal Loop", link: "/cookbook/minimal-loop" },
+          { text: "Multi-Stage Pipeline", link: "/cookbook/multi-stage-pipeline" },
+          { text: "Self-Learning", link: "/cookbook/self-learning" },
+          { text: "Model Routing", link: "/cookbook/model-routing" },
+        ],
       },
       {
         text: "Contributing",
