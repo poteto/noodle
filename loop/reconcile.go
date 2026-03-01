@@ -68,6 +68,16 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		}
 	}
 
+	// Scheduler must be present after startup reconciliation.
+	if err := l.ensureScheduleOrderPresent(); err != nil {
+		return err
+	}
+	// If the schedule stage was left "active" by a crash but no live session
+	// was recovered, reset it to pending so startup can dispatch immediately.
+	if err := l.reconcileStaleActiveScheduleStage(); err != nil {
+		return err
+	}
+
 	if len(l.cooks.adoptedSessions) > 0 {
 		tickets := monitor.NewEventTicketMaterializer(l.runtimeDir)
 		_ = tickets.Materialize(ctx, l.cooks.adoptedSessions)
@@ -80,6 +90,55 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (l *Loop) ensureScheduleOrderPresent() error {
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+	if hasScheduleOrder(orders) {
+		return nil
+	}
+	orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
+	if err := l.writeOrdersState(orders); err != nil {
+		return err
+	}
+	l.logger.Info("startup injected schedule order")
+	return nil
+}
+
+func (l *Loop) reconcileStaleActiveScheduleStage() error {
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+
+	changed := false
+	for oi := range orders.Orders {
+		order := &orders.Orders[oi]
+		if !isScheduleOrder(*order) || order.Status != OrderStatusActive {
+			continue
+		}
+		if _, adopted := l.cooks.adoptedTargets[order.ID]; adopted {
+			continue
+		}
+		for si := range order.Stages {
+			if order.Stages[si].Status == StageStatusActive {
+				order.Stages[si].Status = StageStatusPending
+				changed = true
+				l.logger.Info("startup reset stale active schedule stage",
+					"order", order.ID,
+					"stage", si,
+				)
+			}
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+	return l.writeOrdersState(orders)
 }
 
 // reconcileMergingStages recovers stages stuck in "merging" status after a
@@ -331,8 +390,10 @@ func (s *adoptedSession) ID() string          { return s.id }
 func (s *adoptedSession) Status() string      { return s.status }
 func (s *adoptedSession) TotalCost() float64  { return 0 }
 func (s *adoptedSession) Kill() error         { return nil }
-func (s *adoptedSession) VerdictPath() string                     { return "" }
-func (s *adoptedSession) Controller() loopruntime.AgentController { return loopruntime.NoopController() }
+func (s *adoptedSession) VerdictPath() string { return "" }
+func (s *adoptedSession) Controller() loopruntime.AgentController {
+	return loopruntime.NoopController()
+}
 
 func (s *adoptedSession) Done() <-chan struct{} {
 	ch := make(chan struct{})

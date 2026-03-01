@@ -9,6 +9,10 @@
   - `markFailed("schedule", ...)` is a no-op.
   - Dispatch planning ignores failed-target blocks for the schedule order.
   - Added directory fixture: `loop/testdata/schedule-failed-target-does-not-block-dispatch`.
+- Startup invariant: scheduler must be dispatchable immediately after `noodle start`.
+  - Reconcile now injects a schedule order if missing.
+  - Reconcile resets stale schedule stage status `active -> pending` when no live session was recovered for `schedule`.
+  - Cycle idle gating no longer suppresses dispatch when a schedule order already exists and backlog is empty.
 - Related UX polish: startup now normalizes loopback display URLs to `localhost` (`localhost:3000`) while still binding loopback addresses internally.
 
 See also [[principles/fix-root-causes]], [[principles/make-operations-idempotent]]

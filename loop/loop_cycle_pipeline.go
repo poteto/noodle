@@ -118,13 +118,15 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	// Simplified filtering (#60): check for non-schedule orders.
 	if len(l.cooks.activeCooksByOrder) == 0 && len(l.cooks.adoptedTargets) == 0 {
 		if !hasNonScheduleOrders(orders) {
-			if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
-				l.setState(StateIdle)
-				return OrdersFile{}, false, nil
-			}
-			// Bootstrap only when a schedule order is truly absent.
-			// Rewriting an existing schedule order creates a file-watch hot loop.
+			// If schedule already exists, allow it to dispatch even with empty backlog.
+			// Startup reconciliation injects schedule so scheduler is always available.
 			if !hasScheduleOrder(orders) {
+				if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
+					l.setState(StateIdle)
+					return OrdersFile{}, false, nil
+				}
+				// Bootstrap only when a schedule order is truly absent.
+				// Rewriting an existing schedule order creates a file-watch hot loop.
 				orders = bootstrapScheduleOrder(l.config)
 				if err := l.writeOrdersState(orders); err != nil {
 					return OrdersFile{}, false, err

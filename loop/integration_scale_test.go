@@ -236,6 +236,179 @@ func TestMockRuntimeRecoverBuildsAdoptedIndex(t *testing.T) {
 	}
 }
 
+func TestReconcileInjectsScheduleOrderOnStartup(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if !hasScheduleOrder(updated) {
+		t.Fatalf("expected startup reconcile to inject schedule order, got %#v", updated.Orders)
+	}
+}
+
+func TestReconcileResetsStaleActiveScheduleStageAndCycleDispatches(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     ScheduleTaskKey(),
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  ScheduleTaskKey(),
+						Skill:    "schedule",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusActive,
+					},
+				},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{}, // empty backlog: startup should still dispatch schedule
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) != 1 || updated.Orders[0].Stages[0].Status != StageStatusPending {
+		t.Fatalf("expected stale active schedule stage reset to pending, got %#v", updated.Orders)
+	}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(rt.calls) != 1 || rt.calls[0].Skill != "schedule" {
+		t.Fatalf("expected schedule dispatch after startup reconcile, calls=%#v", rt.calls)
+	}
+}
+
+func TestReconcilePreservesActiveScheduleStageWhenRecovered(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     ScheduleTaskKey(),
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  ScheduleTaskKey(),
+						Skill:    "schedule",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusActive,
+					},
+				},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	rt.recovered = []loopruntime.RecoveredSession{
+		{
+			OrderID:       ScheduleTaskKey(),
+			SessionHandle: &mockSession{id: "sched-1", status: "running", done: make(chan struct{})},
+			RuntimeName:   "process",
+			Reason:        "test recovery",
+		},
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) != 1 || updated.Orders[0].Stages[0].Status != StageStatusActive {
+		t.Fatalf("expected recovered active schedule stage to remain active, got %#v", updated.Orders)
+	}
+	if sid, ok := l.cooks.adoptedTargets[ScheduleTaskKey()]; !ok || sid != "sched-1" {
+		t.Fatalf("adopted schedule session = %q, present=%v", sid, ok)
+	}
+}
+
 // TestMockRuntimeScaleBurstViaRuntimes mirrors TestScaleBurstCompletionProcessesAllOrders
 // but dispatches through the Runtimes map instead of the legacy Dispatcher fallback.
 func TestMockRuntimeScaleBurstViaRuntimes(t *testing.T) {
