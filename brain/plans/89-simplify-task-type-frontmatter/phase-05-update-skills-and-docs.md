@@ -13,6 +13,9 @@ Migrate all skill frontmatter from nested `noodle: schedule:` to top-level `sche
 - Remove any remaining `permissions:` or `domain_skill:` lines
 - Grep for `noodle:` in all skill files to confirm none remain
 
+**`loop/builtin_bootstrap.go`**:
+- Update the bootstrap template to emit top-level `schedule:` instead of `noodle: schedule:`
+
 **`generate/skill_noodle.go`**:
 - Update example frontmatter to show top-level `schedule:`
 - Remove `noodle.permissions.merge` from field table

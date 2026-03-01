@@ -10,11 +10,12 @@ Swap the static `canMergeStage()` registry lookup for a runtime `worktreeHasChan
 
 **`loop/cook_merge.go`**:
 - Delete `canMergeStage()` method (lines 101-110)
-- Add `worktreeHasChanges(cook *cookHandle) (bool, error)` with two-path check:
-  1. Check sync result first — if `readSessionSyncResult` returns a `SyncResultTypeBranch` with a non-empty branch, return `true` (sprites pushed to a remote branch)
-  2. If no sync result, check local worktree — if `cook.worktreeName` is empty, return `false`; otherwise call `l.deps.Worktree.HasUnmergedCommits(cook.worktreeName)` and propagate errors
+- Add `worktreeHasChanges(cook *cookHandle) (bool, error)` with three-path check:
+  1. Check persisted merge metadata first — if the stage's `Extra` map already has `merge_branch` (set by a previous `persistMergeMetadata` before a crash), use that. This handles `controlMerge` after restart when `spawn.json` may be gone.
+  2. Check sync result — if `readSessionSyncResult` returns a `SyncResultTypeBranch` with a non-empty branch, return `true` (sprites pushed to a remote branch)
+  3. Check local worktree — if `cook.worktreeName` is empty, return `false`; otherwise call `l.deps.Worktree.HasUnmergedCommits(cook.worktreeName)` and propagate errors
 
-This mirrors the existing two-path merge in `mergeCookWorktree` (local vs `MergeRemoteBranch`) but moves the detection upstream of the merge pipeline.
+This mirrors the existing two-path merge in `mergeCookWorktree` (local vs `MergeRemoteBranch`) but moves the detection upstream of the merge pipeline. The persisted-metadata fallback ensures crash recovery works when `spawn.json` is cleaned up.
 
 **`loop/cook_completion.go`**:
 - Replace `canMerge := l.canMergeStage(cook.stage)` with `canMerge, err := l.worktreeHasChanges(cook)`. On error, fail the stage (don't silently advance).
@@ -56,3 +57,4 @@ go test ./loop/...
 - Verify "has commits" case: default `true` → merge pipeline runs
 - Verify "sprites remote-sync" case: local worktree has no commits, spawn.json has sync result with branch → stage enters merge pipeline and calls `MergeRemoteBranch`
 - Verify error propagation: `HasUnmergedCommits` returns error → stage fails, does not advance
+- Verify crash recovery: persisted `merge_branch` in orders.json Extra → `worktreeHasChanges` returns true even without spawn.json
