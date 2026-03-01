@@ -1,5 +1,7 @@
 # Getting Started
 
+Noodle is an agent orchestration framework where the file system is the entire API. You teach agents what to do by writing skills — markdown files with a prompt and some metadata. A scheduling agent decides what to work on, execution agents do the work, and the system learns from each session. Read the full [Vision](/vision) to understand the design.
+
 ## Install
 
 Ask your agent to set up Noodle for you. Point it at the [Install](/install) page — it covers the binary, skills, and backlog configuration.
