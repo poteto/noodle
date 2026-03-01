@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/poteto/noodle/internal/ingest"
 )
 
 // controlAdvance advances past a stage blocked by a stage_message.
@@ -35,6 +37,11 @@ func (l *Loop) controlAdvance(orderID string) error {
 			orderStatus: o.Status,
 			session:     &adoptedSession{id: "", status: "completed"},
 		}
+		// Emit V2 canonical stage completion (non-mergeable manual advance).
+		l.emitEvent(ingest.EventStageCompleted, map[string]any{
+			"order_id":    orderID,
+			"stage_index": stageIdx,
+		})
 		return l.advanceAndPersist(context.Background(), cook)
 	}
 	return fmt.Errorf("order %q not found", orderID)

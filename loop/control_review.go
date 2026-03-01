@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/poteto/noodle/internal/ingest"
 )
 
 func (l *Loop) controlMerge(orderID string) error {
@@ -35,6 +37,14 @@ func (l *Loop) controlMerge(orderID string) error {
 			break
 		}
 	}
+
+	// Emit V2 canonical stage completion (mergeable) before merge attempt.
+	l.emitEvent(ingest.EventStageCompleted, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+		"mergeable":   true,
+	})
+
 	mergeMode, mergeBranch := l.resolveMergeMode(cook)
 	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
 		return err
@@ -43,10 +53,16 @@ func (l *Loop) controlMerge(orderID string) error {
 		if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 			return err
 		}
+		// Emit V2 canonical merge completion on the main goroutine.
+		l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+			"order_id":    cook.orderID,
+			"stage_index": cook.stageIndex,
+		})
 		if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 			return err
 		}
 	} else {
+		// Queued path: drainMergeResults emits merge_completed.
 		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
 		if err := l.drainMergeResults(context.Background()); err != nil {
 			return err
