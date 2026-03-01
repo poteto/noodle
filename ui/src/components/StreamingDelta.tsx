@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   parser,
   parser_write,
@@ -71,6 +71,7 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const parserRef = useRef<Parser | null>(null);
   const hasContentRef = useRef(false);
+  const [thinking, setThinking] = useState(true);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -80,6 +81,7 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
 
     el.innerHTML = "";
     hasContentRef.current = false;
+    setThinking(true);
 
     const renderer = createRenderer(el);
     const p = parser(renderer);
@@ -89,6 +91,7 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
       parser_write(p, text);
       if (!hasContentRef.current && text.trim()) {
         hasContentRef.current = true;
+        setThinking(false);
         if (wrapperRef.current) {
           wrapperRef.current.style.display = "";
         }
@@ -103,14 +106,22 @@ export function StreamingDelta({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <div ref={wrapperRef} className="message-row type-system" style={{ display: "none" }}>
-      <div className="msg-avatar">TH</div>
-      <div>
-        <div className="msg-meta">
-          <span className="msg-badge">Think</span>
+    <>
+      {thinking && (
+        <div className="thinking-indicator">
+          <span className="thinking-dot" />
+          Thinking…
         </div>
-        <div ref={containerRef} className="msg-body msg-markdown" />
+      )}
+      <div ref={wrapperRef} className="message-row type-system" style={{ display: "none" }}>
+        <div className="msg-avatar">TH</div>
+        <div>
+          <div className="msg-meta">
+            <span className="msg-badge">Think</span>
+          </div>
+          <div ref={containerRef} className="msg-body msg-markdown" />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

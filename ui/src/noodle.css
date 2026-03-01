@@ -636,6 +636,25 @@
   z-index: 5;
 }
 
+/* Thinking indicator — shown while waiting for streaming delta */
+.thinking-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 78px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
 /* --- Message rows --- */
 .message-row {
   position: relative;
