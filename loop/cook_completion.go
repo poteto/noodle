@@ -196,8 +196,8 @@ func (l *Loop) completeWithMerge(ctx context.Context, cook *cookHandle, msg *str
 	return l.advanceAndPersist(ctx, cook, msg)
 }
 
-// completeWithoutMerge handles a successful non-mergeable stage (e.g. debate,
-// review) by advancing directly without merge.
+// completeWithoutMerge handles a successful non-mergeable stage (e.g. review)
+// by advancing directly without merge.
 func (l *Loop) completeWithoutMerge(ctx context.Context, cook *cookHandle, msg *string) error {
 	return l.advanceAndPersist(ctx, cook, msg)
 }
