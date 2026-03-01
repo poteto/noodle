@@ -13,11 +13,13 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 94 -->
+<!-- next-id: 95 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
 ## Onboarding & Getting Started
+
+94. [ ] Cross-platform distribution — publish Noodle binaries for Linux and Windows in addition to macOS. Set up GoReleaser (or equivalent) to cross-compile for linux/amd64, linux/arm64, windows/amd64. Publish artifacts to GitHub Releases. Add install instructions for non-Homebrew users (curl one-liner, winget/scoop, or direct download). Update getting-started docs with platform-specific instructions.
 
 93. [ ] Publish build to Homebrew — create a Homebrew tap and formula so users can `brew install noodle`.
 
