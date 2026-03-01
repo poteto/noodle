@@ -81,7 +81,7 @@ export type ControlCommand = { id?: string } & (
   | { action: "steer"; target: string; prompt: string }
   | { action: "request-changes"; order_id: string; prompt?: string }
   | { action: "park-review"; order_id: string; prompt?: string }
-  | { action: "autonomy"; value: string }
+  | { action: "mode"; value: string }
   | { action: "set-max-cooks"; value: string }
   | { action: "reorder"; order_id: string; value: string }
   | { action: "enqueue"; order_id: string } & StageFields
@@ -102,7 +102,7 @@ export interface ControlAck {
 export interface ConfigDefaults {
   provider: string;
   model: string;
-  autonomy: string;
+  mode: string;
   task_types: string[];
 }
 

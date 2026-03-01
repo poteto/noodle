@@ -2,19 +2,19 @@
 
 ## Run mode
 
-The `autonomy` config field sets the run mode governing loop behavior:
+The `mode` config field sets the run mode governing loop behavior:
 
 ```toml
-autonomy = "auto"        # full automation: schedule, dispatch, retry, merge
-# autonomy = "supervised" # human approves merges and retries
-# autonomy = "manual"     # human triggers everything
+mode = "auto"        # full automation: schedule, dispatch, retry, merge
+# mode = "supervised" # human approves merges and retries
+# mode = "manual"     # human triggers everything
 ```
 
 ### Before/after: mode semantics
 
 **Before (V1):** `autonomy` accepted `auto` or `approve`. `approve` parked worktrees for human merge approval.
 
-**After (V2):** `autonomy` accepts `auto`, `supervised`, or `manual`. Each mode gates four actions independently:
+**After (V2):** `mode` accepts `auto`, `supervised`, or `manual`. Each mode gates four actions independently:
 
 | Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
 |------|----------|----------|------------|------------|
@@ -86,10 +86,10 @@ The loop maintains these files in `.noodle/`:
 
 **Before (V1):** The `autonomy` control action toggled between `auto` and `approve`.
 
-**After (V2):** The `autonomy` control action accepts `auto`, `supervised`, or `manual`. Mode transitions are tracked with a monotonic epoch. New control actions `advance`, `add-stage`, and `park-review` support fine-grained order management.
+**After (V2):** The `mode` control action accepts `auto`, `supervised`, or `manual`. Mode transitions are tracked with a monotonic epoch. New control actions `advance`, `add-stage`, and `park-review` support fine-grained order management.
 
 ### Before/after: file contracts
 
 **Before (V1):** `status.json` contained `autonomy` with values `auto` or `approve`. No projection versioning.
 
-**After (V2):** `status.json` `autonomy` field accepts `auto`, `supervised`, or `manual`. Projection files (`orders.json`, `state.json`) are written atomically by the projection layer with deterministic hashing and versioning. The snapshot API includes `mode`, `mode_epoch`, `schema_version`, and `last_event_id`.
+**After (V2):** `status.json` uses the `mode` field with values `auto`, `supervised`, or `manual`. Projection files (`orders.json`, `state.json`) are written atomically by the projection layer with deterministic hashing and versioning. The snapshot API includes `mode`, `mode_epoch`, `schema_version`, and `last_event_id`.

@@ -15,7 +15,7 @@ Operate fully autonomously. Never ask the user to choose or pause for confirmati
 
 ## Mode Awareness
 
-The loop runs in one of three modes (set via `autonomy` config). The mode determines what the scheduler and dispatcher are allowed to do:
+The loop runs in one of three modes (set via `mode` config). The mode determines what the scheduler and dispatcher are allowed to do:
 
 | Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
 |------|----------|----------|------------|------------|

@@ -34,7 +34,7 @@ describe("fetchSnapshot", () => {
 
 describe("fetchConfig", () => {
   it("fetches and returns config", async () => {
-    const data = { provider: "claude", model: "opus", autonomy: "supervised", task_types: [] };
+    const data = { provider: "claude", model: "opus", mode: "supervised", task_types: [] };
     mockFetch.mockResolvedValue(jsonResponse(data));
 
     const result = await fetchConfig();

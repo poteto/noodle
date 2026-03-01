@@ -62,7 +62,7 @@ export interface Snapshot {
   total_cost_usd: number /* float64 */;
   pending_reviews: PendingReviewItem[];
   pending_review_count: number /* int */;
-  autonomy: string;
+  mode: string;
   max_cooks: number /* int */;
   warnings: string[];
 }

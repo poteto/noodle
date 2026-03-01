@@ -67,7 +67,7 @@ export function buildSnapshot(overrides?: Partial<Snapshot>): Snapshot {
     total_cost_usd: 0,
     pending_reviews: [],
     pending_review_count: 0,
-    autonomy: "supervised",
+    mode: "supervised",
     max_cooks: 4,
     warnings: [],
     ...overrides,
