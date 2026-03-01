@@ -1,17 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
-import { MessageRow } from "./MessageRow";
 import { StreamingDelta } from "./StreamingDelta";
 import { groupConsecutiveTools } from "./group-tools";
-import { ToolGroup } from "./ToolGroup";
+import { VirtualizedFeed } from "./VirtualizedFeed";
 
 function findSchedulerSession(sessions: Session[]): Session | undefined {
   return sessions.find((s) => s.task_key?.toLowerCase().trim() === "schedule");
-}
-
-function eventKey(event: { at: string; category: string; label: string; body: string }): string {
-  return `${event.at}:${event.category}:${event.label}:${event.body}`;
 }
 
 export function SchedulerFeed() {
@@ -22,9 +17,7 @@ export function SchedulerFeed() {
   const schedulerSession = findSchedulerSession(snapshot.sessions);
   const { data: events = [] } = useSessionEvents(schedulerSession?.id);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -35,20 +28,14 @@ export function SchedulerFeed() {
     el.style.height = `${el.scrollHeight}px`;
   }, []);
 
-  useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [events, autoScroll]);
+  const items = useMemo(() => groupConsecutiveTools(events), [events]);
 
-  function handleScroll() {
-    const el = containerRef.current;
-    if (!el) {
-      return;
-    }
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    setAutoScroll(atBottom);
-  }
+  const emptyMessage =
+    events.length === 0
+      ? schedulerSession
+        ? "No events yet."
+        : "No scheduler session found. Send a prompt to start."
+      : undefined;
 
   function handleSubmit() {
     const prompt = input.trim();
@@ -105,55 +92,15 @@ export function SchedulerFeed() {
 
       <div className="feed-watermark">NOODLE</div>
 
-      <div ref={containerRef} className="feed-content" onScroll={handleScroll}>
-        {events.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              paddingTop: 40,
-              color: "var(--color-text-tertiary)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 13,
-            }}
-          >
-            {schedulerSession
-              ? "No events yet."
-              : "No scheduler session found. Send a prompt to start."}
-          </div>
-        )}
-        {groupConsecutiveTools(events).map((item) =>
-          "kind" in item ? (
-            <ToolGroup key={`group-${item.events[0].at}-${item.label}`} group={item} />
-          ) : (
-            <MessageRow key={eventKey(item)} event={item} />
-          ),
-        )}
-        {schedulerSession?.status === "running" && schedulerSession.id && (
-          <StreamingDelta sessionId={schedulerSession.id} />
-        )}
-      </div>
-
-      {!autoScroll && (
-        <button
-          type="button"
-          onClick={() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTop = containerRef.current.scrollHeight;
-            }
-            setAutoScroll(true);
-          }}
-          className="btn-new-order"
-          style={{
-            position: "absolute",
-            bottom: 100,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 20,
-          }}
-        >
-          Scroll to bottom
-        </button>
-      )}
+      <VirtualizedFeed
+        items={items}
+        emptyMessage={emptyMessage}
+        tail={
+          schedulerSession?.status === "running" && schedulerSession.id ? (
+            <StreamingDelta sessionId={schedulerSession.id} />
+          ) : undefined
+        }
+      />
 
       <div className="input-area">
         <div className="input-label">Talk to the scheduler...</div>

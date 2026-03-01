@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
-import { MessageRow } from "./MessageRow";
 import { ReviewBanner } from "./ReviewBanner";
 import { StreamingDelta } from "./StreamingDelta";
 import { groupConsecutiveTools } from "./group-tools";
-import { ToolGroup } from "./ToolGroup";
+import { VirtualizedFeed } from "./VirtualizedFeed";
 
 function statusColor(status: string): string {
   if (status === "running") {
@@ -15,10 +14,6 @@ function statusColor(status: string): string {
     return "var(--color-red)";
   }
   return "var(--color-text-secondary)";
-}
-
-function eventKey(event: { at: string; category: string; label: string; body: string }): string {
-  return `${event.at}:${event.category}:${event.label}:${event.body}`;
 }
 
 function AgentHeader({ session, onStopAll }: { session: Session; onStopAll: () => void }) {
@@ -56,9 +51,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const { data: events = [] } = useSessionEvents(sessionId);
   const { mutate: send } = useSendControl();
   const [input, setInput] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -72,20 +65,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const session = snapshot.sessions.find((s) => s.id === sessionId);
   const pendingReview = snapshot.pending_reviews?.find((r) => r.session_id === sessionId);
 
-  useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [events, autoScroll]);
-
-  function handleScroll() {
-    const el = containerRef.current;
-    if (!el) {
-      return;
-    }
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    setAutoScroll(atBottom);
-  }
+  const items = useMemo(() => groupConsecutiveTools(events), [events]);
 
   function handleSubmit() {
     const prompt = input.trim();
@@ -136,51 +116,10 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
       <div className="feed-watermark">NOODLE</div>
 
-      <div ref={containerRef} className="feed-content" onScroll={handleScroll}>
-        {events.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              paddingTop: 40,
-              color: "var(--color-text-tertiary)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 13,
-            }}
-          >
-            No events yet.
-          </div>
-        )}
-        {groupConsecutiveTools(events).map((item) =>
-          "kind" in item ? (
-            <ToolGroup key={`group-${item.events[0].at}-${item.label}`} group={item} />
-          ) : (
-            <MessageRow key={eventKey(item)} event={item} />
-          ),
-        )}
-        {session.status === "running" && <StreamingDelta sessionId={sessionId} />}
-      </div>
-
-      {!autoScroll && (
-        <button
-          type="button"
-          onClick={() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTop = containerRef.current.scrollHeight;
-            }
-            setAutoScroll(true);
-          }}
-          className="btn-new-order"
-          style={{
-            position: "absolute",
-            bottom: 100,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 20,
-          }}
-        >
-          Scroll to bottom
-        </button>
-      )}
+      <VirtualizedFeed
+        items={items}
+        tail={session.status === "running" ? <StreamingDelta sessionId={sessionId} /> : undefined}
+      />
 
       {pendingReview && <ReviewBanner review={pendingReview} />}
 

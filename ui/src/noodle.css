@@ -905,6 +905,14 @@
   animation: message-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Suppress entrance animations inside virtualized containers —
+   items scroll in/out of the viewport continuously so the
+   slide-up animation would replay on every scroll. */
+[data-virtualized] .message-row,
+[data-virtualized] .tool-group {
+  animation: none;
+}
+
 /* Markdown body — rendered Think/Prompt messages */
 .msg-markdown {
   white-space: normal;
