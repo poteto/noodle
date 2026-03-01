@@ -178,7 +178,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
             zIndex: 20,
           }}
         >
-          New messages
+          Scroll to bottom
         </button>
       )}
 

@@ -73,7 +73,7 @@ function BodyContent({ event }: { event: EventLine }) {
   return <div className="msg-body">{event.body}</div>;
 }
 
-export function MessageRow({ event }: { event: EventLine }) {
+export function MessageRow({ event, hideBadge }: { event: EventLine; hideBadge?: boolean }) {
   if (event.category === "ticket") {
     return (
       <div className="idle-divider">
@@ -97,12 +97,9 @@ export function MessageRow({ event }: { event: EventLine }) {
 
   if (tc === "type-tool") {
     return (
-      <div className={`message-row ${tc}`}>
-        <div className="msg-meta">
-          <span className={`msg-badge ${badgeCls}`}>{event.label}</span>
-          <span>{formatTime(event.at)}</span>
-        </div>
-        <BodyContent event={event} />
+      <div className={`message-row ${tc} tool-oneliner`}>
+        {!hideBadge && <span className={`msg-badge ${badgeCls}`}>{event.label}</span>}
+        <span className="tool-summary">{event.body.split("\n")[0].trim()}</span>
       </div>
     );
   }

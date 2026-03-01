@@ -26,7 +26,7 @@ const statusDotColors: Record<string, string> = {
   running: "var(--color-green)",
   completed: "var(--color-green)",
   failed: "var(--color-red)",
-  pending: "var(--color-border-subtle)",
+  pending: "#555",
   paused: "var(--color-accent)",
 };
 
@@ -43,7 +43,7 @@ function esc(s: string): string {
 
 function nodeHTML(data: TreeNodeData): string {
   const isActive = data.status === "active" || data.status === "running";
-  const borderColor = isActive ? "var(--color-accent)" : "var(--color-border-subtle)";
+  const borderColor = isActive ? "var(--color-accent)" : "#444";
   const dotColor = statusDotColors[data.status] ?? "var(--color-border-subtle)";
 
   const statusLine = `<div class="tree-node-status">${esc(data.status)}</div>`;
@@ -159,18 +159,16 @@ function renderTree(
       (enter) =>
         enter
           .append("path")
-          .attr("class", "link")
+          .attr("class", "link tree-enter")
           .attr("fill", "none")
           .attr("stroke-width", 1.5)
-          .attr("d", edgePath)
-          .style("opacity", 0)
-          .call((sel) => sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1)),
+          .attr("d", edgePath),
       (update) =>
         update.call((sel) => sel.transition().duration(300).ease(easeCubicOut).attr("d", edgePath)),
-      (exit) => exit.call((sel) => sel.transition().duration(200).style("opacity", 0).remove()),
+      (exit) => exit.transition().duration(200).style("opacity", 0).remove(),
     )
     .classed("edge-active", isEdgeActive)
-    .attr("stroke", (d) => (isEdgeActive(d) ? "var(--color-accent)" : "var(--color-border-subtle)"))
+    .attr("stroke", (d) => (isEdgeActive(d) ? "var(--color-accent)" : "#555"))
     .attr("stroke-width", 1.5)
     .attr("stroke-dasharray", (d) => (d.target.data.status === "pending" ? "4 4" : "none"));
 
@@ -182,16 +180,14 @@ function renderTree(
       (enter) =>
         enter
           .append("foreignObject")
-          .attr("class", "node")
+          .attr("class", "node tree-enter")
           .attr("width", NODE_WIDTH)
           .attr("height", NODE_HEIGHT)
           .attr("overflow", "visible")
           .attr("x", (d) => (d.x ?? 0) - NODE_WIDTH / 2)
-          .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2)
-          .style("opacity", 0)
-          .call((sel) => sel.transition().duration(250).ease(easeCubicOut).style("opacity", 1)),
+          .attr("y", (d) => (d.y ?? 0) - NODE_HEIGHT / 2),
       (update) => update,
-      (exit) => exit.call((sel) => sel.transition().duration(200).style("opacity", 0).remove()),
+      (exit) => exit.transition().duration(200).style("opacity", 0).remove(),
     );
 
   // Glide existing nodes to new positions.

@@ -11,13 +11,6 @@ const TOOL_BADGE_CLASS: Record<string, string> = {
   Grep: "badge-read",
 };
 
-function previewText(group: ToolGroupData): string {
-  return group.events
-    .map((e) => e.body.split("\n")[0].trim())
-    .filter(Boolean)
-    .join(", ");
-}
-
 function eventKey(event: { at: string; category: string; label: string; body: string }): string {
   return `${event.at}:${event.category}:${event.label}:${event.body}`;
 }
@@ -31,15 +24,14 @@ export function ToolGroup({ group }: { group: ToolGroupData }) {
       <button type="button" className="tool-group-summary" onClick={() => setOpen((v) => !v)}>
         <span className={`msg-badge ${badgeCls}`}>{group.label}</span>
         <span className="tool-group-label">
-          {group.label} {group.events.length} files
+          {group.label} (x{group.events.length})
         </span>
-        <span className="tool-group-preview">{previewText(group)}</span>
         <span className={`tool-group-chevron ${open ? "open" : ""}`}>&#x25B8;</span>
       </button>
       {open && (
         <div className="tool-group-children">
           {group.events.map((event) => (
-            <MessageRow key={eventKey(event)} event={event} />
+            <MessageRow key={eventKey(event)} event={event} hideBadge />
           ))}
         </div>
       )}

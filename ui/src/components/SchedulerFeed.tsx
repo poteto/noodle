@@ -151,7 +151,7 @@ export function SchedulerFeed() {
             zIndex: 20,
           }}
         >
-          New messages
+          Scroll to bottom
         </button>
       )}
 
