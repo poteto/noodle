@@ -3,6 +3,7 @@ import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "
 import type { ChannelId, StageStatus } from "~/client";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { LayoutGrid, User, Network, BadgeCheck } from "lucide-react";
+import { OverflowTooltip } from "./OverflowTooltip";
 
 const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
   active: { symbol: "▶", cls: "stage-active" },
@@ -214,9 +215,7 @@ export function Sidebar() {
                 onClick={() => toggleOrder(order.id)}
               >
                 <span className={`tree-chevron ${isExpanded ? "open" : ""}`}>▸</span>
-                <span className="tree-label" title={order.title || order.id}>
-                  {order.title || order.id}
-                </span>
+                <OverflowTooltip className="tree-label" text={order.title || order.id} />
                 {hasActiveStage && <div className="status-dot active" />}
               </button>
               <div className={`tree-stages ${isExpanded ? "open" : ""}`}>
@@ -242,9 +241,7 @@ export function Sidebar() {
                       style={{ cursor: agentChannel ? "pointer" : "default" }}
                     >
                       <span className="tree-icon">{info.symbol}</span>
-                      <span className="tree-stage-label" title={stageLabel}>
-                        {stageLabel}
-                      </span>
+                      <OverflowTooltip className="tree-stage-label" text={stageLabel} />
                     </button>
                   );
                 })}

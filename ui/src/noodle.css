@@ -1384,6 +1384,26 @@ foreignObject.node.node-clickable .tree-node-card:hover {
 }
 
 /* ============================================================
+   OVERFLOW TOOLTIP — JS-driven, shown only when text truncated
+   ============================================================ */
+.overflow-tooltip {
+  position: fixed;
+  transform: translateY(-100%) translateY(-6px);
+  padding: 4px 8px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-active);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  z-index: 9999;
+  pointer-events: none;
+  animation: tooltip-in 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================
    REVIEW — report panel + context panel for quality reviews
    ============================================================ */
 
