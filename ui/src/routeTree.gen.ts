@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TreeRouteImport } from './routes/tree'
 import { Route as ReviewRouteImport } from './routes/review'
-import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorIdRouteImport } from './routes/actor.$id'
@@ -24,11 +23,6 @@ const TreeRoute = TreeRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrchestratorRoute = OrchestratorRouteImport.update({
-  id: '/orchestrator',
-  path: '/orchestrator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -50,7 +44,6 @@ const ActorIdRoute = ActorIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/orchestrator': typeof OrchestratorRoute
   '/review': typeof ReviewRoute
   '/tree': typeof TreeRoute
   '/actor/$id': typeof ActorIdRoute
@@ -58,7 +51,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/orchestrator': typeof OrchestratorRoute
   '/review': typeof ReviewRoute
   '/tree': typeof TreeRoute
   '/actor/$id': typeof ActorIdRoute
@@ -67,36 +59,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/orchestrator': typeof OrchestratorRoute
   '/review': typeof ReviewRoute
   '/tree': typeof TreeRoute
   '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/dashboard'
-    | '/orchestrator'
-    | '/review'
-    | '/tree'
-    | '/actor/$id'
+  fullPaths: '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/orchestrator' | '/review' | '/tree' | '/actor/$id'
-  id:
-    | '__root__'
-    | '/'
-    | '/dashboard'
-    | '/orchestrator'
-    | '/review'
-    | '/tree'
-    | '/actor/$id'
+  to: '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
+  id: '__root__' | '/' | '/dashboard' | '/review' | '/tree' | '/actor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
-  OrchestratorRoute: typeof OrchestratorRoute
   ReviewRoute: typeof ReviewRoute
   TreeRoute: typeof TreeRoute
   ActorIdRoute: typeof ActorIdRoute
@@ -116,13 +93,6 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orchestrator': {
-      id: '/orchestrator'
-      path: '/orchestrator'
-      fullPath: '/orchestrator'
-      preLoaderRoute: typeof OrchestratorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -152,7 +122,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
-  OrchestratorRoute: OrchestratorRoute,
   ReviewRoute: ReviewRoute,
   TreeRoute: TreeRoute,
   ActorIdRoute: ActorIdRoute,

@@ -18,7 +18,6 @@ const queryClient = new QueryClient({
 function RootComponent() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isOrchestratorRoute = pathname === "/orchestrator";
 
   const activeChannel: ChannelId = useMemo(() => {
     if (pathname.startsWith("/actor/")) {
@@ -41,14 +40,10 @@ function RootComponent() {
   return (
     <ActiveChannelProvider channel={activeChannel} onChannelChange={setActiveChannel}>
       <Suspense fallback={<div className="h-screen bg-bg-depth" />}>
-        {isOrchestratorRoute ? (
+        <div className="app-layout h-screen">
+          <Sidebar />
           <Outlet />
-        ) : (
-          <div className="app-layout h-screen">
-            <Sidebar />
-            <Outlet />
-          </div>
-        )}
+        </div>
       </Suspense>
     </ActiveChannelProvider>
   );

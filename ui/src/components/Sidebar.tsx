@@ -82,24 +82,6 @@ function ReviewIcon() {
   );
 }
 
-function OrchestratorIcon() {
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 3h14v12H2z" />
-      <path d="M6 7h6M6 10h4" />
-      <path d="M3 15h12" />
-    </svg>
-  );
-}
-
 function ConnectionDot() {
   const status = useWSStatus();
   let cls = "idle";
@@ -229,12 +211,6 @@ export function Sidebar() {
           label={`Review${snapshot.pending_review_count ? ` (${snapshot.pending_review_count})` : ""}`}
           active={pathname === "/review"}
           icon={<ReviewIcon />}
-        />
-        <NavLink
-          to="/orchestrator"
-          label="Orchestrator"
-          active={pathname === "/orchestrator"}
-          icon={<OrchestratorIcon />}
         />
       </nav>
 
