@@ -10,7 +10,7 @@ import {
   getWSStatus,
 } from "./ws";
 import type { WSStatus } from "./ws";
-import { fetchSnapshot, sendControl, fetchReviewDiff } from "./api";
+import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
 import type {
   Snapshot,
   EventLine,
@@ -52,8 +52,6 @@ export function useSuspenseSnapshot() {
 }
 
 export function useSessionEvents(sessionId: string | undefined) {
-  const queryClient = useQueryClient();
-
   useEffect(() => {
     if (!sessionId) {
       return;
@@ -64,15 +62,8 @@ export function useSessionEvents(sessionId: string | undefined) {
 
   return useQuery<EventLine[]>({
     queryKey: ["sessionEvents", sessionId],
-    queryFn: () => [],
+    queryFn: () => (sessionId ? fetchSessionEvents(sessionId) : []),
     enabled: Boolean(sessionId),
-    initialData: () => {
-      if (!sessionId) {
-        return [];
-      }
-      const snapshot = queryClient.getQueryData<Snapshot>(SNAPSHOT_KEY);
-      return snapshot?.events_by_session?.[sessionId] ?? [];
-    },
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
