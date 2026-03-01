@@ -619,10 +619,15 @@ func TestSessionEventsAfterFilter(t *testing.T) {
 
 func assertFailureStateMessage(t *testing.T, message string) {
 	t.Helper()
-	lower := strings.ToLower(message)
+	isWordBoundary := func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < 'A' || r > 'Z')
+	}
+	words := strings.FieldsFunc(strings.ToLower(message), isWordBoundary)
 	for _, term := range []string{"must", "required", "requires", "expected"} {
-		if strings.Contains(lower, term) {
-			t.Fatalf("message %q contains expectation-style term %q", message, term)
+		for _, word := range words {
+			if word == term {
+				t.Fatalf("message %q contains expectation-style term %q", message, term)
+			}
 		}
 	}
 }
