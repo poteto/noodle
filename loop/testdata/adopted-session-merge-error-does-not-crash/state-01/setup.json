@@ -1,0 +1,6 @@
+{
+  "adopted_targets": [
+    {"id": "merge-error-order", "session_id": "adopted-sess-1"}
+  ],
+  "worktree_merge_error": "merge 20-0-execute: root checkout has uncommitted changes — commit or stash before merging"
+}

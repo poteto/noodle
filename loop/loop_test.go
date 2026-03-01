@@ -378,6 +378,107 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	}
 }
 
+func TestCycleMergeFailureForwardsToSchedulerWithoutCrashing(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
+	ordersPath := writeTestOrders(t, runtimeDir, orders)
+
+	rt := newMockRuntime()
+	wt := &fakeWorktree{
+		mergeErr: errors.New("merge 20-0-execute: root checkout has uncommitted changes — commit or stash before merging"),
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": rt},
+		Worktree: wt,
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+	ctrl := &mockController{steerable: true}
+	l.cooks.activeCooksByOrder[ScheduleTaskKey()] = &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID:    ScheduleTaskKey(),
+			stageIndex: 0,
+			stage: Stage{
+				TaskKey: ScheduleTaskKey(),
+				Skill:   "schedule",
+				Status:  StageStatusActive,
+			},
+		},
+		session: &steerableSession{
+			mockSession: &mockSession{id: "scheduler-session", status: "running", done: make(chan struct{})},
+			ctrl:        ctrl,
+		},
+	}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
+	}
+	rt.sessions[0].complete("completed")
+
+	// Merge failure should be handled as a stage failure and forwarded to the
+	// scheduler, not returned as a fatal loop cycle error.
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle should not crash on merge failure: %v", err)
+	}
+
+	reason, ok := l.cooks.failedTargets["42"]
+	if !ok {
+		t.Fatal("expected failed target entry for order 42")
+	}
+	if !strings.Contains(reason, "root checkout has uncommitted changes") {
+		t.Fatalf("failed reason = %q, want root-cleanliness error", reason)
+	}
+
+	updatedOrders, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders after merge failure: %v", err)
+	}
+	for _, order := range updatedOrders.Orders {
+		if order.ID == "42" {
+			t.Fatal("order 42 should have been removed after merge failure")
+		}
+	}
+	if _, ok := l.cooks.pendingReview["42"]; ok {
+		t.Fatal("non-conflict merge failure should not park pending review")
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ctrl.mu.Lock()
+		sent := ctrl.sendCalls
+		ctrl.mu.Unlock()
+		if sent > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	ctrl.mu.Lock()
+	defer ctrl.mu.Unlock()
+	if ctrl.sendCalls == 0 {
+		t.Fatal("expected merge failure message to be forwarded to scheduler")
+	}
+	if !strings.Contains(ctrl.lastSentMessage, "[merge_failed]") {
+		t.Fatalf("scheduler message = %q, want merge_failed tag", ctrl.lastSentMessage)
+	}
+	if !strings.Contains(ctrl.lastSentMessage, "root checkout has uncommitted changes") {
+		t.Fatalf("scheduler message = %q, want root-cleanliness error", ctrl.lastSentMessage)
+	}
+	if !strings.Contains(ctrl.lastSentMessage, "Use Skill(schedule) and create a new order to fix this issue before retrying.") {
+		t.Fatalf("scheduler message = %q, want Skill(schedule) remediation hint", ctrl.lastSentMessage)
+	}
+}
+
 func TestCycleEntersIdleWhenNoPlansRemain(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

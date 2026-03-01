@@ -137,32 +137,77 @@ func (l *Loop) readSessionSyncResult(sessionID string) (loopruntime.SyncResult, 
 }
 
 func (l *Loop) handleMergeConflict(cook *cookHandle, err error) error {
+	return l.handleMergeError(cook, err)
+}
+
+func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	var conflictErr *worktree.MergeConflictError
-	if !errors.As(err, &conflictErr) {
-		return err
+	if errors.As(err, &conflictErr) {
+		if isScheduleStage(cook.stage) {
+			return err
+		}
+		// Forward conflict to scheduler and mark the stage as failed.
+		reason := "merge conflict: " + conflictErr.Error()
+		l.logger.Warn("merge conflict, forwarding to scheduler", "order", cook.orderID, "reason", reason)
+		l.forwardToScheduler(cook, "merge_conflict", reason)
+		_ = l.events.Emit(LoopEventMergeConflict, MergeConflictPayload{
+			OrderID:      cook.orderID,
+			StageIndex:   cook.stageIndex,
+			WorktreeName: cook.worktreeName,
+		})
+		// Emit V2 canonical state event for merge failure.
+		l.emitEvent(ingest.EventMergeFailed, map[string]any{
+			"order_id":    cook.orderID,
+			"stage_index": cook.stageIndex,
+			"error":       reason,
+		})
+
+		// Park for pending review so the chef can decide.
+		if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
+			return parkErr
+		}
+		return nil
 	}
+
 	if isScheduleStage(cook.stage) {
 		return err
 	}
-	// Forward conflict to scheduler and mark the stage as failed.
-	reason := "merge conflict: " + conflictErr.Error()
-	l.logger.Warn("merge conflict, forwarding to scheduler", "order", cook.orderID, "reason", reason)
-	l.forwardToScheduler(cook, "merge_conflict", reason)
-	_ = l.events.Emit(LoopEventMergeConflict, MergeConflictPayload{
-		OrderID:      cook.orderID,
-		StageIndex:   cook.stageIndex,
-		WorktreeName: cook.worktreeName,
+	reason := "merge failed: " + err.Error()
+	schedulerHint := reason + ". Use Skill(schedule) and create a new order to fix this issue before retrying."
+	l.logger.Warn("merge failed, forwarding to scheduler", "order", cook.orderID, "reason", reason)
+	l.forwardToScheduler(cook, "merge_failed", schedulerHint)
+
+	orders, ordersErr := l.currentOrders()
+	if ordersErr != nil {
+		return ordersErr
+	}
+	orders, ordersErr = failStage(orders, cook.orderID, reason)
+	if ordersErr != nil {
+		return ordersErr
+	}
+	if writeErr := l.writeOrdersState(orders); writeErr != nil {
+		return writeErr
+	}
+	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
+		OrderID:    cook.orderID,
+		StageIndex: cook.stageIndex,
+		Reason:     reason,
+		SessionID:  sessionIDPtr(cook),
 	})
-	// Emit V2 canonical state event for merge failure.
+	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
+		OrderID: cook.orderID,
+		Reason:  reason,
+	})
 	l.emitEvent(ingest.EventMergeFailed, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
 		"error":       reason,
 	})
-
-	// Park for pending review so the chef can decide.
-	if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
-		return parkErr
+	if err := l.markFailed(cook.orderID, reason); err != nil {
+		return err
+	}
+	if strings.TrimSpace(cook.worktreeName) != "" {
+		_ = l.deps.Worktree.Cleanup(cook.worktreeName, true)
 	}
 	return nil
 }
