@@ -1,9 +1,16 @@
 ---
-priority: [84, 88, 20, 69]
-# 84 sub-agent tracking (foundational infra),
-# 88 sub-agent tracking v2 (extends 84),
-# 20 skill-path defaults (small docs fix),
-# 69 cursor dispatcher (feature, benefits from cleaned dispatcher package)
+priority: [89, 20, 84, 90, 86, 88, 85, 69]
+# Launch-blocking:
+#   89 simplify frontmatter — clean API surface before users depend on it
+#   20 skill-path defaults — onboarding clarity, small fix
+# High value for launch:
+#   84 sub-agent tracking — visibility into agent orchestration
+#   90 interactive sessions — collaborative mode, key differentiator
+#   86 diffs integration — better code-change review UX
+# Post-launch:
+#   88 sub-agent tracking v2 — hardening, depends on 84
+#   85 .noodle.toml live reload — convenience, restart works fine
+#   69 cursor dispatcher — extended runtime, process+sprites cover launch
 ---
 
 # Todos
