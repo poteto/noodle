@@ -165,10 +165,12 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 // regardless of bootstrap status.
 func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	if l.bootstrapExhausted {
+		failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
 		l.logger.Warn("bootstrap exhausted — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors",
 			"attempts", l.bootstrapAttempts)
 		_ = l.events.Emit(LoopEventBootstrapExhausted, BootstrapExhaustedPayload{
-			Reason: fmt.Sprintf("bootstrap exhausted after %d attempts — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors", l.bootstrapAttempts),
+			Reason:  fmt.Sprintf("bootstrap exhausted after %d attempts — create .agents/skills/schedule/SKILL.md manually or check bootstrap skill output for errors", l.bootstrapAttempts),
+			Failure: &failureMetadata,
 		})
 		return nil
 	}

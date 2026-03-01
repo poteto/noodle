@@ -262,7 +262,7 @@ func eventSummary(eventType string, payload json.RawMessage) string {
 
 	orderID := getString("order_id")
 	reason := getString("reason")
-	owner := getNestedString("agent_mistake", "owner")
+	owner := getNestedString("failure", "owner")
 	prefix := ""
 	if owner != "" {
 		prefix = "[" + owner + "] "

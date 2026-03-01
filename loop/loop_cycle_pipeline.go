@@ -38,12 +38,16 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 				SchedulerMistakeReasonOrdersNextRejected,
 			)
 			payload.AgentMistake = &mistake
+			failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", &mistake)
+			payload.Failure = &failureMetadata
 		} else {
 			l.classifyDegrade(
 				"build.promote_orders_next",
 				"orders-next promotion failed",
 				err,
 			)
+			failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
+			payload.Failure = &failureMetadata
 		}
 		l.logger.Warn("orders-next promotion failed", "error", err)
 		l.lastPromotionError = err.Error()
@@ -124,9 +128,11 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 	}
 
 	if hasSyncWarnings(warnings) {
+		failureMetadata := eventFailureMetadataForLoop(CycleFailureClassDegradeContinue, "", nil)
 		l.logger.Warn("sync script issue, continuing with empty backlog", "warnings", strings.Join(warnings, "; "))
 		_ = l.events.Emit(LoopEventSyncDegraded, SyncDegradedPayload{
-			Reason: strings.Join(warnings, "; "),
+			Reason:  strings.Join(warnings, "; "),
+			Failure: &failureMetadata,
 		})
 	}
 

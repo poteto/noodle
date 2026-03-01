@@ -85,6 +85,18 @@ func TestCycleClassifiesOrdersNextPromotionFailureAsDegrade(t *testing.T) {
 	if payload.AgentMistake.SchedulerReason != SchedulerMistakeReasonOrdersNextRejected {
 		t.Fatalf("payload scheduler reason = %q, want %q", payload.AgentMistake.SchedulerReason, SchedulerMistakeReasonOrdersNextRejected)
 	}
+	if payload.Failure == nil {
+		t.Fatal("promotion.failed payload missing failure classification")
+	}
+	if payload.Failure.Class != failure.FailureClassAgentMistake {
+		t.Fatalf("payload failure class = %q, want %q", payload.Failure.Class, failure.FailureClassAgentMistake)
+	}
+	if payload.Failure.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("payload failure recoverability = %q, want %q", payload.Failure.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+	if payload.Failure.CycleClass != CycleFailureClassDegradeContinue {
+		t.Fatalf("payload cycle class = %q, want %q", payload.Failure.CycleClass, CycleFailureClassDegradeContinue)
+	}
 }
 
 func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testing.T) {
@@ -149,6 +161,15 @@ func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testin
 	}
 	if payload.AgentMistake != nil {
 		t.Fatalf("payload agent mistake = %#v, want nil for backend promotion failure", payload.AgentMistake)
+	}
+	if payload.Failure == nil {
+		t.Fatal("payload missing failure classification")
+	}
+	if payload.Failure.Class != failure.FailureClassWarningOnly {
+		t.Fatalf("payload failure class = %q, want %q", payload.Failure.Class, failure.FailureClassWarningOnly)
+	}
+	if payload.Failure.Recoverability != failure.FailureRecoverabilityDegrade {
+		t.Fatalf("payload failure recoverability = %q, want %q", payload.Failure.Recoverability, failure.FailureRecoverabilityDegrade)
 	}
 }
 

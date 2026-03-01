@@ -28,7 +28,8 @@ type RegistryRebuiltPayload struct {
 }
 
 type BootstrapExhaustedPayload struct {
-	Reason string `json:"reason"`
+	Reason  string                `json:"reason"`
+	Failure *EventFailureMetadata `json:"failure,omitempty"`
 }
 
 type OrderDroppedPayload struct {
@@ -37,7 +38,8 @@ type OrderDroppedPayload struct {
 }
 
 type SyncDegradedPayload struct {
-	Reason string `json:"reason"`
+	Reason  string                `json:"reason"`
+	Failure *EventFailureMetadata `json:"failure,omitempty"`
 }
 
 type StageCompletedPayload struct {
@@ -54,6 +56,7 @@ type StageFailedPayload struct {
 	Reason       string                `json:"reason"`
 	SessionID    *string               `json:"session_id,omitempty"`
 	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
+	Failure      *EventFailureMetadata `json:"failure,omitempty"`
 }
 
 type OrderCompletedPayload struct {
@@ -64,6 +67,7 @@ type OrderFailedPayload struct {
 	OrderID      string                `json:"order_id"`
 	Reason       string                `json:"reason"`
 	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
+	Failure      *EventFailureMetadata `json:"failure,omitempty"`
 }
 
 type ScheduleCompletedPayload struct {
@@ -89,6 +93,7 @@ type OrderRequeuedPayload struct {
 type PromotionFailedPayload struct {
 	Reason       string                `json:"reason"`
 	AgentMistake *AgentMistakeEnvelope `json:"agent_mistake,omitempty"`
+	Failure      *EventFailureMetadata `json:"failure,omitempty"`
 }
 
 // sessionIDPtr returns a pointer to the session ID, or nil if the cook has no session.

@@ -236,14 +236,17 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 	if writeErr := l.writeOrdersState(orders); writeErr != nil {
 		return writeErr
 	}
+	failureMetadata := eventFailureMetadataForDispatch(envelope, OrderFailureClassStageTerminal)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:    cand.OrderID,
 		StageIndex: cand.StageIndex,
 		Reason:     reason,
+		Failure:    &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID: cand.OrderID,
 		Reason:  reason,
+		Failure: &failureMetadata,
 	})
 	l.emitEvent(ingest.EventStageFailed, map[string]any{
 		"order_id":    cand.OrderID,

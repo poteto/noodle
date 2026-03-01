@@ -150,6 +150,12 @@ func TestControlRejectRemovesPendingAfterSuccess(t *testing.T) {
 	if stagePayload.AgentMistake == nil || stagePayload.AgentMistake.Owner != failure.FailureOwnerCookAgent {
 		t.Fatal("stage.failed payload missing cook ownership classification")
 	}
+	if stagePayload.Failure == nil {
+		t.Fatal("stage.failed payload missing failure classification")
+	}
+	if stagePayload.Failure.Class != failure.FailureClassAgentMistake {
+		t.Fatalf("failure class = %q, want %q", stagePayload.Failure.Class, failure.FailureClassAgentMistake)
+	}
 }
 
 // controlRequestChanges should terminally fail the order and keep it for explicit requeue.
@@ -220,6 +226,12 @@ func TestControlRequestChangesMarksOrderFailed(t *testing.T) {
 	}
 	if stagePayload.AgentMistake.CookReason != CookMistakeReasonRequestChanges {
 		t.Fatalf("stage.failed cook reason = %q, want %q", stagePayload.AgentMistake.CookReason, CookMistakeReasonRequestChanges)
+	}
+	if stagePayload.Failure == nil {
+		t.Fatal("stage.failed payload missing failure classification")
+	}
+	if stagePayload.Failure.Class != failure.FailureClassAgentMistake {
+		t.Fatalf("failure class = %q, want %q", stagePayload.Failure.Class, failure.FailureClassAgentMistake)
 	}
 }
 

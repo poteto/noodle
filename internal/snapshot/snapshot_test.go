@@ -241,8 +241,8 @@ func TestReadLoopEventsDropWithoutReason(t *testing.T) {
 
 func TestReadLoopEventsAgentOwnershipPrefix(t *testing.T) {
 	dir := t.TempDir()
-	ndjson := `{"seq":1,"type":"promotion.failed","at":"2026-02-24T10:00:00Z","payload":{"reason":"invalid orders-next","agent_mistake":{"owner":"scheduler_agent"}}}
-{"seq":2,"type":"stage.failed","at":"2026-02-24T10:01:00Z","payload":{"order_id":"order-1","task_key":"quality","reason":"changes requested","agent_mistake":{"owner":"cook_agent"}}}
+	ndjson := `{"seq":1,"type":"promotion.failed","at":"2026-02-24T10:00:00Z","payload":{"reason":"invalid orders-next","failure":{"class":"agent_mistake","recoverability":"recoverable","owner":"scheduler_agent","scope":"system","cycle_class":"degrade-continue"}}}
+{"seq":2,"type":"stage.failed","at":"2026-02-24T10:01:00Z","payload":{"order_id":"order-1","task_key":"quality","reason":"changes requested","failure":{"class":"agent_mistake","recoverability":"recoverable","owner":"cook_agent","scope":"order","cycle_class":"order-hard","order_class":"stage-terminal"}}}
 `
 	if err := os.WriteFile(filepath.Join(dir, "loop-events.ndjson"), []byte(ndjson), 0o644); err != nil {
 		t.Fatalf("write loop-events: %v", err)
@@ -257,6 +257,12 @@ func TestReadLoopEventsAgentOwnershipPrefix(t *testing.T) {
 	}
 	if events[1].Body != "[cook_agent] changes requested" {
 		t.Fatalf("event[1] body = %q", events[1].Body)
+	}
+	if events[0].Failure == nil || events[0].Failure.Owner != "scheduler_agent" {
+		t.Fatalf("event[0] failure = %#v", events[0].Failure)
+	}
+	if events[1].Failure == nil || events[1].Failure.Owner != "cook_agent" {
+		t.Fatalf("event[1] failure = %#v", events[1].Failure)
 	}
 }
 

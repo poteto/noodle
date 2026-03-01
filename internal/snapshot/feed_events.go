@@ -81,7 +81,10 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			continue
 		}
 
-		var label, body, category, taskType string
+		var (
+			label, body, category, taskType string
+			failureMetadata                 *loop.EventFailureMetadata
+		)
 		switch raw.Type {
 		case "stage.completed":
 			label = "Completed"
@@ -100,18 +103,17 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Failed"
 			category = "stage_failed"
 			var p struct {
-				OrderID      string `json:"order_id"`
-				TaskKey      string `json:"task_key"`
-				Reason       string `json:"reason"`
-				AgentMistake *struct {
-					Owner string `json:"owner"`
-				} `json:"agent_mistake"`
+				OrderID string                     `json:"order_id"`
+				TaskKey string                     `json:"task_key"`
+				Reason  string                     `json:"reason"`
+				Failure *loop.EventFailureMetadata `json:"failure"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
+			failureMetadata = p.Failure
 			taskType = p.TaskKey
 			body = p.Reason
-			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
-				body = "[" + p.AgentMistake.Owner + "] " + body
+			if owner := failureOwnerPrefix(p.Failure); owner != "" && body != "" {
+				body = owner + body
 			}
 		case "order.completed":
 			label = "Order Complete"
@@ -125,20 +127,19 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Order Failed"
 			category = "order_failed"
 			var p struct {
-				OrderID      string `json:"order_id"`
-				Reason       string `json:"reason"`
-				AgentMistake *struct {
-					Owner string `json:"owner"`
-				} `json:"agent_mistake"`
+				OrderID string                     `json:"order_id"`
+				Reason  string                     `json:"reason"`
+				Failure *loop.EventFailureMetadata `json:"failure"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
+			failureMetadata = p.Failure
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
 				body = p.OrderID
 			}
-			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
-				body = "[" + p.AgentMistake.Owner + "] " + body
+			if owner := failureOwnerPrefix(p.Failure); owner != "" && body != "" {
+				body = owner + body
 			}
 		case "order.dropped":
 			label = "Dropped"
@@ -200,9 +201,11 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Bootstrap"
 			category = "bootstrap"
 			var p struct {
-				Reason string `json:"reason"`
+				Reason  string                     `json:"reason"`
+				Failure *loop.EventFailureMetadata `json:"failure"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
+			failureMetadata = p.Failure
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
@@ -212,9 +215,11 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Sync"
 			category = "sync_degraded"
 			var p struct {
-				Reason string `json:"reason"`
+				Reason  string                     `json:"reason"`
+				Failure *loop.EventFailureMetadata `json:"failure"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
+			failureMetadata = p.Failure
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
@@ -224,19 +229,18 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			label = "Rejected"
 			category = "promotion_failed"
 			var p struct {
-				Reason       string `json:"reason"`
-				AgentMistake *struct {
-					Owner string `json:"owner"`
-				} `json:"agent_mistake"`
+				Reason  string                     `json:"reason"`
+				Failure *loop.EventFailureMetadata `json:"failure"`
 			}
 			_ = json.Unmarshal(raw.Payload, &p)
+			failureMetadata = p.Failure
 			if p.Reason != "" {
 				body = p.Reason
 			} else {
 				body = "orders-next.json validation failed"
 			}
-			if p.AgentMistake != nil && p.AgentMistake.Owner != "" && body != "" {
-				body = "[" + p.AgentMistake.Owner + "] " + body
+			if owner := failureOwnerPrefix(p.Failure); owner != "" && body != "" {
+				body = owner + body
 			}
 		default:
 			continue
@@ -254,7 +258,15 @@ func readLoopEvents(runtimeDir string) []FeedEvent {
 			Label:     label,
 			Body:      body,
 			Category:  category,
+			Failure:   failureMetadata,
 		})
 	}
 	return events
+}
+
+func failureOwnerPrefix(metadata *loop.EventFailureMetadata) string {
+	if metadata == nil || metadata.Owner == "" {
+		return ""
+	}
+	return "[" + string(metadata.Owner) + "] "
 }

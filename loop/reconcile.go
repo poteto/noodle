@@ -348,14 +348,21 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) err
 			err,
 		)
 	}
+	failureMetadata := eventFailureMetadataForLoop(
+		CycleFailureClassOrderHard,
+		OrderFailureClassStageTerminal,
+		nil,
+	)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:    orderID,
 		StageIndex: stageIdx,
 		Reason:     reason,
+		Failure:    &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID: orderID,
 		Reason:  reason,
+		Failure: &failureMetadata,
 	})
 	l.classifyOrderHard(
 		"reconcile.merging_stage_terminal",

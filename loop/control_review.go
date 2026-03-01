@@ -105,17 +105,24 @@ func (l *Loop) controlReject(orderID string) error {
 	}
 	sid := pending.sessionID
 	mistake := newCookMistakeEnvelope(cookRejectReasonForTask(pending.stage.TaskKey), orderID, pending.stageIndex)
+	failureMetadata := eventFailureMetadataForLoop(
+		CycleFailureClassOrderHard,
+		OrderFailureClassOrderTerminal,
+		&mistake,
+	)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:      orderID,
 		StageIndex:   pending.stageIndex,
 		Reason:       "rejected by user",
 		SessionID:    &sid,
 		AgentMistake: &mistake,
+		Failure:      &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID:      orderID,
 		Reason:       "rejected by user",
 		AgentMistake: &mistake,
+		Failure:      &failureMetadata,
 	})
 	l.classifyCookMistake(
 		"control.review_reject",
@@ -162,17 +169,24 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		return err
 	}
 	sid := pending.sessionID
+	failureMetadata := eventFailureMetadataForLoop(
+		CycleFailureClassOrderHard,
+		OrderFailureClassStageTerminal,
+		&mistake,
+	)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:      orderID,
 		StageIndex:   pending.stageIndex,
 		Reason:       reason,
 		SessionID:    &sid,
 		AgentMistake: &mistake,
+		Failure:      &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID:      orderID,
 		Reason:       reason,
 		AgentMistake: &mistake,
+		Failure:      &failureMetadata,
 	})
 	l.classifyCookMistake(
 		"control.request_changes",

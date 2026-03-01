@@ -105,11 +105,13 @@ func (l *Loop) processControlCommands() error {
 		}
 		var cmd ControlCommand
 		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+			failure := controlAckFailureForInvalidCommandJSON()
 			acks = append(acks, ControlAck{
 				ID:      "",
 				Action:  "unknown",
 				Status:  "error",
 				Message: "invalid command JSON",
+				Failure: &failure,
 				At:      l.deps.Now(),
 			})
 			continue
@@ -270,6 +272,10 @@ func (l *Loop) applyControlCommand(cmd ControlCommand) ControlAck {
 		ack.Message = "unsupported action"
 	}
 	if ack.Status == "error" {
+		if ack.Failure == nil {
+			failure := controlAckFailureForCommand(cmd)
+			ack.Failure = &failure
+		}
 		l.logger.Warn("control command failed", "action", cmd.Action, "message", ack.Message)
 	} else {
 		l.logger.Info("control command", "action", cmd.Action, "status", ack.Status)

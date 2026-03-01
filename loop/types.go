@@ -74,11 +74,12 @@ type ControlCommand struct {
 }
 
 type ControlAck struct {
-	ID      string    `json:"id"`
-	Action  string    `json:"action"`
-	Status  string    `json:"status"`
-	Message string    `json:"message,omitempty"`
-	At      time.Time `json:"at"`
+	ID      string             `json:"id"`
+	Action  string             `json:"action"`
+	Status  string             `json:"status"`
+	Message string             `json:"message,omitempty"`
+	Failure *ControlAckFailure `json:"failure,omitempty"`
+	At      time.Time          `json:"at"`
 }
 
 type StageResult struct {

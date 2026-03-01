@@ -188,15 +188,22 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	if writeErr := l.writeOrdersState(orders); writeErr != nil {
 		return writeErr
 	}
+	failureMetadata := eventFailureMetadataForLoop(
+		CycleFailureClassOrderHard,
+		OrderFailureClassStageTerminal,
+		nil,
+	)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:    cook.orderID,
 		StageIndex: cook.stageIndex,
 		Reason:     reason,
 		SessionID:  sessionIDPtr(cook),
+		Failure:    &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID: cook.orderID,
 		Reason:  reason,
+		Failure: &failureMetadata,
 	})
 	l.emitEvent(ingest.EventMergeFailed, map[string]any{
 		"order_id":    cook.orderID,

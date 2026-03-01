@@ -12,6 +12,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/failure"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
@@ -774,6 +775,65 @@ func TestProcessControlCommandsPauseAndAck(t *testing.T) {
 	}
 	if ack.ID != "cmd-1" || ack.Status != "ok" {
 		t.Fatalf("ack = %#v", ack)
+	}
+	if ack.Failure != nil {
+		t.Fatalf("ack failure = %#v, want nil", ack.Failure)
+	}
+}
+
+func TestProcessControlCommandsInvalidJSONWritesTypedFailureAck(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	control := filepath.Join(runtimeDir, "control.ndjson")
+	if err := os.WriteFile(control, []byte(`{"id":"cmd-1","action":"pause"`+"\n"), 0o644); err != nil {
+		t.Fatalf("write control: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      func() time.Time { return time.Date(2026, 2, 22, 23, 0, 0, 0, time.UTC) },
+	})
+	if err := l.processControlCommands(); err != nil {
+		t.Fatalf("process commands: %v", err)
+	}
+
+	ackPath := filepath.Join(runtimeDir, "control-ack.ndjson")
+	data, err := os.ReadFile(ackPath)
+	if err != nil {
+		t.Fatalf("read ack file: %v", err)
+	}
+	var ack ControlAck
+	if err := json.Unmarshal(data[:len(data)-1], &ack); err != nil {
+		t.Fatalf("parse ack: %v", err)
+	}
+	if ack.Status != "error" {
+		t.Fatalf("status = %q, want error", ack.Status)
+	}
+	if ack.Message != "invalid command JSON" {
+		t.Fatalf("message = %q, want invalid command JSON", ack.Message)
+	}
+	if ack.Failure == nil {
+		t.Fatal("failure metadata missing from invalid-json ack")
+	}
+	if ack.Failure.Class != failure.FailureClassBackendRecoverable {
+		t.Fatalf("failure class = %q, want %q", ack.Failure.Class, failure.FailureClassBackendRecoverable)
+	}
+	if ack.Failure.Recoverability != failure.FailureRecoverabilityRecoverable {
+		t.Fatalf("recoverability = %q, want %q", ack.Failure.Recoverability, failure.FailureRecoverabilityRecoverable)
+	}
+	if ack.Failure.Owner != failure.FailureOwnerBackend {
+		t.Fatalf("owner = %q, want %q", ack.Failure.Owner, failure.FailureOwnerBackend)
+	}
+	if ack.Failure.Scope != failure.FailureScopeSystem {
+		t.Fatalf("scope = %q, want %q", ack.Failure.Scope, failure.FailureScopeSystem)
 	}
 }
 

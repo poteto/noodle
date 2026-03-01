@@ -205,15 +205,22 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 	if err := l.writeOrdersState(orders); err != nil {
 		return err
 	}
+	failureMetadata := eventFailureMetadataForLoop(
+		CycleFailureClassOrderHard,
+		OrderFailureClassStageTerminal,
+		nil,
+	)
 	_ = l.events.Emit(LoopEventStageFailed, StageFailedPayload{
 		OrderID:    cook.orderID,
 		StageIndex: cook.stageIndex,
 		Reason:     reason,
 		SessionID:  sessionIDPtr(cook),
+		Failure:    &failureMetadata,
 	})
 	_ = l.events.Emit(LoopEventOrderFailed, OrderFailedPayload{
 		OrderID: cook.orderID,
 		Reason:  reason,
+		Failure: &failureMetadata,
 	})
 
 	// Emit V2 canonical state event for stage failure.

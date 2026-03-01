@@ -116,11 +116,12 @@ type EventLine struct {
 
 // FeedEvent is one event in the feed timeline.
 type FeedEvent struct {
-	SessionID string    `json:"session_id"`
-	AgentName string    `json:"agent_name"`
-	TaskType  string    `json:"task_type"`
-	At        time.Time `json:"at"`
-	Label     string    `json:"label"`
-	Body      string    `json:"body"`
-	Category  string    `json:"category"`
+	SessionID string                     `json:"session_id"`
+	AgentName string                     `json:"agent_name"`
+	TaskType  string                     `json:"task_type"`
+	At        time.Time                  `json:"at"`
+	Label     string                     `json:"label"`
+	Body      string                     `json:"body"`
+	Category  string                     `json:"category"`
+	Failure   *loop.EventFailureMetadata `json:"failure,omitempty"`
 }

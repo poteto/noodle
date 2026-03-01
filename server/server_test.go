@@ -101,18 +101,21 @@ func TestPostControl(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 
-	var ack map[string]string
+	var ack loop.ControlAck
 	if err := json.NewDecoder(resp.Body).Decode(&ack); err != nil {
 		t.Fatalf("decode ack: %v", err)
 	}
-	if ack["action"] != "pause" {
-		t.Fatalf("action = %q, want pause", ack["action"])
+	if ack.Action != "pause" {
+		t.Fatalf("action = %q, want pause", ack.Action)
 	}
-	if ack["status"] != "ok" {
-		t.Fatalf("status = %q, want ok", ack["status"])
+	if ack.Status != "ok" {
+		t.Fatalf("status = %q, want ok", ack.Status)
 	}
-	if ack["id"] == "" {
+	if ack.ID == "" {
 		t.Fatal("expected non-empty id")
+	}
+	if ack.Failure != nil {
+		t.Fatalf("ack failure = %#v, want nil", ack.Failure)
 	}
 
 	// Verify the command was written.
@@ -397,8 +400,8 @@ func TestWSControl(t *testing.T) {
 		t.Fatalf("read control ack: %v", err)
 	}
 	var ackEnv struct {
-		Type string         `json:"type"`
-		Data map[string]any `json:"data"`
+		Type string          `json:"type"`
+		Data loop.ControlAck `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &ackEnv); err != nil {
 		t.Fatalf("unmarshal ack: %v", err)
@@ -406,8 +409,11 @@ func TestWSControl(t *testing.T) {
 	if ackEnv.Type != "control_ack" {
 		t.Fatalf("type = %q, want control_ack", ackEnv.Type)
 	}
-	if ackEnv.Data["action"] != "pause" {
-		t.Fatalf("action = %v, want pause", ackEnv.Data["action"])
+	if ackEnv.Data.Action != "pause" {
+		t.Fatalf("action = %v, want pause", ackEnv.Data.Action)
+	}
+	if ackEnv.Data.Failure != nil {
+		t.Fatalf("ack failure = %#v, want nil", ackEnv.Data.Failure)
 	}
 
 	// Verify the command was written to disk.

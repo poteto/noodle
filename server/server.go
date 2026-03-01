@@ -242,28 +242,28 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 }
 
 // processControl validates and appends a control command. Shared by REST and WS.
-func (s *Server) processControl(req controlRequest) (map[string]any, error) {
+func (s *Server) processControl(req controlRequest) (loop.ControlAck, error) {
 	action := strings.TrimSpace(req.Action)
 	if action == "" {
-		return nil, fmt.Errorf("action required")
+		return loop.ControlAck{}, fmt.Errorf("action required")
 	}
 
 	cmd, err := parseControlRequest(action, req)
 	if err != nil {
-		return nil, err
+		return loop.ControlAck{}, err
 	}
 	cmd.At = s.now().UTC()
 	cmd.ID = fmt.Sprintf("web-%d", cmd.At.UnixNano())
 
 	if err := appendControlCommand(s.runtimeDir, cmd); err != nil {
-		return nil, err
+		return loop.ControlAck{}, err
 	}
 
-	return map[string]any{
-		"id":     cmd.ID,
-		"action": cmd.Action,
-		"status": "ok",
-		"at":     cmd.At,
+	return loop.ControlAck{
+		ID:     cmd.ID,
+		Action: cmd.Action,
+		Status: "ok",
+		At:     cmd.At,
 	}, nil
 }
 
