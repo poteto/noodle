@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
@@ -198,6 +199,10 @@ type Loop struct {
 	publishedState atomic.Pointer[LoopState]
 
 	lastStatus statusfile.Status
+
+	// V2 canonical state — event-sourced pipeline.
+	canonical    state.State
+	eventCounter atomic.Uint64
 
 	// Test hooks — nil in production. These allow tests to simulate crashes
 	// at specific points in the state-persistence pipeline.

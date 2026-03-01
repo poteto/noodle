@@ -35,6 +35,7 @@ type LoopState struct {
 	TotalCostUSD       float64             `json:"total_cost_usd"`
 	MaxCooks           int                 `json:"max_cooks"`
 	Mode               string              `json:"mode"`
+	ModeEpoch          uint64              `json:"mode_epoch"`
 	ActionNeeded       []string            `json:"action_needed"`
 }
 
@@ -111,6 +112,12 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		return pendingReviews[i].OrderID < pendingReviews[j].OrderID
 	})
 
+	// Read mode from canonical state (V2 source of truth).
+	mode := string(l.canonical.Mode)
+	if mode == "" {
+		mode = l.config.Mode
+	}
+
 	return &LoopState{
 		UpdatedAt:          l.deps.Now().UTC(),
 		Orders:             ordersCopy,
@@ -123,7 +130,8 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		ActiveOrderIDs:     activeOrderIDs(ordersFile),
 		TotalCostUSD:       totalCost,
 		MaxCooks:           l.config.Concurrency.MaxCooks,
-		Mode:               l.config.Mode,
+		Mode:               mode,
+		ModeEpoch:          uint64(l.canonical.ModeEpoch),
 		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
 	}
 }

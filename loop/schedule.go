@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/schemadoc"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
@@ -132,6 +133,18 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	l.trackCookStarted(cook)
 	l.cooks.activeCooksByOrder[order.ID] = cook
 	l.startSessionWatcher(ctx, cook, false)
+
+	// Emit V2 canonical state events for schedule dispatch.
+	l.emitEvent(ingest.EventDispatchRequested, map[string]any{
+		"order_id":    order.ID,
+		"stage_index": stageIndex,
+	})
+	l.emitEvent(ingest.EventDispatchCompleted, map[string]any{
+		"order_id":    order.ID,
+		"stage_index": stageIndex,
+		"session_id":  session.ID(),
+	})
+
 	l.logger.Info("schedule dispatched", "session", session.ID(), "attempt", attempt)
 	return nil
 }

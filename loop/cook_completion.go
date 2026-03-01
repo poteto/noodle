@@ -10,6 +10,7 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/ingest"
 )
 
 func (l *Loop) drainCompletions(ctx context.Context) error {
@@ -197,6 +198,14 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 		OrderID: cook.orderID,
 		Reason:  reason,
 	})
+
+	// Emit V2 canonical state event for stage failure.
+	l.emitEvent(ingest.EventStageFailed, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+		"error":       reason,
+	})
+
 	if err := l.markFailed(cook.orderID, reason); err != nil {
 		return err
 	}
@@ -232,6 +241,13 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 		SessionID:  sessionIDPtr(cook),
 		Message:    msg,
 	})
+
+	// Emit V2 canonical state event for stage completion.
+	l.emitEvent(ingest.EventStageCompleted, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+	})
+
 	if removed {
 		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
 			OrderID: cook.orderID,

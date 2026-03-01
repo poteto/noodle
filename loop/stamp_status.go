@@ -17,10 +17,16 @@ func (l *Loop) stampStatus() error {
 	}
 	sort.Strings(active)
 
+	// Read mode from canonical state (V2 source of truth).
+	mode := string(l.canonical.Mode)
+	if mode == "" {
+		mode = l.config.Mode
+	}
+
 	status := statusfile.Status{
 		Active:    active,
 		LoopState: string(l.state),
-		Mode:      l.config.Mode,
+		Mode:      mode,
 		MaxCooks:  l.config.Concurrency.MaxCooks,
 	}
 

@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,6 +13,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/reducer"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
@@ -109,6 +113,10 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		}
 		return loop.mergeCookWorktree(ctx, req.Cook)
 	})
+	loop.canonical = state.State{
+		Orders: map[string]state.OrderNode{},
+		Mode:   state.RunMode(cfg.Mode),
+	}
 	loop.publishState()
 	return loop
 }
@@ -358,6 +366,34 @@ func (l *Loop) shutdownAndDrain() {
 	}
 
 	_ = l.drainCompletions(context.Background())
+}
+
+// emitEvent creates a StateEvent and applies it to the canonical state via the
+// reducer. Effects are logged but not executed — the loop already handles
+// execution via its existing paths.
+func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
+	id := l.eventCounter.Add(1)
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		l.logger.Warn("canonical event payload encoding failed", "type", string(eventType), "error", err)
+		return
+	}
+	evt := ingest.StateEvent{
+		ID:        ingest.EventID(id),
+		Source:    string(ingest.SourceInternal),
+		Type:      string(eventType),
+		Timestamp: l.deps.Now(),
+		Payload:   json.RawMessage(raw),
+	}
+	next, effects, err := reducer.Reduce(l.canonical, evt)
+	if err != nil {
+		l.logger.Warn("canonical reducer failed", "type", string(eventType), "error", err)
+		return
+	}
+	l.canonical = next
+	if len(effects) > 0 {
+		l.logger.Debug("canonical effects emitted", "type", string(eventType), "count", len(effects))
+	}
 }
 
 func maxCompletionOverflow(cfg config.Config) int {

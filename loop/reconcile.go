@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
@@ -39,6 +40,14 @@ func (l *Loop) reconcile(ctx context.Context) error {
 		for _, rs := range recovered {
 			if rs.OrderID != "" {
 				l.cooks.adoptedTargets[rs.OrderID] = rs.SessionHandle.ID()
+
+				// Emit V2 canonical state event for session adoption.
+				l.emitEvent(ingest.EventSessionAdopted, map[string]any{
+					"order_id":    rs.OrderID,
+					"stage_index": 0,
+					"attempt_id":  "adopted-" + rs.SessionHandle.ID(),
+					"session_id":  rs.SessionHandle.ID(),
+				})
 			}
 			l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, rs.SessionHandle.ID())
 		}

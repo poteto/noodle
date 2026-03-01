@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -139,6 +140,20 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	l.trackCookStarted(cook)
 	l.cooks.activeCooksByOrder[cand.OrderID] = cook
 	l.startSessionWatcher(ctx, cook, false)
+
+	// Emit V2 canonical state events for dispatch.
+	dispatchPayload := map[string]any{
+		"order_id":    cand.OrderID,
+		"stage_index": cand.StageIndex,
+	}
+	l.emitEvent(ingest.EventDispatchRequested, dispatchPayload)
+	l.emitEvent(ingest.EventDispatchCompleted, map[string]any{
+		"order_id":      cand.OrderID,
+		"stage_index":   cand.StageIndex,
+		"session_id":    session.ID(),
+		"worktree_name": name,
+	})
+
 	l.logger.Info("cook dispatched", "order", cand.OrderID, "stage", cand.StageIndex, "session", session.ID(), "worktree", name, "attempt", opts.attempt)
 	return nil
 }

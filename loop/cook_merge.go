@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/taskreg"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -35,6 +36,13 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 		StageIndex:   cook.stageIndex,
 		WorktreeName: cook.worktreeName,
 	})
+
+	// Emit V2 canonical state event for merge completion.
+	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+	})
+
 	return nil
 }
 
@@ -146,6 +154,13 @@ func (l *Loop) handleMergeConflict(cook *cookHandle, err error) error {
 		StageIndex:   cook.stageIndex,
 		WorktreeName: cook.worktreeName,
 	})
+	// Emit V2 canonical state event for merge failure.
+	l.emitEvent(ingest.EventMergeFailed, map[string]any{
+		"order_id":    cook.orderID,
+		"stage_index": cook.stageIndex,
+		"error":       reason,
+	})
+
 	// Park for pending review so the chef can decide.
 	if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
 		return parkErr

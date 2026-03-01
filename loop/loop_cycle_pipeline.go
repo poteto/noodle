@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -48,6 +49,16 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 		}
 		if err := l.loadOrdersState(); err != nil {
 			return OrdersFile{}, false, err
+		}
+
+		// Emit V2 canonical state events for each newly promoted order.
+		promotedOrders, _ := l.currentOrders()
+		for _, order := range promotedOrders.Orders {
+			if _, exists := l.canonical.Orders[order.ID]; !exists {
+				l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
+					"order_id": order.ID,
+				})
+			}
 		}
 	}
 

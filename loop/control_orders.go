@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/state"
 )
 
@@ -13,6 +14,14 @@ func (l *Loop) controlMode(value string) error {
 	switch value {
 	case string(state.RunModeAuto), string(state.RunModeSupervised), string(state.RunModeManual):
 		l.config.Mode = value
+
+		// Emit V2 canonical state event for mode change.
+		l.emitEvent(ingest.EventModeChanged, map[string]any{
+			"mode":         value,
+			"requested_by": "control",
+			"reason":       "mode control command",
+		})
+
 		return nil
 	default:
 		return fmt.Errorf("unsupported mode value %q", value)
@@ -48,7 +57,16 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 		}},
 	}
 	orders.Orders = append(orders.Orders, newOrder)
-	return l.writeOrdersState(orders)
+	if err := l.writeOrdersState(orders); err != nil {
+		return err
+	}
+
+	// Emit V2 canonical state event for new order promotion.
+	l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
+		"order_id": orderID,
+	})
+
+	return nil
 }
 
 func (l *Loop) controlEditItem(cmd ControlCommand) error {
