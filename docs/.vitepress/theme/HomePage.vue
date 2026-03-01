@@ -59,7 +59,7 @@ import { withBase } from "vitepress";
           </h2>
 
           <p class="hero-sub hero-desc">
-            Build your own agent orchestration workflow with the Noodle framework.<br />
+            Build your own agent orchestration workflow.<br />
             All you need are skills.
           </p>
 
