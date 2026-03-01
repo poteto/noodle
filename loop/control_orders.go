@@ -62,8 +62,18 @@ func (l *Loop) controlEnqueue(cmd ControlCommand) error {
 	}
 
 	// Emit V2 canonical state event for new order promotion.
+	stages := make([]map[string]any, len(newOrder.Stages))
+	for i, s := range newOrder.Stages {
+		stages[i] = map[string]any{
+			"stage_index": i,
+			"status":      "pending",
+			"skill":       s.Skill,
+			"runtime":     s.Runtime,
+		}
+	}
 	l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
 		"order_id": orderID,
+		"stages":   stages,
 	})
 
 	return nil

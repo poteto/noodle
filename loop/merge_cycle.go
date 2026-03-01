@@ -3,6 +3,8 @@ package loop
 import (
 	"context"
 	"time"
+
+	"github.com/poteto/noodle/internal/ingest"
 )
 
 func (l *Loop) drainMergeResults(ctx context.Context) error {
@@ -23,6 +25,11 @@ func (l *Loop) drainMergeResults(ctx context.Context) error {
 				}
 				continue
 			}
+			// Emit V2 canonical merge completion on the main goroutine.
+			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+				"order_id":    cook.orderID,
+				"stage_index": cook.stageIndex,
+			})
 			if err := l.advanceAndPersist(ctx, cook); err != nil {
 				return err
 			}

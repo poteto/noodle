@@ -37,11 +37,10 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 		WorktreeName: cook.worktreeName,
 	})
 
-	// Emit V2 canonical state event for merge completion.
-	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
-		"order_id":    cook.orderID,
-		"stage_index": cook.stageIndex,
-	})
+	// NOTE: V2 canonical merge events are emitted by callers on the main
+	// goroutine (handleCompletion / drainMergeResults), NOT here, because
+	// mergeCookWorktree runs on the merge queue's background goroutine and
+	// emitEvent mutates l.canonical without synchronization.
 
 	return nil
 }

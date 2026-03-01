@@ -31,6 +31,13 @@ func (l *Loop) reconcile(ctx context.Context) error {
 	l.cooks.adoptedSessions = l.cooks.adoptedSessions[:0]
 
 	// Recover sessions from all registered runtimes.
+	// Build order lookup for stage index derivation during adoption.
+	orders, _ := l.currentOrders()
+	orderMap := make(map[string]Order, len(orders.Orders))
+	for _, o := range orders.Orders {
+		orderMap[o.ID] = o
+	}
+
 	for _, rt := range l.deps.Runtimes {
 		recovered, err := rt.Recover(ctx)
 		if err != nil {
@@ -41,10 +48,18 @@ func (l *Loop) reconcile(ctx context.Context) error {
 			if rs.OrderID != "" {
 				l.cooks.adoptedTargets[rs.OrderID] = rs.SessionHandle.ID()
 
+				// Derive stage index from order state instead of hardcoding 0.
+				stageIndex := 0
+				if order, ok := orderMap[rs.OrderID]; ok {
+					if idx, _ := activeStageForOrder(order); idx >= 0 {
+						stageIndex = idx
+					}
+				}
+
 				// Emit V2 canonical state event for session adoption.
 				l.emitEvent(ingest.EventSessionAdopted, map[string]any{
 					"order_id":    rs.OrderID,
-					"stage_index": 0,
+					"stage_index": stageIndex,
 					"attempt_id":  "adopted-" + rs.SessionHandle.ID(),
 					"session_id":  rs.SessionHandle.ID(),
 				})

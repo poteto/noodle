@@ -139,6 +139,15 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 
 		canMerge := l.canMergeStage(cook.stage)
 
+		// Emit V2 canonical stage completion event. For mergeable stages
+		// this transitions canonical state to StageMerging; for non-mergeable
+		// it transitions directly to StageCompleted.
+		l.emitEvent(ingest.EventStageCompleted, map[string]any{
+			"order_id":    cook.orderID,
+			"stage_index": cook.stageIndex,
+			"mergeable":   canMerge,
+		})
+
 		if !canMerge {
 			// Non-mergeable stage (e.g., debate, schedule) — advance without merge.
 			return l.advanceAndPersist(ctx, cook, msg)
@@ -153,6 +162,11 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle) error {
 			if err := l.mergeCookWorktree(ctx, cook); err != nil {
 				return err
 			}
+			// Emit merge completion on the main goroutine after successful merge.
+			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+				"order_id":    cook.orderID,
+				"stage_index": cook.stageIndex,
+			})
 			return l.advanceAndPersist(ctx, cook, msg)
 		}
 		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
@@ -240,12 +254,6 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 		TaskKey:    cook.stage.TaskKey,
 		SessionID:  sessionIDPtr(cook),
 		Message:    msg,
-	})
-
-	// Emit V2 canonical state event for stage completion.
-	l.emitEvent(ingest.EventStageCompleted, map[string]any{
-		"order_id":    cook.orderID,
-		"stage_index": cook.stageIndex,
 	})
 
 	if removed {

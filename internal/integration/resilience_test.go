@@ -26,8 +26,8 @@ func TestResilienceVerification(t *testing.T) {
 			t.Fatalf("event stream too small for concurrency stress: count=%d", len(events))
 		}
 
-		runA := applyEvents(initial, events, nil)
-		runB := applyEvents(makeState(50, 2, baseAt), events, nil)
+		runA := applyEvents(t, initial, events, nil)
+		runB := applyEvents(t, makeState(50, 2, baseAt), events, nil)
 
 		hashA := hashState(t, runA.state)
 		hashB := hashState(t, runB.state)
@@ -58,7 +58,7 @@ func TestResilienceVerification(t *testing.T) {
 		baseAt := time.Date(2026, 3, 1, 11, 0, 0, 0, time.UTC)
 		initial := makeState(24, 2, baseAt)
 		events := lifecycleEvents(24, 2, 1, baseAt.Add(time.Second))
-		fullRun := applyEvents(initial, events, nil)
+		fullRun := applyEvents(t, initial, events, nil)
 		fullHash := hashState(t, fullRun.state)
 		fullOrders, fullStages := terminalCounts(fullRun.state)
 
@@ -68,11 +68,11 @@ func TestResilienceVerification(t *testing.T) {
 				t.Fatalf("crash cut index unresolved for event stream length=%d", len(events))
 			}
 
-			beforeCrash := applyEvents(initial, events[:cut], nil)
+			beforeCrash := applyEvents(t, initial, events[:cut], nil)
 			snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, baseAt.Add(2*time.Minute))
 			snapshot = writeReadSnapshot(t, snapshot)
 
-			recovered := applyEvents(snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
+			recovered := applyEvents(t, snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
 			recoveredHash := hashState(t, recovered.state)
 			if recoveredHash != fullHash {
 				t.Fatalf("recovered state hash diverged after crash window A: recovered=%s full=%s", recoveredHash, fullHash)
@@ -96,7 +96,7 @@ func TestResilienceVerification(t *testing.T) {
 				t.Fatalf("event stream too short for crash window B: count=%d", len(events))
 			}
 
-			beforeCrash := applyEvents(initial, events[:1], nil)
+			beforeCrash := applyEvents(t, initial, events[:1], nil)
 			if len(beforeCrash.dispatchEffectIDs) == 0 {
 				t.Fatalf("dispatch effect unavailable before crash window B")
 			}
@@ -131,7 +131,7 @@ func TestResilienceVerification(t *testing.T) {
 				t.Fatalf("effect result persistence failed during crash window B recovery: %v", err)
 			}
 
-			recovered := applyEvents(snapshot.State, events[1:], recoveredLedger)
+			recovered := applyEvents(t, snapshot.State, events[1:], recoveredLedger)
 			recoveredHash := hashState(t, recovered.state)
 			if recoveredHash != fullHash {
 				t.Fatalf("recovered state hash diverged after crash window B: recovered=%s full=%s", recoveredHash, fullHash)
@@ -152,7 +152,7 @@ func TestResilienceVerification(t *testing.T) {
 
 		t.Run("after projection write to temp before atomic rename", func(t *testing.T) {
 			cut := len(events) / 2
-			beforeCrash := applyEvents(initial, events[:cut], nil)
+			beforeCrash := applyEvents(t, initial, events[:cut], nil)
 			snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, baseAt.Add(4*time.Minute))
 
 			projectionDir := t.TempDir()
@@ -163,7 +163,7 @@ func TestResilienceVerification(t *testing.T) {
 			}
 
 			snapshot = writeReadSnapshot(t, snapshot)
-			recovered := applyEvents(snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
+			recovered := applyEvents(t, snapshot.State, events[cut:], ledgerFromRecords(snapshot.EffectLedger))
 
 			finalBundle := mustProject(t, recovered.state, mode.ModeState{EffectiveMode: recovered.state.Mode})
 			if err := projection.WriteProjectionFiles(projectionDir, finalBundle); err != nil {
@@ -204,8 +204,8 @@ func TestResilienceVerification(t *testing.T) {
 		}
 		stream = stream[:100]
 
-		runA := applyEvents(initialA, stream, nil)
-		runB := applyEvents(initialB, stream, nil)
+		runA := applyEvents(t, initialA, stream, nil)
+		runB := applyEvents(t, initialB, stream, nil)
 		hashA := hashState(t, runA.state)
 		hashB := hashState(t, runB.state)
 
@@ -228,6 +228,15 @@ func TestResilienceVerification(t *testing.T) {
 		blockedDispatches := 0
 		allowedDispatches := 0
 
+		mustReduce := func(s state.State, evt ingest.StateEvent) (state.State, []reducer.Effect) {
+			t.Helper()
+			next, effects, err := reducer.Reduce(s, evt)
+			if err != nil {
+				t.Fatalf("reducer failed at event %d (type=%s): %v", evt.ID, evt.Type, err)
+			}
+			return next, effects
+		}
+
 		modeSequence := []state.RunMode{
 			state.RunModeSupervised,
 			state.RunModeManual,
@@ -243,7 +252,7 @@ func TestResilienceVerification(t *testing.T) {
 				nextMode := modeSequence[modeCursor]
 				modeCursor++
 				modeState = mode.TransitionMode(modeState, nextMode, "integration", fmt.Sprintf("pressure-step-%d", step), now)
-				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventModeChanged, map[string]any{
+				current, _ = mustReduce(current, makeEvent(nextEventID, ingest.EventModeChanged, map[string]any{
 					"mode": string(nextMode),
 				}, now))
 				nextEventID++
@@ -272,15 +281,15 @@ func TestResilienceVerification(t *testing.T) {
 				"attempt_id":  attemptID,
 			}, now)
 			nextEventID++
-			nextState, effects, _ := reducer.Reduce(current, request)
-			current = nextState
+			var effects []reducer.Effect
+			current, effects = mustReduce(current, request)
 			for _, effect := range effects {
 				if effect.Type == reducer.EffectDispatch {
 					stamped = append(stamped, mode.StampEffect(modeState.Epoch, effect.EffectID))
 				}
 			}
 
-			current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventDispatchCompleted, map[string]any{
+			current, _ = mustReduce(current, makeEvent(nextEventID, ingest.EventDispatchCompleted, map[string]any{
 				"order_id":      candidate.OrderID,
 				"stage_index":   candidate.StageIndex,
 				"attempt_id":    attemptID,
@@ -290,7 +299,7 @@ func TestResilienceVerification(t *testing.T) {
 			nextEventID++
 
 			if step%3 == 0 {
-				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageFailed, map[string]any{
+				current, _ = mustReduce(current, makeEvent(nextEventID, ingest.EventStageFailed, map[string]any{
 					"order_id":    candidate.OrderID,
 					"stage_index": candidate.StageIndex,
 					"attempt_id":  attemptID,
@@ -300,7 +309,7 @@ func TestResilienceVerification(t *testing.T) {
 				continue
 			}
 
-			current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventStageCompleted, map[string]any{
+			current, _ = mustReduce(current, makeEvent(nextEventID, ingest.EventStageCompleted, map[string]any{
 				"order_id":    candidate.OrderID,
 				"stage_index": candidate.StageIndex,
 				"attempt_id":  attemptID,
@@ -309,7 +318,7 @@ func TestResilienceVerification(t *testing.T) {
 			nextEventID++
 
 			if gate.CanAutoMerge(modeState.EffectiveMode) {
-				current, _, _ = reducer.Reduce(current, makeEvent(nextEventID, ingest.EventMergeCompleted, map[string]any{
+				current, _ = mustReduce(current, makeEvent(nextEventID, ingest.EventMergeCompleted, map[string]any{
 					"order_id":    candidate.OrderID,
 					"stage_index": candidate.StageIndex,
 				}, now.Add(60*time.Millisecond)))
@@ -637,7 +646,7 @@ func TestAcceptanceGateSummary(t *testing.T) {
 	var referenceHash projection.ProjectionHash
 	for trial := 0; trial < trialCount; trial++ {
 		trialState := makeState(20, 2, baseAt)
-		run := applyEvents(trialState, stream, nil)
+		run := applyEvents(t, trialState, stream, nil)
 		h := hashState(t, run.state)
 		deterministicHashTrials++
 		if trial == 0 {
@@ -655,7 +664,7 @@ func TestAcceptanceGateSummary(t *testing.T) {
 	crashBaseAt := baseAt.Add(10 * time.Minute)
 	crashInitial := makeState(24, 2, crashBaseAt)
 	crashEvents := lifecycleEvents(24, 2, 1, crashBaseAt.Add(time.Second))
-	fullRun := applyEvents(crashInitial, crashEvents, nil)
+	fullRun := applyEvents(t, crashInitial, crashEvents, nil)
 	fullOrders, fullStages := terminalCounts(fullRun.state)
 	fullHash := hashState(t, fullRun.state)
 
@@ -664,11 +673,11 @@ func TestAcceptanceGateSummary(t *testing.T) {
 		if cut == 0 {
 			continue
 		}
-		beforeCrash := applyEvents(makeState(24, 2, crashBaseAt), crashEvents[:cut], nil)
+		beforeCrash := applyEvents(t, makeState(24, 2, crashBaseAt), crashEvents[:cut], nil)
 		snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, crashBaseAt.Add(5*time.Minute))
 		snapshot = writeReadSnapshot(t, snapshot)
 
-		recovered := applyEvents(snapshot.State, crashEvents[cut:], ledgerFromRecords(snapshot.EffectLedger))
+		recovered := applyEvents(t, snapshot.State, crashEvents[cut:], ledgerFromRecords(snapshot.EffectLedger))
 		recoveredHash := hashState(t, recovered.state)
 
 		deterministicHashTrials++
@@ -811,7 +820,8 @@ type applyRun struct {
 	dispatchEffectIDs []string
 }
 
-func applyEvents(initial state.State, events []ingest.StateEvent, existingLedger *reducer.EffectLedger) applyRun {
+func applyEvents(t *testing.T, initial state.State, events []ingest.StateEvent, existingLedger *reducer.EffectLedger) applyRun {
+	t.Helper()
 	ledger := existingLedger
 	if ledger == nil {
 		ledger = reducer.NewEffectLedger()
@@ -820,7 +830,10 @@ func applyEvents(initial state.State, events []ingest.StateEvent, existingLedger
 	current := initial
 	dispatchIDs := make([]string, 0)
 	for _, event := range events {
-		next, effects, _ := reducer.Reduce(current, event)
+		next, effects, err := reducer.Reduce(current, event)
+		if err != nil {
+			t.Fatalf("reducer failed at event %d (type=%s): %v", event.ID, event.Type, err)
+		}
 		current = next
 		for _, effect := range effects {
 			ledger.Record(effect)

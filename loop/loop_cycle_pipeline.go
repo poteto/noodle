@@ -55,8 +55,18 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 		promotedOrders, _ := l.currentOrders()
 		for _, order := range promotedOrders.Orders {
 			if _, exists := l.canonical.Orders[order.ID]; !exists {
+				stages := make([]map[string]any, len(order.Stages))
+				for i, s := range order.Stages {
+					stages[i] = map[string]any{
+						"stage_index": i,
+						"status":      "pending",
+						"skill":       s.Skill,
+						"runtime":     s.Runtime,
+					}
+				}
 				l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
 					"order_id": order.ID,
+					"stages":   stages,
 				})
 			}
 		}
