@@ -13,7 +13,7 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 102 -->
+<!-- next-id: 108 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -38,6 +38,18 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, collapsed by default with a click-to-expand interaction (avoid noise in the feed), and (2) in a dedicated diff tab/panel that collects all code changes from a session (expanded by default). Ship-ready: fully integrated, styled, and tested. [[plans/86-diffs-integration/overview]]
 
 ## Backend
+
+102. [ ] Remove `routing.tags.*` from `.noodle.toml` config. The scheduler skill decides routing per stage, so tag-based routing config is unnecessary. Remove the config parsing, the mise `routing` section that exposes tags, and update docs.
+
+103. [ ] Remove `[recovery]` config section (`max_retries`). The scheduler already sees `stage.failed` / `order.failed` events and decides whether to reschedule. Hardcoded retry logic in the loop is redundant. Just mark the stage/order as failed and let the scheduler handle it.
+
+104. [ ] Remove `stuck_threshold` entirely and hardcode `poll_interval` to 1s. `stuck_threshold` is a bad concept: long-running tasks aren't stuck, they're just working. Delete the stuck detection logic. `poll_interval` is an implementation detail (lightweight local I/O), not a user knob.
+
+105. [ ] Remove ticket staleness tracking. No need to mark tickets as stale. If a stage is stuck, the scheduler sees it via events and decides what to do.
+
+106. [ ] Rename `max_cooks` to `max_concurrency` in `.noodle.toml` config and all Go code.
+
+107. [ ] Remove `max_completion_overflow`, `merge_backpressure_threshold`, and `shutdown_timeout` from user-facing config. These are internal plumbing (channel buffer size, merge queue backpressure, graceful shutdown wait). Hardcode sensible defaults (1024, 128). For shutdown: kill all agents immediately on quit, no timeout/grace period. Users expect stopping Noodle to stop immediately.
 
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
 
