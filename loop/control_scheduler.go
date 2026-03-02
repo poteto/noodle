@@ -8,14 +8,27 @@ import (
 	"github.com/poteto/noodle/internal/ingest"
 )
 
-// controlAdvance advances past a stage blocked by a stage_message.
-// Constructs a synthetic cookHandle and calls advanceAndPersist for full
+// controlAdvance force-completes the active stage of an order.
+// Kills any running session, removes it from the active cook map, then
+// constructs a synthetic cookHandle and calls advanceAndPersist for full
 // completion side effects (events, adapter "done" on final stage).
 func (l *Loop) controlAdvance(orderID string) error {
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {
 		return fmt.Errorf("advance requires order_id")
 	}
+
+	// Kill the active session to prevent double-processing when it exits.
+	if cook, ok := l.cooks.activeCooksByOrder[orderID]; ok {
+		_ = cook.session.ForceKill()
+		l.trackCookCompleted(cook, StageResult{
+			SessionID:   cook.session.ID(),
+			Status:      StageResultCancelled,
+			CompletedAt: l.deps.Now(),
+		})
+		delete(l.cooks.activeCooksByOrder, orderID)
+	}
+
 	orders, err := l.currentOrders()
 	if err != nil {
 		return err

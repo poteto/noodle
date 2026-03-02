@@ -1454,6 +1454,29 @@ foreignObject.node.node-clickable .tree-node-card:active {
   transform: scale(0.96);
 }
 
+.btn-complete {
+  background: transparent;
+  color: var(--color-green);
+  border: 1px solid var(--color-green);
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition:
+    background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.08s;
+  border-radius: 4px;
+}
+.btn-complete:hover {
+  background: color-mix(in srgb, var(--color-green) 15%, transparent);
+}
+.btn-complete:active {
+  transform: scale(0.96);
+}
+
 @keyframes shimmer {
   from {
     transform: translateX(-100%);

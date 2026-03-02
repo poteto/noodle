@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { ReviewBanner } from "./ReviewBanner";
+import { Tooltip } from "./Tooltip";
 import { StreamingDelta } from "./StreamingDelta";
 import { groupConsecutiveTools } from "./group-tools";
 import { VirtualizedFeed } from "./VirtualizedFeed";
@@ -98,6 +99,17 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
     send({ action: "stop", name: sessionId });
   }
 
+  // Find the order_id for this session by matching session_id on stages.
+  const orderForSession = snapshot.orders.find((o) =>
+    o.stages.some((s) => s.session_id === sessionId),
+  );
+
+  function handleForceComplete() {
+    if (orderForSession) {
+      send({ action: "advance", order_id: orderForSession.id });
+    }
+  }
+
   if (!session) {
     return (
       <div className="feed-container" style={{ alignItems: "center", justifyContent: "center" }}>
@@ -164,9 +176,18 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
           </div>
           <div className="input-row-actions">
             {isSessionThinking && (
-              <button type="button" className="btn-stop" onClick={handleStop}>
-                Stop
-              </button>
+              <>
+                <button type="button" className="btn-stop" onClick={handleStop}>
+                  Stop
+                </button>
+                {orderForSession && (
+                  <Tooltip content="Marks this order as complete and notifies the scheduler">
+                    <button type="button" className="btn-complete" onClick={handleForceComplete}>
+                      Mark Complete
+                    </button>
+                  </Tooltip>
+                )}
+              </>
             )}
             <button
               type="button"
