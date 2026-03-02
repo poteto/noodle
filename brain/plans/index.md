@@ -8,3 +8,4 @@
 - [x] [[archive/plans/89-simplify-task-type-frontmatter/overview]]
 - [x] [[archive/plans/20-onboarding/overview]]
 - [ ] [[plans/102-config-cleanup/overview]]
+- [ ] [[plans/96-101-runtime-plugins/overview]]

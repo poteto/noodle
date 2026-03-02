@@ -63,9 +63,9 @@ priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94
 
 ## Extensibility
 
-96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. WIP in docs, not yet available.
+96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. [[plans/96-101-runtime-plugins/overview]]
 
-101. [ ] Split out Sprites runtime into its own runtime plugin. Sprites should not be a built-in default, it should be an installable plugin that uses the custom runtime interface (#96).
+101. [ ] Split out Sprites runtime into its own runtime plugin (`noodle-runtime-sprites`). Sprites should not be a built-in default, it should be an installable plugin that uses the custom runtime interface (#96). [[plans/96-101-runtime-plugins/overview]]
 
 ## Features
 
