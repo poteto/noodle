@@ -42,6 +42,18 @@ function gitOk(args) {
   }
 }
 
+function tagExistsLocally(tag) {
+  return gitOk(["rev-parse", "-q", "--verify", `refs/tags/${tag}`]);
+}
+
+function tagExistsOnOrigin(tag) {
+  if (!gitOk(["remote", "get-url", "origin"])) {
+    return false;
+  }
+  const out = git(["ls-remote", "--tags", "--refs", "origin", `refs/tags/${tag}`]);
+  return out.length > 0;
+}
+
 function parseTag(argv) {
   let args = argv.slice(2);
   if (args[0] === "--") {
@@ -146,8 +158,11 @@ async function updateChangelogFile(releaseSection, targetTag) {
 async function main() {
   const targetTag = parseTag(process.argv);
 
-  if (gitOk(["rev-parse", "-q", "--verify", `refs/tags/${targetTag}`])) {
-    fail(`tag already exists: ${targetTag}`);
+  if (tagExistsLocally(targetTag)) {
+    fail(`tag already exists locally: ${targetTag}`);
+  }
+  if (tagExistsOnOrigin(targetTag)) {
+    fail(`tag already exists on origin: ${targetTag}`);
   }
 
   const previous = findPreviousBoundary(targetTag);
