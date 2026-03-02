@@ -40,27 +40,36 @@ func (l *Loop) steer(target string, prompt string) error {
 		return fmt.Errorf("steer requires target")
 	}
 	if strings.EqualFold(target, ScheduleTaskKey()) {
+		for _, cook := range l.cooks.activeCooksByOrder {
+			if !isScheduleStage(cook.stage) && !strings.EqualFold(cook.orderID, ScheduleTaskKey()) {
+				continue
+			}
+			return l.steerCook(cook, prompt)
+		}
 		return l.rescheduleForChefPrompt(prompt)
 	}
 	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName != target && cook.session.ID() != target {
 			continue
 		}
-
-		controller := cook.session.Controller()
-		if controller.Steerable() {
-			// Live steering — interrupt + redirect without killing the session.
-			// Run async so the control loop isn't blocked.
-			sessionID := cook.session.ID()
-			steerPrompt := strings.TrimSpace(prompt)
-			go l.steerLive(sessionID, controller, steerPrompt)
-			return nil
-		}
-
-		// Not steerable — fall back to kill + respawn with resume context.
-		return l.steerRespawn(cook, prompt)
+		return l.steerCook(cook, prompt)
 	}
 	return errors.New("session not found")
+}
+
+func (l *Loop) steerCook(cook *cookHandle, prompt string) error {
+	controller := cook.session.Controller()
+	if controller.Steerable() {
+		// Live steering — interrupt + redirect without killing the session.
+		// Run async so the control loop isn't blocked.
+		sessionID := cook.session.ID()
+		steerPrompt := strings.TrimSpace(prompt)
+		go l.steerLive(sessionID, controller, steerPrompt)
+		return nil
+	}
+
+	// Not steerable — fall back to kill + respawn with resume context.
+	return l.steerRespawn(cook, prompt)
 }
 
 // steerLive interrupts a steerable session and sends a new prompt.

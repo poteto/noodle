@@ -219,6 +219,54 @@ func TestSteerSessionNotFound(t *testing.T) {
 	}
 }
 
+func TestSteerScheduleTargetsActiveScheduleSession(t *testing.T) {
+	rt := newMockRuntime()
+	l := newSteerTestLoop(t, rt)
+
+	ctrl := &mockController{steerable: true}
+	sess := &steerableSession{
+		mockSession: &mockSession{id: "sess-schedule", status: "running", done: make(chan struct{})},
+		ctrl:        ctrl,
+	}
+	l.cooks.activeCooksByOrder[ScheduleTaskKey()] = &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID: ScheduleTaskKey(),
+			stage: Stage{
+				TaskKey: ScheduleTaskKey(),
+			},
+		},
+		session: sess,
+	}
+
+	if err := l.steer(ScheduleTaskKey(), "focus on auth bugs"); err != nil {
+		t.Fatalf("steer: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ctrl.mu.Lock()
+		sent := ctrl.sendCalls
+		ctrl.mu.Unlock()
+		if sent > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	ctrl.mu.Lock()
+	defer ctrl.mu.Unlock()
+
+	if ctrl.interruptCalls != 1 {
+		t.Fatalf("interrupt calls = %d, want 1", ctrl.interruptCalls)
+	}
+	if ctrl.sendCalls != 1 {
+		t.Fatalf("send calls = %d, want 1", ctrl.sendCalls)
+	}
+	if ctrl.lastSentMessage != "focus on auth bugs" {
+		t.Fatalf("sent message = %q, want %q", ctrl.lastSentMessage, "focus on auth bugs")
+	}
+}
+
 func TestSteerSerializesConcurrentSteers(t *testing.T) {
 	rt := newMockRuntime()
 	l := newSteerTestLoop(t, rt)
