@@ -15,6 +15,9 @@ export function SchedulerFeed() {
   const [input, setInput] = useState("");
 
   const schedulerSession = findSchedulerSession(snapshot.sessions);
+  const isSchedulerRunning = snapshot.active.some(
+    (s) => s.task_key?.toLowerCase().trim() === "schedule",
+  );
   const initialEvents = schedulerSession?.id
     ? snapshot.events_by_session[schedulerSession.id]
     : undefined;
@@ -99,7 +102,7 @@ export function SchedulerFeed() {
         items={items}
         emptyMessage={emptyMessage}
         tail={
-          schedulerSession?.status === "running" && schedulerSession.id ? (
+          isSchedulerRunning && schedulerSession?.id ? (
             <StreamingDelta sessionId={schedulerSession.id} />
           ) : undefined
         }
@@ -107,7 +110,7 @@ export function SchedulerFeed() {
 
       <div className="input-area">
         <div className="input-label">
-          {schedulerSession?.status === "running" ? (
+          {isSchedulerRunning ? (
             <>
               <span className="thinking-dots">
                 <span className="thinking-dot" />
@@ -141,7 +144,7 @@ export function SchedulerFeed() {
             </div>
           </div>
           <div className="input-row-actions">
-            {schedulerSession?.status === "running" && (
+            {isSchedulerRunning && (
               <button type="button" className="btn-stop" onClick={handleStop}>
                 Stop
               </button>

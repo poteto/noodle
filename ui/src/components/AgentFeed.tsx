@@ -64,6 +64,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   }, []);
 
   const session = snapshot.sessions.find((s) => s.id === sessionId);
+  const isSessionRunning = snapshot.active.some((s) => s.id === sessionId);
   const pendingReview = snapshot.pending_reviews?.find((r) => r.session_id === sessionId);
 
   const items = useMemo(() => groupConsecutiveTools(events), [events]);
@@ -119,14 +120,14 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
       <VirtualizedFeed
         items={items}
-        tail={session.status === "running" ? <StreamingDelta sessionId={sessionId} /> : undefined}
+        tail={isSessionRunning ? <StreamingDelta sessionId={sessionId} /> : undefined}
       />
 
       {pendingReview && <ReviewBanner review={pendingReview} />}
 
       <div className="input-area">
         <div className="input-label">
-          {session.status === "running" ? (
+          {isSessionRunning ? (
             <>
               <span className="thinking-dots">
                 <span className="thinking-dot" />
@@ -160,7 +161,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
             </div>
           </div>
           <div className="input-row-actions">
-            {session.status === "running" && (
+            {isSessionRunning && (
               <button type="button" className="btn-stop" onClick={handleStop}>
                 Stop
               </button>
