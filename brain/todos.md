@@ -1,15 +1,17 @@
 ---
-priority: [98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
+priority: [98, 99, 97, 95, 96, 101, 84, 90, 86, 100, 93, 94, 108, 88, 85, 69]
 # Launch-blocking:
-#   - config cleanup — small deletions, simplify surface before launch
 #   98,99 relax backlog schema — simplify adapters, less rigid
+#   97 adapter schema validator — surface broken adapters
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
 #   86 diffs integration — code-change review UX
+#   100 runtime mode UI setting
 #   93,94 distribution — Homebrew + cross-platform binaries
 # Post-launch:
+#   108 compact wire format — simplify scheduler output
 #   88 sub-agent tracking v2 — hardening, depends on 84
 #   85 .noodle.toml live reload — convenience, restart works fine
 #   69 cursor dispatcher — extended runtime, process+sprites cover launch
