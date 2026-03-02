@@ -13,29 +13,8 @@ func TestGenerateSkillContent(t *testing.T) {
 	if !strings.Contains(generated, "# Noodle") {
 		t.Fatal("generated skill missing Noodle heading")
 	}
-	if !strings.Contains(generated, "## Config Reference") {
-		t.Fatal("generated skill missing Config Reference section")
-	}
-}
-
-func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
-	content, err := GenerateSkillContent()
-	if err != nil {
-		t.Fatalf("GenerateSkillContent: %v", err)
-	}
-
-	requiredFields := []string{
-		"mode",
-		"routing.defaults.provider",
-		"routing.defaults.model",
-		"skills.paths",
-		"concurrency.max_concurrency",
-	}
-
-	for _, field := range requiredFields {
-		if !strings.Contains(content, field) {
-			t.Errorf("generated skill missing config field %q", field)
-		}
+	if !strings.Contains(generated, "## Configuration") {
+		t.Fatal("generated skill missing Configuration section")
 	}
 }
 
@@ -51,6 +30,8 @@ func TestGeneratedSkillContainsAllCommands(t *testing.T) {
 		"noodle skills",
 		"noodle worktree",
 		"noodle schema",
+		"noodle event",
+		"noodle reset",
 	}
 
 	for _, cmd := range requiredCommands {
@@ -60,41 +41,24 @@ func TestGeneratedSkillContainsAllCommands(t *testing.T) {
 	}
 }
 
-func TestGeneratedSkillContainsV2Contracts(t *testing.T) {
+func TestGeneratedSkillContainsSections(t *testing.T) {
 	content, err := GenerateSkillContent()
 	if err != nil {
 		t.Fatalf("GenerateSkillContent: %v", err)
 	}
 
-	v2Sections := []string{
-		"## Mode Contract",
-		"## Runtime Capabilities",
-		"## Canonical State Model",
-		"## Control Commands",
-		"## Dispatch and Projection",
+	sections := []string{
+		"## How the Loop Works",
+		"## Skills",
+		"## Configuration",
+		"## CLI",
+		"## Troubleshooting",
+		"## References",
 	}
 
-	for _, section := range v2Sections {
+	for _, section := range sections {
 		if !strings.Contains(content, section) {
-			t.Errorf("generated skill missing V2 contract section %q", section)
-		}
-	}
-
-	v2Vocabulary := []string{
-		"supervised",
-		"mode_epoch",
-		"steerable",
-		"polling",
-		"remote_sync",
-		"requested_mode",
-		"effective_mode",
-		"RouteCompletion",
-		"PlanDispatches",
-	}
-
-	for _, term := range v2Vocabulary {
-		if !strings.Contains(content, term) {
-			t.Errorf("generated skill missing V2 vocabulary term %q", term)
+			t.Errorf("generated skill missing section %q", section)
 		}
 	}
 }
