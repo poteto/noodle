@@ -99,7 +99,6 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	promotionError := l.lastPromotionError
 	l.lastPromotionError = ""
 	failures := l.reconciledFailures
-	l.reconciledFailures = nil
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
 		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures),
@@ -122,6 +121,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 			Stage:      stage,
 		}, stage, "", false, err)
 	}
+	l.reconciledFailures = nil // clear only after successful dispatch
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{
 			orderID:    order.ID,
