@@ -18,6 +18,15 @@ export default defineConfig({
   build: {
     outDir: "dist/client",
     sourcemap: !!process.env.NOODLE_DEV,
+    chunkSizeWarningLimit: 1400,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          d3: ["d3"],
+          router: ["@tanstack/react-router"],
+        },
+      },
+    },
   },
   server: {
     proxy: {

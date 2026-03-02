@@ -1,14 +1,16 @@
-import { common, createStarryNight } from "@wooorm/starry-night";
-import { toHtml } from "hast-util-to-html";
 import { useEffect, useState } from "react";
 
-type StarryNight = Awaited<ReturnType<typeof createStarryNight>>;
+type StarryNight = Awaited<
+  ReturnType<typeof import("@wooorm/starry-night").createStarryNight>
+>;
 
 let starryNightPromise: Promise<StarryNight> | undefined;
 
 function getStarryNight(): Promise<StarryNight> {
   if (!starryNightPromise) {
-    starryNightPromise = createStarryNight(common);
+    starryNightPromise = import("@wooorm/starry-night").then(({ common, createStarryNight }) =>
+      createStarryNight(common),
+    );
   }
 
   return starryNightPromise;
@@ -74,7 +76,10 @@ export async function highlightCode(code: string, lang?: string): Promise<string
   }
 
   try {
-    const starryNight = await getStarryNight();
+    const [starryNight, { toHtml }] = await Promise.all([
+      getStarryNight(),
+      import("hast-util-to-html"),
+    ]);
     return toHtml(starryNight.highlight(code, scope));
   } catch {
     return escapeHtml(code);
