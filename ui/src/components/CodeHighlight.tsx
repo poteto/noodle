@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
+import type { createStarryNight } from "@wooorm/starry-night";
 
-type StarryNight = Awaited<
-  ReturnType<typeof import("@wooorm/starry-night").createStarryNight>
->;
+type StarryNight = Awaited<ReturnType<typeof createStarryNight>>;
 
 let starryNightPromise: Promise<StarryNight> | undefined;
 

@@ -23,7 +23,7 @@ describe("fetchSnapshot", () => {
     const result = await fetchSnapshot();
     // normalizeSnapshot fills in missing array fields with defaults.
     expect(result).toMatchObject(data);
-    expect(mockFetch).toHaveBeenCalledWith("/api/snapshot");
+    expect(mockFetch).toHaveBeenCalledWith("/api/snapshot", { signal: undefined });
   });
 
   it("throws on non-OK response", async () => {

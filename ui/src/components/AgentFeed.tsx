@@ -66,8 +66,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const session = snapshot.sessions.find((s) => s.id === sessionId);
   const activeSession = snapshot.active.find((s) => s.id === sessionId && s.status === "running");
   const isSessionThinking =
-    snapshot.loop_state === "running" &&
-    Boolean(activeSession?.current_action?.trim());
+    snapshot.loop_state === "running" && Boolean(activeSession?.current_action?.trim());
   const pendingReview = snapshot.pending_reviews?.find((r) => r.session_id === sessionId);
 
   const items = useMemo(() => groupConsecutiveTools(events), [events]);

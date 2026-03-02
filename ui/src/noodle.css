@@ -504,7 +504,9 @@
   }
 }
 @keyframes thinking-wave {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     opacity: 0.3;
     transform: scale(1);
   }
@@ -759,54 +761,69 @@
   background: #222;
   border: none;
   color: var(--color-text-primary);
-  transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 /* User badge — white on dark */
 .msg-badge.badge-user {
   background: #222;
   color: var(--color-text-primary);
 }
-.msg-badge.badge-user:hover { background: #2a2a2a; }
+.msg-badge.badge-user:hover {
+  background: #2a2a2a;
+}
 /* Scheduler badge — black on accent yellow */
 .msg-badge.badge-manager {
   background: var(--color-accent);
   color: black;
 }
-.msg-badge.badge-manager:hover { background: #d4a810; }
+.msg-badge.badge-manager:hover {
+  background: #d4a810;
+}
 /* Agent badge — black on white */
 .msg-badge.badge-agent {
   background: white;
   color: black;
 }
-.msg-badge.badge-agent:hover { background: #e5e5e5; }
+.msg-badge.badge-agent:hover {
+  background: #e5e5e5;
+}
 /* Tool badges — bordered, no fill */
 .msg-badge.badge-read {
   color: var(--color-text-tertiary);
   border: 1px solid var(--color-border-active);
   background: transparent;
 }
-.msg-badge.badge-read:hover { background: rgba(51, 51, 51, 0.3); }
+.msg-badge.badge-read:hover {
+  background: rgba(51, 51, 51, 0.3);
+}
 .msg-badge.badge-edit {
   color: var(--color-yellow);
   border: 1px solid var(--color-yellow);
   background: transparent;
 }
-.msg-badge.badge-edit:hover { background: rgba(245, 197, 24, 0.1); }
+.msg-badge.badge-edit:hover {
+  background: rgba(245, 197, 24, 0.1);
+}
 .msg-badge.badge-write {
   color: var(--color-green);
   border: 1px solid var(--color-green);
   background: transparent;
 }
-.msg-badge.badge-write:hover { background: rgba(74, 222, 128, 0.1); }
+.msg-badge.badge-write:hover {
+  background: rgba(74, 222, 128, 0.1);
+}
 .msg-badge.badge-bash {
   color: var(--color-accent);
   border: 1px solid var(--color-accent);
   background: transparent;
 }
-.msg-badge.badge-bash:hover { background: rgba(245, 197, 24, 0.1); }
+.msg-badge.badge-bash:hover {
+  background: rgba(245, 197, 24, 0.1);
+}
 
 .msg-body {
   font-family: var(--font-mono);
