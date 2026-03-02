@@ -22,6 +22,7 @@ archives:
 
 brews:
   - skip_upload: auto
+    directory: Formula
     repository:
       owner: poteto
       name: homebrew-tap
