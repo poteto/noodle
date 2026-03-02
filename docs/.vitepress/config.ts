@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { buildEndGenerateOpenGraphImages } from "./plugins/og-image.mjs";
 
 export default defineConfig({
   base: "/noodle/",
@@ -20,6 +21,20 @@ export default defineConfig({
   ],
 
   appearance: false,
+
+  buildEnd: buildEndGenerateOpenGraphImages({
+    baseUrl: "https://poteto.github.io/noodle",
+    category: {
+      byCustomGetter: (page) => {
+        const dir = page.sourceFilePath.split("/")[1];
+        if (dir === "concepts") return "Concepts";
+        if (dir === "reference") return "Reference";
+        if (dir === "cookbook") return "Cookbook";
+        return "Guide";
+      },
+      fallbackWithFrontmatter: false,
+    },
+  }),
 
   themeConfig: {
     nav: [{ text: "GitHub", link: "https://github.com/poteto/noodle" }],

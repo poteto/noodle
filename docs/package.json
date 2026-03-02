@@ -8,6 +8,19 @@
     "preview": "vitepress preview"
   },
   "devDependencies": {
+    "@resvg/resvg-wasm": "^2.6.2",
+    "colorette": "^2.0.20",
+    "defu": "^6.1.4",
+    "emoji-regex": "^10.6.0",
+    "fs-extra": "^11.3.3",
+    "gray-matter": "^4.0.3",
+    "ora": "^9.3.0",
+    "rehype-meta": "^4.0.1",
+    "rehype-parse": "^9.0.1",
+    "rehype-stringify": "^10.0.1",
+    "tinyglobby": "^0.2.15",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
     "vitepress": "^1.6.3"
   }
 }
