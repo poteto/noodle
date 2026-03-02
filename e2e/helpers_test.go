@@ -141,7 +141,7 @@ TODOS="brain/todos.md"
 # Match "1. [ ] some title ~small" lines and emit NDJSON.
 sed -n 's/^\([0-9]*\)\. \[ \] \(.*\)/\1 \2/p' "$TODOS" | while read -r id rest; do
   title=$(printf '%s' "$rest" | sed 's/ ~[a-z]*$//' | sed 's/"/\\"/g')
-  printf '{"id":"%s","title":"%s","status":"open","tags":[]}\n' "$id" "$title"
+  printf '{"id":"%s","title":"%s","status":"open"}\n' "$id" "$title"
 done
 `)
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), `#!/bin/sh

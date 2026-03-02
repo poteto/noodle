@@ -45,7 +45,8 @@ No input. Prints newline-delimited JSON (NDJSON) to stdout, one backlog item per
   "id": "1",
   "title": "Fix login bug",
   "status": "open",
-  "tags": ["bug", "auth"]
+  "tags": ["bug", "auth"],
+  "priority": 1
 }
 {
   "id": "2",
@@ -60,18 +61,16 @@ No input. Prints newline-delimited JSON (NDJSON) to stdout, one backlog item per
 }
 ```
 
-Only `id` and `title` are required. Everything else is optional. Unrecognized fields are ignored.
+Only `id` and `title` are required. Everything else — any field, any type — is passed through to mise.json for the scheduler to see.
 
-| Field         | Type     | Required | Notes                                 |
-| ------------- | -------- | -------- | ------------------------------------- |
-| `id`          | string   | yes      | unique identifier                     |
-| `title`       | string   | yes      | item title                            |
-| `description` | string   | no       | item details                          |
-| `section`     | string   | no       | grouping label                        |
-| `status`      | string   | no       | e.g. `open`, `in_progress`, `done`    |
-| `tags`        | string[] | no       | arbitrary tags                        |
-| `estimate`    | string   | no       | size estimate, e.g. `small`, `medium` |
-| `plan`        | string   | no       | path to a plan overview file          |
+| Field    | Type   | Required | Notes                              |
+| -------- | ------ | -------- | ---------------------------------- |
+| `id`     | string | yes      | unique identifier                  |
+| `title`  | string | yes      | item title                         |
+| `status` | string | no       | used by Noodle to filter done items |
+| `plan`   | string | no       | used by Noodle to read plan files  |
+
+`status` and `plan` are the only optional fields Noodle interprets. All other fields (e.g. `tags`, `section`, `estimate`, `priority`, or anything your system tracks) are passed through as-is. The scheduler sees them in mise.json and can use them for context, but Noodle itself doesn't act on them.
 
 ### `add`
 

@@ -99,13 +99,8 @@ func backlogSync() error {
 		}
 
 		tags := reTag.FindAllString(raw, -1)
-		normalizedTags := make([]string, 0, len(tags))
-		for _, tag := range tags {
-			tag = strings.TrimPrefix(tag, "#")
-			if tag == "" {
-				continue
-			}
-			normalizedTags = append(normalizedTags, tag)
+		for i, tag := range tags {
+			tags[i] = strings.TrimPrefix(tag, "#")
 		}
 
 		estimate := ""
@@ -128,7 +123,9 @@ func backlogSync() error {
 			"id":     id,
 			"title":  title,
 			"status": status,
-			"tags":   normalizedTags,
+		}
+		if len(tags) > 0 {
+			item["tags"] = tags
 		}
 		if section != "" {
 			item["section"] = section

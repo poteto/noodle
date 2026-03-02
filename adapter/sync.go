@@ -26,7 +26,6 @@ func ParseBacklogItems(ndjson string) ([]BacklogItem, error) {
 		if err := validateBacklogItem(item, lineNumber); err != nil {
 			return nil, err
 		}
-		item.Tags = normalizeTags(item.Tags)
 		items = append(items, item)
 	}
 	if err := scanner.Err(); err != nil {

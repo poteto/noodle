@@ -30,6 +30,8 @@ Read `task_types` from mise to discover every schedulable task type and its `sch
 
 Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID (as a string) as the order `id`.
 
+Backlog items always have `id` and `title`. Other fields are adapter-defined and may vary. The default adapter (todos.md) provides: `status`, `section`, `tags`, `estimate`, and `plan`. Custom adapters may include any fields — treat unknown fields as useful context.
+
 **One plan at a time:** Schedule one plan's next phase at a time. Pick the highest-priority plan with remaining phases and schedule its next phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
 
 **Shared infrastructure:** When multiple plans depend on common infrastructure (shared types, utilities, base packages), propose a standalone infra order that isn't tied to any single plan. Use a descriptive slug ID (e.g., `"infra-shared-types"`, `"infra-event-system"`) — orders don't need to match a backlog item ID. If the infra work is substantial, create a backlog item for it via the adapter (`noodle adapter run backlog add`), then use that item's ID as the order ID. The infra order should run before any plan that depends on it.

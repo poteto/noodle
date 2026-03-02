@@ -61,15 +61,3 @@ func TestParseBacklogItemsValidation(t *testing.T) {
 	}
 }
 
-func TestParseBacklogItemsOptionalDefaults(t *testing.T) {
-	items, err := ParseBacklogItems(`{"id":"1","title":"Fix bug","status":"open"}`)
-	if err != nil {
-		t.Fatalf("parse backlog: %v", err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("item count = %d", len(items))
-	}
-	if items[0].Tags == nil || len(items[0].Tags) != 0 {
-		t.Fatalf("tags should default to empty array: %#v", items[0].Tags)
-	}
-}
