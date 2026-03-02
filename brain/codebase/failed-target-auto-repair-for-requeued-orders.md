@@ -9,6 +9,10 @@
   - sets order back to `active`
   - resets failed/cancelled stages to `pending`
   - emits `order.requeued`
+- `consumeOrdersNext` duplicate-ID merge now supports scheduler-driven restart for failed orders:
+  - default remains idempotent duplicate-skip for crash safety
+  - exception: incoming active order replaces existing failed order with the same ID
+  - this lets scheduler re-schedule the same item ID via `orders-next.json` without requiring a separate control command
 - This removes split-brain risk between queue state and a secondary failed-target ledger.
 
 See also [[codebase/runtime-routing-owned-by-orders]], [[archive/plans/34-failed-target-reset-runtime/overview]], [[principles/make-operations-idempotent]]

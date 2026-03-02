@@ -14,4 +14,8 @@
 
 - Scheduler-specific behavior: when target is `schedule` and the active scheduler controller is not steerable, avoid kill+respawn (which looked like a misleading spawn); record the prompt and update schedule rationale for the next run.
 
+- Symptom: steering showed a confusing `Prompt` line saying `Request interrupted by user`.
+- Root cause: provider `user`/`user_message` events included a synthetic interrupt notice, and parser logic mapped all such events to `user:*` action messages.
+- Fix: parser now drops the interrupt notice text (`request interrupted by user`) for both Claude and Codex adapters so steer keeps the intentional `User` prompt event without extra noise.
+
 See also [[codebase/scheduler-steer-alias-prefers-live-session]], [[principles/fix-root-causes]]
