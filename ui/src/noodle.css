@@ -622,7 +622,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 0;
+  padding: 16px 0 24px;
   display: flex;
   flex-direction: column;
 }
