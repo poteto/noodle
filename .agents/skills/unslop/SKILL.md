@@ -49,21 +49,22 @@ Removing patterns is half the job. Sterile, voiceless writing is just as obvious
 
 ### Style
 
-13. **Em dash overuse** — use commas or periods instead.
-14. **Boldface overuse** — don't bold every proper noun or acronym.
-15. **Inline-header lists** — "**Performance:** Performance improved..." Convert to prose.
-16. **Title case headings** — use sentence case.
-17. **Decorative emojis** — remove from headings and bullets.
-18. **Curly quotes** — replace with straight quotes.
+13. **Em dash overuse** — avoid em dashes entirely. Use periods, commas, or parentheses. Em dashes are an AI tell.
+14. **Colon overuse** — colons are fine before a list or example. Not as mid-sentence connectors. "If you're coming from traditional automation: instead of registering event handlers, you describe conditions" adds nothing with the colon. Rewrite to let the point stand on its own without comparison framing. "Describing when the scheduler should fire works best as plain English." Same meaning, no crutch punctuation.
+15. **Boldface overuse** — don't bold every proper noun or acronym.
+16. **Inline-header lists** — "**Performance:** Performance improved..." Convert to prose.
+17. **Title case headings** — use sentence case.
+18. **Decorative emojis** — remove from headings and bullets.
+19. **Curly quotes** — replace with straight quotes.
 
 ### Communication artifacts
 
-19. **Chatbot phrases** — "I hope this helps!", "Let me know if...", "Of course!", "Certainly!" Remove.
-20. **Cutoff disclaimers** — "While specific details are limited..." Find sources or remove.
-21. **Sycophantic tone** — "Great question! You're absolutely right!" Respond directly.
+20. **Chatbot phrases** — "I hope this helps!", "Let me know if...", "Of course!", "Certainly!" Remove.
+21. **Cutoff disclaimers** — "While specific details are limited..." Find sources or remove.
+22. **Sycophantic tone** — "Great question! You're absolutely right!" Respond directly.
 
 ### Filler
 
-22. **Filler phrases** — "In order to" → "To". "Due to the fact that" → "Because". "It is important to note that" → delete.
-23. **Excessive hedging** — "could potentially possibly be argued that it might" → "may".
-24. **Generic conclusions** — "The future looks bright." State specific plans or facts.
+23. **Filler phrases** — "In order to" → "To". "Due to the fact that" → "Because". "It is important to note that" → delete.
+24. **Excessive hedging** — "could potentially possibly be argued that it might" → "may".
+25. **Generic conclusions** — "The future looks bright." State specific plans or facts.
