@@ -20,16 +20,6 @@ const (
 	blockedReasonCapacity  blockedReason = "capacity"
 	blockedReasonFailed    blockedReason = "failed"
 	blockedReasonNoPending blockedReason = "no pending stage"
-
-	retryReasonOrderNotFound   string = "order not found"
-	retryReasonStageNotFound   string = "stage not found"
-	retryReasonOrderTerminal   string = "order is terminal"
-	retryReasonStageTerminal   string = "stage is terminal"
-	retryReasonRetryDisabled   string = "retry disabled"
-	retryReasonAttemptsExhaust string = "max attempts reached"
-	retryReasonPolicyRejected  string = "retry policy rejected completion"
-
-	defaultRetryMaxAttempts = 2
 )
 
 type completionEventPayload struct {
@@ -162,29 +152,6 @@ func RouteCompletion(s state.State, rec CompletionRecord) (state.State, []ingest
 		order.Stages[rec.StageIndex] = stage
 		next.Orders[rec.OrderID] = order
 
-		canRetry, _ := RetryCandidate(next, rec.OrderID, rec.StageIndex, defaultRetryPolicy())
-		if canRetry {
-			order = next.Orders[rec.OrderID]
-			stage = order.Stages[rec.StageIndex]
-			stage.Status = state.StagePending
-			order.Status = state.OrderActive
-			order.Stages[rec.StageIndex] = stage
-			next.Orders[rec.OrderID] = order
-
-			evt, err := buildInternalEvent(ingest.EventDispatchRequested, rec.CompletedAt, completionEventPayload{
-				OrderID:    rec.OrderID,
-				StageIndex: rec.StageIndex,
-				AttemptID:  rec.AttemptID,
-				Error:      strings.TrimSpace(rec.Error),
-				ExitCode:   state.ClonedExitCode(rec.ExitCode),
-			})
-			if err != nil {
-				return s, nil, fmt.Errorf("route completion dispatch_requested: %w", err)
-			}
-			events = append(events, evt)
-			return next, events, nil
-		}
-
 		next = RouteFailure(next, rec.OrderID, rec.StageIndex, rec.Error)
 		evt, err := buildInternalEvent(ingest.EventStageFailed, rec.CompletedAt, completionEventPayload{
 			OrderID:    rec.OrderID,
@@ -269,49 +236,9 @@ func RouteFailure(s state.State, orderID string, stageIndex int, reason string) 
 	order.Stages[stageIndex] = stage
 	next.Orders[orderID] = order
 
-	canRetry, _ := RetryCandidate(next, orderID, stageIndex, defaultRetryPolicy())
-	if canRetry {
-		order.Status = state.OrderActive
-	} else {
-		order.Status = state.OrderFailed
-	}
+	order.Status = state.OrderFailed
 	next.Orders[orderID] = order
 	return next
-}
-
-// RetryCandidate reports whether a stage can retry under the provided policy.
-func RetryCandidate(s state.State, orderID string, stageIndex int, policy RetryPolicy) (bool, string) {
-	order, stage, ok := s.LookupStage(orderID, stageIndex)
-	if !ok {
-		if _, exists := s.Orders[orderID]; !exists {
-			return false, retryReasonOrderNotFound
-		}
-		return false, retryReasonStageNotFound
-	}
-
-	if order.Status.IsTerminal() {
-		return false, retryReasonOrderTerminal
-	}
-
-	if stage.Status.IsTerminal() && stage.Status != state.StageFailed {
-		return false, retryReasonStageTerminal
-	}
-
-	if policy.MaxAttempts <= 0 {
-		return false, retryReasonRetryDisabled
-	}
-
-	if len(stage.Attempts) >= policy.MaxAttempts {
-		return false, retryReasonAttemptsExhaust
-	}
-
-	if policy.ShouldRetry != nil {
-		rec := latestCompletionRecord(orderID, stageIndex, stage)
-		if !policy.ShouldRetry(rec) {
-			return false, retryReasonPolicyRejected
-		}
-	}
-	return true, ""
 }
 
 func sortedOrderIDs(orders map[string]state.OrderNode) []string {
@@ -401,34 +328,6 @@ func updateAttemptFromCompletion(stage *state.StageNode, rec CompletionRecord) {
 		attempt.Error = trimmed
 	}
 	stage.Attempts[idx] = attempt
-}
-
-func latestCompletionRecord(orderID string, stageIndex int, stage state.StageNode) CompletionRecord {
-	if len(stage.Attempts) == 0 {
-		return CompletionRecord{
-			OrderID:    orderID,
-			StageIndex: stageIndex,
-		}
-	}
-	last := stage.Attempts[len(stage.Attempts)-1]
-	return CompletionRecord{
-		OrderID:     orderID,
-		StageIndex:  stageIndex,
-		AttemptID:   last.AttemptID,
-		Status:      last.Status,
-		ExitCode:    state.ClonedExitCode(last.ExitCode),
-		Error:       last.Error,
-		CompletedAt: last.CompletedAt,
-	}
-}
-
-func defaultRetryPolicy() RetryPolicy {
-	return RetryPolicy{
-		MaxAttempts: defaultRetryMaxAttempts,
-		ShouldRetry: func(rec CompletionRecord) bool {
-			return rec.Status == state.AttemptFailed
-		},
-	}
 }
 
 func buildInternalEvent(eventType ingest.EventType, timestamp time.Time, payload completionEventPayload) (ingest.StateEvent, error) {

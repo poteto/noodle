@@ -89,7 +89,7 @@ func (s *processSession) waitForExit(ctx context.Context) {
 	select {
 	case <-s.process.Done():
 	case <-ctx.Done():
-		_ = s.process.Kill()
+		_ = s.process.ForceKill()
 		<-s.process.Done()
 	}
 
@@ -129,8 +129,13 @@ func (s *processSession) terminalStatus(exitCode int) string {
 	return "failed"
 }
 
-func (s *processSession) Kill() error {
-	_ = s.process.Kill()
+func (s *processSession) Terminate() error {
+	_ = s.process.Terminate()
+	return nil
+}
+
+func (s *processSession) ForceKill() error {
+	_ = s.process.ForceKill()
 	s.markDone("killed")
 	return nil
 }

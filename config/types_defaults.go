@@ -17,8 +17,6 @@ type Config struct {
 	Routing     RoutingConfig            `toml:"routing"`
 	Skills      SkillsConfig             `toml:"skills"`
 	Mode        string                   `toml:"mode"`
-	Recovery    RecoveryConfig           `toml:"recovery"`
-	Monitor     MonitorConfig            `toml:"monitor"`
 	Concurrency ConcurrencyConfig        `toml:"concurrency"`
 	Agents      AgentsConfig             `toml:"agents"`
 	Runtime     RuntimeConfig            `toml:"runtime"`
@@ -31,8 +29,7 @@ type AdapterConfig struct {
 }
 
 type RoutingConfig struct {
-	Defaults ModelPolicy            `toml:"defaults"`
-	Tags     map[string]ModelPolicy `toml:"tags"`
+	Defaults ModelPolicy `toml:"defaults"`
 }
 
 type ModelPolicy struct {
@@ -44,21 +41,8 @@ type SkillsConfig struct {
 	Paths []string `toml:"paths"`
 }
 
-type RecoveryConfig struct {
-	MaxRetries int `toml:"max_retries"`
-}
-
-type MonitorConfig struct {
-	StuckThreshold string `toml:"stuck_threshold"`
-	TicketStale    string `toml:"ticket_stale"`
-	PollInterval   string `toml:"poll_interval"`
-}
-
 type ConcurrencyConfig struct {
-	MaxCooks                   int    `toml:"max_cooks"`
-	MaxCompletionOverflow      int    `toml:"max_completion_overflow"`
-	MergeBackpressureThreshold int    `toml:"merge_backpressure_threshold"`
-	ShutdownTimeout            string `toml:"shutdown_timeout"`
+	MaxConcurrency int `toml:"max_concurrency"`
 }
 
 type ProviderConfig struct {
@@ -83,7 +67,7 @@ type RuntimeConfig struct {
 }
 
 // MaxConcurrentFor returns the per-runtime concurrency cap for a given runtime name.
-// Returns 0 when unlimited (no per-runtime cap; the global MaxCooks ceiling applies).
+// Returns 0 when unlimited (no per-runtime cap; the global MaxConcurrency ceiling applies).
 func (c RuntimeConfig) MaxConcurrentFor(name string) int {
 	switch stringx.Normalize(name) {
 	case "process":
@@ -148,6 +132,9 @@ const (
 	DiagnosticCodeProviderUnknown        = "provider_unknown"
 	DiagnosticCodeRuntimeDefaultUnknown  = "runtime_default_unknown"
 	DiagnosticCodeNoBacklogAdapter       = "no_backlog_adapter"
+	DiagnosticCodeConfigFieldRemoved     = "config_field_removed"
+	DiagnosticCodeConfigFieldUnknown     = "config_field_unknown"
+	DiagnosticCodeConfigValueNormalized  = "config_value_normalized"
 )
 
 type ValidationResult struct {
@@ -189,25 +176,13 @@ func DefaultConfig() Config {
 				Provider: "claude",
 				Model:    "claude-opus-4-6",
 			},
-			Tags: map[string]ModelPolicy{},
 		},
 		Skills: SkillsConfig{
 			Paths: defaultSkillPaths(),
 		},
 		Mode: "auto",
-		Recovery: RecoveryConfig{
-			MaxRetries: 3,
-		},
-		Monitor: MonitorConfig{
-			StuckThreshold: "120s",
-			TicketStale:    "30m",
-			PollInterval:   "5s",
-		},
 		Concurrency: ConcurrencyConfig{
-			MaxCooks:                   4,
-			MaxCompletionOverflow:      1024,
-			MergeBackpressureThreshold: 128,
-			ShutdownTimeout:            "30s",
+			MaxConcurrency: 4,
 		},
 		Agents: AgentsConfig{},
 		Runtime: RuntimeConfig{

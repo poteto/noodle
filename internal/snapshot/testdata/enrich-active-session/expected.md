@@ -27,7 +27,6 @@ source_hash: c23453896ff406677e4f0eebbb2966d286eb27b4c34ded41ed363741476ccd66
       "context_window_usage_pct": 0.5,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "execute"
     }
@@ -48,7 +47,6 @@ source_hash: c23453896ff406677e4f0eebbb2966d286eb27b4c34ded41ed363741476ccd66
       "context_window_usage_pct": 0.5,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "execute"
     }
@@ -81,6 +79,7 @@ source_hash: c23453896ff406677e4f0eebbb2966d286eb27b4c34ded41ed363741476ccd66
   "pending_reviews": [],
   "pending_review_count": 0,
   "mode": "",
-  "max_cooks": 0
+  "max_concurrency": 0,
+  "warnings": null
 }
 ```

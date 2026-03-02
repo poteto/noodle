@@ -24,17 +24,17 @@ func (l *Loop) stampStatus() error {
 	}
 
 	status := statusfile.Status{
-		Active:    active,
-		LoopState: string(l.state),
-		Mode:      mode,
-		MaxCooks:  l.config.Concurrency.MaxCooks,
+		Active:         active,
+		LoopState:      string(l.state),
+		Mode:           mode,
+		MaxConcurrency: l.config.Concurrency.MaxConcurrency,
 	}
 
 	// Skip write if nothing changed.
 	if slices.Equal(l.lastStatus.Active, status.Active) &&
 		l.lastStatus.LoopState == status.LoopState &&
 		l.lastStatus.Mode == status.Mode &&
-		l.lastStatus.MaxCooks == status.MaxCooks {
+		l.lastStatus.MaxConcurrency == status.MaxConcurrency {
 		l.publishState()
 		return nil
 	}

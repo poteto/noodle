@@ -205,7 +205,7 @@ add = ".noodle/adapters/backlog-add"
 edit = ".noodle/adapters/backlog-edit"
 
 [concurrency]
-max_cooks = 1
+max_concurrency = 1
 
 [runtime]
 default = "process"

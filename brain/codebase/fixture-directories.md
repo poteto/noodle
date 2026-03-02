@@ -35,6 +35,7 @@ Rules:
 - `pnpm fixtures:hash`: fail when any fixture `source_hash` is out of date.
 - `pnpm fixtures:loop:record`: regenerate `loop` fixture `Runtime Dump` sections and sync hashes.
 - `pnpm fixtures:loop`: verify `loop` runtime dumps and hashes are up to date.
+- Some older test failures still print `noodle fixtures sync`; the correct command is `pnpm fixtures:hash:sync`.
 
 ## Config Precedence
 

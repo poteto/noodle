@@ -38,9 +38,3 @@ type CompletionRecord struct {
 	Error       string              `json:"error"`
 	CompletedAt time.Time           `json:"completed_at"`
 }
-
-// RetryPolicy controls retry eligibility.
-type RetryPolicy struct {
-	MaxAttempts int
-	ShouldRetry func(CompletionRecord) bool
-}

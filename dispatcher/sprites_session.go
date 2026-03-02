@@ -129,7 +129,14 @@ func (s *spritesSession) waitAndSync(ctx context.Context) {
 	s.markDone(terminalStatus)
 }
 
-func (s *spritesSession) Kill() error {
+func (s *spritesSession) Terminate() error {
+	if s.cmd != nil {
+		_ = s.cmd.Signal("SIGTERM")
+	}
+	return nil
+}
+
+func (s *spritesSession) ForceKill() error {
 	if s.cmd != nil {
 		_ = s.cmd.Signal("SIGKILL")
 	}

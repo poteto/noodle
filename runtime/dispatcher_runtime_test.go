@@ -16,16 +16,26 @@ type fakeSession struct {
 	done chan struct{}
 }
 
-func (s *fakeSession) ID() string                              { return s.id }
-func (s *fakeSession) Status() string                           { return "running" }
-func (s *fakeSession) Done() <-chan struct{}                     { return s.done }
-func (s *fakeSession) TotalCost() float64                       { return 0 }
-func (s *fakeSession) Kill() error                              { close(s.done); return nil }
-func (s *fakeSession) Events() <-chan dispatcher.SessionEvent   { return nil }
-func (s *fakeSession) Controller() dispatcher.AgentController   { return nil }
+func (s *fakeSession) ID() string                             { return s.id }
+func (s *fakeSession) Status() string                         { return "running" }
+func (s *fakeSession) Done() <-chan struct{}                  { return s.done }
+func (s *fakeSession) TotalCost() float64                     { return 0 }
+func (s *fakeSession) Terminate() error                       { return s.closeDone() }
+func (s *fakeSession) ForceKill() error                       { return s.closeDone() }
+func (s *fakeSession) Events() <-chan dispatcher.SessionEvent { return nil }
+func (s *fakeSession) Controller() dispatcher.AgentController { return nil }
+
+func (s *fakeSession) closeDone() error {
+	select {
+	case <-s.done:
+	default:
+		close(s.done)
+	}
+	return nil
+}
 
 type fakeDispatcher struct {
-	nextID  int
+	nextID   int
 	sessions []*fakeSession
 }
 
@@ -62,8 +72,8 @@ func TestDispatcherRuntimeConcurrencyLimit(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Kill first session and wait for watchDone goroutine to decrement.
-	_ = h1.Kill()
+	// Terminate first session and wait for watchDone goroutine to decrement.
+	_ = h1.ForceKill()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		rt.mu.Lock()
@@ -82,8 +92,8 @@ func TestDispatcherRuntimeConcurrencyLimit(t *testing.T) {
 	}
 
 	// Cleanup.
-	_ = h2.Kill()
-	_ = h3.Kill()
+	_ = h2.ForceKill()
+	_ = h3.ForceKill()
 }
 
 func TestDispatcherRuntimeUnlimitedConcurrency(t *testing.T) {
@@ -102,7 +112,7 @@ func TestDispatcherRuntimeUnlimitedConcurrency(t *testing.T) {
 	}
 
 	for _, h := range handles {
-		_ = h.Kill()
+		_ = h.ForceKill()
 	}
 }
 

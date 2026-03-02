@@ -41,7 +41,7 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 		if resultStatus == StageResultCompleted && !isScheduleStage(cook.stage) {
 			l.forwardToScheduler(cook, "session_repaired", "session emitted terminal result but stayed alive; auto-closing and advancing", nil)
 		}
-		_ = cook.session.Kill()
+		_ = cook.session.ForceKill()
 		l.enqueueCompletion(ctx, StageResult{
 			OrderID:      cook.orderID,
 			StageIndex:   cook.stageIndex,

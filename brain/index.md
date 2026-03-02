@@ -38,6 +38,7 @@
 - [[codebase/schedule-bootstrap-hot-loop]]
 - [[codebase/session-failure-classification-crash-only]]
 - [[codebase/skill-path-normalization-boundary]]
+- [[codebase/snapshot-tygo-output-path]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]

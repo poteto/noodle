@@ -27,11 +27,6 @@ func TestGateBehaviorMatrix(t *testing.T) {
 		{ActionDispatch, state.RunModeSupervised, true, ""},
 		{ActionDispatch, state.RunModeManual, false, "manual mode requires explicit dispatch"},
 
-		// Retry
-		{ActionRetry, state.RunModeAuto, true, ""},
-		{ActionRetry, state.RunModeSupervised, false, "supervised mode requires manual retry"},
-		{ActionRetry, state.RunModeManual, false, "manual mode requires manual retry"},
-
 		// AutoMerge
 		{ActionAutoMerge, state.RunModeAuto, true, ""},
 		{ActionAutoMerge, state.RunModeSupervised, false, "supervised mode requires merge approval"},
@@ -46,8 +41,6 @@ func TestGateBehaviorMatrix(t *testing.T) {
 				got = gate.CanSchedule(tt.mode)
 			case ActionDispatch:
 				got = gate.CanDispatch(tt.mode)
-			case ActionRetry:
-				got = gate.CanRetry(tt.mode)
 			case ActionAutoMerge:
 				got = gate.CanAutoMerge(tt.mode)
 			}
@@ -73,8 +66,6 @@ func TestBlockedReasonDescriptiveMessages(t *testing.T) {
 	}{
 		{state.RunModeManual, ActionSchedule},
 		{state.RunModeManual, ActionDispatch},
-		{state.RunModeSupervised, ActionRetry},
-		{state.RunModeManual, ActionRetry},
 		{state.RunModeSupervised, ActionAutoMerge},
 		{state.RunModeManual, ActionAutoMerge},
 	}

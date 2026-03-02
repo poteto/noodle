@@ -1,5 +1,6 @@
 # Completed Todos
 
+102. [x] ~~Remove `routing.tags.*` from `.noodle.toml` config. The scheduler skill decides routing per stage, so tag-based routing config is unnecessary. Remove the config parsing, the mise `routing` section that exposes tags, and update docs. [[archive/plans/102-config-cleanup/overview]]~~ — done.
 92. [x] ~~Publish docs to GitHub Pages via custom GitHub Actions workflow~~ — done. Workflow existed, deployed via GitHub Pages Settings > Source > GitHub Actions.
 20. [x] ~~First-run experience — install, docs, examples, getting-started guides. [[archive/plans/20-onboarding/overview]]~~ — done. Introduction page, Thinking in Noodle page, restructured sidebar, OG images, FAQ, getting-started rewrite.
 

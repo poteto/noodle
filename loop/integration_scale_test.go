@@ -33,8 +33,7 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = orderCount
-	cfg.Concurrency.MergeBackpressureThreshold = orderCount * 2
+	cfg.Concurrency.MaxConcurrency = orderCount
 	cfg.Runtime.Process.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
@@ -511,8 +510,7 @@ func TestMockRuntimeScaleBurstViaRuntimes(t *testing.T) {
 
 	rt := newMockRuntime()
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = orderCount
-	cfg.Concurrency.MergeBackpressureThreshold = orderCount * 2
+	cfg.Concurrency.MaxConcurrency = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},

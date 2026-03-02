@@ -82,15 +82,7 @@ func (l *Loop) scheduleNothingCooldownActive() bool {
 }
 
 func (l *Loop) pollInterval() time.Duration {
-	interval := strings.TrimSpace(l.config.Monitor.PollInterval)
-	if interval == "" {
-		return 5 * time.Second
-	}
-	duration, err := time.ParseDuration(interval)
-	if err != nil || duration <= 0 {
-		return 5 * time.Second
-	}
-	return duration
+	return 1 * time.Second
 }
 
 func hasActiveTicket(brief mise.Brief, target string) bool {

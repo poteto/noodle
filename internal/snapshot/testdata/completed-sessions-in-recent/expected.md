@@ -27,7 +27,6 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": ""
     }
   ],
@@ -48,7 +47,6 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": ""
     }
   ],
@@ -61,6 +59,7 @@ source_hash: 6eec590733616ed3302ce8ff853f50484317bd2a3d8155e663e69126a0b5d9e5
   "pending_reviews": [],
   "pending_review_count": 0,
   "mode": "",
-  "max_cooks": 0
+  "max_concurrency": 0,
+  "warnings": null
 }
 ```

@@ -12,7 +12,6 @@ func DeriveSessionMeta(
 	claims SessionClaims,
 	previous SessionMeta,
 	now time.Time,
-	stuckThreshold time.Duration,
 ) SessionMeta {
 	now = now.UTC()
 	lastActivity := claims.LastEventAt
@@ -24,11 +23,6 @@ func DeriveSessionMeta(
 		idleSeconds = int64(now.Sub(lastActivity).Seconds())
 	}
 
-	stuck := observation.Alive &&
-		stuckThreshold > 0 &&
-		!lastActivity.IsZero() &&
-		now.Sub(lastActivity) > stuckThreshold
-
 	persistentScheduler := isPersistentSchedulerSession(claims)
 	terminalByClaims := (claims.Completed || claims.Failed) && !persistentScheduler
 
@@ -38,8 +32,6 @@ func DeriveSessionMeta(
 		status = SessionStatusFailed
 	case terminalByClaims:
 		status = SessionStatusExited
-	case stuck:
-		status = SessionStatusStuck
 	case observation.Alive:
 		status = SessionStatusRunning
 	case claims.Failed:
@@ -60,15 +52,10 @@ func DeriveSessionMeta(
 
 	health := HealthGreen
 	switch status {
-	case SessionStatusFailed, SessionStatusStuck:
+	case SessionStatusFailed:
 		health = HealthRed
 	case SessionStatusRunning:
 		if contextUsagePct >= 80 {
-			health = HealthYellow
-		}
-		if stuckThreshold > 0 &&
-			!lastActivity.IsZero() &&
-			now.Sub(lastActivity) > stuckThreshold/2 {
 			health = HealthYellow
 		}
 	default:
@@ -78,7 +65,6 @@ func DeriveSessionMeta(
 	alive := observation.Alive
 	if terminalByClaims {
 		alive = false
-		stuck = false
 	}
 
 	durationSeconds := int64(0)
@@ -123,11 +109,10 @@ func DeriveSessionMeta(
 		ContextWindowUsagePct:   contextUsagePct,
 		RetryCount:              previous.RetryCount,
 		Alive:                   alive,
-		Stuck:                   stuck,
+		Stuck:                   false,
 		LogSize:                 observation.LogSize,
 		UpdatedAt:               now,
 		IdleSeconds:             idleSeconds,
-		StuckThresholdSeconds:   int64(stuckThreshold.Seconds()),
 		LastObservedProviderRaw: claims.Provider,
 	}
 }

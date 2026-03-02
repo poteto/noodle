@@ -56,9 +56,19 @@ func SessionPIDAlive(runtimeDir, sessionID string) bool {
 	return procx.IsPIDAlive(pid)
 }
 
-// KillSessionByPID reads the PID from a session's process.json and sends
-// SIGTERM to the process group. Used by loop.Shutdown to kill adopted sessions.
-func KillSessionByPID(runtimeDir, sessionID string) {
+// TerminateSessionByPID reads the PID from a session's process.json and sends
+// SIGTERM to the process group.
+func TerminateSessionByPID(runtimeDir, sessionID string) {
+	signalSessionByPID(runtimeDir, sessionID, syscall.SIGTERM)
+}
+
+// ForceKillSessionByPID reads the PID from a session's process.json and sends
+// SIGKILL to the process group.
+func ForceKillSessionByPID(runtimeDir, sessionID string) {
+	signalSessionByPID(runtimeDir, sessionID, syscall.SIGKILL)
+}
+
+func signalSessionByPID(runtimeDir, sessionID string, signal syscall.Signal) {
 	pidPath := filepath.Join(runtimeDir, "sessions", sessionID, "process.json")
 	pid, err := procx.ReadPIDFile(pidPath)
 	if err != nil {
@@ -70,9 +80,9 @@ func KillSessionByPID(runtimeDir, sessionID string) {
 	// Try SIGTERM to the process group first.
 	pgid, err := syscall.Getpgid(pid)
 	if err == nil {
-		_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		_ = syscall.Kill(-pgid, signal)
 		return
 	}
 	// Fall back to killing just the process.
-	_ = syscall.Kill(pid, syscall.SIGTERM)
+	_ = syscall.Kill(pid, signal)
 }

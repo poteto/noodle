@@ -33,7 +33,7 @@ type LoopState struct {
 	ActiveSummary      mise.ActiveSummary  `json:"active_summary"`
 	ActiveOrderIDs     []string            `json:"active_order_ids"`
 	TotalCostUSD       float64             `json:"total_cost_usd"`
-	MaxCooks           int                 `json:"max_cooks"`
+	MaxConcurrency     int                 `json:"max_concurrency"`
 	Mode               string              `json:"mode"`
 	ModeEpoch          uint64              `json:"mode_epoch"`
 	ActionNeeded       []string            `json:"action_needed"`
@@ -129,7 +129,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		ActiveSummary:      l.snapshotActiveSummary(),
 		ActiveOrderIDs:     activeOrderIDs(ordersFile),
 		TotalCostUSD:       totalCost,
-		MaxCooks:           l.config.Concurrency.MaxCooks,
+		MaxConcurrency:     l.config.Concurrency.MaxConcurrency,
 		Mode:               mode,
 		ModeEpoch:          uint64(l.canonical.ModeEpoch),
 		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),

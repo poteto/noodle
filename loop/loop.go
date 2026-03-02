@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -19,7 +20,13 @@ import (
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
+	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/skill"
+)
+
+const (
+	completionBufferSize = 1024
+	shutdownDeadline     = 2 * time.Second
 )
 
 func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Loop {
@@ -96,8 +103,8 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 			processedIDs: map[string]struct{}{},
 		},
 		completionBuf: completionBuffer{
-			completions:        make(chan StageResult, 1024),
-			completionOverflow: make([]StageResult, 0, maxCompletionOverflow(cfg)),
+			completions:        make(chan StageResult, completionBufferSize),
+			completionOverflow: make([]StageResult, 0, completionBufferSize),
 		},
 		activeSummary: mise.ActiveSummary{
 			ByTaskKey: map[string]int{},
@@ -167,16 +174,59 @@ func (l *Loop) rebuildRegistry() {
 
 // Shutdown kills all active agent sessions. Called during process exit.
 func (l *Loop) Shutdown() {
-	if l.mergeQueue != nil {
-		l.mergeQueue.Close()
-	}
+	l.shutdownOnce.Do(func() {
+		if l.mergeQueue != nil {
+			l.mergeQueue.Close()
+		}
+
+		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
+			_ = session.Terminate()
+		})
+		l.forEachAdoptedSession(func(sessionID string) {
+			monitor.TerminateSessionByPID(l.runtimeDir, sessionID)
+		})
+
+		<-time.After(shutdownDeadline)
+
+		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
+			_ = session.ForceKill()
+		})
+		l.forEachAdoptedSession(func(sessionID string) {
+			monitor.ForceKillSessionByPID(l.runtimeDir, sessionID)
+		})
+	})
+}
+
+func (l *Loop) forEachActiveSession(fn func(loopruntime.SessionHandle)) {
+	var wg sync.WaitGroup
 	for _, cook := range l.cooks.activeCooksByOrder {
-		_ = cook.session.Kill()
+		if cook == nil || cook.session == nil {
+			continue
+		}
+		wg.Add(1)
+		session := cook.session
+		go func() {
+			defer wg.Done()
+			fn(session)
+		}()
 	}
-	// Kill adopted sessions from previous runs that are still alive.
+	wg.Wait()
+}
+
+func (l *Loop) forEachAdoptedSession(fn func(string)) {
+	var wg sync.WaitGroup
 	for _, sessionID := range l.cooks.adoptedSessions {
-		monitor.KillSessionByPID(l.runtimeDir, sessionID)
+		id := strings.TrimSpace(sessionID)
+		if id == "" {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fn(id)
+		}()
 	}
+	wg.Wait()
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -272,7 +322,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	}
 
 	// Snapshot capacity before control commands can mutate it.
-	cycleCapacity := l.config.Concurrency.MaxCooks
+	cycleCapacity := l.config.Concurrency.MaxConcurrency
 
 	ready, err := l.runCycleMaintenance(ctx)
 	if err != nil {
@@ -392,11 +442,6 @@ func (l *Loop) runCycleMaintenance(ctx context.Context) (bool, error) {
 func (l *Loop) shutdownAndDrain() {
 	l.Shutdown()
 
-	timeout, err := time.ParseDuration(l.config.Concurrency.ShutdownTimeout)
-	if err != nil || timeout <= 0 {
-		timeout = 30 * time.Second
-	}
-
 	done := make(chan struct{})
 	go func() {
 		l.watcherWG.Wait()
@@ -406,13 +451,13 @@ func (l *Loop) shutdownAndDrain() {
 	select {
 	case <-done:
 		// All watchers quiesced normally.
-	case <-time.After(timeout):
+	case <-time.After(shutdownDeadline + time.Second):
 		l.logger.Warn("shutdown timeout exceeded, killing leaked sessions",
-			"timeout", timeout,
+			"timeout", shutdownDeadline+time.Second,
 			"leaked_watchers", l.watcherCount.Load(),
 		)
 		for orderID, cook := range l.cooks.activeCooksByOrder {
-			_ = cook.session.Kill()
+			_ = cook.session.ForceKill()
 			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
 		}
 	}
@@ -446,11 +491,4 @@ func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
 	if len(effects) > 0 {
 		l.logger.Debug("canonical effects emitted", "type", string(eventType), "count", len(effects))
 	}
-}
-
-func maxCompletionOverflow(cfg config.Config) int {
-	if cfg.Concurrency.MaxCompletionOverflow <= 0 {
-		return 1024
-	}
-	return cfg.Concurrency.MaxCompletionOverflow
 }

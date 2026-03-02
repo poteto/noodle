@@ -9,9 +9,9 @@ import (
 // buffering. The channel and overflow slice work together to ensure no
 // completion is lost even under high concurrency.
 type completionBuffer struct {
-	completions             chan StageResult
-	completionOverflow      []StageResult
-	completionOverflowMu    sync.Mutex
+	completions                 chan StageResult
+	completionOverflow          []StageResult
+	completionOverflowMu        sync.Mutex
 	completionOverflowSaturated uint64
 }
 
@@ -27,7 +27,7 @@ func (l *Loop) enqueueCompletion(ctx context.Context, result StageResult) {
 
 	overflowCap := cap(l.completionBuf.completionOverflow)
 	if overflowCap <= 0 {
-		overflowCap = maxCompletionOverflow(l.config)
+		overflowCap = completionBufferSize
 	}
 
 	l.completionBuf.completionOverflowMu.Lock()

@@ -234,18 +234,18 @@ func (l *Loop) controlReorder(cmd ControlCommand) error {
 	})
 }
 
-func (l *Loop) controlSetMaxCooks(value string) error {
+func (l *Loop) controlSetMaxConcurrency(value string) error {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return fmt.Errorf("set-max-cooks requires value")
+		return fmt.Errorf("set-max-concurrency requires value")
 	}
 	n, err := strconv.Atoi(value)
 	if err != nil {
-		return fmt.Errorf("set-max-cooks: invalid value %q", value)
+		return fmt.Errorf("set-max-concurrency: invalid value %q", value)
 	}
 	if n < 1 {
-		return fmt.Errorf("max_cooks must be at least 1")
+		return fmt.Errorf("max_concurrency must be at least 1")
 	}
-	l.config.Concurrency.MaxCooks = n
+	l.config.Concurrency.MaxConcurrency = n
 	return nil
 }

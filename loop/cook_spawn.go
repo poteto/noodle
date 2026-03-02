@@ -34,7 +34,7 @@ type spawnOptions struct {
 }
 
 func (l *Loop) atMaxConcurrency() bool {
-	maxCooks := l.config.Concurrency.MaxCooks
+	maxCooks := l.config.Concurrency.MaxConcurrency
 	if maxCooks <= 0 {
 		maxCooks = 1
 	}
@@ -206,20 +206,6 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 	envelope, ok := asDispatchFailureEnvelope(err)
 	if !ok {
 		envelope = classifyAgentStartFailure(stage.Runtime, err)
-	}
-	if envelope.Class == AgentStartFailureClassRetryable {
-		if persistErr := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusPending); persistErr != nil {
-			return persistErr
-		}
-		l.logger.Warn(
-			"cook dispatch failed; stage reset to pending",
-			"order", cand.OrderID,
-			"stage", cand.StageIndex,
-			"class", envelope.Class,
-			"recoverability", envelope.Recoverability,
-			"error", envelope.Cause,
-		)
-		return nil
 	}
 
 	reason := "dispatch failed: " + envelope.Error()

@@ -331,7 +331,7 @@ func parseControlRequest(action string, req controlRequest) (loop.ControlCommand
 		"kill": true, "steer": true, "merge": true, "reject": true,
 		"request-changes": true, "mode": true, "enqueue": true,
 		"stop-all": true, "requeue": true, "edit-item": true,
-		"reorder": true, "stop": true, "set-max-cooks": true,
+		"reorder": true, "stop": true, "set-max-concurrency": true,
 	}
 	if !validActions[action] {
 		return loop.ControlCommand{}, fmt.Errorf("unknown action: %s", action)

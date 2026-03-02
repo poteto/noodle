@@ -4,7 +4,7 @@ The minimal loop runs a single skill per order. Real projects need more: impleme
 
 ## What changes from the minimal setup
 
-You add more skills and tell the scheduler to create orders with multiple stages. The config also picks up routing tags and concurrency settings.
+You add more skills and tell the scheduler to create orders with multiple stages. The config also sets routing defaults and concurrency.
 
 ## Configuration
 
@@ -17,18 +17,14 @@ mode = "auto"
 provider = "claude"
 model = "claude-sonnet-4-6"
 
-[routing.tags.review]
-provider = "claude"
-model = "claude-opus-4-6"
-
 [skills]
 paths = [".agents/skills"]
 
 [concurrency]
-max_cooks = 2
+max_concurrency = 2
 ```
 
-Two things are new here. `routing.tags.review` defines a named routing tag: when the scheduler marks a stage with `"tag": "review"`, that stage runs on Opus instead of Sonnet. And `max_cooks = 2` lets two agents work simultaneously in separate worktrees.
+Two things are new here. Routing defaults define the baseline provider/model for generated stages, and `max_concurrency = 2` lets two agents work simultaneously in separate worktrees.
 
 ## Additional skills
 
@@ -97,7 +93,7 @@ The scheduler now creates orders with three stages instead of one:
       "stages": [
         { "skill": "execute", "status": "pending" },
         { "skill": "test", "status": "pending" },
-        { "skill": "deploy", "status": "pending", "tag": "review" }
+        { "skill": "deploy", "status": "pending" }
       ]
     }
   ]
@@ -105,8 +101,6 @@ The scheduler now creates orders with three stages instead of one:
 ```
 
 Stages run in sequence within an order. The test skill runs only after execute finishes. Deploy runs only after tests pass. If any stage fails, the remaining stages don't run.
-
-Notice the `"tag": "review"` on the deploy stage. This routes that stage to the model defined in `routing.tags.review` (Opus, in this case). You'd use a more capable model for deployment because the stakes are higher.
 
 ## Project principles
 
@@ -130,6 +124,6 @@ noodle start
 2. An agent picks up an order and runs the execute stage, implements the change, and commits.
 3. The same worktree passes to the test stage. An agent runs the test suite against the changes.
 4. If tests pass, the deploy stage runs. If they fail, the order stops.
-5. With `max_cooks = 2`, a second order can start while the first is mid-pipeline.
+5. With `max_concurrency = 2`, a second order can start while the first is mid-pipeline.
 
 The pipeline is sequential within an order but concurrent across orders. Two different backlog items can progress through their pipelines at the same time.

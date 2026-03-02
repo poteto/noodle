@@ -239,9 +239,8 @@ func buildMiseResults(stateInputs []loopFixtureStateInput) []fakeMiseResult {
 }
 
 func applySetupConfig(cfg *config.Config, setup loopFixtureSetup) {
-	if setup.RecoveryMaxRetries != nil {
-		cfg.Recovery.MaxRetries = *setup.RecoveryMaxRetries
-	}
+	_ = cfg
+	_ = setup
 }
 
 func applyFixtureActiveSessions(l *Loop, sessions []loopFixtureActiveSession) {

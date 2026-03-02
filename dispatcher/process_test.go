@@ -38,15 +38,15 @@ func TestProcessHandleSpawnAndDone(t *testing.T) {
 	}
 }
 
-func TestProcessHandleKill(t *testing.T) {
+func TestProcessHandleForceKill(t *testing.T) {
 	cmd := exec.Command("sleep", "60")
 	h, err := StartProcess(cmd)
 	if err != nil {
 		t.Fatalf("StartProcess: %v", err)
 	}
 
-	if err := h.Kill(); err != nil {
-		t.Fatalf("Kill: %v", err)
+	if err := h.ForceKill(); err != nil {
+		t.Fatalf("ForceKill: %v", err)
 	}
 
 	select {

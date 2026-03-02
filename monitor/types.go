@@ -6,17 +6,15 @@ import (
 )
 
 const (
-	defaultStuckThreshold = 120 * time.Second
-	defaultPollInterval   = 5 * time.Second
-	defaultDebounce       = 200 * time.Millisecond
-	contextTokenBudget    = 200000.0
+	defaultPollInterval = 1 * time.Second
+	defaultDebounce     = 200 * time.Millisecond
+	contextTokenBudget  = 200000.0
 )
 
 type SessionStatus string
 
 const (
 	SessionStatusRunning SessionStatus = "running"
-	SessionStatusStuck   SessionStatus = "stuck"
 	SessionStatusExited  SessionStatus = "exited"
 	SessionStatusFailed  SessionStatus = "failed"
 )
@@ -71,7 +69,6 @@ type SessionMeta struct {
 	LogSize                 int64         `json:"log_size"`
 	UpdatedAt               time.Time     `json:"updated_at"`
 	IdleSeconds             int64         `json:"idle_seconds"`
-	StuckThresholdSeconds   int64         `json:"stuck_threshold_seconds"`
 	LastObservedProviderRaw string        `json:"last_observed_provider_raw,omitempty"`
 }
 

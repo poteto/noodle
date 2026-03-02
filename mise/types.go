@@ -15,9 +15,9 @@ type ActiveSummary struct {
 }
 
 type ResourceSnapshot struct {
-	MaxCooks  int `json:"max_cooks"`
-	Active    int `json:"active"`
-	Available int `json:"available"`
+	MaxConcurrency int `json:"max_concurrency"`
+	Active         int `json:"active"`
+	Available      int `json:"available"`
 }
 
 type HistoryItem struct {
@@ -30,9 +30,8 @@ type HistoryItem struct {
 }
 
 type RoutingSnapshot struct {
-	Defaults          RoutingPolicy            `json:"defaults"`
-	Tags              map[string]RoutingPolicy `json:"tags"`
-	AvailableRuntimes []string                 `json:"available_runtimes,omitempty"`
+	Defaults          RoutingPolicy `json:"defaults"`
+	AvailableRuntimes []string      `json:"available_runtimes,omitempty"`
 }
 
 type RoutingPolicy struct {

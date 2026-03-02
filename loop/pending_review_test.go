@@ -24,13 +24,13 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
 	})
 
 	cook := &cookHandle{
@@ -90,13 +90,13 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	}
 
 	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
-		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
-		Worktree:   &fakeWorktree{},
-		Adapter:    &fakeAdapterRunner{},
-		Mise:       &fakeMise{},
-		Monitor:    fakeMonitor{},
-		Registry:   testLoopRegistry(),
-		Now:        time.Now,
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
 	})
 
 	if err := l.reconcile(context.Background()); err != nil {
@@ -130,7 +130,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = 2
+	cfg.Concurrency.MaxConcurrency = 2
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
@@ -143,7 +143,7 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	})
 	l.cooks.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
-	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxCooks)
+	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxConcurrency)
 	if len(plan) != 1 || plan[0].OrderID != "43" {
 		t.Fatalf("spawn plan = %#v, want only 43", plan)
 	}

@@ -87,7 +87,8 @@ type Session interface {
 	Events() <-chan SessionEvent
 	Done() <-chan struct{}
 	TotalCost() float64
-	Kill() error
+	Terminate() error
+	ForceKill() error
 	Controller() AgentController
 }
 

@@ -22,20 +22,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Mode != "auto" {
 		t.Fatalf("mode default = %q, want auto", config.Mode)
 	}
-	if config.Recovery.MaxRetries != 3 {
-		t.Fatalf("recovery.max_retries default = %d", config.Recovery.MaxRetries)
-	}
-	if config.Monitor.StuckThreshold != "120s" {
-		t.Fatalf("monitor.stuck_threshold default = %q", config.Monitor.StuckThreshold)
-	}
-	if config.Monitor.TicketStale != "30m" {
-		t.Fatalf("monitor.ticket_stale default = %q", config.Monitor.TicketStale)
-	}
-	if config.Monitor.PollInterval != "5s" {
-		t.Fatalf("monitor.poll_interval default = %q", config.Monitor.PollInterval)
-	}
-	if config.Concurrency.MaxCooks != 4 {
-		t.Fatalf("concurrency.max_cooks default = %d", config.Concurrency.MaxCooks)
+	if config.Concurrency.MaxConcurrency != 4 {
+		t.Fatalf("concurrency.max_concurrency default = %d", config.Concurrency.MaxConcurrency)
 	}
 	if config.Agents.Claude.Path != "" || config.Agents.Codex.Path != "" {
 		t.Fatalf("agent path defaults should be empty: %#v", config.Agents)
@@ -81,23 +69,11 @@ func TestParseConfigRoundTrip(t *testing.T) {
 provider = "codex"
 model = "gpt-5.3-codex"
 
-[routing.tags.frontend]
-provider = "claude"
-model = "opus"
-
 [skills]
 paths = [".agents/skills"]
 
-[recovery]
-max_retries = 5
-
-[monitor]
-stuck_threshold = "30s"
-ticket_stale = "10m"
-poll_interval = "3s"
-
 [concurrency]
-max_cooks = 2
+max_concurrency = 2
 
 [adapters.backlog]
 skill = "my-backlog"
@@ -118,17 +94,11 @@ edit = "gh issue edit"
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
 	}
-	if config.Routing.Tags["frontend"].Model != "opus" {
-		t.Fatalf("routing.tags.frontend.model = %q", config.Routing.Tags["frontend"].Model)
-	}
 	if config.Mode != "auto" {
 		t.Fatalf("expected default mode=auto, got %q", config.Mode)
 	}
-	if config.Recovery.MaxRetries != 5 {
-		t.Fatalf("recovery.max_retries = %d", config.Recovery.MaxRetries)
-	}
-	if config.Concurrency.MaxCooks != 2 {
-		t.Fatalf("concurrency.max_cooks = %d", config.Concurrency.MaxCooks)
+	if config.Concurrency.MaxConcurrency != 2 {
+		t.Fatalf("concurrency.max_concurrency = %d", config.Concurrency.MaxConcurrency)
 	}
 }
 
@@ -152,9 +122,11 @@ model = "claude-sonnet-4-6"
 
 func TestParseInvalidValues(t *testing.T) {
 	tests := []struct {
-		name    string
-		payload string
-		wantErr string
+		name               string
+		payload            string
+		wantMode           string
+		wantProvider       string
+		wantMaxConcurrency int
 	}{
 		{
 			name: "missing provider",
@@ -163,57 +135,95 @@ func TestParseInvalidValues(t *testing.T) {
 provider = ""
 model = "x"
 `,
-			wantErr: "routing.defaults.provider",
+			wantProvider:       "claude",
+			wantMode:           "auto",
+			wantMaxConcurrency: 4,
 		},
 		{
-			name: "invalid duration",
+			name: "invalid mode",
 			payload: `
+mode = "yolo"
+
 [routing.defaults]
 provider = "claude"
 model = "x"
-
-[monitor]
-stuck_threshold = "not-a-duration"
 `,
-			wantErr: "monitor.stuck_threshold",
+			wantMode:           "auto",
+			wantProvider:       "claude",
+			wantMaxConcurrency: 4,
 		},
 		{
-			name: "invalid max cooks",
+			name: "invalid max concurrency",
 			payload: `
 [routing.defaults]
 provider = "claude"
 model = "x"
 
 [concurrency]
-max_cooks = 0
+max_concurrency = 0
 `,
-			wantErr: "concurrency.max_cooks",
-		},
-		{
-			name: "missing tag provider",
-			payload: `
-[routing.defaults]
-provider = "claude"
-model = "x"
-
-[routing.tags.frontend]
-provider = ""
-model = "y"
-`,
-			wantErr: "routing.tags.frontend.provider",
+			wantMode:           "auto",
+			wantProvider:       "claude",
+			wantMaxConcurrency: 4,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Parse([]byte(test.payload))
-			if err == nil {
-				t.Fatal("expected parse error")
+			cfg, err := Parse([]byte(test.payload))
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
 			}
-			if !strings.Contains(err.Error(), test.wantErr) {
-				t.Fatalf("error %q missing %q", err, test.wantErr)
+			if cfg.Mode != test.wantMode {
+				t.Fatalf("mode = %q, want %q", cfg.Mode, test.wantMode)
+			}
+			if cfg.Routing.Defaults.Provider != test.wantProvider {
+				t.Fatalf("provider = %q, want %q", cfg.Routing.Defaults.Provider, test.wantProvider)
+			}
+			if cfg.Concurrency.MaxConcurrency != test.wantMaxConcurrency {
+				t.Fatalf("max_concurrency = %d, want %d", cfg.Concurrency.MaxConcurrency, test.wantMaxConcurrency)
 			}
 		})
+	}
+}
+
+func TestLoadWarnsOnRemovedFields(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "noodle.toml")
+	if err := os.WriteFile(path, []byte(`
+[routing.defaults]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+[recovery]
+max_retries = 9
+
+[monitor]
+poll_interval = "9s"
+
+[concurrency]
+max_cooks = 99
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, validation, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Concurrency.MaxConcurrency != 4 {
+		t.Fatalf("max_concurrency = %d, want default 4", cfg.Concurrency.MaxConcurrency)
+	}
+
+	foundRemoved := false
+	for _, diagnostic := range validation.Warnings() {
+		if diagnostic.Code == DiagnosticCodeConfigFieldRemoved {
+			foundRemoved = true
+			break
+		}
+	}
+	if !foundRemoved {
+		t.Fatal("expected removed-field warning diagnostics")
 	}
 }
 
@@ -413,19 +423,19 @@ model = "claude-sonnet-4-6"
 	}
 }
 
-func TestModeInvalidValueReturnsError(t *testing.T) {
-	_, err := Parse([]byte(`
+func TestModeInvalidValueFallsBackToDefault(t *testing.T) {
+	cfg, err := Parse([]byte(`
 mode = "yolo"
 
 [routing.defaults]
 provider = "claude"
 model = "claude-sonnet-4-6"
 `))
-	if err == nil {
-		t.Fatal("expected parse error for invalid mode")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
 	}
-	if !strings.Contains(err.Error(), "mode") {
-		t.Fatalf("error %q missing mode field reference", err)
+	if cfg.Mode != "auto" {
+		t.Fatalf("mode = %q, want auto", cfg.Mode)
 	}
 }
 
@@ -559,44 +569,36 @@ sprite_name = "test"
 	}
 }
 
-func TestValidateWarnsOnUnknownRuntimeDefault(t *testing.T) {
-	cfg, err := Parse([]byte(`
+func TestLoadWarnsOnNormalizedRuntimeDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "noodle.toml")
+	if err := os.WriteFile(path, []byte(`
 [routing.defaults]
 provider = "claude"
 model = "claude-sonnet-4-6"
 
 [runtime]
 default = "tmux"
-`))
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
 	}
 
-	result := Validate(cfg)
-	warnings := result.Warnings()
-	if len(warnings) == 0 {
-		t.Fatal("expected warning diagnostic for unknown runtime default")
+	cfg, validation, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Runtime.Default != "process" {
+		t.Fatalf("runtime.default = %q, want process", cfg.Runtime.Default)
 	}
 	found := false
-	for _, w := range warnings {
-		if w.Code == DiagnosticCodeRuntimeDefaultUnknown {
+	for _, w := range validation.Warnings() {
+		if w.FieldPath == "runtime.default" && w.Code == DiagnosticCodeConfigValueNormalized {
 			found = true
-			if !strings.Contains(w.Message, "tmux") {
-				t.Fatalf("warning message should mention tmux, got %q", w.Message)
-			}
+			break
 		}
 	}
 	if !found {
-		t.Fatal("expected runtime_default_unknown diagnostic code")
-	}
-
-	// Known runtimes should produce no warning.
-	for _, valid := range []string{"process", "sprites", "cursor"} {
-		cfg.Runtime.Default = valid
-		result := Validate(cfg)
-		if len(result.Warnings()) != 0 {
-			t.Fatalf("unexpected warning for runtime.default=%q", valid)
-		}
+		t.Fatal("expected normalized runtime.default warning")
 	}
 }
 

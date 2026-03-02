@@ -7,14 +7,12 @@ import (
 
 	"github.com/poteto/noodle/internal/failure"
 	"github.com/poteto/noodle/internal/stringx"
-	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 // AgentStartFailureClass classifies session start attempts by retry behavior.
 type AgentStartFailureClass string
 
 const (
-	AgentStartFailureClassRetryable     AgentStartFailureClass = "retryable"
 	AgentStartFailureClassFallback      AgentStartFailureClass = "fallback"
 	AgentStartFailureClassUnrecoverable AgentStartFailureClass = "unrecoverable"
 )
@@ -69,12 +67,8 @@ func newRuntimeNotConfiguredError(runtimeName string) runtimeNotConfiguredError 
 
 func classifyAgentStartFailure(runtimeName string, cause error) DispatchFailureEnvelope {
 	normalizedRuntime := stringx.Normalize(runtimeName)
-	class := AgentStartFailureClassRetryable
-	failureClass := failure.FailureClassAgentStartRetryable
-	if normalizedRuntime == "process" || isRuntimeMisconfiguration(cause) || loopruntime.IsProcessStartFailure(cause) {
-		class = AgentStartFailureClassUnrecoverable
-		failureClass = failure.FailureClassAgentStartUnrecoverable
-	}
+	class := AgentStartFailureClassUnrecoverable
+	failureClass := failure.FailureClassAgentStartUnrecoverable
 	return DispatchFailureEnvelope{
 		Class:          class,
 		FailureClass:   failureClass,
@@ -101,11 +95,6 @@ func newRuntimeFallbackOutcome(
 		Message:          strings.TrimSpace(message),
 		Cause:            cause,
 	}
-}
-
-func isRuntimeMisconfiguration(err error) bool {
-	var typed runtimeNotConfiguredError
-	return errors.As(err, &typed)
 }
 
 func asDispatchFailureEnvelope(err error) (DispatchFailureEnvelope, bool) {

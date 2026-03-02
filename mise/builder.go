@@ -77,21 +77,17 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 	}
 
 	resources := ResourceSnapshot{
-		MaxCooks: b.config.Concurrency.MaxCooks,
-		Active:   activeSummary.Total,
+		MaxConcurrency: b.config.Concurrency.MaxConcurrency,
+		Active:         activeSummary.Total,
 	}
-	resources.Available = resources.MaxCooks - resources.Active
+	resources.Available = resources.MaxConcurrency - resources.Active
 	if resources.Available < 0 {
 		resources.Available = 0
 	}
 
 	routing := RoutingSnapshot{
 		Defaults:          routingPolicyFromModelPolicy(b.config.Routing.Defaults),
-		Tags:              make(map[string]RoutingPolicy, len(b.config.Routing.Tags)),
 		AvailableRuntimes: b.config.AvailableRuntimes(),
-	}
-	for tag, policy := range b.config.Routing.Tags {
-		routing.Tags[tag] = routingPolicyFromModelPolicy(policy)
 	}
 
 	recentEvents := readRecentEvents(b.runtimeDir)

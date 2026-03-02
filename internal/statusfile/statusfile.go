@@ -11,10 +11,10 @@ import (
 
 // Status holds runtime state written by the loop.
 type Status struct {
-	Active    []string `json:"active,omitempty"`
-	LoopState string   `json:"loop_state,omitempty"`
-	Mode      string   `json:"mode,omitempty"`
-	MaxCooks  int      `json:"max_cooks,omitempty"`
+	Active         []string `json:"active,omitempty"`
+	LoopState      string   `json:"loop_state,omitempty"`
+	Mode           string   `json:"mode,omitempty"`
+	MaxConcurrency int      `json:"max_concurrency,omitempty"`
 }
 
 // Read parses status.json at path. Returns zero-value Status if the file

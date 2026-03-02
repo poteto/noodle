@@ -136,9 +136,7 @@ func TestEventIntegrationFailurePath(t *testing.T) {
 		},
 	}
 
-	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
-		ic.cfg.Recovery.MaxRetries = 0 // fail immediately, no retries
-	})
+	env := newIntegrationEnv(t, orders)
 	eventsPath := filepath.Join(env.runtimeDir, "loop-events.ndjson")
 
 	// Cycle 1: dispatch.
@@ -146,7 +144,7 @@ func TestEventIntegrationFailurePath(t *testing.T) {
 		t.Fatalf("cycle 1: %v", err)
 	}
 
-	// Complete with failure — with MaxRetries=0, first failure is terminal.
+	// Complete with failure — first failure is terminal.
 	env.completeSessions("failed")
 	if err := env.loop.Cycle(context.Background()); err != nil {
 		t.Fatalf("cycle 2: %v", err)

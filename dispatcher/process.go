@@ -99,9 +99,17 @@ func (h *ProcessHandle) ExitCode() (int, bool) {
 	return h.exitCode, h.exited
 }
 
-// Kill sends SIGTERM to the process group, waits up to 5 seconds,
-// then sends SIGKILL if the process is still running.
-func (h *ProcessHandle) Kill() error {
+// Terminate sends SIGTERM to the process group and returns immediately.
+func (h *ProcessHandle) Terminate() error {
+	return h.signalProcessGroup(syscall.SIGTERM)
+}
+
+// ForceKill sends SIGKILL to the process group and returns immediately.
+func (h *ProcessHandle) ForceKill() error {
+	return h.signalProcessGroup(syscall.SIGKILL)
+}
+
+func (h *ProcessHandle) signalProcessGroup(signal syscall.Signal) error {
 	if h.cmd.Process == nil {
 		return nil
 	}
@@ -110,17 +118,7 @@ func (h *ProcessHandle) Kill() error {
 		// Process already gone.
 		return nil
 	}
-
-	_ = syscall.Kill(-pgid, syscall.SIGTERM)
-
-	select {
-	case <-h.done:
-		return nil
-	case <-time.After(5 * time.Second):
-	}
-
-	_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	<-h.done
+	_ = syscall.Kill(-pgid, signal)
 	return nil
 }
 

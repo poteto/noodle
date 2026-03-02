@@ -72,11 +72,18 @@ func (r *DispatcherRuntime) watchDone(handle SessionHandle) {
 	r.mu.Unlock()
 }
 
-func (r *DispatcherRuntime) Kill(handle SessionHandle) error {
+func (r *DispatcherRuntime) Terminate(handle SessionHandle) error {
 	if handle == nil {
 		return nil
 	}
-	return handle.Kill()
+	return handle.Terminate()
+}
+
+func (r *DispatcherRuntime) ForceKill(handle SessionHandle) error {
+	if handle == nil {
+		return nil
+	}
+	return handle.ForceKill()
 }
 
 func (r *DispatcherRuntime) Recover(context.Context) ([]RecoveredSession, error) {

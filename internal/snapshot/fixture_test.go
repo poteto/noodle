@@ -89,13 +89,13 @@ func loadFixtureLoopState(t *testing.T, runtimeDir string) loop.LoopState {
 	// Read status.json for loop metadata.
 	if data, err := os.ReadFile(filepath.Join(runtimeDir, "status.json")); err == nil {
 		var s struct {
-			LoopState string `json:"loop_state"`
-			MaxCooks  int    `json:"max_cooks"`
-			Mode      string `json:"mode"`
+			LoopState      string `json:"loop_state"`
+			MaxConcurrency int    `json:"max_concurrency"`
+			Mode           string `json:"mode"`
 		}
 		if json.Unmarshal(data, &s) == nil {
 			state.Status = s.LoopState
-			state.MaxCooks = s.MaxCooks
+			state.MaxConcurrency = s.MaxConcurrency
 			state.Mode = s.Mode
 		}
 	}
