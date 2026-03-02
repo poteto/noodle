@@ -91,7 +91,7 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
             {emptyMessage ?? "No events yet."}
           </div>
         ) : (
-          <div data-virtualized style={{ height: totalSize, position: "relative" }}>
+          <div data-virtualized style={{ height: totalSize + 24, position: "relative" }}>
             {virtualItems.map((virtualRow) => {
               const item = items[virtualRow.index];
               return (
