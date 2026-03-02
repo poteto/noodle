@@ -13,7 +13,7 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 96 -->
+<!-- next-id: 97 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -40,6 +40,10 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
 88. [ ] Sub-agent tracking v2 — add out-of-band ingestion (Codex child sessions + Claude team inbox), harden canonical identity reconciliation, lifecycle-safe bounded pollers, robust `steer-agent` control behavior, and expanded hardening tests. [[plans/88-subagent-tracking-v2/overview]]
+
+## Extensibility
+
+96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. WIP in docs, not yet available.
 
 ## Features
 
