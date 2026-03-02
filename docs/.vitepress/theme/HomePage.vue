@@ -58,12 +58,12 @@ import { withBase } from "vitepress";
         <section class="hero">
           <h1 class="hero-line-2 hero-title">NOODLE</h1>
           <h2 class="hero-line-3 hero-subtitle">
-            <span class="block">Orchestrate agents</span>
-            <span class="cursor">using skills</span>
+            <span class="block">Skills that</span>
+            <span class="cursor">run themselves</span>
           </h2>
 
           <p class="hero-sub hero-desc">
-            Skills are all you need. Noodle handles the rest.
+            Orchestrate agents using skills. Noodle handles the rest.
           </p>
 
           <div class="hero-cta cta-row">
