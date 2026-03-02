@@ -34,6 +34,12 @@ const statusDotColors: Record<string, string> = {
 // Persist zoom transform across route navigations.
 let savedTransform: ZoomTransform | null = null;
 
+function clearTreeTooltips(): void {
+  for (const el of document.querySelectorAll("[data-tree-tooltip]")) {
+    el.remove();
+  }
+}
+
 function esc(s: string): string {
   return s
     .replaceAll("&", "&amp;")
@@ -209,6 +215,7 @@ function renderTree(
       }
     })
     .on("mouseenter", function onEnter(_event, d) {
+      clearTreeTooltips();
       const rect = (this as SVGForeignObjectElement).getBoundingClientRect();
       const tip = document.createElement("div");
       tip.className = "overflow-tooltip";
@@ -219,11 +226,7 @@ function renderTree(
       tip.dataset.treeTooltip = "1";
       document.body.append(tip);
     })
-    .on("mouseleave", () => {
-      for (const el of document.querySelectorAll("[data-tree-tooltip]")) {
-        el.remove();
-      }
-    })
+    .on("mouseleave", clearTreeTooltips)
     .each(function renderNode(this: SVGForeignObjectElement, d) {
       this.innerHTML = nodeHTML(d.data);
     });
@@ -245,6 +248,7 @@ export function TreeView() {
     if (svgRef.current) {
       renderTree(svgRef.current, snapshot, { zoomRef, onActorClick: handleActorClick });
     }
+    return clearTreeTooltips;
   }, [snapshot, handleActorClick]);
 
   const handleZoomIn = useCallback(() => {

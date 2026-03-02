@@ -65,4 +65,35 @@ describe("TreeView actor navigation", () => {
       params: { id: "actor-1" },
     });
   });
+
+  it("cleans up tooltip nodes when tree view unmounts", async () => {
+    mockSnapshot = buildSnapshot({
+      orders: [
+        buildOrder({
+          id: "o1",
+          title: "Fix auth",
+          status: "active",
+          stages: [buildStage({ task_key: "execute", status: "active", session_id: "actor-1" })],
+        }),
+      ],
+    });
+
+    const { container, unmount } = render(<TreeView />);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".node").length).toBeGreaterThan(0);
+    });
+
+    const firstNode = container.querySelector(".node");
+    expect(firstNode).not.toBeNull();
+    if (!firstNode) {
+      throw new Error("expected tree node");
+    }
+
+    fireEvent.mouseEnter(firstNode);
+    expect(document.querySelectorAll("[data-tree-tooltip]")).toHaveLength(1);
+
+    unmount();
+    expect(document.querySelectorAll("[data-tree-tooltip]")).toHaveLength(0);
+  });
 });
