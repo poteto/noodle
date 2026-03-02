@@ -17,7 +17,7 @@ priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94
 
 # Todos
 
-<!-- next-id: 108 -->
+<!-- next-id: 109 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -66,6 +66,10 @@ priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94
 96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. [[plans/96-101-runtime-plugins/overview]]
 
 101. [ ] Split out Sprites runtime into its own runtime plugin (`noodle-runtime-sprites`). Sprites should not be a built-in default, it should be an installable plugin that uses the custom runtime interface (#96). [[plans/96-101-runtime-plugins/overview]]
+
+## Design Explorations
+
+108. [ ] Design a markup DSL to replace orders-next.json — the current flat JSON is hard for LLMs to generate reliably, can't express nesting/dependencies naturally, and has no composability (no reusable stage patterns or macros). The DSL is LLM-authored only (scheduler emits it, humans never hand-write it). **Evaluate:** JSX-like markup (visual nesting maps to order→stage hierarchy, LLMs are fluent in JSX/HTML), XML variants, S-expressions, and any other candidate formats. **Deliverables:** (1) design doc comparing 3+ format candidates with concrete before/after examples showing the same orders in JSON vs each candidate, (2) tradeoff analysis on LLM generation reliability, expressiveness (conditionals, parallel groups, dependencies), composability (reusable stage templates/macros), parseability in Go, (3) a small prototype parser for the recommended format that produces `orderx.OrdersFile` structs.
 
 ## Features
 
