@@ -25,6 +25,7 @@ brews:
     repository:
       owner: poteto
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     name: noodle
     homepage: https://github.com/poteto/noodle
     description: Open-source AI coding framework
