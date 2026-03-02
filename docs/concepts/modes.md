@@ -6,19 +6,19 @@ Noodle has three run modes that control how much autonomy agents have. The mode 
 
 ### Auto
 
-The default. Agents merge their own work. No human in the noodle loop. The scheduling agent runs continuously, agents execute and merge without waiting for approval.
+Full autonomy. The scheduler picks work, agents execute, failed stages retry, and completed work merges. No human in the noodle loop.
 
 Use auto mode for projects with good test coverage, or when you want agents to work unattended. Everything still goes through the merge queue, so changes are serialized and can be rolled back.
 
 ### Supervised
 
-Agents work and a quality gate reviews the output. Approved work merges automatically.
+The scheduler picks work and agents execute automatically, but merges and retries need your approval. You review the output and decide what lands.
 
-The quality gate can be another agent reviewing the diff, a test suite that must pass, or both. Work that fails review gets flagged but does not block other orders.
+Use supervised mode when you trust agents to do the work but want to see the results before they hit the main branch.
 
 ### Manual
 
-Same as supervised, but humans confirm before merging. The agent does the work, the quality gate reviews it, and the merge waits for your explicit approval.
+You control everything. No automatic scheduling, no automatic dispatch, no auto-merge, no auto-retry. You trigger each step.
 
 Use manual mode for high-stakes changes: production deployments, database migrations, security-sensitive code.
 
@@ -34,19 +34,16 @@ Valid values: `auto`, `supervised`, `manual`.
 
 The mode can also change at runtime through control commands. Transitions are tracked. The state records what mode was active, when it changed, and why.
 
+## What each mode gates
+
+|            | Schedule | Dispatch | Retry | Merge |
+| ---------- | -------- | -------- | ----- | ----- |
+| `auto`       | auto     | auto     | auto  | auto  |
+| `supervised` | auto     | auto     | human   | human   |
+| `manual`     | human      | human      | human   | human   |
+
 ## Trust as a Dial
 
-The mode is a trust dial, not a capability switch. All three modes use the same noodle loop, the same skills, the same agents. The only difference is what happens after the work is done.
+The mode is a trust dial, not a capability switch. All three modes use the same noodle loop, the same skills, the same agents. The only difference is who triggers each step.
 
 A mature project with good tests can run in auto. A new project starts in supervised. Critical infrastructure stays in manual. Move the dial as trust builds.
-
-## The Kitchen Brigade
-
-Noodle borrows from the kitchen brigade system used in professional kitchens:
-
-- **Scheduler** (scheduling agent): reads the mise, decides what to work on, writes orders
-- **Agents** (execution agents): pick up orders and do the work, each in their own worktree
-- **Quality** (review agents): inspect output before merge
-- **You:** set the mode, stock the backlog, adjust skills, course-correct
-
-The mode controls where you sit in this chain. In auto, you are hands-off. In supervised, you observe. In manual, you approve each merge.
