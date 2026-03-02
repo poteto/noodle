@@ -29,7 +29,7 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     name: noodle
     homepage: https://github.com/poteto/noodle
-    description: Open-source AI coding framework
+    description: AI agent orchestration powered by skills
     install: |
       bin.install "noodle"
 
