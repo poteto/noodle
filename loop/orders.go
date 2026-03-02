@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -327,12 +328,19 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 	}
 
 	// Merge incoming orders. Duplicates are skipped for crash-safe idempotency,
-	// except a failed existing order can be replaced by a new active proposal.
+	// except:
+	// 1) a failed existing order can be replaced by a new active proposal
+	// 2) an active existing order can be amended by a new active proposal
 	for _, order := range incoming.Orders {
 		idx, exists := existingIndex[order.ID]
 		if exists {
 			if shouldReplaceFailedOrder(existing.Orders[idx], order) {
 				existing.Orders[idx] = order
+				continue
+			}
+			merged, replaced := mergeAmendedActiveOrder(existing.Orders[idx], order)
+			if replaced {
+				existing.Orders[idx] = merged
 			}
 			continue
 		}
@@ -355,6 +363,67 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 
 func shouldReplaceFailedOrder(existing Order, incoming Order) bool {
 	return existing.Status == OrderStatusFailed && incoming.Status == OrderStatusActive
+}
+
+func shouldAmendActiveOrder(existing Order, incoming Order) bool {
+	return existing.Status == OrderStatusActive && incoming.Status == OrderStatusActive
+}
+
+func mergeAmendedActiveOrder(existing Order, incoming Order) (Order, bool) {
+	if !shouldAmendActiveOrder(existing, incoming) {
+		return existing, false
+	}
+	currentIndex, currentStage := activeStageForOrder(existing)
+	if currentIndex < 0 || currentStage == nil {
+		return existing, false
+	}
+
+	merged := incoming
+	completedPrefix := slices.Clone(existing.Stages[:currentIndex])
+	matchIndex := firstMatchingStageIndex(incoming.Stages, *currentStage)
+	if matchIndex >= 0 {
+		merged.Stages = append(completedPrefix, *currentStage)
+		merged.Stages = append(merged.Stages, incoming.Stages[matchIndex+1:]...)
+	} else {
+		sharedPrefix := matchingPrefixLen(existing.Stages[:currentIndex], incoming.Stages)
+		merged.Stages = append(completedPrefix, incoming.Stages[sharedPrefix:]...)
+	}
+	if len(merged.Stages) == 0 {
+		return existing, false
+	}
+	merged.Status = existing.Status
+	if reflect.DeepEqual(existing, merged) {
+		return existing, false
+	}
+	return merged, true
+}
+
+func firstMatchingStageIndex(stages []Stage, target Stage) int {
+	for i := range stages {
+		if sameStageDefinition(stages[i], target) {
+			return i
+		}
+	}
+	return -1
+}
+
+func matchingPrefixLen(existingPrefix []Stage, incoming []Stage) int {
+	limit := len(existingPrefix)
+	if len(incoming) < limit {
+		limit = len(incoming)
+	}
+	for i := 0; i < limit; i++ {
+		if !sameStageDefinition(existingPrefix[i], incoming[i]) {
+			return i
+		}
+	}
+	return limit
+}
+
+func sameStageDefinition(a Stage, b Stage) bool {
+	a.Status = ""
+	b.Status = ""
+	return reflect.DeepEqual(a, b)
 }
 
 // NormalizeAndValidateOrders delegates to orderx.

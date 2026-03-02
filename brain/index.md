@@ -36,6 +36,7 @@
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/schedule-bootstrap-hot-loop]]
+- [[codebase/scheduler-active-order-amendments]]
 - [[codebase/scheduler-steer-alias-prefers-live-session]]
 - [[codebase/session-failure-classification-crash-only]]
 - [[codebase/steer-id-correlation-and-chat-visibility]]

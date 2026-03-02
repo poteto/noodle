@@ -52,6 +52,7 @@ func TestSmokeAgentLoop(t *testing.T) {
 
 	// Start noodle as a background process.
 	cmd := exec.Command(noodleBin, "start")
+	configureProcessGroup(cmd)
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(),
 		"NOODLE_NO_BROWSER=1",
@@ -106,6 +107,7 @@ func TestSmokeAgentLoop(t *testing.T) {
 		t.Logf("retry project dir: %s", projectDir)
 
 		cmd = exec.Command(noodleBin, "start")
+		configureProcessGroup(cmd)
 		cmd.Dir = projectDir
 		cmd.Env = append(os.Environ(),
 			"NOODLE_NO_BROWSER=1",
@@ -145,7 +147,7 @@ func TestSmokeProcessRuntimeDefault(t *testing.T) {
 	preflight(t)
 
 	noodleBin := buildNoodle(t)
-	dir := t.TempDir()
+	dir := newProjectTempDir(t)
 
 	// Scaffold a minimal project with explicit runtime.default.
 	run(t, dir, "git", "init", "-b", "main")
@@ -221,6 +223,7 @@ port = 13738
 
 	// Start noodle.
 	cmd := exec.Command(noodleBin, "start")
+	configureProcessGroup(cmd)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
 	cmd.Stdout = os.Stdout
@@ -277,48 +280,16 @@ func assertOrdersExist(t *testing.T, projectDir string) {
 	t.Logf("orders.json contains %d order(s)", len(orders.Orders))
 }
 
-// assertSessionMeta verifies at least one non-schedule session has a
-// canonical.ndjson with a completion event. We check canonical.ndjson
-// instead of meta.json because meta.json is written asynchronously by the
-// monitor and may not exist at assertion time.
+// assertSessionMeta verifies at least one non-schedule session reached a
+// terminal state according to the same detector used by milestone polling.
 func assertSessionMeta(t *testing.T, projectDir string) {
 	t.Helper()
-	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
-	entries, err := os.ReadDir(sessionsDir)
+	completed, err := sessionCompleted(projectDir)
 	if err != nil {
-		t.Errorf("read sessions dir: %v", err)
+		t.Errorf("check session completion: %v", err)
 		return
 	}
-
-	foundCompleted := false
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if strings.HasPrefix(entry.Name(), "schedule-") {
-			continue
-		}
-		canonicalPath := filepath.Join(sessionsDir, entry.Name(), "canonical.ndjson")
-		data, err := os.ReadFile(canonicalPath)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-			var event struct {
-				Type string `json:"type"`
-			}
-			if json.Unmarshal([]byte(line), &event) == nil && event.Type == "complete" {
-				t.Logf("session %s: completed (canonical.ndjson)", entry.Name())
-				foundCompleted = true
-			}
-		}
-	}
-
-	if !foundCompleted {
-		t.Error("no completed session found in canonical.ndjson")
+	if !completed {
+		t.Error("no terminal non-schedule session found")
 	}
 }

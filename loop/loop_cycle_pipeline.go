@@ -58,8 +58,56 @@ func (l *Loop) handlePromotionResult(promoted, emptyPromotion bool, err error) e
 	if err := l.loadOrdersState(); err != nil {
 		return err
 	}
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+	l.cancelSupersededActiveCooks(orders)
 	l.emitPromotedOrders()
 	return nil
+}
+
+func (l *Loop) cancelSupersededActiveCooks(orders OrdersFile) {
+	orderByID := make(map[string]Order, len(orders.Orders))
+	for _, order := range orders.Orders {
+		orderByID[order.ID] = order
+	}
+
+	for orderID, cook := range l.cooks.activeCooksByOrder {
+		order, ok := orderByID[orderID]
+		if !ok {
+			l.cancelSupersededCook(orderID, cook)
+			continue
+		}
+		_, currentStage := activeStageForOrder(order)
+		if currentStage == nil {
+			l.cancelSupersededCook(orderID, cook)
+			continue
+		}
+		if sameStageDefinition(cook.stage, *currentStage) {
+			continue
+		}
+		l.cancelSupersededCook(orderID, cook)
+	}
+}
+
+func (l *Loop) cancelSupersededCook(orderID string, cook *cookHandle) {
+	if cook == nil || cook.session == nil {
+		delete(l.cooks.activeCooksByOrder, orderID)
+		return
+	}
+	l.logger.Info("order amendment superseded active stage, cancelling cook",
+		"order", orderID,
+		"session", cook.session.ID(),
+		"stage", cook.stage.TaskKey)
+	_ = cook.session.ForceKill()
+	l.trackCookCompleted(cook, StageResult{
+		SessionID:   cook.session.ID(),
+		Status:      StageResultCancelled,
+		CompletedAt: l.deps.Now(),
+	})
+	delete(l.cooks.activeCooksByOrder, orderID)
+	l.cleanupCookWorktree(cook)
 }
 
 // handlePromotionError classifies and emits events for a failed orders-next
