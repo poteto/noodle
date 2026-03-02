@@ -223,7 +223,7 @@ schedule: "When the queue is empty"
 # Schedule
 `)
 
-	// Utility skill (no schedule field)
+	// Utility skill (no `schedule:` field)
 	mustMkdirAll(t, filepath.Join(dir, "debugging"))
 	mustWriteFile(t, filepath.Join(dir, "debugging", "SKILL.md"), `---
 name: debugging

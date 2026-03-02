@@ -21,7 +21,7 @@ This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills
 After installing, add `schedule:` fields to the brainmaxxing skills so the noodle loop runs them automatically. For example, tell your agent:
 
 ```md
-Add schedule fields to the reflect, meditate, and ruminate skills.
+Add `schedule:` fields to the reflect, meditate, and ruminate skills.
 Reflect should run after every agent session. Meditate should run
 periodically after several reflects accumulate. Ruminate should not
 be scheduled but run ad-hoc to mine past conversations.

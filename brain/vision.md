@@ -26,7 +26,7 @@ schedule: "After a successful execute completes on main branch"
 ---
 ```
 
-The `schedule:` field registers it as a task type. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add a schedule field and tell it when you want to run.
+The `schedule:` field registers it as a task type. The skill resolver scans your skills, parses frontmatter, and builds the registry. If you want a skill to be scheduled, just ask your agent to add a `schedule:` field and tell it when you want to run.
 
 The Hello World minimal autonomous system in noodle is two skills working together:
 

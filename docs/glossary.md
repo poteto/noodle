@@ -32,7 +32,7 @@ The system that decides which agent provider and model handle each task. The sch
 
 ## Schedule field
 
-The `schedule:` field in a skill's YAML frontmatter. A natural-language description of when the skill should fire. The scheduler reads it and decides when conditions are met. Skills with a schedule field run autonomously in the noodle loop. Skills without one are [general skills](#general-skill).
+The `schedule:` field in a skill's YAML frontmatter. A natural-language description of when the skill should fire. The scheduler reads it and decides when conditions are met. Skills with a `schedule:` field run autonomously in the noodle loop. Skills without one are [general skills](#general-skill).
 
 ## Scheduler
 
