@@ -1,9 +1,10 @@
 ---
-priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 84, 90, 86, 93, 94]
+priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
 # Launch-blocking:
 #   102-107 config cleanup — small deletions, simplify surface before launch
 #   98,99 relax backlog schema — simplify adapters, less rigid
 #   95 orders.json ownership — correctness, agents shouldn't write orders
+#   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
 #   86 diffs integration — code-change review UX
