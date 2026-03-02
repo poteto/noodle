@@ -10,7 +10,7 @@ Each skill operates at a different timescale:
 
 - **reflect** runs after every agent session. It captures what just happened.
 - **meditate** runs periodically, after several reflect cycles have accumulated. It distills and prunes.
-- **ruminate** runs on its own schedule to mine past conversations for knowledge that was never captured.
+- **ruminate** is run ad-hoc to mine past conversations for knowledge that was never captured.
 
 Reflect captures. Meditate distills. Ruminate fills gaps.
 
