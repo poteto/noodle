@@ -16,11 +16,11 @@ description: What this skill does.
 | `name` | string | yes | Identifier used to invoke the skill |
 | `description` | string | yes | Short summary shown in listings and the mise |
 | `model` | string | no | Override the default model for this skill |
-| `schedule` | string | no | Natural-language trigger that makes this a task type |
+| `schedule` | string | no | Natural-language trigger that makes this skill schedulable |
 
-## Task types
+## Schedulable skills
 
-A skill with a `schedule` field becomes a **task type**. The scheduling agent reads task type descriptions and decides when to create orders for them. The schedule string is prose, not a cron expression — the scheduler interprets it in context.
+A skill with a `schedule` field becomes **schedulable**. The scheduling agent reads these descriptions and decides when to create orders for them. The schedule string is prose, not a cron expression. The scheduler interprets it in context.
 
 ```go
 func (f Frontmatter) IsTaskType() bool { return f.Schedule != "" }

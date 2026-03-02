@@ -86,7 +86,7 @@ paths = [".agents/skills"]
 
 ### `[recovery]`
 
-Controls automatic retry behavior when a cook session fails.
+Controls automatic retry behavior when an agent session fails.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -124,7 +124,7 @@ Controls parallel execution limits and backpressure.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `max_cooks` | int | `4` | Maximum number of concurrent cook sessions |
+| `max_cooks` | int | `4` | Maximum number of concurrent agent sessions |
 | `max_completion_overflow` | int | `1024` | Buffer size for completion events before backpressure kicks in |
 | `merge_backpressure_threshold` | int | `128` | Pending merges before new completions are throttled |
 | `shutdown_timeout` | duration | `"30s"` | Grace period for running sessions during shutdown |
@@ -138,7 +138,7 @@ shutdown_timeout = "30s"
 ```
 
 ::: warning Cost
-Each cook is a full LLM session. `max_cooks = 4` means up to four concurrent API sessions, each consuming tokens independently. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
+Each agent is a full LLM session. `max_cooks = 4` means up to four concurrent API sessions, each consuming tokens independently. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
 :::
 
 ---
@@ -176,7 +176,7 @@ path = "~/.codex"
 
 ### `[runtime]`
 
-Controls which runtime executes cook sessions and per-runtime settings.
+Controls which runtime executes agent sessions and per-runtime settings.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -189,7 +189,7 @@ default = "process"
 
 #### `[runtime.process]`
 
-Local process runtime — runs agent CLIs as child processes on the host machine.
+Local process runtime. Runs agent CLIs as child processes on the host machine.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

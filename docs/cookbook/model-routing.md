@@ -67,7 +67,7 @@ provider = "claude"
 model = "claude-sonnet-4-6"
 ```
 
-The scheduler picks the right tool for the job. Codex is good at bulk code changes that follow a pattern. Sonnet is fast for first drafts and boilerplate. Opus is worth the cost for architecture decisions and code review.
+The scheduling agent picks the right tool for the job. Codex is good at bulk code changes that follow a pattern. Sonnet is fast for first drafts and boilerplate. Opus is worth the cost for architecture decisions and code review.
 
 ## Skill-level overrides
 
@@ -82,12 +82,12 @@ schedule: "After test stages pass"
 ---
 ```
 
-A skill-level `model` field overrides the routing default for that skill regardless of tags. Use this for skills where you always want a specific model — deploy is a good example, since you never want to cut corners on deployment.
+A skill-level `model` field overrides the routing default for that skill regardless of tags. Use this for skills where you always want a specific model. Deploy is a good example, since you never want to cut corners on deployment.
 
 ## When to use what
 
 **Use the default** for your most common work. Set it to whatever model you'd choose if you could only use one.
 
-**Use tags** when the scheduler should pick per-stage. Tags give the scheduling agent a vocabulary for describing cost/capability tradeoffs. Name them after the kind of work, not the model — `mechanical` is better than `codex`, because the tag name survives when you swap models.
+**Use tags** when the scheduler should pick per-stage. Tags give the scheduling agent a vocabulary for describing cost/capability tradeoffs. Name them after the kind of work, not the model: `mechanical` is better than `codex`, because the tag name survives when you swap models.
 
 **Use skill-level overrides** for skills that should always use a specific model. These override both the default and any tag the scheduler might set.

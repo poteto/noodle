@@ -12,7 +12,7 @@ All commands accept the global `--project-dir` flag. When omitted, Noodle uses t
 
 ## `noodle start`
 
-Run the scheduling loop. Starts the main event loop, spawns cook sessions, and manages the full lifecycle.
+Start the noodle loop. Spawns agent sessions and manages the full lifecycle.
 
 Auto-starts a web server on port 3000 (configurable via `[server]`). Opens a browser unless `NOODLE_NO_BROWSER=1` is set.
 
@@ -28,7 +28,7 @@ noodle start [flags]
 
 ## `noodle status`
 
-Show compact runtime status. Prints active cook count, orders queue depth, and loop state (running, paused, or draining).
+Show compact runtime status. Prints active agent count, orders queue depth, and noodle loop state (running, paused, or draining).
 
 ```
 noodle status
@@ -74,7 +74,7 @@ noodle schema list
 
 ## `noodle worktree`
 
-Manage linked git worktrees. Noodle uses worktrees to isolate concurrent cook sessions so they don't conflict on the working tree.
+Manage linked git worktrees. Noodle uses worktrees to isolate concurrent agent sessions so they don't conflict on the working tree.
 
 ### `noodle worktree create`
 
@@ -138,7 +138,7 @@ noodle worktree prune
 
 ### `noodle worktree hook`
 
-Run worktree session hook. Used internally by cook sessions.
+Run worktree session hook. Used internally by agent sessions.
 
 ```
 noodle worktree hook
@@ -148,11 +148,11 @@ noodle worktree hook
 
 ## `noodle event`
 
-Manage loop events.
+Manage noodle loop events.
 
 ### `noodle event emit`
 
-Emit an external event into the loop or a specific session.
+Emit an external event into the noodle loop or a specific session.
 
 ```
 noodle event emit <type> [flags]
@@ -161,7 +161,7 @@ noodle event emit <type> [flags]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--payload` | string | — | Event payload as JSON |
-| `--session` | string | — | Session ID. When set, writes to the session event log instead of the loop event log |
+| `--session` | string | — | Session ID. When set, writes to the session event log instead of the noodle loop event log |
 
 ---
 

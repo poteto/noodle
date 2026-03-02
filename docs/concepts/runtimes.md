@@ -1,12 +1,12 @@
 # Runtimes
 
-A runtime is where a cook session executes. Noodle ships with three: local processes, cloud sandboxes, and Cursor background agents. The scheduling agent can pick a runtime per stage, or you can set a project-wide default.
+A runtime is where an agent session executes. Noodle ships with three: local processes, cloud sandboxes, and Cursor background agents. The scheduling agent can pick a runtime per stage, or you can set a project-wide default.
 
 ## Process
 
 The default runtime. Runs agent CLIs as child processes on the host machine.
 
-No setup required — it works out of the box. Best for local development, quick iteration, and small teams where a single machine has enough capacity.
+No setup required. It works out of the box. Best for local development, quick iteration, and small teams where a single machine has enough capacity.
 
 ```toml
 [runtime]
@@ -20,7 +20,7 @@ max_concurrent = 4
 
 ## Sprites
 
-Cloud sandboxes via [sprites.dev](https://sprites.dev). Each cook runs in an isolated cloud VM with its own filesystem and git worktree.
+Cloud sandboxes via [sprites.dev](https://sprites.dev). Each agent runs in an isolated cloud VM with its own filesystem and git worktree.
 
 Use sprites when you need parallel throughput beyond what a single machine can handle. Good for CI/CD pipelines, large backlogs, and scaling out.
 
@@ -91,4 +91,4 @@ The scheduling agent can override this per stage by setting the `runtime` field 
 }
 ```
 
-Process is always available. Sprites and cursor require valid credentials in their configured environment variables — Noodle checks for these at startup and only advertises runtimes that have working tokens.
+Process is always available. Sprites and cursor require valid credentials in their configured environment variables. Noodle checks for these at startup and only advertises runtimes that have working tokens.

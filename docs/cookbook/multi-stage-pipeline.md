@@ -28,7 +28,7 @@ paths = [".agents/skills"]
 max_cooks = 2
 ```
 
-Two things are new here. `routing.tags.review` defines a named routing tag — when the scheduler marks a stage with `"tag": "review"`, that stage runs on Opus instead of Sonnet. And `max_cooks = 2` lets two cooks work simultaneously in separate worktrees.
+Two things are new here. `routing.tags.review` defines a named routing tag: when the scheduler marks a stage with `"tag": "review"`, that stage runs on Opus instead of Sonnet. And `max_cooks = 2` lets two agents work simultaneously in separate worktrees.
 
 ## Additional skills
 
@@ -80,7 +80,7 @@ Deploy the verified changes to the target environment.
 4. Report the deployment status.
 ```
 
-Both skills have `schedule` fields, which registers them as task types the scheduler can include in orders.
+Both skills have `schedule` fields, which registers them as schedulable skills the scheduler can include in orders.
 
 ## Multi-stage orders
 
@@ -106,7 +106,7 @@ The scheduler now creates orders with three stages instead of one:
 
 Stages run in sequence within an order. The test skill runs only after execute finishes. Deploy runs only after tests pass. If any stage fails, the remaining stages don't run.
 
-Notice the `"tag": "review"` on the deploy stage. This routes that stage to the model defined in `routing.tags.review` — Opus, in this case. You'd use a more capable model for deployment because the stakes are higher.
+Notice the `"tag": "review"` on the deploy stage. This routes that stage to the model defined in `routing.tags.review` (Opus, in this case). You'd use a more capable model for deployment because the stakes are higher.
 
 ## Project principles
 
@@ -127,8 +127,8 @@ noodle start
 ```
 
 1. The scheduler reads the backlog and creates multi-stage orders.
-2. A cook picks up an order and runs the execute stage — implements the change and commits.
-3. The same worktree passes to the test stage. A cook runs the test suite against the changes.
+2. An agent picks up an order and runs the execute stage, implements the change, and commits.
+3. The same worktree passes to the test stage. An agent runs the test suite against the changes.
 4. If tests pass, the deploy stage runs. If they fail, the order stops.
 5. With `max_cooks = 2`, a second order can start while the first is mid-pipeline.
 
