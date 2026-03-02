@@ -1,6 +1,6 @@
 # Runtimes
 
-A runtime is where an agent session executes. Noodle ships with three: local processes, cloud sandboxes, and Cursor background agents. The scheduling agent can pick a runtime per stage, or you can set a project-wide default.
+A runtime is where an agent session executes. Noodle ships with two: local processes and [Sprites](https://sprites.dev) cloud sandboxes. The scheduling agent can pick a runtime per stage, or you can set a project-wide default. Custom runtime plugins are on the roadmap, so you'll be able to define your own.
 
 ## Process
 
@@ -20,9 +20,9 @@ max_concurrent = 4
 
 ## Sprites
 
-Cloud sandboxes via [sprites.dev](https://sprites.dev). Each agent runs in an isolated cloud VM with its own filesystem and git worktree.
+Sprites ships as a built-in runtime today but will be split into its own runtime plugin in the future. Cloud sandboxes via [sprites.dev](https://sprites.dev). Each agent runs in an isolated cloud VM with its own filesystem and git worktree.
 
-Use sprites when you need parallel throughput beyond what a single machine can handle. Good for CI/CD pipelines, large backlogs, and scaling out.
+Use sprites when you want more parallelism than your local machine can handle, or when you want to free up your machine for something else while agents work in the cloud.
 
 ```toml
 [runtime.sprites]
@@ -39,33 +39,12 @@ max_concurrent = 20
 | `git_token_env` | Environment variable for git auth (defaults to `GITHUB_TOKEN`) |
 | `max_concurrent`| Per-runtime concurrency cap (default 50)                   |
 
-## Cursor
-
-[Cursor](https://cursor.com) background agents. Dispatches work to Cursor's cloud-hosted agent sessions.
-
-Use cursor if your team already uses Cursor and wants to route Noodle work through it.
-
-```toml
-[runtime.cursor]
-api_key_env = "CURSOR_API_KEY"
-repository = "owner/repo"
-max_concurrent = 10
-```
-
-| Field           | Description                                                |
-| --------------- | ---------------------------------------------------------- |
-| `api_key_env`   | Environment variable holding your Cursor API key           |
-| `base_url`      | Override the default Cursor API endpoint                    |
-| `repository`    | GitHub repository in `owner/repo` format                   |
-| `max_concurrent`| Per-runtime concurrency cap (default 10)                   |
-
 ## Choosing a Runtime
 
-| Runtime   | Best for                                          | Default `max_concurrent` |
-| --------- | ------------------------------------------------- | -----------------------: |
-| process   | Local dev, quick iteration, small teams           |                        4 |
-| sprites   | Parallel throughput, CI/CD, scaling out            |                       50 |
-| cursor    | Teams already using Cursor                        |                       10 |
+| Runtime   | Best for                                | Default `max_concurrent` |
+| --------- | --------------------------------------- | -----------------------: |
+| process   | Local dev, quick iteration, small teams |                        4 |
+| sprites   | Parallel throughput, CI/CD, scaling out |                       50 |
 
 ## Configuration
 
@@ -91,7 +70,27 @@ The scheduling agent can override this per stage by setting the `runtime` field 
 }
 ```
 
-Process is always available. Sprites and cursor require valid credentials in their configured environment variables. Noodle checks for these at startup and only advertises runtimes that have working tokens.
+Process is always available. Sprites requires a valid token in the configured environment variable. Noodle checks for this at startup and only advertises runtimes that have working credentials.
+
+### Teaching your scheduler to use runtimes
+
+The scheduler reads `routing.available_runtimes` from the mise to know what's available. You teach it how to pick runtimes by writing instructions in your `schedule` skill. Here's an excerpt from a real schedule skill:
+
+```markdown
+## Runtime Routing
+
+Read `routing.available_runtimes` from mise before writing orders.
+
+- If only `process` is available, set stage `"runtime": "process"`.
+- If `sprites` is available, prefer `"runtime": "sprites"` for
+  long-running `execute` work.
+- Keep `review`, `reflect`, and `meditate` on `"runtime": "process"`
+  unless explicitly justified.
+- Always include `"runtime"` on scheduled stages so dispatch routing
+  is explicit.
+```
+
+Because the scheduler is just a skill, you have full control over how it assigns runtimes. You can tell it to always use sprites for implementation, keep reviews local, or split work across runtimes based on whatever criteria make sense for your project.
 
 ## Custom Runtimes
 
