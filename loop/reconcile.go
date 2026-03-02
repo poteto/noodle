@@ -54,6 +54,13 @@ func (l *Loop) reconcile(ctx context.Context) error {
 			err,
 		)
 	}
+	if err := l.reconcileFailedOrders(); err != nil {
+		return l.classifySystemHard(
+			"reconcile.failed_orders",
+			"reconcile failed orders archive failed",
+			err,
+		)
+	}
 
 	if len(l.cooks.adoptedSessions) > 0 {
 		tickets := monitor.NewEventTicketMaterializer(l.runtimeDir)
@@ -168,6 +175,73 @@ func (l *Loop) reconcileStaleActiveStages() error {
 		}
 		return changed, nil
 	})
+}
+
+// reconcileFailedOrders removes failed orders from orders.json and stores
+// summaries so the scheduler can decide whether to re-queue the work.
+func (l *Loop) reconcileFailedOrders() error {
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+
+	var failures []reconciledFailure
+	for _, order := range orders.Orders {
+		if order.Status != OrderStatusFailed {
+			continue
+		}
+		if isScheduleOrder(order) {
+			continue
+		}
+		f := reconciledFailure{
+			OrderID: order.ID,
+			Title:   order.Title,
+		}
+		for _, stage := range order.Stages {
+			if stage.Status == StageStatusFailed {
+				f.TaskKey = stage.TaskKey
+				f.Reason = extraString(stage.Extra, "failure_reason")
+				break
+			}
+		}
+		if f.Reason == "" && f.TaskKey != "" {
+			f.Reason = "stage " + f.TaskKey + " failed"
+		}
+		failures = append(failures, f)
+	}
+
+	if len(failures) == 0 {
+		return nil
+	}
+
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		kept := orders.Orders[:0]
+		for _, order := range orders.Orders {
+			if order.Status == OrderStatusFailed && !isScheduleOrder(order) {
+				continue
+			}
+			kept = append(kept, order)
+		}
+		orders.Orders = kept
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	l.reconciledFailures = failures
+	for _, f := range failures {
+		l.logger.Info("startup archived failed order",
+			"order", f.OrderID, "title", f.Title, "task_key", f.TaskKey)
+	}
+	return nil
+}
+
+// reconciledFailure holds a summary of a failed order archived during startup.
+type reconciledFailure struct {
+	OrderID string
+	Title   string
+	TaskKey string
+	Reason  string
 }
 
 // mergeMetadata holds the fields extracted from a merging stage's Extra map.

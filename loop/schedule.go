@@ -98,9 +98,11 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
 	promotionError := l.lastPromotionError
 	l.lastPromotionError = ""
+	failures := l.reconciledFailures
+	l.reconciledFailures = nil
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -215,7 +217,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure) string {
 	miseFile := filepath.Join(runtimeDir, "mise.json")
 	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
 	parts := []string{
@@ -225,7 +227,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 		"Operate fully autonomously. Never ask the user questions.",
 		"You may synthesize orders for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		"Each order is a pipeline of stages. Group related stages (e.g. execute, quality, reflect) into one order.",
-		"Failed stages are removed from orders and forwarded to the scheduler. Use control commands (advance, add-stage, park-review) to manage recovery.",
+		"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
 		ordersSchemaPrompt(),
 		taskTypesPrompt,
 	}
@@ -234,6 +236,23 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 	}
 	if rationale := strings.TrimSpace(order.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)
+	}
+	if len(failures) > 0 {
+		var fb strings.Builder
+		fb.WriteString("Orders failed in a previous session and were archived on startup. Decide whether to re-queue from backlog:")
+		for _, f := range failures {
+			fb.WriteString("\n- order " + fmt.Sprintf("%q", f.OrderID))
+			if f.Title != "" {
+				fb.WriteString(" (" + f.Title + ")")
+			}
+			if f.TaskKey != "" {
+				fb.WriteString(": stage " + f.TaskKey + " failed")
+			}
+			if f.Reason != "" {
+				fb.WriteString(" — " + fmt.Sprintf("%q", f.Reason))
+			}
+		}
+		parts = append(parts, fb.String())
 	}
 	if resume := strings.TrimSpace(resumePrompt); resume != "" {
 		parts = append(parts, resume)

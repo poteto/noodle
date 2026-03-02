@@ -208,6 +208,8 @@ type Loop struct {
 	canonical    state.State
 	eventCounter atomic.Uint64
 
+	reconciledFailures []reconciledFailure
+
 	lastLoopFailure *LoopFailureEnvelope
 
 	// Test hooks — nil in production. These allow tests to simulate crashes

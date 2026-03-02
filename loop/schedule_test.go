@@ -119,7 +119,7 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt([]TaskType{
 		{Key: "execute", Schedule: "When ready"},
 	})
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "")
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
 
 	if !strings.Contains(prompt, "/tmp/test/.noodle/orders-next.json") {
 		t.Fatal("prompt should reference absolute path to orders-next.json")
@@ -142,7 +142,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
 	}
 	taskTypes := buildOrderTaskTypesPrompt(nil)
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure")
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil)
 
 	if !strings.Contains(prompt, "PREVIOUS ORDERS REJECTED") {
 		t.Fatal("prompt should include rejection header when promotion error is set")
@@ -152,9 +152,42 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 	}
 
 	// No error — should not include rejection header.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "")
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
 	if strings.Contains(promptClean, "PREVIOUS ORDERS REJECTED") {
 		t.Fatal("prompt should not include rejection header when no promotion error")
+	}
+}
+
+func TestBuildSchedulePromptIncludesReconciledFailures(t *testing.T) {
+	order := Order{
+		ID:     "schedule",
+		Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
+	}
+	taskTypes := buildOrderTaskTypesPrompt(nil)
+	failures := []reconciledFailure{
+		{OrderID: "abc-123", Title: "fix auth bug", TaskKey: "execute", Reason: "stage execute failed"},
+		{OrderID: "def-456", Title: "add logging", TaskKey: "quality", Reason: "stage quality failed"},
+	}
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", failures)
+
+	if !strings.Contains(prompt, "Orders failed in a previous session") {
+		t.Fatal("prompt should mention archived failures")
+	}
+	if !strings.Contains(prompt, "abc-123") {
+		t.Fatal("prompt should include first failed order ID")
+	}
+	if !strings.Contains(prompt, "fix auth bug") {
+		t.Fatal("prompt should include first failed order title")
+	}
+	if !strings.Contains(prompt, "def-456") {
+		t.Fatal("prompt should include second failed order ID")
+	}
+
+	// No failures — specific failures section should be absent.
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
+	if strings.Contains(promptClean, "Orders failed in a previous session") {
+		t.Fatal("prompt should not include failures section when none exist")
 	}
 }
 
