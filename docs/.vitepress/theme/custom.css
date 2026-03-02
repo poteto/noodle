@@ -177,22 +177,29 @@ body {
 
 
 /* ============================================================
-   Navbar
+   Navbar — matched to HomePage header
    ============================================================ */
 
+:root {
+  --vp-nav-height: 52px;
+}
+
 .VPNav {
-  border-bottom: 1px solid var(--noodle-border) !important;
+  border-bottom: 1px solid #161616 !important;
 }
 
 .VPNavBar {
-  background: var(--noodle-bg) !important;
-  border-bottom: 1px solid var(--noodle-border) !important;
+  background: rgba(5, 5, 5, 0.95) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid #161616 !important;
 }
 
 .VPNavBar .title {
   font-family: var(--noodle-font);
   font-weight: 700;
-  letter-spacing: 1.5px;
+  font-size: 14px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
@@ -276,6 +283,8 @@ body {
 .vp-doc div[class*="language-"] {
   background: var(--noodle-bg-depth) !important;
   border: 1px solid var(--noodle-border);
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .vp-doc div[class*="language-"] > span.lang {

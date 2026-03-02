@@ -549,7 +549,7 @@ import { withBase } from "vitepress";
 
 .cta-row {
   display: flex;
-  flex-direction: row;
+  flex-wrap: wrap;
   gap: 12px;
 }
 

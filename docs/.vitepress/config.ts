@@ -9,6 +9,7 @@ export default defineConfig({
     theme: "min-dark",
   },
   head: [
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/noodle/favicon.svg" }],
     [
       "link",
       {
