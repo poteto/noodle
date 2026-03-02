@@ -287,6 +287,12 @@ body {
   overflow-x: auto;
 }
 
+@media (max-width: 768px) {
+  .vp-doc div[class*="language-"] {
+    padding-left: 12px;
+  }
+}
+
 .vp-doc div[class*="language-"] > span.lang {
   background: var(--noodle-border-active);
   color: var(--noodle-text-main);
