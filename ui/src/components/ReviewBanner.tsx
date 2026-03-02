@@ -3,7 +3,7 @@ import { useSendControl } from "~/client";
 import type { PendingReviewItem } from "~/client";
 
 export function ReviewBanner({ review }: { review: PendingReviewItem }) {
-  const { mutate: send } = useSendControl();
+  const { mutate: send, isPending } = useSendControl();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -63,13 +63,15 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
         <button
           type="button"
           onClick={handleMerge}
+          disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 bg-green text-black"
         >
-          MERGE
+          {isPending ? "MERGING…" : "MERGE"}
         </button>
         <button
           type="button"
           onClick={handleReject}
+          disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 bg-red text-white"
         >
           REJECT
@@ -77,6 +79,7 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
         <button
           type="button"
           onClick={handleRequestChanges}
+          disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 border border-accent text-accent"
         >
           {showFeedback ? "SEND" : "REQUEST CHANGES"}

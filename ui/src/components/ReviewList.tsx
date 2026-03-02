@@ -41,7 +41,7 @@ function ReviewReport({ review }: { review: PendingReviewItem }) {
 }
 
 function ReviewActions({ review }: { review: PendingReviewItem }) {
-  const { mutate: send } = useSendControl();
+  const { mutate: send, isPending } = useSendControl();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -115,14 +115,16 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
           type="button"
           className="review-action-btn review-action-primary"
           onClick={handleMerge}
+          disabled={isPending}
         >
-          Approve &amp; Merge
+          {isPending ? "Merging…" : "Approve & Merge"}
         </button>
         <div className="review-action-row">
           <button
             type="button"
             className="review-action-btn review-action-outline"
             onClick={handleRequestChanges}
+            disabled={isPending}
           >
             {showFeedback ? "Send" : "Request Changes"}
           </button>
@@ -130,6 +132,7 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
             type="button"
             className="review-action-btn review-action-danger"
             onClick={handleReject}
+            disabled={isPending}
           >
             Dismiss Order
           </button>

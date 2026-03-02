@@ -17,7 +17,15 @@ function statusColor(status: string): string {
   return "var(--color-text-secondary)";
 }
 
-function AgentHeader({ session, onStopAll }: { session: Session; onStopAll: () => void }) {
+function AgentHeader({
+  session,
+  onStopAll,
+  isPending,
+}: {
+  session: Session;
+  onStopAll: () => void;
+  isPending: boolean;
+}) {
   const color = statusColor(session.status);
   return (
     <header className="feed-header">
@@ -39,7 +47,12 @@ function AgentHeader({ session, onStopAll }: { session: Session; onStopAll: () =
         >
           {formatCost(session.total_cost_usd)}
         </span>
-        <button type="button" className="feed-action-btn stop-btn" onClick={onStopAll}>
+        <button
+          type="button"
+          className="feed-action-btn stop-btn"
+          onClick={onStopAll}
+          disabled={isPending}
+        >
           Stop All
         </button>
       </div>
@@ -128,7 +141,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <AgentHeader session={session} onStopAll={handleStopAll} />
+      <AgentHeader session={session} onStopAll={handleStopAll} isPending={isControlPending} />
 
       <div className="feed-watermark">NOODLE</div>
 
@@ -177,8 +190,13 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
           <div className="input-row-actions">
             {isSessionThinking && (
               <>
-                <button type="button" className="btn-stop" onClick={handleStop}>
-                  Stop
+                <button
+                  type="button"
+                  className="btn-stop"
+                  onClick={handleStop}
+                  disabled={isControlPending}
+                >
+                  {isControlPending ? "Stopping…" : "Stop"}
                 </button>
                 {orderForSession && (
                   <Tooltip content="Marks this order as complete and notifies the scheduler">
@@ -198,7 +216,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
               type="button"
               className="btn-submit"
               onClick={handleSubmit}
-              disabled={!input.trim()}
+              disabled={isControlPending || !input.trim()}
             >
               Send
             </button>

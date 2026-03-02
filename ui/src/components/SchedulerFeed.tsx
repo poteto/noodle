@@ -92,7 +92,12 @@ export function SchedulerFeed() {
           >
             {formatCost(snapshot.total_cost_usd)}
           </span>
-          <button type="button" className="feed-action-btn stop-btn" onClick={handleStopAll}>
+          <button
+            type="button"
+            className="feed-action-btn stop-btn"
+            onClick={handleStopAll}
+            disabled={isPending}
+          >
             Stop All
           </button>
         </div>
@@ -147,8 +152,8 @@ export function SchedulerFeed() {
           </div>
           <div className="input-row-actions">
             {isSchedulerThinking && (
-              <button type="button" className="btn-stop" onClick={handleStop}>
-                Stop
+              <button type="button" className="btn-stop" onClick={handleStop} disabled={isPending}>
+                {isPending ? "Stopping…" : "Stop"}
               </button>
             )}
             <button
