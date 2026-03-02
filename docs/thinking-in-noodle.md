@@ -48,7 +48,7 @@ The test: can you describe when this skill should run in one sentence? If you ne
 
 ## Describe when, not how to trigger
 
-If you're coming from traditional automation, this is the mental shift. You're not registering event handlers. You're describing conditions.
+If you're coming from traditional automation: instead of registering event handlers, you describe conditions.
 
 ```yaml
 # not this
