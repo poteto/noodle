@@ -94,7 +94,7 @@ pending → active → merging → completed
 
 ### Composition and Concurrency
 
-Stages run sequentially by default. The first stage finishes before the second starts. This is how you build pipelines: implement, then review, then reflect.
+Stages run sequentially by default. The first stage finishes before the second starts. This is how you build pipelines: one stage's output feeds the next.
 
 ```json
 {
