@@ -106,7 +106,20 @@ export function SchedulerFeed() {
       />
 
       <div className="input-area">
-        <div className="input-label">Talk to the scheduler...</div>
+        <div className="input-label">
+          {schedulerSession?.status === "running" ? (
+            <>
+              <span className="thinking-dots">
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+              </span>
+              Thinking…
+            </>
+          ) : (
+            "Talk to the scheduler..."
+          )}
+        </div>
         <div className="input-row">
           <div className="input-row-field">
             <textarea

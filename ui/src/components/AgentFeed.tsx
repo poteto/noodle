@@ -125,7 +125,20 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
       {pendingReview && <ReviewBanner review={pendingReview} />}
 
       <div className="input-area">
-        <div className="input-label">Steer this agent...</div>
+        <div className="input-label">
+          {session.status === "running" ? (
+            <>
+              <span className="thinking-dots">
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+              </span>
+              Thinking…
+            </>
+          ) : (
+            "Steer this agent..."
+          )}
+        </div>
         <div className="input-row">
           <div className="input-row-field">
             <textarea

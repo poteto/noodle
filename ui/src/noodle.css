@@ -649,17 +649,7 @@
   z-index: 5;
 }
 
-/* Thinking indicator — shown while waiting for streaming delta */
-.thinking-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 28px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-  animation: message-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+/* Thinking dots — reused in input-label when a session is running */
 .thinking-dots {
   display: inline-flex;
   align-items: center;
@@ -1300,6 +1290,9 @@ foreignObject.node.node-clickable .tree-node-card:active {
 }
 
 .input-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
