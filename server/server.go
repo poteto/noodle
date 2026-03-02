@@ -213,6 +213,7 @@ func (s *Server) loadSnapshot() (snapshot.Snapshot, error) {
 
 // controlRequest is the JSON body for POST /api/control.
 type controlRequest struct {
+	ID       string `json:"id,omitempty"`
 	Action   string `json:"action"`
 	OrderID  string `json:"order_id,omitempty"`
 	Name     string `json:"name,omitempty"`
@@ -254,7 +255,9 @@ func (s *Server) processControl(req controlRequest) (loop.ControlAck, error) {
 		return loop.ControlAck{}, err
 	}
 	cmd.At = s.now().UTC()
-	cmd.ID = fmt.Sprintf("web-%d", cmd.At.UnixNano())
+	if strings.TrimSpace(cmd.ID) == "" {
+		cmd.ID = fmt.Sprintf("web-%d", cmd.At.UnixNano())
+	}
 
 	if err := appendControlCommand(s.runtimeDir, cmd); err != nil {
 		return loop.ControlAck{}, err

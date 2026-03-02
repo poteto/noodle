@@ -155,6 +155,41 @@ func TestPostControl(t *testing.T) {
 	}
 }
 
+func TestPostControlPreservesProvidedID(t *testing.T) {
+	s, dir := testServer(t)
+
+	body := strings.NewReader(`{"id":"ui-cmd-1","action":"pause"}`)
+	req := httptest.NewRequest("POST", "/api/control", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var ack loop.ControlAck
+	if err := json.NewDecoder(resp.Body).Decode(&ack); err != nil {
+		t.Fatalf("decode ack: %v", err)
+	}
+	if ack.ID != "ui-cmd-1" {
+		t.Fatalf("ack id = %q, want ui-cmd-1", ack.ID)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "control.ndjson"))
+	if err != nil {
+		t.Fatalf("read control.ndjson: %v", err)
+	}
+	var cmd loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &cmd); err != nil {
+		t.Fatalf("parse command: %v", err)
+	}
+	if cmd.ID != "ui-cmd-1" {
+		t.Fatalf("command id = %q, want ui-cmd-1", cmd.ID)
+	}
+}
+
 func TestPostControlMissingAction(t *testing.T) {
 	s, _ := testServer(t)
 
@@ -420,6 +455,7 @@ func TestWSControl(t *testing.T) {
 	ctrlMsg, _ := json.Marshal(map[string]any{
 		"type": "control",
 		"data": map[string]string{
+			"id":     "ui-ws-1",
 			"action": "pause",
 		},
 	})
@@ -445,6 +481,9 @@ func TestWSControl(t *testing.T) {
 	if ackEnv.Data.Action != "pause" {
 		t.Fatalf("action = %v, want pause", ackEnv.Data.Action)
 	}
+	if ackEnv.Data.ID != "ui-ws-1" {
+		t.Fatalf("id = %q, want ui-ws-1", ackEnv.Data.ID)
+	}
 	if ackEnv.Data.Failure != nil {
 		t.Fatalf("ack failure = %#v, want nil", ackEnv.Data.Failure)
 	}
@@ -454,8 +493,15 @@ func TestWSControl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read control.ndjson: %v", err)
 	}
-	if !strings.Contains(string(data), "pause") {
-		t.Fatalf("control.ndjson missing pause command")
+	var cmd loop.ControlCommand
+	if err := json.Unmarshal(data[:len(data)-1], &cmd); err != nil {
+		t.Fatalf("parse command: %v", err)
+	}
+	if cmd.Action != "pause" {
+		t.Fatalf("action = %q, want pause", cmd.Action)
+	}
+	if cmd.ID != "ui-ws-1" {
+		t.Fatalf("command id = %q, want ui-ws-1", cmd.ID)
 	}
 }
 

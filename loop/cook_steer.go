@@ -44,6 +44,10 @@ func (l *Loop) steer(target string, prompt string) error {
 			if !isScheduleStage(cook.stage) && !strings.EqualFold(cook.orderID, ScheduleTaskKey()) {
 				continue
 			}
+			if !cook.session.Controller().Steerable() {
+				l.recordSteerPrompt(cook.session.ID(), prompt)
+				return l.rescheduleForChefPrompt(prompt)
+			}
 			return l.steerCook(cook, prompt)
 		}
 		return l.rescheduleForChefPrompt(prompt)
@@ -58,18 +62,61 @@ func (l *Loop) steer(target string, prompt string) error {
 }
 
 func (l *Loop) steerCook(cook *cookHandle, prompt string) error {
+	steerPrompt := strings.TrimSpace(prompt)
+	l.recordSteerPrompt(cook.session.ID(), steerPrompt)
+
 	controller := cook.session.Controller()
 	if controller.Steerable() {
 		// Live steering — interrupt + redirect without killing the session.
 		// Run async so the control loop isn't blocked.
 		sessionID := cook.session.ID()
-		steerPrompt := strings.TrimSpace(prompt)
 		go l.steerLive(sessionID, controller, steerPrompt)
 		return nil
 	}
 
 	// Not steerable — fall back to kill + respawn with resume context.
-	return l.steerRespawn(cook, prompt)
+	return l.steerRespawn(cook, steerPrompt)
+}
+
+func (l *Loop) recordSteerPrompt(sessionID, prompt string) {
+	sessionID = strings.TrimSpace(sessionID)
+	prompt = strings.TrimSpace(prompt)
+	if sessionID == "" || prompt == "" {
+		return
+	}
+
+	writer, err := event.NewEventWriter(l.runtimeDir, sessionID)
+	if err != nil {
+		l.logger.Warn("record steer prompt failed", "session", sessionID, "error", err)
+		return
+	}
+
+	payload, err := json.Marshal(map[string]string{
+		"tool":    "user",
+		"summary": prompt,
+	})
+	if err != nil {
+		l.logger.Warn("record steer prompt encode failed", "session", sessionID, "error", err)
+		return
+	}
+
+	if err := writer.Append(context.Background(), event.Event{
+		Type:      event.EventAction,
+		Payload:   payload,
+		Timestamp: l.deps.Now().UTC(),
+		SessionID: sessionID,
+	}); err != nil {
+		l.logger.Warn("record steer prompt append failed", "session", sessionID, "error", err)
+	}
+
+	if l.deps.EventSink != nil {
+		l.deps.EventSink.PublishSessionEvent(sessionID, event.Event{
+			Type:      event.EventAction,
+			Payload:   payload,
+			Timestamp: l.deps.Now().UTC(),
+			SessionID: sessionID,
+		})
+	}
 }
 
 // steerLive interrupts a steerable session and sends a new prompt.

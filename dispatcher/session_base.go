@@ -241,7 +241,9 @@ func (s *sessionBase) consumeCanonicalLine(line []byte, hook canonicalLineHook) 
 		TokensOut: ce.TokensOut,
 	})
 
-	if s.eventWriter != nil {
+	publishSpawned := !(ce.Type == parse.EventInit && s.promptLogged)
+
+	if s.eventWriter != nil && publishSpawned {
 		if record, ok := eventFromCanonical(s.id, ce); ok {
 			if err := s.eventWriter.Append(context.Background(), record); err != nil {
 				s.publish(SessionEvent{
@@ -253,7 +255,7 @@ func (s *sessionBase) consumeCanonicalLine(line []byte, hook canonicalLineHook) 
 		}
 	}
 
-	if s.sink != nil {
+	if s.sink != nil && publishSpawned {
 		if ev, ok := FormatEventLine(s.id, ce); ok {
 			s.sink.PublishSessionEvent(s.id, ev)
 		}

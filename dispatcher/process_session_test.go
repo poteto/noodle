@@ -374,6 +374,60 @@ func TestProcessSessionEmitsPromptOnInit(t *testing.T) {
 	}
 }
 
+func TestProcessSessionDoesNotEmitSpawnedOnSubsequentInits(t *testing.T) {
+	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
+	writer, err := event.NewEventWriter(runtimeDir, "session-a")
+	if err != nil {
+		t.Fatalf("new event writer: %v", err)
+	}
+
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		eventWriter:   writer,
+		canonicalPath: filepath.Join(t.TempDir(), "canonical.ndjson"),
+		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
+		prompt:        "initial prompt",
+	})
+
+	ts1 := time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventInit,
+		Message:   "session started",
+		Timestamp: ts1,
+	}), nil)
+
+	ts2 := time.Date(2026, 2, 27, 0, 0, 5, 0, time.UTC)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventInit,
+		Message:   "new turn started",
+		Timestamp: ts2,
+	}), nil)
+
+	reader := event.NewEventReader(runtimeDir)
+	records, err := reader.ReadSession("session-a", event.EventFilter{})
+	if err != nil {
+		t.Fatalf("read event log: %v", err)
+	}
+
+	spawnedCount := 0
+	for _, record := range records {
+		if record.Type == event.EventSpawned {
+			spawnedCount++
+		}
+	}
+	if spawnedCount != 1 {
+		t.Fatalf("spawned count = %d, want 1", spawnedCount)
+	}
+}
+
 func TestProcessSessionDroppedEventSummary(t *testing.T) {
 	cmd := exec.Command("echo", "noop")
 	process, err := StartProcess(cmd)

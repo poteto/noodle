@@ -108,13 +108,24 @@ function handleMessage(event: MessageEvent) {
       break;
     }
     case "session_event": {
-      // Append single live event, dedup by timestamp
+      // Append single live event, dedup by full event identity.
+      // Do not dedup by timestamp alone: steer/user events can arrive
+      // slightly out of order relative to tool/cost events and should
+      // still render immediately without requiring refresh.
       queryClientRef?.setQueryData<EventLine[]>(["sessionEvents", msg.session_id], (old = []) => {
-        const lastAt = old.length > 0 ? (old.at(-1)?.at ?? null) : null;
-        if (lastAt && msg.data.at <= lastAt) {
+        const exists = old.some(
+          (ev) =>
+            ev.at === msg.data.at &&
+            ev.label === msg.data.label &&
+            ev.body === msg.data.body &&
+            ev.category === msg.data.category,
+        );
+        if (exists) {
           return old;
         }
-        return [...old, msg.data];
+        const next = [...old, msg.data];
+        next.sort((a, b) => a.at.localeCompare(b.at));
+        return next;
       });
       break;
     }

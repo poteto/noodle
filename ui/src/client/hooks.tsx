@@ -118,10 +118,14 @@ export function useSendControl() {
   const queryClient = useQueryClient();
   return useMutation<ControlAck, Error, ControlCommand>({
     mutationFn: async (cmd) => {
+      const cmdWithID: ControlCommand = {
+        ...cmd,
+        id: cmd.id ?? `ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      };
       try {
-        return await sendWSControl(cmd);
+        return await sendWSControl(cmdWithID);
       } catch {
-        return sendControl(cmd);
+        return sendControl(cmdWithID);
       }
     },
     onSuccess: () => {

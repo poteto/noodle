@@ -38,6 +38,7 @@
 - [[codebase/schedule-bootstrap-hot-loop]]
 - [[codebase/scheduler-steer-alias-prefers-live-session]]
 - [[codebase/session-failure-classification-crash-only]]
+- [[codebase/steer-id-correlation-and-chat-visibility]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/snapshot-tygo-output-path]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]

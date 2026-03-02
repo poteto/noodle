@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,8 +12,19 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/event"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
+
+type testSessionEventSink struct {
+	events []event.Event
+}
+
+func (s *testSessionEventSink) PublishSessionEvent(_ string, ev event.Event) {
+	s.events = append(s.events, ev)
+}
+
+func (s *testSessionEventSink) PublishSessionDelta(_ string, _ string, _ time.Time) {}
 
 // mockController records calls and allows configurable behavior.
 type mockController struct {
@@ -264,6 +276,96 @@ func TestSteerScheduleTargetsActiveScheduleSession(t *testing.T) {
 	}
 	if ctrl.lastSentMessage != "focus on auth bugs" {
 		t.Fatalf("sent message = %q, want %q", ctrl.lastSentMessage, "focus on auth bugs")
+	}
+}
+
+func TestSteerScheduleNonSteerableReschedulesWithoutRespawn(t *testing.T) {
+	rt := newMockRuntime()
+	l := newSteerTestLoop(t, rt)
+
+	sess := &mockSession{id: "sess-schedule-noop", status: "running", done: make(chan struct{})}
+	l.cooks.activeCooksByOrder[ScheduleTaskKey()] = &cookHandle{
+		cookIdentity: cookIdentity{
+			orderID: ScheduleTaskKey(),
+			stage: Stage{
+				TaskKey: ScheduleTaskKey(),
+			},
+		},
+		session: sess,
+	}
+
+	if err := l.steer(ScheduleTaskKey(), "prioritize auth hardening"); err != nil {
+		t.Fatalf("steer: %v", err)
+	}
+
+	if sess.status == "killed" {
+		t.Fatal("schedule session was killed, want reschedule-only behavior")
+	}
+	if len(rt.calls) != 0 {
+		t.Fatalf("dispatch calls = %d, want 0", len(rt.calls))
+	}
+
+	orders, err := readOrders(filepath.Join(l.runtimeDir, "orders.json"))
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(orders.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(orders.Orders))
+	}
+	if orders.Orders[0].Rationale != "Chef steer: prioritize auth hardening" {
+		t.Fatalf("rationale = %q", orders.Orders[0].Rationale)
+	}
+}
+
+func TestSteerRecordsUserPromptEvent(t *testing.T) {
+	rt := newMockRuntime()
+	l := newSteerTestLoop(t, rt)
+	sink := &testSessionEventSink{}
+	l.deps.EventSink = sink
+
+	ctrl := &mockController{steerable: true}
+	sess := &steerableSession{
+		mockSession: &mockSession{id: "sess-user-event", status: "running", done: make(chan struct{})},
+		ctrl:        ctrl,
+	}
+	l.cooks.activeCooksByOrder["order-user-event"] = &cookHandle{
+		cookIdentity: cookIdentity{orderID: "order-user-event"},
+		session:      sess,
+		worktreeName: "wt-user-event",
+	}
+
+	if err := l.steer("wt-user-event", "please rewrite tests"); err != nil {
+		t.Fatalf("steer: %v", err)
+	}
+
+	reader := event.NewEventReader(l.runtimeDir)
+	events, err := reader.ReadSession("sess-user-event", event.EventFilter{
+		Types: map[event.EventType]struct{}{
+			event.EventAction: {},
+		},
+	})
+	if err != nil {
+		t.Fatalf("read session events: %v", err)
+	}
+	if len(events) == 0 {
+		t.Fatal("expected at least one action event")
+	}
+
+	var payload struct {
+		Tool    string `json:"tool"`
+		Summary string `json:"summary"`
+	}
+	if err := json.Unmarshal(events[len(events)-1].Payload, &payload); err != nil {
+		t.Fatalf("decode action payload: %v", err)
+	}
+	if payload.Tool != "user" {
+		t.Fatalf("tool = %q, want user", payload.Tool)
+	}
+	if payload.Summary != "please rewrite tests" {
+		t.Fatalf("summary = %q, want %q", payload.Summary, "please rewrite tests")
+	}
+	if len(sink.events) == 0 {
+		t.Fatal("expected user steer event to be published to sink")
 	}
 }
 

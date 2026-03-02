@@ -337,6 +337,7 @@ func parseControlRequest(action string, req controlRequest) (loop.ControlCommand
 		return loop.ControlCommand{}, fmt.Errorf("unknown action: %s", action)
 	}
 	return loop.ControlCommand{
+		ID:       strings.TrimSpace(req.ID),
 		Action:   action,
 		OrderID:  strings.TrimSpace(req.OrderID),
 		Name:     strings.TrimSpace(req.Name),

@@ -90,6 +90,12 @@ func TestFormatActionToolTypes(t *testing.T) {
 			wantBody:  "Work on item 15",
 		},
 		{
+			name:      "user steer message",
+			payload:   map[string]any{"tool": "user", "summary": "focus on auth hardening"},
+			wantLabel: "User",
+			wantBody:  "focus on auth hardening",
+		},
+		{
 			name:      "legacy message-only payload",
 			payload:   map[string]any{"message": "Read /path/to/file"},
 			wantLabel: "Think",

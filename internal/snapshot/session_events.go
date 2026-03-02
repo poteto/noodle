@@ -123,6 +123,9 @@ func formatAction(payload json.RawMessage) (label string, body string, category 
 
 	tool := stringx.Normalize(stringx.NonEmpty(action.Tool, action.Action))
 	switch tool {
+	case "user":
+		label = "User"
+		category = TraceFilterAll
 	case "read":
 		label = "Read"
 		category = TraceFilterTools
