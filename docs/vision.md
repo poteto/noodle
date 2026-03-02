@@ -14,7 +14,7 @@ and adherence to project principles. Flag issues before merge.
 
 If you've used React, think of skills like components. Components are React's single abstraction. You build everything out of them, compose them, and the framework handles the rest.
 
-Skills work the same way. Every behavior your agents have comes from a skill. Every workflow is a composition of skills.
+Skills work the same way in Noodle. Every behavior your agents have comes from a skill. Every workflow is a composition of skills.
 
 The `schedule` field in the frontmatter is what turns a skill from something you invoke manually into something that Noodle runs on its own. Write a plain-English description of when it should fire, and the scheduling agent decides when the conditions are met.
 
