@@ -82,12 +82,40 @@ func repoRoot(t *testing.T) string {
 	return filepath.Dir(wd)
 }
 
+func newProjectTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "noodle-e2e-project-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupTempDir(t, dir)
+	})
+	return dir
+}
+
+func cleanupTempDir(t *testing.T, dir string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		err := os.RemoveAll(dir)
+		if err == nil || os.IsNotExist(err) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Logf("warning: temp dir cleanup incomplete for %s: %v", dir, err)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
 // scaffoldProject creates a temporary directory with the full project
 // structure needed for a noodle E2E run. Returns the project directory path.
 func scaffoldProject(t *testing.T, noodleBin string) string {
 	t.Helper()
 
-	dir := t.TempDir()
+	dir := newProjectTempDir(t)
 
 	// Initialize git repo with initial commit on main.
 	run(t, dir, "git", "init", "-b", "main")
@@ -279,10 +307,9 @@ func sessionDirExists(projectDir string) (bool, error) {
 	return false, nil
 }
 
-// sessionCompleted checks if any non-schedule session's canonical.ndjson
-// contains a completion event. This is more reliable than checking meta.json
-// (written by the monitor on a polling schedule) because canonical.ndjson is
-// written synchronously by the stamp processor as events arrive.
+// sessionCompleted checks if any non-schedule session reached a terminal state.
+// It supports both legacy canonical completion events and current result/meta
+// status forms used by newer runtimes.
 func sessionCompleted(projectDir string) (bool, error) {
 	sessionsDir := filepath.Join(projectDir, ".noodle", "sessions")
 	entries, err := os.ReadDir(sessionsDir)
@@ -300,10 +327,11 @@ func sessionCompleted(projectDir string) (bool, error) {
 		if strings.HasPrefix(entry.Name(), "schedule-") {
 			continue
 		}
-		canonicalPath := filepath.Join(sessionsDir, entry.Name(), "canonical.ndjson")
+		sessionDir := filepath.Join(sessionsDir, entry.Name())
+		canonicalPath := filepath.Join(sessionDir, "canonical.ndjson")
 		data, err := os.ReadFile(canonicalPath)
 		if err != nil {
-			continue
+			data = nil
 		}
 		for _, line := range strings.Split(string(data), "\n") {
 			line = strings.TrimSpace(line)
@@ -311,11 +339,37 @@ func sessionCompleted(projectDir string) (bool, error) {
 				continue
 			}
 			var event struct {
-				Type string `json:"type"`
+				Type    string `json:"type"`
+				Message string `json:"message"`
 			}
-			if json.Unmarshal([]byte(line), &event) == nil && event.Type == "complete" {
+			if json.Unmarshal([]byte(line), &event) != nil {
+				continue
+			}
+			switch strings.ToLower(strings.TrimSpace(event.Type)) {
+			case "complete":
 				return true, nil
+			case "result":
+				msg := strings.ToLower(strings.TrimSpace(event.Message))
+				if msg == "turn complete" || msg == "turn failed" || msg == "turn cancelled" || msg == "turn canceled" {
+					return true, nil
+				}
 			}
+		}
+
+		metaPath := filepath.Join(sessionDir, "meta.json")
+		metaData, err := os.ReadFile(metaPath)
+		if err != nil {
+			continue
+		}
+		var meta struct {
+			Status string `json:"status"`
+		}
+		if json.Unmarshal(metaData, &meta) != nil {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(meta.Status)) {
+		case "completed", "exited", "failed", "killed", "cancelled", "canceled", "stopped":
+			return true, nil
 		}
 	}
 	return false, nil
@@ -326,6 +380,7 @@ func cleanupNoodle(t *testing.T, cmd *exec.Cmd, _ string) {
 	t.Helper()
 	if cmd != nil && cmd.Process != nil {
 		t.Logf("killing noodle process (pid %d)", cmd.Process.Pid)
+		killCommandProcessTree(cmd)
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 	}
