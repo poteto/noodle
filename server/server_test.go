@@ -357,6 +357,58 @@ func TestWSHubDiffGating(t *testing.T) {
 	hub.removeClient(fakeClient)
 }
 
+func TestWSHubDiffGatingIgnoresActiveSessionClockDrift(t *testing.T) {
+	broker := NewSessionEventBroker()
+	hub := newWSHub(broker)
+	dir := t.TempDir()
+
+	nowAt := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
+	now := func() time.Time { return nowAt }
+
+	provider := &staticProvider{
+		state: loop.LoopState{
+			Status: "running",
+			ActiveCooks: []loop.CookSummary{
+				{
+					SessionID:   "s-1",
+					OrderID:     "o-1",
+					TaskKey:     "execute",
+					DisplayName: "Cook 1",
+					Status:      "running",
+					StartedAt:   nowAt.Add(-10 * time.Second),
+				},
+			},
+		},
+	}
+
+	fakeSend := make(chan []byte, 16)
+	fakeClient := &wsClient{
+		send: fakeSend,
+		hub:  hub,
+	}
+	hub.addClient(fakeClient)
+
+	// First load should broadcast.
+	hub.loadAndBroadcast(dir, now, provider, nil)
+	select {
+	case <-fakeSend:
+	default:
+		t.Fatal("expected broadcast on first load")
+	}
+
+	// Advance time only. Without hash normalization this would rebroadcast
+	// because active session duration/last_activity changed.
+	nowAt = nowAt.Add(2 * time.Second)
+	hub.loadAndBroadcast(dir, now, provider, nil)
+	select {
+	case msg := <-fakeSend:
+		t.Fatalf("expected no broadcast on clock-only active session drift, got %s", msg)
+	default:
+	}
+
+	hub.removeClient(fakeClient)
+}
+
 func TestWSSubscribeSessionEvents(t *testing.T) {
 	s, dir := testServer(t)
 

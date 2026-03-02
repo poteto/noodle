@@ -248,9 +248,8 @@ func (h *wsHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provid
 	}
 	snap.Warnings = warnings
 
-	// Zero volatile field for diff-gating so UpdatedAt doesn't defeat the hash.
-	hashSnap := snap
-	hashSnap.UpdatedAt = time.Time{}
+	// Zero volatile fields for diff-gating so clock-only drift doesn't force a broadcast.
+	hashSnap := snapshotForHash(snap)
 	hashData, err := json.Marshal(hashSnap)
 	if err != nil {
 		return
@@ -274,6 +273,24 @@ func (h *wsHub) loadAndBroadcast(runtimeDir string, now func() time.Time, provid
 	}
 	msg := fmt.Appendf(nil, `{"type":"snapshot","data":%s}`, data)
 	h.broadcastSnapshot(msg)
+}
+
+func snapshotForHash(snap snapshot.Snapshot) snapshot.Snapshot {
+	hashSnap := snap
+	hashSnap.UpdatedAt = time.Time{}
+	// Active sessions are rebuilt with now() for these fields, which would
+	// otherwise cause spurious "changed" snapshots while idle.
+	for i := range hashSnap.Sessions {
+		if hashSnap.Sessions[i].Status == "running" {
+			hashSnap.Sessions[i].LastActivity = time.Time{}
+			hashSnap.Sessions[i].DurationSeconds = 0
+		}
+	}
+	for i := range hashSnap.Active {
+		hashSnap.Active[i].LastActivity = time.Time{}
+		hashSnap.Active[i].DurationSeconds = 0
+	}
+	return hashSnap
 }
 
 // Close closes all client connections. Required because http.Server.Shutdown
