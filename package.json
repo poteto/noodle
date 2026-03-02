@@ -10,6 +10,7 @@
     "setup": "pnpm install",
     "build": "pnpm --filter noodle-ui build && go build -o ./bin/noodle .",
     "generate": "go generate ./generate/...",
+    "changelog": "node ./scripts/release-changelog.mjs",
     "test": "go test ./...",
     "test:short": "go test -short ./...",
     "vet": "go vet ./...",
@@ -37,6 +38,8 @@
     "test:smoke": "go test -tags e2e -timeout 600s -count=1 ./e2e/"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "conventional-changelog": "^7.2.0",
+    "conventional-changelog-conventionalcommits": "^9.2.0"
   }
 }
