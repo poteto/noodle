@@ -131,7 +131,7 @@ func TestReadSessionIgnoresMalformedSpawnMetadata(t *testing.T) {
 	}
 }
 
-func TestReadSessionMarksResultAsCompleted(t *testing.T) {
+func TestReadSessionResultDoesNotMarkCompleted(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -153,8 +153,8 @@ func TestReadSessionMarksResultAsCompleted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if !claims.Completed {
-		t.Fatal("expected completed=true when result event is present")
+	if claims.Completed {
+		t.Fatal("expected completed=false when only result event is present")
 	}
 	if claims.Failed {
 		t.Fatal("expected failed=false when no error event is present")

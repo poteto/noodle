@@ -11,7 +11,7 @@ source_hash: 3c029436bd82d4d88577eecf66e30d31f6205fcc87480fc35debf61511c98ec8
 {
   "session_id": "cook-a",
   "has_events": true,
-  "completed": true,
+  "completed": false,
   "provider": "claude",
   "total_cost_usd": 0.12,
   "first_event_at": "2026-02-22T15:00:00Z",

@@ -86,8 +86,8 @@ func (CodexAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		return parseCodexItem(envelope.Type, envelope.Item, ts)
 	case "turn.completed":
 		return []CanonicalEvent{{
-			Type:      EventComplete,
-			Message:   "turn completed",
+			Type:      EventResult,
+			Message:   "turn complete",
 			Timestamp: ts,
 		}}, nil
 	case "compacted":
