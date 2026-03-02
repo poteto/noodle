@@ -1,7 +1,6 @@
 ---
-priority: [20, 84, 90, 86, 88, 85, 69]
+priority: [84, 90, 86, 88, 85, 69]
 # Launch-blocking:
-#   20 onboarding — install, docs, examples, getting-started guides
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
 #   86 diffs integration — code-change review UX
@@ -22,10 +21,6 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 94. [ ] Cross-platform distribution — publish Noodle binaries for Linux and Windows in addition to macOS. Set up GoReleaser (or equivalent) to cross-compile for linux/amd64, linux/arm64, windows/amd64. Publish artifacts to GitHub Releases. Add install instructions for non-Homebrew users (curl one-liner, winget/scoop, or direct download). Update getting-started docs with platform-specific instructions.
 
 93. [ ] Publish build to Homebrew — create a Homebrew tap and formula so users can `brew install noodle`.
-
-92. [ ] Publish docs to GitHub Pages via custom GitHub Actions workflow — set up a GH Actions workflow that builds and deploys the docs site on push to main. Reference: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
-
-20. [ ] First-run experience — make it obvious how to install, configure, and use Noodle. Simple installation path, clear documentation of core concepts (skills, scheduling, brain), example projects showing real workflows (e.g. a minimal schedule+execute setup, a multi-skill autonomous loop), and getting-started guides that take a new user from zero to a running Noodle in minutes. [[plans/20-onboarding/overview]]
 
 ## Remote Dispatchers
 
