@@ -28,7 +28,7 @@ Work assignments written by the scheduler. Each order specifies a task, the skil
 
 ## Routing
 
-The system that decides which LLM provider and model handle each task. Routing has global defaults and per-tag overrides configured in `.noodle.toml`. See [Configuration](/reference/configuration#routing).
+The system that decides which agent provider and model handle each task. Routing has global defaults and per-tag overrides configured in `.noodle.toml`. See [Configuration](/reference/configuration#routing).
 
 ## Schedule field
 

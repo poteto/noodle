@@ -38,6 +38,7 @@ export default defineConfig({
         items: [
           { text: "Skills", link: "/concepts/skills" },
           { text: "Scheduling", link: "/concepts/scheduling" },
+          { text: "Events", link: "/concepts/events" },
           { text: "Adapters", link: "/concepts/adapters" },
           { text: "Modes", link: "/concepts/modes" },
           { text: "Runtimes", link: "/concepts/runtimes" },

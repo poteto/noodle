@@ -334,6 +334,7 @@ body {
   width: 4px !important;
   height: 4px !important;
   border-radius: 0 !important;
+  translate: -2px 8px;
 }
 
 .VPDocAsideOutline .outline-link.active {

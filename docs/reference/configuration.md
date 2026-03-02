@@ -33,13 +33,13 @@ mode = "auto"
 
 ### `[routing]`
 
-Controls which LLM provider and model are used for skill execution. Routing has global defaults and optional per-tag overrides.
+Controls which Agent provider and model are used for skill execution. Routing has global defaults and optional per-tag overrides.
 
 #### `[routing.defaults]`
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `provider` | string | `"claude"` | LLM provider name (e.g. `"claude"`, `"codex"`) |
+| `provider` | string | `"claude"` | Agent provider name (e.g. `"claude"`, `"codex"`) |
 | `model` | string | `"claude-opus-4-6"` | Model identifier passed to the provider |
 
 ```toml
@@ -54,7 +54,7 @@ Tag-based routing overrides. When a skill or ticket is tagged, the matching poli
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `provider` | string | — | LLM provider for this tag |
+| `provider` | string | — | Agent provider for this tag |
 | `model` | string | — | Model for this tag |
 
 ```toml
@@ -138,14 +138,14 @@ shutdown_timeout = "30s"
 ```
 
 ::: warning Cost
-Each agent is a full LLM session. `max_cooks = 4` means up to four concurrent API sessions, each consuming tokens independently. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
+Each agent consumes tokens independently. `max_cooks = 4` means up to four concurrent API sessions. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
 :::
 
 ---
 
 ### `[agents]`
 
-Configures paths and arguments for LLM agent binaries. Each sub-table names a provider.
+Configures paths and arguments for agent CLI binaries. Each sub-table names a provider.
 
 #### `[agents.claude]`
 
@@ -170,6 +170,7 @@ args = ["--dangerously-skip-permissions", "--verbose"]
 ```toml
 [agents.codex]
 path = "~/.codex"
+args = ["--full-auto"]
 ```
 
 ---
@@ -287,7 +288,7 @@ Scripts are executed relative to the project root. Each script receives structur
 
 ### Local development with Claude
 
-Minimal setup for a single developer using Claude as the LLM provider:
+Minimal setup for a single developer using Claude as the Agent provider:
 
 ```toml
 mode = "auto"
