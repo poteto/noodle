@@ -24,6 +24,20 @@ fi
 id="$1"
 shift
 
+prepend_completed_entry() {
+  entry="$1"
+  if [ ! -f "$ARCHIVE_TODOS" ]; then
+    printf "# Completed Todos\n\n%s\n" "$entry" > "$ARCHIVE_TODOS"
+    return
+  fi
+
+  tmp=$(mktemp)
+  head -2 "$ARCHIVE_TODOS" > "$tmp"
+  printf "%s\n" "$entry" >> "$tmp"
+  tail -n +3 "$ARCHIVE_TODOS" >> "$tmp"
+  mv "$tmp" "$ARCHIVE_TODOS"
+}
+
 note="done."
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -46,66 +60,67 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# Verify todos.md exists.
-if [ ! -f "$TODOS" ]; then
-  echo "not found: $TODOS" >&2
-  exit 1
+todo_line=""
+if [ -f "$TODOS" ]; then
+  todo_line=$(grep -n -E "^${id}\. \[[ x]\] " "$TODOS" | head -1 || true)
 fi
 
-# Extract the todo line.
-todo_line=$(grep -n "^${id}\. \[ \]" "$TODOS" || true)
-if [ -z "$todo_line" ]; then
-  echo "no pending todo with id $id found in $TODOS" >&2
-  exit 1
-fi
-line_num="${todo_line%%:*}"
-line_text="${todo_line#*:}"
+if [ -n "$todo_line" ]; then
+  line_num="${todo_line%%:*}"
+  line_text="${todo_line#*:}"
 
-# Build the completed entry: strikethrough the content, update wikilinks.
-# Strip the "N. [ ] " prefix to get the content.
-content=$(echo "$line_text" | sed "s/^${id}\. \[ \] //")
-# Rewrite plan wikilinks from plans/ to archive/plans/.
-content=$(echo "$content" | sed 's|\[\[plans/|\[\[archive/plans/|g')
-completed_entry="${id}. [x] ~~${content}~~ — ${note}"
+  # Build the completed entry: strikethrough the content, update wikilinks.
+  content=$(echo "$line_text" | sed "s/^${id}\. \[[ x]\] //")
+  content=$(echo "$content" | sed 's|\[\[plans/|\[\[archive/plans/|g')
+  completed_entry="${id}. [x] ~~${content}~~ — ${note}"
 
-# Prepend to completed_todos.md (after the "# Completed Todos" header + blank line).
-if [ ! -f "$ARCHIVE_TODOS" ]; then
-  printf "# Completed Todos\n\n%s\n" "$completed_entry" > "$ARCHIVE_TODOS"
-else
-  # Insert new entry after line 2 (header + blank line).
+  if [ ! -f "$ARCHIVE_TODOS" ] || ! grep -q "^${id}\. \[x\]" "$ARCHIVE_TODOS"; then
+    prepend_completed_entry "$completed_entry"
+    echo "archived todo: $id"
+  fi
+
+  # Remove the todo from todos.md.
   tmp=$(mktemp)
-  head -2 "$ARCHIVE_TODOS" > "$tmp"
-  printf "%s\n" "$completed_entry" >> "$tmp"
-  tail -n +3 "$ARCHIVE_TODOS" >> "$tmp"
+  sed "${line_num}d" "$TODOS" > "$tmp"
+  mv "$tmp" "$TODOS"
+
+  # Remove the id from the priority frontmatter array.
+  tmp=$(mktemp)
+  sed "s/${id}, //; s/, ${id}//; s/${id}//" "$TODOS" > "$tmp"
+  mv "$tmp" "$TODOS"
+fi
+
+# Normalize stale links for this id in completed todos.
+if [ -f "$ARCHIVE_TODOS" ]; then
+  tmp=$(mktemp)
+  awk -v id="$id" '
+    $0 ~ "^" id "\\. \\[x\\] " { gsub("\\[\\[plans/", "[[archive/plans/") }
+    { print }
+  ' "$ARCHIVE_TODOS" > "$tmp"
   mv "$tmp" "$ARCHIVE_TODOS"
 fi
-
-# Remove the todo from todos.md.
-tmp=$(mktemp)
-sed "${line_num}d" "$TODOS" > "$tmp"
-mv "$tmp" "$TODOS"
-
-# Remove the id from the priority frontmatter array.
-tmp=$(mktemp)
-sed "s/${id}, //; s/, ${id}//; s/${id}//" "$TODOS" > "$tmp"
-mv "$tmp" "$TODOS"
 
 # Move plan directory to archive if it exists.
 plan_dir=$(find "$PLANS_DIR" -maxdepth 1 -type d -name "${id}-*" 2>/dev/null | head -1)
 if [ -n "$plan_dir" ]; then
   plan_name=$(basename "$plan_dir")
   mkdir -p "$ARCHIVE_PLANS"
-  mv "$plan_dir" "$ARCHIVE_PLANS/$plan_name"
-  echo "archived plan: $plan_name"
+  archived_plan_path="$ARCHIVE_PLANS/$plan_name"
+  if [ ! -d "$archived_plan_path" ]; then
+    mv "$plan_dir" "$archived_plan_path"
+    echo "archived plan: $plan_name"
+  fi
 fi
 
-# Update plans/index.md if it references this plan.
+# Update plans/index.md references for this plan id.
 plans_index="$PLANS_DIR/index.md"
-if [ -f "$plans_index" ] && grep -q "plans/${id}-" "$plans_index"; then
+if [ -f "$plans_index" ]; then
   tmp=$(mktemp)
-  sed "s|- \[ \] \[\[plans/${id}-|- [x] [[archive/plans/${id}-|" "$plans_index" > "$tmp"
+  sed \
+    -e "s|- \[ \] \[\[plans/${id}-|- [x] [[archive/plans/${id}-|g" \
+    -e "s|- \[x\] \[\[plans/${id}-|- [x] [[archive/plans/${id}-|g" \
+    "$plans_index" > "$tmp"
   mv "$tmp" "$plans_index"
-  echo "updated plans/index.md"
 fi
 
-echo "marked todo $id as done"
+echo "archived todo/plan for id $id"
