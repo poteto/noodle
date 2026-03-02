@@ -17,7 +17,7 @@ Noodle's `.noodle.toml` exposes config knobs that are either unused, redundant w
 **In scope (6 todos):**
 
 - **102** — Remove `routing.tags.*` from config. Scheduler decides routing per stage.
-- **103** — Remove `[recovery]` section (`max_retries`) and delete unused internal retry fallback (`defaultRetryMaxAttempts`). Scheduler handles retry decisions via events.
+- **103** — Remove `[recovery]` section (`max_retries`), delete unused internal retry fallback (`defaultRetryMaxAttempts`), and remove loop auto-retry paths. Scheduler handles retry decisions via events and explicit control commands (`requeue` / `add-stage`).
 - **104** — Remove `stuck_threshold` entirely; hardcode `poll_interval` to 1s.
 - **105** — Remove ticket staleness tracking. Scheduler handles stuck stages via events.
 - **106** — Rename `max_cooks` to `max_concurrency` in config and all Go code.
@@ -33,6 +33,7 @@ Noodle's `.noodle.toml` exposes config knobs that are either unused, redundant w
 - **Compatibility-first parse behavior.** Removed/unknown keys and invalid values must not hard-fail startup. Parse boundary logic should emit clear warnings naming the field and applied fallback, then continue with defaults.
 - **Error messages describe failure state.** Per CLAUDE.md: "session not found", not "session must exist."
 - **Boundary discipline.** Config warning/fallback normalization stays at the parse boundary in `config/parse.go`. Hardcoded defaults live where the value is consumed.
+- **Scheduler-owned retries.** The loop should not auto-retry based on internal retryability classes; it should emit failure context and let the scheduler choose the next action.
 
 ### Alternatives considered
 
@@ -60,6 +61,17 @@ Approach A wins because each todo has different risk profiles (unused field dele
 6. [[plans/102-config-cleanup/phase-06-rename-max-cooks]]
 7. [[plans/102-config-cleanup/phase-07-hardcode-concurrency-internals]]
 8. [[plans/102-config-cleanup/phase-08-shutdown-behavior]]
+
+## Additional Cleanup Checklist
+
+- **Retry behavior (Phase 1):** remove loop auto-retry branches on dispatch failures (`loop/cook_spawn.go`, `loop/schedule.go`) and any retry-only gate surface (`internal/mode/gate.go`, `docs/concepts/modes.md`) so retries are scheduler-directed.
+- **Recovery config/docs (Phase 1):** remove all `[recovery]` references across config, docs, generator output, fixtures, and loop tests.
+- **Routing tags (Phase 4):** remove all `routing.tags` plumbing in config/runtime/schema/docs/examples, including skill docs (`.agents/skills/noodle/SKILL.md`) and example docs (`examples/multi-skill/README.md`).
+- **Monitor config/docs (Phases 2-5):** remove all `monitor.*` references from config/docs/generator output, including skill docs (`.agents/skills/noodle/SKILL.md`).
+- **Concurrency rename (Phase 6):** complete `max_cooks` → `max_concurrency` across config/runtime/control/status/snapshot/UI/docs/examples/tests (including generated docs/tests).
+- **Concurrency internals (Phase 7):** delete `max_completion_overflow` and `merge_backpressure_threshold` config surface, hardcode consumption defaults at runtime call sites, and update affected tests.
+- **Shutdown behavior (Phase 8):** delete `shutdown_timeout` config surface and enforce fixed SIGTERM→2s→SIGKILL shutdown semantics in loop/dispatcher code paths.
+- **Keep explicit retry controls:** retain scheduler/human-triggered controls such as `requeue` / `add-stage` as the supported retry mechanism.
 
 ## Verification
 

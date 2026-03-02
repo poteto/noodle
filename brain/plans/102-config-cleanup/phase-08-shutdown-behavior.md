@@ -59,6 +59,9 @@ Remove `shutdown_timeout` from config. Users expect `Ctrl-C` to stop Noodle imme
 ### `generate/skill_noodle.go`
 - Remove `concurrency.shutdown_timeout` field description
 
+### `.agents/skills/noodle/SKILL.md`
+- Remove `concurrency.shutdown_timeout` entry from the config field table
+
 ## Data Structures
 
 `ConcurrencyConfig` loses `ShutdownTimeout`. Shutdown behavior becomes a hardcoded constant, not configurable.

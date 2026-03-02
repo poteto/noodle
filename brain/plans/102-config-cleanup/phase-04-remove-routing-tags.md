@@ -51,8 +51,14 @@ Remove tag-based routing overrides from the config. The scheduler skill decides 
 ### `docs/concepts/scheduling.md`
 - Remove routing.tags references
 
+### `examples/multi-skill/README.md`
+- Remove `routing.tags.*` examples and narrative
+
 ### `examples/multi-skill/.noodle.toml`
 - Remove `[routing.tags.review]` section
+
+### `.agents/skills/noodle/SKILL.md`
+- Remove `routing.tags` entry from the config field table
 
 ### `.agents/skills/noodle/references/config-schema.md`
 - Remove routing.tags documentation

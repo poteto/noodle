@@ -38,6 +38,9 @@ After phases 2-3 removed `ticket_stale` and `stuck_threshold`, `poll_interval` i
 ### `generate/skill_noodle.go`
 - Remove all `monitor.*` field descriptions
 
+### `.agents/skills/noodle/SKILL.md`
+- Remove `monitor.*` entries from the config field table
+
 ## Data Structures
 
 Delete `MonitorConfig` entirely — no replacement.

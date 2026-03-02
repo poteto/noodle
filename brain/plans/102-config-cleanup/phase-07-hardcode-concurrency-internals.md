@@ -30,11 +30,18 @@ Remove `max_completion_overflow` and `merge_backpressure_threshold` from user-fa
 ### `loop/loop_cycle_pipeline.go`
 - Replace `mergeBackpressureThreshold` config read with hardcoded constant: `const mergeBackpressureLimit = 128`
 
+### `loop/integration_scale_test.go`
+- Remove test setup references to `cfg.Concurrency.MergeBackpressureThreshold`
+- Keep scale behavior assertions valid with hardcoded runtime defaults
+
 ### `docs/reference/configuration.md`
 - Remove both fields from concurrency section docs
 
 ### `generate/skill_noodle.go`
 - Remove field descriptions for both
+
+### `.agents/skills/noodle/SKILL.md`
+- Remove `concurrency.max_completion_overflow` and `concurrency.merge_backpressure_threshold` entries
 
 ## Data Structures
 
