@@ -195,16 +195,7 @@ export function Sidebar() {
 
       <div className="agent-tree">
         {visibleOrders.length === 0 && (
-          <div
-            style={{
-              padding: "6px 12px",
-              color: "var(--color-text-tertiary)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-            }}
-          >
-            No orders
-          </div>
+          <div className="orders-empty">Waiting for the scheduler</div>
         )}
         {visibleOrders.map((order) => {
           const isExpanded = expandedOrders.has(order.id);
