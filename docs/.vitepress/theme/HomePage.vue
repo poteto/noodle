@@ -106,9 +106,6 @@ import { withBase } from "vitepress";
               </svg>
               View on GitHub
             </a>
-            <a :href="withBase('/reference/faq')" class="btn-secondary">
-              FAQ
-            </a>
           </div>
         </section>
 
