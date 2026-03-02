@@ -109,20 +109,16 @@ Write stages with `"status": "pending"`. The loop manages all subsequent transit
 
 | Task type | Provider | Model |
 |-----------|----------|-------|
+| Tiny/small tasks (no deep thinking needed) | codex | gpt-5.3-codex-spark |
+| Tiny/small tasks (no deep thinking needed) | claude | claude-sonnet-4-6 |
 | Implementation, execution, coding | codex | gpt-5.3-codex |
 | Judgment, strategy, planning, review | claude | claude-opus-4-6 |
 
-When uncertain, codex for implementation, opus for judgment.
+Use spark or sonnet for small, mechanical tasks (simple renames, one-liner fixes, straightforward additions). Use full codex for anything requiring multi-step reasoning or cross-file coordination. When uncertain, codex for implementation, opus for judgment.
 
 ## Runtime Routing
 
-Read `routing.available_runtimes` from mise before writing orders.
-
-- If only `process` is available, set stage `"runtime": "process"`.
-- If `sprites` is available, prefer `"runtime": "sprites"` for long-running `execute` work.
-- Keep `review`, `reflect`, and `meditate` on `"runtime": "process"` unless explicitly justified.
-- `cursor` runtime requires `polling` and `remote_sync` capabilities — only use when available and appropriate.
-- Always include `"runtime"` on scheduled stages so dispatch routing is explicit.
+Always set `"runtime": "process"` on all stages. The `sprites` runtime is still WIP and should not be used yet. Always include `"runtime"` on scheduled stages so dispatch routing is explicit.
 
 ## Output
 
@@ -151,7 +147,7 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "rationale": "foundation-before-feature: core infra needed by all other work",
       "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
+        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
         {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
@@ -172,7 +168,7 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "status": "active",
       "stages": [
         {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
-        {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
+        {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
         {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
@@ -191,7 +187,7 @@ Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty w
       "rationale": "foundation-before-feature: both plan 84 and plan 86 depend on shared event types",
       "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending",
+        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
          "extra_prompt": "Create shared event types in internal/event/ that both subagent-tracking and diffs-integration will consume. Keep scope narrow — only the shared interfaces, not plan-specific logic."},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
