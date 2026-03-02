@@ -1,0 +1,29 @@
+name: Feature Request
+description: Suggest something Noodle should do.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Noodle doesn't support?
+      placeholder: |
+        I want to route mechanical refactoring tasks to a cheaper model
+        but there's no way to override routing per-skill.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How should it work? Describe the interface, not the implementation.
+      placeholder: |
+        Add a `model` field to skill frontmatter that overrides the
+        routing default for that skill.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try or think about?

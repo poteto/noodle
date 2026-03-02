@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discord
+    url: https://discord.gg/RmJqTgkMz9
+    about: Ask questions and chat with other Noodle users.
+  - name: Documentation
+    url: https://poteto.github.io/noodle/getting-started
+    about: Read the docs before filing an issue.

@@ -1,0 +1,101 @@
+name: Bug Report
+description: Something broke. Help us fix it.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Filing with your agent
+
+        Copy this prompt into Claude, Codex, or whatever agent you use. It will gather the right files and open the issue for you.
+
+        ````
+        File a bug report on poteto/noodle for the issue I just hit.
+
+        1. Describe what I was trying to do and what went wrong. Be specific.
+           State the failure, not what you expected. No filler, no hedging.
+        2. Write exact reproduction steps. Someone with zero context should be
+           able to follow them and hit the same bug.
+        3. Attach these files (omit any that don't exist):
+           - .noodle/status.json
+           - .noodle/orders.json
+           - .noodle/orders-next.json (or orders-next.json.bad)
+           - .noodle/loop-events.ndjson (last 50 lines)
+           - .noodle/sessions/<relevant-session-id>/events.ndjson (last 50 lines)
+           - .noodle/sessions/<relevant-session-id>/spawn.json
+           - .noodle.toml (redact any tokens or secrets)
+        4. Include: Noodle version (noodle --version), OS, provider and model.
+        5. Do not write "I hope this helps", "Let me know if you need more info",
+           or any other filler. Just state what happened.
+
+        Use `gh issue create` on poteto/noodle with the bug label.
+        ````
+
+        ---
+
+        Or fill out the form below manually.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the failure. What broke, what error did you see. Be specific.
+      placeholder: |
+        The scheduler wrote orders-next.json but the loop never picked them up.
+        No error in the terminal. The orders file sat there for 5+ minutes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Exact steps to reproduce. Someone with zero context should be able to follow these.
+      placeholder: |
+        1. Create a project with a schedule and execute skill
+        2. Add a backlog item to brain/todos.md
+        3. Run `noodle start`
+        4. Wait for the scheduler to write orders-next.json
+        5. Observe that orders.json never updates
+    validations:
+      required: true
+
+  - type: textarea
+    id: noodle-state
+    attributes:
+      label: .noodle state files
+      description: |
+        Attach relevant files from your .noodle/ directory. Helpful files:
+        `status.json`, `orders.json`, `orders-next.json`, last 50 lines of `loop-events.ndjson`,
+        and for session bugs: `sessions/<id>/events.ndjson`, `sessions/<id>/spawn.json`.
+      render: json
+
+  - type: textarea
+    id: config
+    attributes:
+      label: .noodle.toml
+      description: Your config file. Redact tokens and secrets.
+      render: toml
+
+  - type: input
+    id: version
+    attributes:
+      label: Noodle version
+      description: Output of `noodle --version`
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 15.3 / Ubuntu 24.04 / Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and model
+      placeholder: "claude / claude-opus-4-6"

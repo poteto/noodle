@@ -68,8 +68,12 @@ export default defineConfig({
         ],
       },
       {
-        text: "Troubleshooting",
+        text: "Community",
         items: [
+          {
+            text: "Discord",
+            link: "https://discord.gg/RmJqTgkMz9",
+          },
           {
             text: "File an Issue",
             link: "https://github.com/poteto/noodle/issues",
