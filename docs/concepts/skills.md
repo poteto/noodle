@@ -1,79 +1,59 @@
 # Skills
 
-Skills are Noodle's single extension point. Every behavior an agent can perform — scheduling work, executing tasks, reviewing code, reflecting on mistakes — is a skill. There are no plugins, no hooks API, no configuration DSL. Just a directory with a markdown file.
+Skills are all you need to extend Noodle. Every behavior an agent can perform is a skill: scheduling work, implementing tasks, reviewing code, reflecting on mistakes.
 
 For why this matters, see [Vision](/vision).
 
-## Anatomy of a Skill
+## The `schedule:` field
 
-A skill is a directory containing:
-
-- **`SKILL.md`** (required) — YAML frontmatter for metadata, markdown body for the prompt
-- **`references/`** (optional) — supporting files the agent can read during execution
-
-The markdown body is the prompt. Write it as instructions for an agent: what to read, what to do, what to produce. Here is the frontmatter from the `schedule` skill that ships with Noodle:
+The `schedule:` field in the frontmatter is what makes a skill run autonomously. Noodle discovers every skill with a `schedule:` field and feeds those descriptions to the scheduler agent as context. The scheduler reads them alongside the current project state and decides what to dispatch.
 
 ```yaml
 ---
 name: schedule
-description: Orders scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json.
-schedule: "When orders are empty, after backlog changes, or when session history suggests re-evaluation"
+description: >
+  Reads .noodle/mise.json, writes .noodle/orders-next.json.
+  Schedules work orders based on backlog state and session history.
+schedule: >
+  When orders are empty, after backlog changes,
+  or when session history suggests re-evaluation
 ---
 ```
 
-And the body starts with concrete instructions:
+Without `schedule:`, a skill is general purpose. Agents invoke it directly when they need it.
 
-```markdown
-# Schedule
+## Scheduled vs general skills
 
-Read `.noodle/mise.json`, write `.noodle/orders-next.json`.
-The loop atomically promotes `orders-next.json` into `orders.json` — never write `orders.json` directly.
-```
+The `schedule:` field is the dividing line.
 
-## Frontmatter
-
-The YAML frontmatter block declares metadata. Four fields, matching the `Frontmatter` struct in `skill/frontmatter.go`:
-
-| Field         | Required | Description                                           |
-| ------------- | -------- | ----------------------------------------------------- |
-| `name`        | yes      | Identifier used to invoke the skill                   |
-| `description` | yes      | Short summary shown in listings and the mise          |
-| `model`       | no       | Override the default model for this skill              |
-| `schedule`    | no       | Natural-language trigger — makes this a task type      |
-
-## Task-Type Skills vs General Skills
-
-The `schedule` field is the dividing line.
-
-A skill **without** `schedule` is a **general skill**. It gets invoked directly — by a user, by another agent, or by name in an order stage. The `commit` skill is a general skill: agents call it when they need to commit code, but nothing triggers it automatically.
+A skill **without** `schedule:` is a **general skill**. Agents invoke it directly when they need it. For example tthis `commit` skill is a general skill: agents call it when they need to commit code, but nothing triggers it automatically.
 
 ```yaml
 ---
 name: commit
-description: Create conventional commit messages following best conventions.
+description: >
+  Create conventional commit messages following best conventions.
 ---
 ```
 
-A skill **with** `schedule` is a **task-type skill**. The scheduling agent reads the `schedule` value, matches it against current conditions, and creates orders when the trigger fits. Five task-type skills ship with Noodle:
+A skill **with** `schedule:` runs autonomously in the noodle loop. The scheduling agent reads the `schedule:` value, matches it against current conditions, and creates orders when the trigger fits. Some examples:
 
 ```yaml
-# execute — runs when there's work to do
-schedule: "When backlog items with linked plans are ready for implementation"
+# execute: runs when there's work to do
+schedule: >
+  When backlog items with linked plans
+  are ready for implementation
 
-# reflect — captures learnings after a session
-schedule: "After a cook session completes"
+# reflect: captures learnings after a session
+schedule: >
+  After an agent session completes
 
-# quality — reviews cook output before merge
-schedule: "After each cook session completes"
-
-# adversarial-review — cross-model code review for large changes
-schedule: "After cook sessions that produce large diffs (200+ lines) or implement plan phases"
-
-# schedule — the scheduler itself, also a task type
-schedule: "When orders are empty, after backlog changes, or when session history suggests re-evaluation"
+# quality: reviews output before merge
+schedule: >
+  After each agent session completes
 ```
 
-The scheduler does not parse these strings mechanically. It reads them as prose and uses judgment. You can write conditions like "When the backlog has high-priority items" or "After a failed execute" and the scheduling agent figures out the rest.
+The scheduler does not parse these strings mechanically. It reads them as prose and uses judgment. You can write conditions like "When the backlog has high-priority items", "After a failed session", or "On Mondays" and the scheduling agent figures out the rest.
 
 ## Skill Discovery
 
@@ -86,7 +66,7 @@ paths = [".agents/skills", ".claude/skills", "~/shared-skills"]
 
 A directory counts as a skill only if it contains a `SKILL.md` file.
 
-## Resolution Order
+### Resolution Order
 
 When resolving a skill by name, Noodle walks the `paths` list top to bottom:
 
@@ -98,85 +78,8 @@ First match wins. If `.agents/skills/deploy/` and `.claude/skills/deploy/` both 
 
 This means you can override any built-in skill. Put your replacement in a higher-priority path, and the resolver picks it up instead.
 
-## Reference Files
-
-A skill can include a `references/` subdirectory with supporting files — schema definitions, example configs, code snippets, anything the agent needs while executing. The `quality` skill, for example, includes a `stage-message-schema.md` reference so the agent knows the exact event format to emit.
-
-```
-.agents/skills/
-  quality/
-    SKILL.md
-    references/
-      stage-message-schema.md
-```
-
-## Creating a Skill
-
-A minimal skill:
-
-```
-.agents/skills/
-  greet/
-    SKILL.md
-```
-
-```yaml
----
-name: greet
-description: Say hello to the user
----
-
-Print a greeting message. Be brief.
-```
-
-To make it a task type, add `schedule`:
-
-```yaml
----
-name: greet
-description: Say hello to the user
-schedule: "At the start of every new session"
----
-
-Print a greeting message. Be brief.
-```
-
-The scheduling agent now sees `greet` as an available task type and can create orders for it.
-
 ## Composition
 
-Skills compose naturally. The `schedule` skill reads project state and writes orders. The `execute` skill picks up a task and does the work. The `reflect` skill reviews what happened and writes to the brain. Each skill has a clear input and output, and they coordinate through shared state.
+Skills compose naturally. You can call skills from other skills. For example, if you want your `review` skill to use the `debugging` skill, you can ask your agent to include it. `Skill(name)` seems to work best as a way to reliably get skills invoked.
 
-No skill imports another skill. No skill calls another skill directly. They're independent, which means you can swap out any piece without touching the others.
-
-## Recommended skills by project type
-
-**Any project**, start with these:
-
-| Skill      | Purpose                           |
-| ---------- | --------------------------------- |
-| `schedule` | Reads backlog, writes work orders |
-| `execute`  | Implements tasks, commits changes |
-| `commit`   | Conventional commit formatting    |
-
-**Projects that want quality gates**, add:
-
-| Skill     | Purpose                             |
-| --------- | ----------------------------------- |
-| `quality` | Reviews completed work before merge |
-| `testing` | Runs test suite against changes     |
-| `review`  | Code review walkthrough             |
-
-**Projects with complex tasks**, add:
-
-| Skill       | Purpose                                   |
-| ----------- | ----------------------------------------- |
-| `plan`      | Breaks down large tasks into phased plans |
-| `debugging` | Systematic root-cause analysis            |
-
-**Projects that want self-improvement**, add [brainmaxxing](https://github.com/poteto/brainmaxxing):
-
-| Skill      | Purpose                                        |
-| ---------- | ---------------------------------------------- |
-| `reflect`  | Writes session learnings to the brain          |
-| `meditate` | Distills principles from accumulated learnings |
+If you want skills to be scheduled in a certain order, you specify that in the `schedule` skill. For example, you can say that `review` skill should always follow `execute`. See [Scheduling](/concepts/scheduling) for more details and tips.

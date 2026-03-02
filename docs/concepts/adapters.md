@@ -8,10 +8,10 @@ The default backlog is a markdown file (`brain/todos.md`). You don't need an ada
 
 An adapter is a set of shell scripts configured in `.noodle.toml`. Each script handles one operation:
 
-- **sync** -- pulls items from the external source into Noodle's backlog format
-- **add** -- creates a new item in the external system
-- **done** -- marks an item complete in the external system
-- **edit** -- updates an existing item
+- **sync**: pulls items from the external source into Noodle's backlog format
+- **add**: creates a new item in the external system
+- **done**: marks an item complete in the external system
+- **edit**: updates an existing item
 
 ```toml
 [adapters.backlog]
@@ -24,7 +24,7 @@ done = ".noodle/adapters/backlog-done"
 edit = ".noodle/adapters/backlog-edit"
 ```
 
-Scripts are executed relative to the project root. Each script receives structured input on stdin and produces structured output on stdout. Noodle runs them via `sh -c`, so they don't need to be `chmod +x` -- just valid shell scripts.
+Scripts are executed relative to the project root. Each script receives structured input on stdin and produces structured output on stdout. Noodle runs them via `sh -c`, so they don't need to be `chmod +x`. Just valid shell scripts.
 
 ## When the scheduler runs
 
