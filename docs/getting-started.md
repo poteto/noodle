@@ -76,9 +76,21 @@ Install brainmaxxing from https://github.com/poteto/brainmaxxing into this proje
 
 This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
 
+## Add a backlog
+
+The scheduler needs something to work from. The simplest option is a `todos.md` file in your repo root:
+
+```md
+- [ ] Set up CI pipeline
+- [ ] Add input validation to the signup form
+- [ ] Write API docs for the /orders endpoint
+```
+
+This works out of the box. For GitHub Issues, Linear, or other trackers, see [Adapters](/concepts/adapters).
+
 ## Write your first skill
 
-Start with a `schedule` skill. This one reads the backlog and produces work orders.:
+Start with a `schedule` skill. This one reads the backlog and produces work orders:
 
 ```sh
 mkdir -p .agents/skills/schedule
