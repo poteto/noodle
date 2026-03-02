@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -41,7 +40,7 @@ type processMetadata struct {
 // StartProcess spawns a child process with process group isolation and
 // returns a handle for lifecycle management.
 func StartProcess(cmd *exec.Cmd) (*ProcessHandle, error) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	configureChildProcess(cmd)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -101,25 +100,12 @@ func (h *ProcessHandle) ExitCode() (int, bool) {
 
 // Terminate sends SIGTERM to the process group and returns immediately.
 func (h *ProcessHandle) Terminate() error {
-	return h.signalProcessGroup(syscall.SIGTERM)
+	return terminateProcess(h.cmd)
 }
 
 // ForceKill sends SIGKILL to the process group and returns immediately.
 func (h *ProcessHandle) ForceKill() error {
-	return h.signalProcessGroup(syscall.SIGKILL)
-}
-
-func (h *ProcessHandle) signalProcessGroup(signal syscall.Signal) error {
-	if h.cmd.Process == nil {
-		return nil
-	}
-	pgid, err := syscall.Getpgid(h.cmd.Process.Pid)
-	if err != nil {
-		// Process already gone.
-		return nil
-	}
-	_ = syscall.Kill(-pgid, signal)
-	return nil
+	return forceKillProcess(h.cmd)
 }
 
 func (h *ProcessHandle) wait() {

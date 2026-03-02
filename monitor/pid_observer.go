@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/poteto/noodle/internal/procx"
 )
@@ -56,33 +55,14 @@ func SessionPIDAlive(runtimeDir, sessionID string) bool {
 	return procx.IsPIDAlive(pid)
 }
 
-// TerminateSessionByPID reads the PID from a session's process.json and sends
-// SIGTERM to the process group.
+// TerminateSessionByPID reads the PID from a session's process.json and
+// requests graceful termination.
 func TerminateSessionByPID(runtimeDir, sessionID string) {
-	signalSessionByPID(runtimeDir, sessionID, syscall.SIGTERM)
+	terminateSessionByPID(runtimeDir, sessionID)
 }
 
-// ForceKillSessionByPID reads the PID from a session's process.json and sends
-// SIGKILL to the process group.
+// ForceKillSessionByPID reads the PID from a session's process.json and
+// forcefully kills the process.
 func ForceKillSessionByPID(runtimeDir, sessionID string) {
-	signalSessionByPID(runtimeDir, sessionID, syscall.SIGKILL)
-}
-
-func signalSessionByPID(runtimeDir, sessionID string, signal syscall.Signal) {
-	pidPath := filepath.Join(runtimeDir, "sessions", sessionID, "process.json")
-	pid, err := procx.ReadPIDFile(pidPath)
-	if err != nil {
-		return
-	}
-	if !procx.IsPIDAlive(pid) {
-		return
-	}
-	// Try SIGTERM to the process group first.
-	pgid, err := syscall.Getpgid(pid)
-	if err == nil {
-		_ = syscall.Kill(-pgid, signal)
-		return
-	}
-	// Fall back to killing just the process.
-	_ = syscall.Kill(pid, signal)
+	forceKillSessionByPID(runtimeDir, sessionID)
 }
