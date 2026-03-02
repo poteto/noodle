@@ -20,11 +20,11 @@ Define the JSON-RPC 2.0 message envelope and the four RPC methods:
 **Key types:**
 - `Request` / `Response` / `ErrorResponse` — JSON-RPC 2.0 envelope
 - `InitializeParams` / `InitializeResult` — config bytes in, capabilities + version out
-- `DispatchParams` / `DispatchResult` — mirrors existing `DispatchRequest` fields, returns session ID
+- `DispatchParams` / `DispatchResult` — returns session ID. `DispatchParams` must include the resolved skill bundle content (system prompt, CLAUDE.md, skill instructions) — not just the skill name — since external plugins cannot resolve skills from the host filesystem.
 - `KillParams` / `KillResult` — session ID in, ack out
-- `RecoverParams` / `RecoverResult` — returns list of recoverable session descriptors
+- `RecoverParams` / `RecoverResult` — returns list of recoverable session descriptors. `RecoverParams` must include the project/runtime directory so the plugin scopes its response to the correct project (prevents cross-project session adoption).
 
-Event streaming is not a separate RPC — after `dispatch` returns, the plugin writes NDJSON session events to stdout interleaved with future RPC responses. The host demultiplexes by checking whether each line is a JSON-RPC response (has `jsonrpc` field) or a session event (has `event` field).
+Event streaming is not a separate RPC — after `dispatch` returns, the plugin writes NDJSON session events to stdout interleaved with future RPC responses. The host demultiplexes by checking whether each line has a `"jsonrpc"` field (→ RPC response, matched by request ID) or not (→ session event, routed by session ID in the event payload). This is a single discriminator — no `"event"` field check needed.
 
 **New file: `plugin/protocol_test.go`**
 - Round-trip marshal/unmarshal for every type

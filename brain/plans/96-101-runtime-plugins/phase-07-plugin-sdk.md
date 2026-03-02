@@ -26,7 +26,7 @@ Provide a Go helper library that makes writing a runtime plugin trivial. Plugin 
 `Serve(plugin Plugin)` — main entry point:
 - Reads JSON-RPC from stdin
 - Routes to Plugin methods
-- Writes JSON-RPC responses to stdout
+- All stdout writes (RPC responses + session event emissions) serialized through a write mutex — concurrent sessions must not interleave mid-line and corrupt NDJSON framing
 - Streams session events as NDJSON to stdout
 - Handles `SIGTERM` / `SIGINT` gracefully
 
@@ -57,5 +57,5 @@ Helper types:
 
 ### Runtime
 - Build a test plugin using the SDK, pipe stdio through the host client (phase 2) → verify full round-trip
-- Verify SDK handles concurrent dispatch requests (multiple sessions)
+- Verify SDK handles concurrent dispatch requests (multiple sessions) without corrupting stdout NDJSON framing
 - Verify clean shutdown: SIGTERM → in-flight sessions complete or error

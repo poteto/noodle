@@ -11,13 +11,15 @@ Bridge a plugin's JSON-RPC dispatch + NDJSON event stream into Noodle's internal
 **New file: `plugin/runtime.go`**
 
 `PluginRuntime` struct — implements `runtime.Runtime`:
-- `Dispatch(ctx, req) (SessionHandle, error)` — calls plugin's `dispatch` RPC, returns a `pluginSessionHandle` that reads from the event stream
+- Constructed with a `SessionEventSink` (same as process/sprites dispatchers today) so plugin events reach the canonical event pipeline that the UI, monitor, and scheduler consume
+- `Dispatch(ctx, req) (SessionHandle, error)` — pre-registers event channel via `PrepareEventStream(sessionID)`, then calls plugin's `dispatch` RPC, returns a `pluginSessionHandle`
 - `Kill(handle) error` — calls plugin's `kill` RPC
-- `Recover(ctx) ([]RecoveredSession, error)` — calls plugin's `recover` RPC, maps results to `RecoveredSession`
+- `Recover(ctx) ([]RecoveredSession, error)` — calls plugin's `recover` RPC (passing runtime dir for project scoping), maps results to `RecoveredSession`
 
 `pluginSessionHandle` struct — implements `runtime.SessionHandle`:
-- Wraps `PluginHost.EventStream(sessionID)` channel
-- Translates raw JSON events into canonical `SessionEvent` types
+- Reads from the pre-registered event channel (no early-event loss)
+- Translates raw JSON events into canonical `SessionEvent` types and publishes them to the `SessionEventSink`
+- Synthesizes session artifact files (`meta.json`, `spawn.json`, event log) from plugin events, matching the contract that `loop/reconcile.go`, `monitor/`, and `loop/cook_completion.go` depend on
 - Exposes `Done()` channel (closed when event stream ends or plugin reports completion)
 - Tracks `TotalCost()` from cost events
 - `Kill()` delegates to `PluginRuntime.Kill()`
@@ -47,5 +49,8 @@ Bridge a plugin's JSON-RPC dispatch + NDJSON event stream into Noodle's internal
 
 ### Runtime
 - End-to-end test: mock plugin dispatches a session, streams 5 events, completes → verify SessionHandle sees all events and Done() fires
+- Verify events published to SessionEventSink (mock the sink, assert events received)
+- Verify session artifacts written: `meta.json`, `spawn.json`, event log exist in runtime dir after session completes
+- Verify Recover scopes to project runtime dir (mock plugin returns sessions from two dirs, only matching ones adopted)
 - Kill test: kill mid-stream → verify Done() fires and event channel drains
 - Cost tracking: verify TotalCost() accumulates from cost events

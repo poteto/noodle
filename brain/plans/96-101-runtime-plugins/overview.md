@@ -36,10 +36,11 @@ This plan defines a plugin architecture for runtimes and extracts Sprites as the
 
 ## Constraints
 
-- **Protocol:** JSON-RPC 2.0 over stdin/stdout. Session events as interleaved NDJSON (same format the canonical event system already uses).
-- **Discovery:** Convention-based naming: `noodle-runtime-{name}` binaries.
-- **Config:** `[runtime.NAME]` TOML sections passed through as raw bytes to the plugin's `initialize` RPC. No hardcoded config types for plugins in core.
-- **Fallback:** Process runtime remains the universal fallback when a plugin dispatch fails (preserve existing `DispatcherFactory` behavior).
+- **Protocol:** JSON-RPC 2.0 over stdin/stdout. Session events as interleaved NDJSON (same format the canonical event system already uses). Host demuxes on `"jsonrpc"` field presence — anything without it is a session event.
+- **Discovery:** Convention-based naming: `noodle-runtime-{name}` binaries. Built-in names (`process`) are reserved and cannot be overridden by plugins.
+- **Config:** `[runtime.NAME]` TOML sections converted to JSON at the parse boundary and forwarded to the plugin's `initialize` RPC. No hardcoded config types for plugins in core.
+- **Availability rule:** A plugin runtime is available only when *both* discovered (binary exists) *and* configured (`[runtime.NAME]` section present). Discovery alone or config alone is insufficient.
+- **Fallback:** Process runtime remains the fallback, but only on *definitive* dispatch failure (error response). Ambiguous failures (timeout, lost connection) mark the stage as failed rather than silently retrying on a different runtime.
 - **Cross-platform:** Plugin binaries are OS-specific. `noodle plugin install` fetches the right binary for the platform.
 
 ## Alternatives Considered

@@ -21,6 +21,7 @@ Three subcommands:
 - Takes a GitHub repo path (e.g., `poteto/noodle-runtime-sprites`)
 - Fetches latest release for current OS/arch from GitHub Releases API
 - Downloads binary to `~/.noodle/plugins/noodle-runtime-{name}`
+- Verifies SHA256 checksum if a checksums file is present in the release (warn if no checksums available)
 - Makes it executable
 - Runs `initialize` handshake to verify the plugin works
 

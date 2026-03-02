@@ -4,22 +4,22 @@ Back to [[plans/96-101-runtime-plugins/overview]]
 
 ## Goal
 
-Replace hardcoded plugin-specific config types (`SpritesConfig`, `CursorConfig`) with a generic passthrough system. Any `[runtime.NAME]` TOML section for a plugin runtime is captured as raw bytes and forwarded to the plugin's `initialize` RPC.
+Replace hardcoded plugin-specific config types (`SpritesConfig`, `CursorConfig`) with a generic passthrough system. Any `[runtime.NAME]` TOML section for a plugin runtime is parsed and converted to JSON at the parse boundary, then forwarded to the plugin's `initialize` RPC as `json.RawMessage`.
 
 ## Changes
 
 **Modified file: `config/types_defaults.go`**
 
-- Add `Plugins map[string]toml.Primitive` (or `map[string]json.RawMessage`) to `RuntimeConfig` — captures unknown `[runtime.*]` sections
+- Add `Plugins map[string]json.RawMessage` to `RuntimeConfig` — captures unknown `[runtime.*]` sections, converted from TOML to JSON at parse time (the plugin protocol speaks JSON, not TOML)
 - Keep `ProcessConfig` as a named field (process is built-in, not a plugin)
-- `AvailableRuntimes()` includes names from the `Plugins` map (in addition to "process")
-- Remove `spritesDefined` / `cursorDefined` tracking — plugin availability is determined by discovery (phase 4), not config presence
+- `AvailableRuntimes()` includes names from the `Plugins` map (in addition to "process"). Note: a runtime is only *active* when both discovered AND configured (phase 4 enforces this).
+- Remove `spritesDefined` / `cursorDefined` tracking — plugin availability is determined by the discovery+config intersection (phase 4)
 
 **Modified file: `config/parse.go`**
 
 - Parse known sections (`[runtime.process]`) into typed structs
-- Capture all other `[runtime.*]` sections as raw TOML bytes in the `Plugins` map
-- Pass raw config bytes to `PluginHost` during initialization (phase 2's `NewPluginHost`)
+- Capture all other `[runtime.*]` sections, convert TOML→JSON at the parse boundary, store as `json.RawMessage` in the `Plugins` map
+- Pass JSON config bytes to `PluginHost` during initialization (phase 2's `NewPluginHost`)
 
 **Modified file: `config/diagnostics.go`**
 
@@ -46,7 +46,7 @@ Replace hardcoded plugin-specific config types (`SpritesConfig`, `CursorConfig`)
 - Existing config tests updated and passing
 
 ### Runtime
-- Parse a `.noodle.toml` with `[runtime.sprites]` section → verify raw bytes captured in `Plugins["sprites"]`
-- Parse a `.noodle.toml` with `[runtime.myvm]` custom section → verify passthrough works
+- Parse a `.noodle.toml` with `[runtime.sprites]` section → verify JSON bytes captured in `Plugins["sprites"]` (not TOML)
+- Parse a `.noodle.toml` with `[runtime.myvm]` custom section → verify TOML→JSON conversion preserves all fields
 - Parse without any plugin sections → verify empty `Plugins` map, no errors
 - Diagnostics warn on `[runtime.sprites]` without a discovered sprites plugin
