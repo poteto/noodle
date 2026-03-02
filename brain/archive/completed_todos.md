@@ -1,5 +1,7 @@
 # Completed Todos
 
+99. [x] ~~Make `section` optional in backlog `add` payload. Currently the default adapter defaults it to "Inbox" but it shouldn't be a first-class field. Pass it through like any other optional field.~~ — done. Removed Inbox default for section in backlog add; section only created when explicitly provided
+98. [x] ~~Relax backlog schema: only require `id` and `title`. Everything else is optional and passed through to mise.json as-is for the scheduler to see. Remove hardcoded `status`/`estimate` enums and strict validation. Noodle should be flexible about what fields adapters return. Update adapters docs page schema section to match.~~ — done. Relaxed backlog schema: only id and title required, arbitrary fields pass through via Extra map
 107. [x] ~~Remove `max_completion_overflow`, `merge_backpressure_threshold`, and `shutdown_timeout` from user-facing config. These are internal plumbing (channel buffer size, merge queue backpressure, graceful shutdown wait). Hardcode sensible defaults (4, 128). For shutdown: kill all agents immediately on quit, no timeout/grace period. Users expect stopping Noodle to stop immediately. [[archive/plans/102-config-cleanup/overview]]~~ — done.
 106. [x] ~~Rename `max_cooks` to `max_concurrency` in `.noodle.toml` config and all Go code. [[archive/plans/102-config-cleanup/overview]]~~ — done.
 105. [x] ~~Remove ticket staleness tracking. No need to mark tickets as stale. If a stage is stuck, the scheduler sees it via events and decides what to do. [[archive/plans/102-config-cleanup/overview]]~~ — done.
