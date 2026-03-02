@@ -6,7 +6,7 @@ The default backlog is a markdown file (`brain/todos.md`). You don't need an ada
 
 ## How they work
 
-An adapter is a set of shell scripts configured in `.noodle.toml`. Each script handles one operation:
+An adapter is a set of commands configured in `.noodle.toml`. Each command handles one operation:
 
 - **sync**: pulls items from the external source into Noodle's backlog format
 - **add**: creates a new item in the external system
@@ -18,13 +18,13 @@ An adapter is a set of shell scripts configured in `.noodle.toml`. Each script h
 skill = "backlog"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
+sync = "my-adapters/backlog-sync"
+add = "my-adapters/backlog-add"
+done = "my-adapters/backlog-done"
+edit = "my-adapters/backlog-edit"
 ```
 
-Scripts are executed relative to the project root. Each script receives structured input on stdin and produces structured output on stdout. Noodle runs them via `sh -c`, so they don't need to be `chmod +x`. Just valid shell scripts.
+Commands are executed relative to the project root via `sh -c`. They can be anything that runs in a shell: a POSIX shell script, a Python script, a Node script, a compiled Go binary, a `curl` one-liner. As long as `sh -c <your-command>` can invoke it, it works.
 
 ## When the scheduler runs
 
@@ -32,11 +32,81 @@ The scheduler doesn't care where backlog items come from. It reads the backlog, 
 
 This means you can switch from `todos.md` to GitHub Issues (or vice versa) without changing your skills. The adapter handles the translation.
 
+## Schema
+
+Each adapter command has a specific contract for input and output.
+
+### `sync`
+
+No input. Prints newline-delimited JSON (NDJSON) to stdout, one backlog item per line.
+
+```json
+{
+  "id": "1",
+  "title": "Fix login bug",
+  "status": "open"
+}
+{
+  "id": "2",
+  "title": "Update docs",
+  "status": "done"
+}
+{
+  "id": "3",
+  "title": "Refactor API",
+  "status": "open"
+}
+```
+
+Required fields:
+
+| Field    | Type   | Values                        |
+| -------- | ------ | ----------------------------- |
+| `id`     | string |                               |
+| `title`  | string |                               |
+| `status` | string | `open`, `in_progress`, `done` |
+
+Any additional fields you include are passed through to mise.json as-is. The scheduler sees everything your adapter returns.
+
+### `add`
+
+Noodle calls your `add` command when the scheduler creates a new backlog item. Your command receives JSON on stdin and should create the item in your external system, then print the new item's ID to stdout.
+
+**stdin:**
+```json
+{
+  "title": "Ship feature"
+}
+```
+
+**stdout:** the new item ID (e.g. `42`)
+
+### `done`
+
+Noodle calls your `done` command when an order completes, passing the item ID as the first argument. Your command should mark that item complete in your external system. No stdin, no output expected.
+
+```
+my-adapters/backlog-done <id>
+```
+
+### `edit`
+
+Noodle calls your `edit` command when a backlog item needs updating, passing the item ID as the first argument and JSON on stdin with the new values.
+
+```
+my-adapters/backlog-edit <id>
+```
+
+**stdin:**
+```json
+{
+  "title": "Ship feature v2"
+}
+```
+
 ## Writing an adapter
 
-An adapter is just shell scripts that speak Noodle's backlog format. A minimal GitHub Issues adapter might use `gh` CLI to list open issues tagged with a label, format them as backlog items, and print to stdout.
-
-The scripts are simple enough that an agent can write them for you. Point it at your issue tracker and the [configuration reference](/reference/configuration#adapters-name) and it'll produce the scripts.
+A minimal GitHub Issues adapter might use `gh` CLI to list open issues tagged with a label, format them as backlog items, and print NDJSON to stdout. The commands are simple enough that an agent can write them for you. Point it at your issue tracker and the schema above and it'll produce the scripts.
 
 ## Configuration reference
 

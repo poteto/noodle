@@ -275,10 +275,10 @@ The default config includes a `backlog` adapter:
 skill = "backlog"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
+sync = "my-adapters/backlog-sync"
+add = "my-adapters/backlog-add"
+done = "my-adapters/backlog-done"
+edit = "my-adapters/backlog-edit"
 ```
 
 Scripts are executed relative to the project root. Each script receives structured input on stdin and must produce structured output on stdout. See the [backlog skill docs](/concepts/skills) for the expected interface.
