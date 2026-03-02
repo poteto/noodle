@@ -48,7 +48,7 @@ The test: can you describe when this skill should run in one sentence? If you ne
 
 ## Describe when, not how to trigger
 
-If you're coming from traditional automation: instead of registering event handlers, you describe conditions.
+Schedule fields work best as plain English descriptions of when a skill should run.
 
 ```yaml
 # not this
@@ -89,7 +89,7 @@ The body of a skill is a prompt. You're teaching an agent how to do a job.
 
 Be specific about process, loose about implementation. "Walk the diff in this order: architecture, correctness, tests" is good. "Use `git diff HEAD~1` and parse the output" is too prescriptive. The agent knows how to use git. Tell it what to look for.
 
-Include your reasoning. Not just "fix the root cause, not the symptom" but why: "patching symptoms creates a second bug when the root cause resurfaces." Agents make better calls when they understand the reason behind a rule.
+Include your reasoning. "Patching symptoms creates a second bug when the root cause resurfaces" teaches more than "fix the root cause, not the symptom." Agents make better calls when they understand the reason behind a rule.
 
 Write for a smart coworker on their first day. They know how to code. They don't know your conventions, your preferences, or the gotchas you've learned the hard way.
 
