@@ -4,7 +4,7 @@ import { buildEndGenerateOpenGraphImages } from "./plugins/og-image.mjs";
 export default defineConfig({
   base: "/noodle/",
   title: "Noodle",
-  description: "Skill-based agent orchestration. Built in Go.",
+  description: "Skills that run themselves. Orchestrate agents using skills.",
 
   markdown: {
     theme: "min-dark",
