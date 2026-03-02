@@ -466,6 +466,10 @@ body {
    Search
    ============================================================ */
 
+#local-search .DocSearch-Button {
+  width: 400px !important;
+}
+
 .VPNavBarSearch .search-input {
   background: var(--noodle-surface) !important;
   border: 1px solid var(--noodle-border) !important;
