@@ -42,9 +42,15 @@ function typeClass(event: EventLine): string {
 }
 
 function badgeClass(event: EventLine): string {
-  if (event.label === "User") return "badge-user";
-  if (event.label === "Scheduler") return "badge-manager";
-  if (TOOL_LABELS.has(event.label)) return TOOL_BADGE_CLASS[event.label] ?? "";
+  if (event.label === "User") {
+    return "badge-user";
+  }
+  if (event.label === "Scheduler") {
+    return "badge-manager";
+  }
+  if (TOOL_LABELS.has(event.label)) {
+    return TOOL_BADGE_CLASS[event.label] ?? "";
+  }
   // Agent names, Spawned, Think, etc. — default filled style
   return "badge-agent";
 }

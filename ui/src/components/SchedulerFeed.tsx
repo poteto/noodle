@@ -38,12 +38,12 @@ export function SchedulerFeed() {
 
   const items = useMemo(() => groupConsecutiveTools(events), [events]);
 
-  const emptyMessage =
-    events.length === 0
-      ? schedulerSession
-        ? "No events yet."
-        : "No scheduler session found. Send a prompt to start."
-      : undefined;
+  let emptyMessage: string | undefined;
+  if (events.length === 0) {
+    emptyMessage = schedulerSession
+      ? "No events yet."
+      : "No scheduler session found. Send a prompt to start.";
+  }
 
   function handleSubmit() {
     const prompt = input.trim();
