@@ -1,7 +1,7 @@
 ---
-priority: [103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
+priority: [98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
 # Launch-blocking:
-#   -107 config cleanup — small deletions, simplify surface before launch
+#   - config cleanup — small deletions, simplify surface before launch
 #   98,99 relax backlog schema — simplify adapters, less rigid
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
@@ -39,17 +39,6 @@ priority: [103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
 
 ## Backend
 
-
-103. [ ] Remove `[recovery]` config section (`max_retries`). The scheduler already sees `stage.failed` / `order.failed` events and decides whether to reschedule. Hardcoded retry logic in the loop is redundant. Just mark the stage/order as failed and let the scheduler handle it. [[plans/-config-cleanup/overview]]
-
-104. [ ] Remove `stuck_threshold` entirely and hardcode `poll_interval` to 1s. `stuck_threshold` is a bad concept: long-running tasks aren't stuck, they're just working. Delete the stuck detection logic. `poll_interval` is an implementation detail (lightweight local I/O), not a user knob. [[plans/-config-cleanup/overview]]
-
-105. [ ] Remove ticket staleness tracking. No need to mark tickets as stale. If a stage is stuck, the scheduler sees it via events and decides what to do. [[plans/-config-cleanup/overview]]
-
-106. [ ] Rename `max_cooks` to `max_concurrency` in `.noodle.toml` config and all Go code. [[plans/-config-cleanup/overview]]
-
-107. [ ] Remove `max_completion_overflow`, `merge_backpressure_threshold`, and `shutdown_timeout` from user-facing config. These are internal plumbing (channel buffer size, merge queue backpressure, graceful shutdown wait). Hardcode sensible defaults (4, 128). For shutdown: kill all agents immediately on quit, no timeout/grace period. Users expect stopping Noodle to stop immediately. [[plans/102-config-cleanup/overview]]
-
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
 
 98. [ ] Relax backlog schema: only require `id` and `title`. Everything else is optional and passed through to mise.json as-is for the scheduler to see. Remove hardcoded `status`/`estimate` enums and strict validation. Noodle should be flexible about what fields adapters return. Update adapters docs page schema section to match.
@@ -68,7 +57,7 @@ priority: [103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
 
 ## Design Explorations
 
-108. [ ] Design a markup DSL to replace orders-next.json — the current flat JSON is hard for LLMs to generate reliably, can't express nesting/dependencies naturally, and has no composability (no reusable stage patterns or macros). The DSL is LLM-authored only (scheduler emits it, humans never hand-write it). **Evaluate:** JSX-like markup (visual nesting maps to order→stage hierarchy, LLMs are fluent in JSX/HTML), XML variants, S-expressions, and any other candidate formats. **Deliverables:** (1) design doc comparing 3+ format candidates with concrete before/after examples showing the same orders in JSON vs each candidate, (2) tradeoff analysis on LLM generation reliability, expressiveness (conditionals, parallel groups, dependencies), composability (reusable stage templates/macros), parseability in Go, (3) a small prototype parser for the recommended format that produces `orderx.OrdersFile` structs.
+108. [ ] Compact wire format for orders-next.json — `do`/`with` replace `task_key`/`provider`, drop `status` and `skill` from scheduler output. Expansion at the promotion boundary produces internal `orderx.OrdersFile` structs. [[plans/108-orders-dsl/overview]]
 
 ## Features
 
