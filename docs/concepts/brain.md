@@ -4,7 +4,7 @@ Install [brainmaxxing](https://github.com/poteto/brainmaxxing) to add this optio
 
 This skill pack adds a brain, a directory of markdown files committed to your repo at `brain/`. It stores project knowledge: principles, patterns, past mistakes, codebase quirks, architectural decisions. With this skill pack installed, agents read the brain before they start working and write to it when they learn something.
 
-**Noodle works without this**. The noodle loop does not depend on it. This is entirely additive, and you can skip this is if you prefer.
+**Noodle works without this**. The noodle loop does not depend on it. This is entirely additive, and you can skip this if you prefer.
 
 The brain becomes useful when you want agents to share context across sessions: avoiding repeated mistakes, following project-specific conventions, building on past decisions.
 
