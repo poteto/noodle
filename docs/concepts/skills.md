@@ -26,7 +26,7 @@ Without `schedule:`, a skill is general purpose. Agents invoke it directly when 
 
 The `schedule:` field is the dividing line.
 
-A skill **without** `schedule:` is a **general skill**. Agents invoke it directly when they need it. For example tthis `commit` skill is a general skill: agents call it when they need to commit code, but nothing triggers it automatically.
+A skill **without** `schedule:` is a **general skill**. Agents invoke it directly when they need it. For example this `commit` skill is a general skill: agents call it when they need to commit code, but nothing triggers it automatically.
 
 ```yaml
 ---
@@ -82,4 +82,4 @@ This means you can override any built-in skill. Put your replacement in a higher
 
 Skills compose naturally. You can call skills from other skills. For example, if you want your `review` skill to use the `debugging` skill, you can ask your agent to include it. `Skill(name)` seems to work best as a way to reliably get skills invoked.
 
-If you want skills to be scheduled in a certain order, you specify that in the `schedule` skill. For example, you can say that `review` skill should always follow `execute`. See [Scheduling > Stages](/concepts/scheduling#composition-and-concurrency) for more details and tips.
+If you want skills to be scheduled in a certain order, you specify that in the `schedule:` field. For example, you can say that `review` skill should always follow `execute`. See [Scheduling > Stages](/concepts/scheduling#composition-and-concurrency) for more details on how the `schedule` skill can compose skills and control concurrency..

@@ -29,15 +29,6 @@ Verify: `noodle --version`
 
 You also need **Git** and at least one agent CLI: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude`) or [Codex CLI](https://github.com/openai/codex) (`codex`). Noodle spawns these as child processes.
 
-## Key terms
-
-See the [Glossary](/reference/glossary) for the full list.
-
-- **Skill**: a markdown file that teaches an agent how to do something. Skills are all you need to extend Noodle.
-- **Scheduler**: the agent that reads the backlog and writes orders.
-- **Orders**: work dispatched to agents by the scheduler. Each order references a skill and runs autonomously.
-- **Worktree**: a git worktree. Each agent gets its own so concurrent work never conflicts.
-
 ## Init a project
 
 `cd` into an existing git repo and run:
@@ -55,6 +46,8 @@ On first run, Noodle creates the project structure for you:
 .noodle.toml        # configuration
 ```
 
+See [Configuration](/reference/configuration) for all options.
+
 ### Optional: install brainmaxxing
 
 [Brainmaxxing](https://github.com/poteto/brainmaxxing) adds persistent memory across sessions. Agents reflect on what they learned, distill principles, and start each future session sharper. It's not required, but it's worth installing if you want agents that improve over time.
@@ -67,29 +60,6 @@ Install brainmaxxing from https://github.com/poteto/brainmaxxing into this proje
 
 This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
 
-## What the files do
-
-See [Configuration](/reference/configuration) for all options.
-
-**`.noodle.toml`** is project configuration. Controls the default model, skills path, and runtime mode. The generated default:
-
-```toml
-mode = "auto" # "auto", "supervised", or "manual"
-
-[routing.defaults]
-provider = "claude" # "claude" or "codex"
-model = "claude-opus-4-6"
-
-[skills]
-paths = [".agents/skills"]
-```
-
-`mode = "auto"` means the noodle loop runs the full schedule-work-merge cycle on its own.
-
-**`.noodle/`** is runtime state. Orders, session data, and the scheduler's project snapshot. Gitignored by default.
-
-**`.agents/skills/`** is where your skills live. Each subdirectory has a `SKILL.md` that defines what the skill does, when it runs, and how.
-
 ## Write your first skill
 
 Start with a `schedule` skill. This one reads the backlog and produces work orders.:
@@ -98,7 +68,7 @@ Start with a `schedule` skill. This one reads the backlog and produces work orde
 mkdir -p .agents/skills/schedule
 ```
 
-Write `.agents/skills/schedule/SKILL.md`. Here's an example from Noodle's own repo:
+Write `.agents/skills/schedule/SKILL.md`:
 
 ```yaml
 ---
@@ -114,7 +84,7 @@ schedule: >
 
 The `schedule:` field is plain English. The scheduling agent reads it and decides when conditions are met.
 
-Now add an `execute` skill. This one, from Noodle's own repo, picks up orders and does the work:
+Now add an `execute` skill. This one picks up orders and does the work:
 
 ```yaml
 ---
