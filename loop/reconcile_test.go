@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -193,5 +194,72 @@ func TestReconcileFailedOrdersNoopWhenNoFailures(t *testing.T) {
 
 	if len(l.reconciledFailures) != 0 {
 		t.Fatalf("expected 0 reconciled failures, got %d", len(l.reconciledFailures))
+	}
+}
+
+func TestFullReconcileArchivesFailedOrders(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     "schedule",
+				Title:  "scheduling tasks",
+				Status: OrderStatusActive,
+				Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
+			},
+			{
+				ID:     "failed-order",
+				Title:  "broken thing",
+				Status: OrderStatusFailed,
+				Stages: []Stage{{TaskKey: "execute", Status: StageStatusFailed}},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	// Failed order should be removed after full reconcile.
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	for _, o := range updated.Orders {
+		if o.ID == "failed-order" {
+			t.Fatal("failed order should have been removed by reconcile()")
+		}
+	}
+
+	// Summaries should be stored for the scheduler.
+	if len(l.reconciledFailures) != 1 {
+		t.Fatalf("expected 1 reconciled failure, got %d", len(l.reconciledFailures))
+	}
+	if l.reconciledFailures[0].OrderID != "failed-order" {
+		t.Fatalf("failure OrderID = %q, want %q", l.reconciledFailures[0].OrderID, "failed-order")
 	}
 }
