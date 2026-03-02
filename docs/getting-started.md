@@ -29,6 +29,22 @@ Verify: `noodle --version`
 
 You also need **Git** and at least one agent CLI: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude`) or [Codex CLI](https://github.com/openai/codex) (`codex`). Noodle spawns these as child processes.
 
+## Install the noodle skill
+
+The noodle skill teaches your agent how to use the CLI, write skills, and author orders. Fetch it directly from GitHub:
+
+```sh
+mkdir -p .agents/skills/noodle/references
+curl -sL https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/SKILL.md \
+  -o .agents/skills/noodle/SKILL.md
+curl -sL https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/references/skill-authoring.md \
+  -o .agents/skills/noodle/references/skill-authoring.md
+curl -sL https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/references/configuration.md \
+  -o .agents/skills/noodle/references/configuration.md
+```
+
+This is the one skill every Noodle project should have. Your agent reads it to understand Noodle's pipeline, config, and how to create new skills.
+
 ## Init a project
 
 `cd` into an existing git repo and run:

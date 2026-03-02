@@ -2,62 +2,50 @@
 name: noodle
 description: >-
   Operate the Noodle CLI — explain commands, find flags, create/edit .noodle.toml config.
+  Also covers writing skills for Noodle: the orders pipeline, task-type schedule fields,
+  stage composition, and the orders-next.json schema. Use when running noodle commands,
+  editing .noodle.toml, writing or updating a skill's schedule field, or authoring new
+  task-type skills.
 ---
 
 # Noodle
 
-Noodle is an open-source AI coding framework. Skills are the only extension point. An LLM schedules work, Go code executes it mechanically. Everything is a file — orders-next.json, mise.json, control.ndjson. No hidden state.
+Skills that run themselves. Write skills with a `schedule:` field describing when they should run. Noodle's scheduler agent reads those descriptions, writes orders, and the loop spawns agents in isolated worktrees to do the work.
 
-## Task-Type Skill Frontmatter
+## How the Loop Works
 
-Skills with a top-level `schedule:` field in their YAML frontmatter are discovered as task types by the scheduling loop. The schedule skill reads `task_types[].schedule` from mise to decide when to schedule each type.
+1. **Brief** — Noodle gathers project state into `.noodle/mise.json` (backlog, active agents, history, capacity, registered skills)
+2. **Schedule** — the scheduler agent reads mise, writes `.noodle/orders-next.json`
+3. **Dispatch** — Noodle promotes orders and spawns agent sessions
+4. **Execute** — each agent runs in its own worktree with the assigned skill
+5. **Merge** — completed work merges back to main
+
+## Skills
+
+A skill is a directory with a `SKILL.md`. The body is the agent's instructions. The frontmatter is metadata.
+
+**General skills** (no `schedule:`) are invoked directly by agents. Examples: `commit`, `debugging`.
+
+**Scheduled skills** (with `schedule:`) run autonomously. The scheduler reads the `schedule:` value as prose and uses judgment to decide when conditions are met.
 
 ```yaml
 ---
-name: my-task-type
-description: What this task type does
-schedule: "When to schedule this task type"
+name: quality
+description: Post-cook quality gate.
+schedule: "Follow-up stage after execute. Cross-provider review preferred."
 ---
 ```
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `schedule` | yes | — | Hint for the schedule skill on when to schedule this type |
+Skills live in `.agents/skills/` by default. Paths in `skills.paths` are searched in order; first match wins.
 
-## Config Reference
+For the full guide on writing skills, orders, and schedule fields, see [references/skill-authoring.md](references/skill-authoring.md).
 
-Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffolds a minimal one on first run.
+## Configuration
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `adapters` | table | {backlog} | Adapter configs keyed by adapter name (e.g. backlog) |
-| `agents.claude.args` | array | [] | Extra CLI arguments for Claude Code |
-| `agents.claude.path` | string | "" | Custom path to Claude Code binary |
-| `agents.codex.args` | array | [] | Extra CLI arguments for Codex CLI |
-| `agents.codex.path` | string | "" | Custom path to Codex CLI binary |
-| `concurrency.max_concurrency` | integer | 4 | Maximum concurrent cook sessions |
-| `mode` | string | "auto" | Run mode governing schedule/dispatch/merge gates: auto (full automation), supervised (human approves merges), or manual (human triggers scheduling/dispatch/merge) |
-| `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
-| `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
-| `runtime.cursor.api_key_env` | string | "" |  |
-| `runtime.cursor.base_url` | string | "" |  |
-| `runtime.cursor.max_concurrent` | integer | 10 |  |
-| `runtime.cursor.repository` | string | "" |  |
-| `runtime.default` | string | "process" | Default runtime kind for spawning cooks (process, sprites, cursor) |
-| `runtime.process.max_concurrent` | integer | 4 |  |
-| `runtime.sprites.base_url` | string | "" |  |
-| `runtime.sprites.git_token_env` | string | "" |  |
-| `runtime.sprites.max_concurrent` | integer | 50 |  |
-| `runtime.sprites.sprite_name` | string | "" |  |
-| `runtime.sprites.token_env` | string | "" |  |
-| `server.enabled` | ptr | <nil> |  |
-| `server.port` | integer | 3000 |  |
-| `skills.paths` | array | [".agents/skills"] | Ordered search paths for skill resolution |
-
-### Minimal config
+Noodle reads `.noodle.toml` at project root. Scaffolded on first `noodle start`. Most projects only need:
 
 ```toml
-mode = "auto"  # run mode: auto | supervised | manual
+mode = "auto"  # auto | supervised | manual
 
 [routing.defaults]
 provider = "claude"
@@ -67,168 +55,66 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 ```
 
-For adapter config, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
+Full config reference: https://poteto.github.io/noodle/reference/configuration
 
-## Mode Contract
+## CLI
 
-The `mode` config field sets the run mode. Three modes are supported:
+All commands accept `--project-dir` (default: current directory, env: `NOODLE_PROJECT_DIR`).
 
-| Mode | Schedule | Dispatch | Auto-merge |
-|------|----------|----------|------------|
-| `auto` | yes | yes | yes |
-| `supervised` | yes | yes | no |
-| `manual` | no | no | no |
-
-Mode transitions are tracked with a monotonic `mode_epoch`. Each transition increments the epoch. In-flight effects are epoch-stamped at creation; stale effects (created under a previous epoch) are cancelled rather than applied.
-
-Key fields in the canonical state:
-
-| Field | Description |
-|-------|-------------|
-| `requested_mode` | Mode requested by the operator |
-| `effective_mode` | Mode currently governing behavior |
-| `mode_epoch` | Monotonic counter; increments on every mode transition |
-
-## Runtime Capabilities
-
-Each runtime declares a capability set that determines polling, steering, sync, and heartbeat behavior:
-
-| Capability | Description |
-|------------|-------------|
-| `steerable` | Session supports live message injection |
-| `polling` | Session status must be polled (no push completion) |
-| `remote_sync` | Session runs remotely and needs branch push/pull |
-| `heartbeat` | Session emits periodic heartbeats for liveness |
-
-Default capability profiles:
-
-| Runtime | steerable | polling | remote_sync | heartbeat |
-|---------|-----------|---------|-------------|-----------|
-| `process` | yes | no | no | no |
-| `sprites` | yes | no | no | no |
-| `cursor` | no | yes | yes | no |
-
-## Canonical State Model
-
-The backend maintains canonical state with the following node hierarchy:
-
-```
-State
-  orders: map[string]OrderNode
-    order_id, status, stages[], created_at, updated_at, metadata
-      StageNode
-        stage_index, status, skill, runtime, attempts[], group
-          AttemptNode
-            attempt_id, session_id, status, started_at, completed_at, exit_code, worktree_name, error
-  mode: RunMode (auto | supervised | manual)
-  schema_version: int
-  last_event_id: string
-```
-
-### Lifecycle enums
-
-**Order:** pending, active, completed, failed, cancelled
-
-**Stage:** pending, dispatching, running, merging, review, completed, failed, skipped, cancelled
-
-**Attempt:** launching, running, completed, failed, cancelled
-
-## Control Commands
-
-| Action | Description |
-|--------|-------------|
-| `pause` | Pause the scheduling loop |
-| `resume` | Resume a paused loop |
-| `drain` | Stop scheduling; let active cooks finish |
-| `skip` | Cancel an order |
-| `kill` | Kill a running cook session |
-| `stop` | Gracefully stop a cook (interrupt if steerable, kill if not) |
-| `stop-all` | Kill all running cooks |
-| `steer` | Inject a message into a running session (requires `steerable` capability) |
-| `merge` | Approve merge for a pending-review order |
-| `reject` | Reject a pending-review order |
-| `request-changes` | Request changes on a pending-review order |
-| `enqueue` | Add an ad-hoc order to the queue |
-| `requeue` | Reset a failed order for retry |
-| `reorder` | Move an order to a new position |
-| `edit-item` | Edit a pending order's prompt, task key, or model |
-| `set-max-concurrency` | Override concurrency limit at runtime |
-| `advance` | Manually advance an order to its next stage |
-| `add-stage` | Append a new stage to an existing order |
-| `park-review` | Park an order for human review with a reason |
-
-## Dispatch and Projection
-
-Orders are dispatched through a planner that scans canonical state:
-
-1. **PlanDispatches** — identifies dispatch candidates and blocked reasons (busy, capacity, failed, no pending stage)
-2. **Two-phase launch** — launch record persisted as `launching` before process start, marked `launched` after session ID is known
-3. **RouteCompletion** — applies attempt completion, triggers retry or failure routing
-4. **AdvanceOrder** — marks post-merge progress and detects order completion
-
-Projection writes external views:
-
-| File | Content |
-|------|---------|
-| `orders.json` | Projected orders with stage status |
-| `state.json` | Schema version marker |
-| Snapshot API | Full projected state with mode, epoch, orders |
-| WebSocket | Incremental deltas between projection versions |
-
-## CLI Commands
+### Core
 
 | Command | Description |
 |---------|-------------|
-| `noodle start` | Run the scheduling loop |
-| `noodle status` | Show compact runtime status |
+| `noodle start` | Start the noodle loop |
+| `noodle start --once` | Run one scheduling cycle and exit |
+| `noodle status` | Show runtime status (active agents, queue depth, loop state) |
+| `noodle reset` | Clear all runtime state (refuses if loop is running) |
+
+### Skills & Schemas
+
+| Command | Description |
+|---------|-------------|
 | `noodle skills` | List resolved skills |
 | `noodle skills list` | List all resolved skills |
-| `noodle schema` | Print generated schema docs for Noodle runtime contracts |
-| `noodle schema list` | List available schema targets |
-| `noodle worktree` | Manage linked git worktrees |
-| `noodle worktree create` | Create a new linked worktree |
-| `noodle worktree exec` | Run command inside worktree (CWD-safe) |
-| `noodle worktree merge` | Merge a worktree branch into a target branch |
-| `noodle worktree cleanup` | Remove a worktree without merging |
+| `noodle schema <target>` | Print schema docs for a target |
+| `noodle schema list` | List available schema targets (`mise`, `orders`, `status`) |
+
+### Worktrees
+
+| Command | Description |
+|---------|-------------|
+| `noodle worktree create <name>` | Create a new linked worktree |
+| `noodle worktree create <name> --from <ref>` | Create from a specific branch or commit |
+| `noodle worktree exec <name> <command...>` | Run a command inside a worktree (CWD-safe) |
+| `noodle worktree merge <name>` | Merge a worktree branch into integration branch |
+| `noodle worktree merge <name> --into <branch>` | Merge into a specific target branch |
 | `noodle worktree list` | List all worktrees with merge status |
 | `noodle worktree prune` | Remove merged and patch-equivalent worktrees |
-| `noodle worktree hook` | Run worktree session hook |
-| `noodle event` | Manage loop events |
-| `noodle event emit` | Emit an external event |
-| `noodle reset` | Clear all runtime state |
+| `noodle worktree cleanup <name>` | Remove a worktree without merging |
+| `noodle worktree cleanup <name> --force` | Remove even with unmerged commits |
+| `noodle worktree hook` | Run worktree session hook (used internally) |
 
-### Flags
+### Events
 
-`noodle start`:
-- `--once` (bool): Run one scheduling cycle and exit
+| Command | Description |
+|---------|-------------|
+| `noodle event emit <type>` | Emit an external event into the loop |
+| `noodle event emit <type> --payload <json>` | Emit with a JSON payload |
+| `noodle event emit <type> --session <id>` | Emit to a specific session's event log |
 
-`noodle worktree create`:
-- `--from` (string): Branch or commit to base the new worktree on (default: HEAD)
-
-`noodle worktree merge`:
-- `--into` (string): Target branch to merge into (default: integration branch)
-
-`noodle worktree cleanup`:
-- `--force` (bool): Remove even when unmerged commits exist
-
-`noodle event emit`:
-- `--payload` (string): Event payload as JSON
-
-
-## Skill Management
-
-Skills live in `.agents/skills/` by default. Paths in `skills.paths` are searched in order; first match wins. Install a skill by copying its directory to your skill path.
+Full CLI reference: https://poteto.github.io/noodle/reference/cli
 
 ## Troubleshooting
 
-Run `noodle debug` to dump the full runtime state. Common issues:
-
-1. **"fatal config diagnostics prevent start"** — Run `noodle debug`, fix fields in `.noodle.toml`.
-3. **Missing adapter scripts** — Create scripts or update paths in config.
-4. **Stale worktrees** — `noodle worktree list`, then `noodle worktree prune`.
+1. **"fatal config diagnostics prevent start"** — Check `.noodle.toml` against `noodle schema`.
+2. **Missing adapter scripts** — Create scripts or update paths in config.
+3. **Stale worktrees** — `noodle worktree list`, then `noodle worktree prune`.
 
 ## References
 
-- [references/config-schema.md](references/config-schema.md) — config validation
-- [references/adapters.md](references/adapters.md) — adapter setup, script writing, provider examples
-- [references/hooks.md](references/hooks.md) — brain injection hook, settings.json setup
+- [references/skill-authoring.md](references/skill-authoring.md) — writing skills: pipeline, orders schema, schedule fields, stage composition, full examples
+- [references/configuration.md](references/configuration.md) — full .noodle.toml config reference
+- https://poteto.github.io/noodle/concepts/adapters — adapter setup, script contracts, provider examples
+- https://poteto.github.io/noodle/concepts/scheduling — how the loop schedules and dispatches work
+- https://poteto.github.io/noodle/concepts/skills — skill discovery, composition, scheduled vs general
+- https://poteto.github.io/noodle/concepts/runtimes — process, sprites, and runtime routing
