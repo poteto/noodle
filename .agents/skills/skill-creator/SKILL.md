@@ -282,6 +282,7 @@ If an `init_skill.py` script exists in the skill-creator's `scripts/` directory,
 
 - **Read brain at runtime.** Skills that reference brain principles should `Read` the files at runtime so they pick up changes automatically. Don't inline principle text in the skill body.
 - **Don't use plan mode for plan-only skills.** `EnterPlanMode` restricts tools to read-only (can't write plan files) and `ExitPlanMode` triggers implementation. For skills that produce a plan as their deliverable, skip plan mode — just write plan files directly.
+- **Emit `stage_yield` when the deliverable is complete.** Skills that produce a deliverable (plans, code, reviews) and run as Noodle pipeline stages must emit a `stage_yield` event after their work is done: `noodle event emit --session $NOODLE_SESSION_ID stage_yield --payload '{"message": "..."}'`. This decouples completion from process exit — without it, stages only complete on clean exit, and interrupted agents lose their work to the pipeline even if the deliverable was already produced.
 
 The skill directory may contain:
 

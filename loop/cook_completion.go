@@ -206,7 +206,7 @@ func (l *Loop) completeWithoutMerge(ctx context.Context, cook *cookHandle, msg *
 }
 
 // handleStageFailure handles a cook that exited with a non-success status.
-func (l *Loop) handleStageFailure(_ context.Context, cook *cookHandle, resultStatus StageResultStatus, status string) error {
+func (l *Loop) handleStageFailure(ctx context.Context, cook *cookHandle, resultStatus StageResultStatus, status string) error {
 	// Schedule cooks may write orders-next.json before exiting non-cleanly.
 	if isScheduleStage(cook.stage) {
 		if _, statErr := os.Stat(l.deps.OrdersNextFile); statErr == nil {
@@ -219,6 +219,14 @@ func (l *Loop) handleStageFailure(_ context.Context, cook *cookHandle, resultSta
 				"session", cook.session.ID())
 			return l.removeOrder(cook.orderID)
 		}
+	}
+
+	// Check for stage_yield — agent declared its deliverable complete before exit.
+	if yield := l.readStageYield(cook.session.ID()); yield != nil {
+		l.logger.Info("stage_yield overrides non-clean exit",
+			"order", cook.orderID, "session", cook.session.ID(), "exit_status", status)
+		l.forwardToScheduler(cook, "stage_yield", yield.Message, nil)
+		return l.handleCompletion(ctx, cook, StageResultCompleted, "completed")
 	}
 
 	reason := "cook exited with status " + status
@@ -386,6 +394,24 @@ func (l *Loop) readStageMessage(sessionID string) *event.StageMessagePayload {
 	}
 	last := events[len(events)-1]
 	var payload event.StageMessagePayload
+	if err := json.Unmarshal(last.Payload, &payload); err != nil {
+		return nil
+	}
+	return &payload
+}
+
+// readStageYield reads the most recent stage_yield event from a session's
+// event log. Returns nil if no stage_yield was emitted.
+func (l *Loop) readStageYield(sessionID string) *event.StageYieldPayload {
+	reader := event.NewEventReader(l.runtimeDir)
+	events, err := reader.ReadSession(sessionID, event.EventFilter{
+		Types: map[event.EventType]struct{}{event.EventStageYield: {}},
+	})
+	if err != nil || len(events) == 0 {
+		return nil
+	}
+	last := events[len(events)-1]
+	var payload event.StageYieldPayload
 	if err := json.Unmarshal(last.Payload, &payload); err != nil {
 		return nil
 	}

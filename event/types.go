@@ -24,6 +24,9 @@ const (
 	// Stage message events (emitted by agents via CLI).
 	EventStageMessage EventType = "stage_message"
 
+	// Stage yield events (emitted by agents to declare deliverable complete).
+	EventStageYield EventType = "stage_yield"
+
 	// Ticket protocol events.
 	EventTicketClaim    EventType = "ticket_claim"
 	EventTicketProgress EventType = "ticket_progress"
@@ -53,6 +56,13 @@ func (p StageMessagePayload) IsBlocking() bool {
 		return true
 	}
 	return *p.Blocking
+}
+
+// StageYieldPayload is the payload for stage_yield events.
+// Agents emit this when their deliverable is complete, decoupling
+// result delivery from process exit.
+type StageYieldPayload struct {
+	Message string `json:"message"`
 }
 
 // TicketTargetType identifies what a ticket claims.

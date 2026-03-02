@@ -113,6 +113,16 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Scope: package or are
 
 One commit per logical change.
 
+### 6. Yield
+
+After all changes are committed and verified, emit `stage_yield` to signal the deliverable is complete:
+
+```bash
+noodle event emit --session $NOODLE_SESSION_ID stage_yield --payload '{"message": "Implemented: <brief summary>"}'
+```
+
+This tells the Noodle backend the stage's work is done, even if the agent process hasn't exited yet. Without this, the stage only completes on clean process exit — if the agent is interrupted after committing, the work is lost to the pipeline.
+
 ## Scope Discipline
 
 - Only change what's in scope. No defensive code, backwards-compat shims, or speculative features.

@@ -15,7 +15,7 @@ Produce implementation plans grounded in project principles. Write plans to `bra
 When this skill runs in a non-interactive Noodle execution session (for example `Cook`, `Oops`, or `Repair`):
 
 - **Skip Step 2** (AskUserQuestion) — the scope is fully defined in the initial prompt.
-- **Skip Step 8's pause** — write the plan, commit it, and end the session. Do not wait for human review.
+- **Skip Step 8's pause** — write the plan, commit it, emit `stage_yield` (see Step 8), and end the session. Do not wait for human review.
 - **Step 4b** (find-skills) — install skills autonomously without confirmation.
 
 All other steps proceed normally.
@@ -206,8 +206,16 @@ Do NOT edit `brain/index.md` — the auto-index hook maintains it automatically.
 
 When a plan is fully done, move its directory from `brain/plans/` to `brain/archive/plans/` and update the link in `brain/plans/index.md` to point to the archive path. Mark the corresponding todo as done and move it to `brain/archive/todos.md` (see the `todo` skill).
 
-## Step 8 — Present to User
+## Step 8 — Present and Yield
 
 Summarize the plan: list the phases, scope boundaries, applicable skills, and verification approach. Ask the user to review the plan files in `brain/plans/`.
+
+**Emit `stage_yield`** to signal the deliverable is complete:
+
+```bash
+noodle event emit --session $NOODLE_SESSION_ID stage_yield --payload '{"message": "Plan written to brain/plans/NN-slug-name/overview.md"}'
+```
+
+This tells the Noodle backend the stage's work is done, even if the agent process hasn't exited yet. Without this, the stage only completes on clean process exit.
 
 **Stop here.** Do not begin implementation. The user decides when and how to execute the plan.
