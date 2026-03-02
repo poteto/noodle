@@ -38,7 +38,7 @@ Backlog items always have `id` and `title`. Other fields are adapter-defined and
 
 **Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Schedule an order for each remaining unfinished phase (each unchecked `- [ ]` item), in order. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies. The loop executes orders sequentially, so later phases naturally wait for earlier ones to complete.
 
-**Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a general order with `task_key: "execute"` and use `extra_prompt` to instruct the session to invoke `/plan` first — e.g., `"This item needs a plan before implementation. Use /plan to break it down, then execute the first phase."` The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally.
+**Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a plan-first order: `execute` stage with `extra_prompt` instructing the session to invoke `/plan`, followed by an `adversarial-review` stage to challenge the plan. No quality or reflect stages — planning output is a design document, not code. Example: `"This item needs a plan before implementation. Use /plan to break it down."` The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally with the standard execute → quality → reflect pipeline.
 
 **Standalone orders:** Orders can have arbitrary IDs — they don't need to correspond to a backlog item. When a standalone order completes, the `backlog done` adapter call is a no-op (no matching item to mark done). Use standalone orders for shared infrastructure, maintenance tasks, or cross-cutting work that serves multiple backlog items.
 
@@ -135,84 +135,9 @@ Use cases:
 
 Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty when there's nothing extra to say — don't fill it for the sake of filling it. The field lives on each stage, not at the order level.
 
-### Example: Multi-stage order
+### Examples
 
-```json
-{
-  "orders": [
-    {
-      "id": "49",
-      "title": "implement work orders redesign",
-      "plan": ["plans/49-work-orders-redesign/overview"],
-      "rationale": "foundation-before-feature: core infra needed by all other work",
-      "status": "active",
-      "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
-        {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    }
-  ]
-}
-```
-
-### Example: Order with debate stage
-
-```json
-{
-  "orders": [
-    {
-      "id": "52",
-      "title": "design cache invalidation strategy",
-      "rationale": "unresolved design question needs structured debate before implementation",
-      "status": "active",
-      "stages": [
-        {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
-        {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
-        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    }
-  ]
-}
-```
-
-### Example: Shared infrastructure order
-
-```json
-{
-  "orders": [
-    {
-      "id": "infra-event-system",
-      "title": "shared event types used by subagent-tracking and diffs-integration",
-      "rationale": "foundation-before-feature: both plan 84 and plan 86 depend on shared event types",
-      "status": "active",
-      "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
-         "extra_prompt": "Create shared event types in internal/event/ that both subagent-tracking and diffs-integration will consume. Keep scope narrow — only the shared interfaces, not plan-specific logic."},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    }
-  ]
-}
-```
-
-### Example: Single-stage order
-
-```json
-{
-  "orders": [
-    {
-      "id": "meditate-1",
-      "title": "audit brain vault after recent reflects",
-      "rationale": "3 reflects accumulated, time to consolidate",
-      "status": "active",
-      "stages": [
-        {"task_key": "meditate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    }
-  ]
-}
-```
+See [references/examples.md](references/examples.md) for order JSON examples: multi-stage, plan-first, debate, shared infrastructure, single-stage.
 
 ## Principles
 

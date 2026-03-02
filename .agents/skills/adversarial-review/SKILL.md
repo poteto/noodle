@@ -4,7 +4,7 @@ description: >-
   Adversarial code review using the opposite model. Spawns 1–3 reviewers on the
   opposing model (Claude spawns Codex, Codex spawns Claude) to challenge work from
   distinct critical lenses. Triggers: "adversarial review".
-schedule: "After cook sessions that produce large diffs (200+ lines) or implement plan phases"
+schedule: "After cook sessions that produce large diffs (200+ lines), implement plan phases, or complete a planning session"
 ---
 
 # Adversarial Review
