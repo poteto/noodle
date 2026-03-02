@@ -41,6 +41,7 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 
 ### `generate/skill_noodle.go`
 - Update field description key from `concurrency.max_cooks` to `concurrency.max_concurrency`
+- Update control command table entry from `set-max-cooks` to `set-max-concurrency`
 
 ### `generate/skill_noodle_test.go`
 - Update generated field-key assertions from `concurrency.max_cooks` to `concurrency.max_concurrency`
@@ -50,6 +51,13 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 
 ### `loop/control.go` + `loop/control_orders.go`
 - Rename any `max_cooks` references in control action routing and error messages
+- Rename control action surface `set-max-cooks` → `set-max-concurrency`
+
+### `server/ws_hub.go`
+- Update control action allowlist from `set-max-cooks` to `set-max-concurrency`
+
+### `ui/src/client/types.ts`
+- Update control action union from `set-max-cooks` to `set-max-concurrency`
 
 ### `internal/statusfile/statusfile.go`
 - Rename `max_cooks` in status JSON output
@@ -86,6 +94,7 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 
 ### `.agents/skills/noodle/SKILL.md`
 - Rename `concurrency.max_cooks` entry to `concurrency.max_concurrency`
+- Rename control command docs from `set-max-cooks` to `set-max-concurrency`
 
 ### Test fixtures
 - Update any `max_cooks` in `loop/testdata/*/.noodle.toml`
@@ -105,6 +114,7 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 ### Static
 - `pnpm check` passes (full suite)
 - No references to `max_cooks` or `MaxCooks` remain anywhere (grep the entire repo, including UI types)
+- No references to `set-max-cooks` remain in runtime/UI/docs/generator surfaces
 
 ### Runtime
 - `go test ./...` — all tests pass with renamed field
