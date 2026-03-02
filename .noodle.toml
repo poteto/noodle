@@ -1,13 +1,3 @@
-# Autonomy controls human oversight in the loop.
-# "auto" = auto-merge on success, per-skill permissions.merge respected
-# "approve" = human must confirm every merge
-autonomy = "approve"
-
-[schedule]
-# "after-each" | "after-n" | "manual"
-run = "after-each"
-model = "claude-opus-4-6"
-
 [routing.defaults]
 provider = "claude"
 model = "claude-opus-4-6"
@@ -35,11 +25,6 @@ sync = "go run adapters/main.go backlog-sync"
 add = "go run adapters/main.go backlog-add"
 done = "go run adapters/main.go backlog-done"
 edit = "go run adapters/main.go backlog-edit"
-
-[monitor]
-stuck_threshold = "120s"
-ticket_stale = "30m"
-poll_interval = "5s"
 
 [runtime]
 # "process" | "sprites"
