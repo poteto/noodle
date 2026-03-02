@@ -1,8 +1,8 @@
 ---
-priority: [97, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
+priority: [97, 109, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
 # Launch-blocking:
-#   , relax backlog schema — simplify adapters, less rigid
 #   97 adapter schema validator — surface broken adapters
+#   109 stage yield — decouple deliverable completion from process exit
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 # Post-launch:
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
@@ -19,7 +19,7 @@ priority: [97, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 109 -->
+<!-- next-id: 110 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -43,6 +43,8 @@ priority: [97, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
 
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
 
+
+109. [ ] Stage yield — add a `stage_yield` event type that agents emit (via `noodle event emit`) when their deliverable is complete, decoupling result delivery from process exit. Backend: new `EventStageYield` in `event/types.go`, loop reads `stage_yield` on any exit (including kill/cancel) and overrides to completed. The existing `noodle event emit` command already supports arbitrary event types — no new CLI command needed. Skills: plan skill (and any deliverable-producing skill) emits `stage_yield` as its final step. Docs: skill authoring guide and skill-creator skill must document `stage_yield` as the standard completion protocol — without it, stages only complete on clean exit, which is fragile for long-running or interruptible agents.
 
 95. [ ] Backend should exclusively own `orders.json` — prevent agents from writing to it directly. The loop promotes `orders-next.json` into `orders.json`, and this should be enforced at the backend level (e.g. file permissions, validation gate) rather than relying on skill instructions.
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
