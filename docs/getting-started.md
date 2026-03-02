@@ -1,6 +1,6 @@
 # Getting Started
 
-Noodle orchestrates AI coding agents using skills. You write skills, Noodle schedules and runs them. Read the [Vision](/vision) first if you haven't. This page gets you from zero to a running noodle loop.
+Noodle orchestrates AI coding agents using skills. You write skills, Noodle schedules and runs them. Read the [Introduction](/introduction) first if you haven't. This page gets you from zero to a running noodle loop.
 
 ## Install
 
@@ -31,7 +31,7 @@ You also need **Git** and at least one agent CLI: [Claude Code](https://docs.ant
 
 ## Key terms
 
-See the [Glossary](/glossary) for the full list.
+See the [Glossary](/reference/glossary) for the full list.
 
 - **Skill**: a markdown file that teaches an agent how to do something. Skills are all you need to extend Noodle.
 - **Scheduler**: the agent that reads the backlog and writes orders.
@@ -158,10 +158,10 @@ Run `noodle status` to see the current noodle loop state from the terminal.
 
 ## Next steps
 
-- [Vision](/vision): design philosophy behind skill-based orchestration
+- [FAQ](/reference/faq): common questions about Noodle
 - [Skills](/concepts/skills): how to write and compose skills
 - [Scheduling](/concepts/scheduling): how the scheduler decides what to do
 - [Brain](/concepts/brain): optional persistent memory vault
-- [Glossary](/glossary): quick reference for Noodle terminology
+- [Glossary](/reference/glossary): quick reference for Noodle terminology
 - [Configuration](/reference/configuration): all config options
 - [Cookbook](/cookbook/): patterns and recipes to copy

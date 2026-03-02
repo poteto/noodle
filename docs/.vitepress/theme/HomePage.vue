@@ -67,7 +67,7 @@ import { withBase } from "vitepress";
           </p>
 
           <div class="hero-cta cta-row">
-            <a :href="withBase('/getting-started')" class="btn-primary">
+            <a :href="withBase('/introduction')" class="btn-primary">
               Get Started
               <svg
                 width="14"
@@ -106,8 +106,8 @@ import { withBase } from "vitepress";
               </svg>
               View on GitHub
             </a>
-            <a :href="withBase('/vision')" class="btn-secondary">
-              Read the Vision
+            <a :href="withBase('/reference/faq')" class="btn-secondary">
+              FAQ
             </a>
           </div>
         </section>

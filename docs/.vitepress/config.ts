@@ -26,8 +26,8 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: "Vision",
-        link: "/vision",
+        text: "Introduction",
+        link: "/introduction",
       },
       {
         text: "Getting Started",
@@ -50,7 +50,8 @@ export default defineConfig({
         items: [
           { text: "CLI", link: "/reference/cli" },
           { text: "Configuration", link: "/reference/configuration" },
-          { text: "Glossary", link: "/glossary" },
+          { text: "Glossary", link: "/reference/glossary" },
+          { text: "FAQ", link: "/reference/faq" },
         ],
       },
       {

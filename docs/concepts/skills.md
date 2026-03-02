@@ -2,7 +2,7 @@
 
 Skills are all you need to extend Noodle. Every behavior an agent can perform is a skill: scheduling work, implementing tasks, reviewing code, reflecting on mistakes.
 
-For why this matters, see [Vision](/vision).
+For why this matters, see the [Introduction](/introduction).
 
 ## The `schedule:` field
 
