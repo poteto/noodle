@@ -92,3 +92,7 @@ The scheduling agent can override this per stage by setting the `runtime` field 
 ```
 
 Process is always available. Sprites and cursor require valid credentials in their configured environment variables. Noodle checks for these at startup and only advertises runtimes that have working tokens.
+
+## Custom Runtimes
+
+Custom runtime plugins are coming. You'll be able to add your own VM or execution environment by implementing Noodle's runtime interface. If you run your own infrastructure and the built-in runtimes don't fit, this will let you plug it in directly.

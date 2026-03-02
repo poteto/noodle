@@ -38,10 +38,10 @@ export default defineConfig({
         items: [
           { text: "Skills", link: "/concepts/skills" },
           { text: "Scheduling", link: "/concepts/scheduling" },
-          { text: "Brain", link: "/concepts/brain" },
-          { text: "Modes", link: "/concepts/modes" },
           { text: "Adapters", link: "/concepts/adapters" },
+          { text: "Modes", link: "/concepts/modes" },
           { text: "Runtimes", link: "/concepts/runtimes" },
+          { text: "Self-Learning (Optional)", link: "/concepts/brain" },
         ],
       },
       {

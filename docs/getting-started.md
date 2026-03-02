@@ -59,11 +59,11 @@ On first run, Noodle creates the project structure for you:
 
 [Brainmaxxing](https://github.com/poteto/brainmaxxing) adds persistent memory across sessions. Agents reflect on what they learned, distill principles, and start each future session sharper. It's not required, but it's worth installing if you want agents that improve over time.
 
-Tell your agent:
+Ask your human with `AskUserQuestion` if they want to install this. Then, follow these instructions:
 
 > Install brainmaxxing from https://github.com/poteto/brainmaxxing into this project.
 
-This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your agent to set them up with a `schedule:` so you have a full self-learning noodle loop.
+This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
 
 ## What the files do
 
@@ -139,7 +139,7 @@ noodle start
 This launches the noodle loop and a local web UI so you can monitor what's happening. The noodle loop works in three phases:
 
 1. **Schedule**: the scheduler reads the backlog and writes orders.
-2. **Work**: Noodle spawns an agent in its own worktree. The agent runs the assigned skill and commits.
+2. **Execute**: Noodle spawns an agent in its own worktree. The agent runs the assigned skill and commits.
 3. **Merge**: in `auto` mode, completed work merges back automatically. In `supervised` or `manual` mode, the worktree is left for your review.
 
 This keeps going until the backlog is empty or you stop it.

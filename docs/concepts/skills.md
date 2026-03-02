@@ -82,4 +82,4 @@ This means you can override any built-in skill. Put your replacement in a higher
 
 Skills compose naturally. You can call skills from other skills. For example, if you want your `review` skill to use the `debugging` skill, you can ask your agent to include it. `Skill(name)` seems to work best as a way to reliably get skills invoked.
 
-If you want skills to be scheduled in a certain order, you specify that in the `schedule` skill. For example, you can say that `review` skill should always follow `execute`. See [Scheduling](/concepts/scheduling) for more details and tips.
+If you want skills to be scheduled in a certain order, you specify that in the `schedule` skill. For example, you can say that `review` skill should always follow `execute`. See [Scheduling > Stages](/concepts/scheduling#composition-and-concurrency) for more details and tips.

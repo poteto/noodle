@@ -61,7 +61,7 @@ Noodle automatically discovers every skill with a `schedule:` field and feeds th
 
 ## Run anywhere
 
-Noodle can orchestrate agents locally or in the cloud. Run them as child processes on your machine, or spin up twenty in parallel on cloud VMs while your laptop sits idle. The scheduling agent picks the runtime for each task and matches the model to the work. A powerful model for architecture decisions, a fast one for straightforward implementation. Agents work on branches, push their changes, and Noodle merges them back.
+Noodle can orchestrate agents locally or in the cloud. Run them as child processes on your machine, or spin up twenty in parallel on cloud VMs while your laptop sits idle. The scheduling agent picks the runtime for each task and matches the model to the work. A powerful model for architecture decisions, a fast one for straightforward implementation. Agents work on branches, push their changes, and Noodle merges them back. Custom runtime plugins are on the roadmap, so you'll be able to bring your own infrastructure too.
 
 ## Who is this for
 
