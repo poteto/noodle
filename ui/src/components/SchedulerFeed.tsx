@@ -15,9 +15,11 @@ export function SchedulerFeed() {
   const [input, setInput] = useState("");
 
   const schedulerSession = findSchedulerSession(snapshot.sessions);
-  const isSchedulerRunning = snapshot.active.some(
-    (s) => s.task_key?.toLowerCase().trim() === "schedule",
-  );
+  const isSchedulerRunning =
+    snapshot.loop_state === "running" &&
+    snapshot.active.some(
+      (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
+    );
   const initialEvents = schedulerSession?.id
     ? snapshot.events_by_session[schedulerSession.id]
     : undefined;

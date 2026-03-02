@@ -40,8 +40,8 @@ function normalizeOrder(order: Snapshot["orders"][number]): Snapshot["orders"][n
   };
 }
 
-export async function fetchSnapshot(): Promise<Snapshot> {
-  const res = await fetch("/api/snapshot");
+export async function fetchSnapshot(signal?: AbortSignal): Promise<Snapshot> {
+  const res = await fetch("/api/snapshot", { signal });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`fetchSnapshot: ${res.status}${body ? ` — ${body.trim()}` : ""}`);
@@ -49,14 +49,18 @@ export async function fetchSnapshot(): Promise<Snapshot> {
   return normalizeSnapshot(await jsonBody<Snapshot>(res));
 }
 
-export async function fetchSessionEvents(sessionId: string, after?: string): Promise<EventLine[]> {
+export async function fetchSessionEvents(
+  sessionId: string,
+  after?: string,
+  signal?: AbortSignal,
+): Promise<EventLine[]> {
   const params = new URLSearchParams();
   if (after) {
     params.set("after", after);
   }
   const qs = params.toString();
   const url = `/api/sessions/${encodeURIComponent(sessionId)}/events${qs ? `?${qs}` : ""}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`fetchSessionEvents: ${res.status}${body ? ` — ${body.trim()}` : ""}`);

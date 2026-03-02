@@ -11,6 +11,7 @@ import {
 } from "./ws";
 import type { WSStatus } from "./ws";
 import { fetchSnapshot, fetchSessionEvents, sendControl, fetchReviewDiff } from "./api";
+import { chooseNewerSnapshot } from "./snapshot-freshness";
 import type {
   Snapshot,
   EventLine,
@@ -29,8 +30,14 @@ export function useSnapshot() {
 
   return useQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
-    queryFn: fetchSnapshot,
+    queryFn: async ({ signal }) => {
+      const incoming = await fetchSnapshot(signal);
+      const current = queryClient.getQueryData<Snapshot>(SNAPSHOT_KEY);
+      return chooseNewerSnapshot(current, incoming);
+    },
     // WS handles updates; only fetch once for initial seed.
+    staleTime: Infinity,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -45,7 +52,13 @@ export function useSuspenseSnapshot() {
 
   return useSuspenseQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
-    queryFn: fetchSnapshot,
+    queryFn: async ({ signal }) => {
+      const incoming = await fetchSnapshot(signal);
+      const current = queryClient.getQueryData<Snapshot>(SNAPSHOT_KEY);
+      return chooseNewerSnapshot(current, incoming);
+    },
+    staleTime: Infinity,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -62,7 +75,7 @@ export function useSessionEvents(sessionId: string | undefined, initialData?: Ev
 
   return useQuery<EventLine[]>({
     queryKey: ["sessionEvents", sessionId],
-    queryFn: () => (sessionId ? fetchSessionEvents(sessionId) : []),
+    queryFn: ({ signal }) => (sessionId ? fetchSessionEvents(sessionId, undefined, signal) : []),
     enabled: Boolean(sessionId),
     initialData,
     staleTime: Infinity,
@@ -129,7 +142,12 @@ export function useSendControl() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SNAPSHOT_KEY });
+      // When WS is connected, snapshot pushes are authoritative and arrive
+      // after control processing. Invalidating here can race and overwrite a
+      // newer WS snapshot with an older HTTP response.
+      if (getWSStatus() !== "connected") {
+        queryClient.invalidateQueries({ queryKey: SNAPSHOT_KEY });
+      }
     },
   });
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SchedulerFeed } from "./SchedulerFeed";
-import { buildSnapshot } from "../test-utils";
+import { buildSession, buildSnapshot } from "../test-utils";
 import type { Snapshot } from "~/client";
 
 const mockSend = vi.fn();
@@ -81,5 +81,22 @@ describe("SchedulerFeed", () => {
     const user = userEvent.setup();
     await user.click(screen.getByText("Send"));
     expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("shows idle prompt when loop is idle even if active list still includes schedule", () => {
+    const session = buildSession({
+      id: "scheduler-1",
+      loop_state: "idle",
+      task_key: "schedule",
+    });
+    mockSnapshot = buildSnapshot({
+      loop_state: "idle",
+      sessions: [session],
+      active: [session],
+    });
+
+    render(<SchedulerFeed />);
+    expect(screen.getByText("Talk to the scheduler...")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
   });
 });

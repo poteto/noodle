@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Snapshot, EventLine, ControlCommand, ControlAck } from "./types";
 import { normalizeSnapshot } from "./api";
+import { chooseNewerSnapshot } from "./snapshot-freshness";
 
 const SNAPSHOT_KEY = ["snapshot"] as const;
 const RECONNECT_DELAY_MS = 2000;
@@ -97,7 +98,13 @@ function handleMessage(event: MessageEvent) {
 
   switch (msg.type) {
     case "snapshot": {
-      queryClientRef?.setQueryData(SNAPSHOT_KEY, normalizeSnapshot(msg.data));
+      // Prevent an older HTTP refetch result from overwriting this newer WS
+      // snapshot (race between control-triggered invalidate and WS push).
+      void queryClientRef?.cancelQueries({ queryKey: SNAPSHOT_KEY });
+      const incoming = normalizeSnapshot(msg.data);
+      queryClientRef?.setQueryData<Snapshot>(SNAPSHOT_KEY, (current) =>
+        chooseNewerSnapshot(current, incoming),
+      );
       break;
     }
     case "backfill": {
