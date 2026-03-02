@@ -32,7 +32,7 @@ function ConnectionDot() {
   } else if (status === "connecting") {
     cls = "thinking";
   }
-  return <div className={`status-dot ${cls}`} />;
+  return <div className={`status-dot ${cls}`} role="status" aria-label={`Connection: ${status}`} />;
 }
 
 function NavLink({
@@ -47,7 +47,7 @@ function NavLink({
   icon: React.ReactNode;
 }) {
   return (
-    <Link to={to} className={`nav-item ${active ? "active" : ""}`}>
+    <Link to={to} className={`nav-item ${active ? "active" : ""}`} aria-current={active ? "page" : undefined}>
       {icon}
       {label}
     </Link>
@@ -142,7 +142,7 @@ export function Sidebar() {
         </span>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="Main navigation">
         <NavLink
           to="/dashboard"
           label="Dashboard"
@@ -214,6 +214,7 @@ export function Sidebar() {
                 type="button"
                 className={`tree-order ${orderActive ? "active" : ""} ${hasActiveStage ? "has-active-stage" : ""}`}
                 onClick={() => toggleOrder(order.id)}
+                aria-expanded={isExpanded}
               >
                 <ChevronRight className={`tree-chevron ${isExpanded ? "open" : ""}`} size={14} />
                 <OverflowTooltip className="tree-label" text={order.title || order.id} />

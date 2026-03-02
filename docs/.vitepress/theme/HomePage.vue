@@ -860,4 +860,44 @@ import { withBase } from "vitepress";
   animation: fadeUp 0.6s 0.65s ease forwards;
   opacity: 0;
 }
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-line-1,
+  .hero-line-2,
+  .hero-line-3,
+  .hero-sub,
+  .hero-cta,
+  .cards-row {
+    animation: none;
+    opacity: 1;
+  }
+
+  .cursor::after {
+    animation: none;
+  }
+
+  .feature-card,
+  .feature-card::before {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Focus-visible
+   ============================================================ */
+
+.brand:focus-visible,
+.nav-link:focus-visible,
+.github-link:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.card-link:focus-visible,
+.quickstart-link:focus-visible {
+  outline: 2px solid #facc15;
+  outline-offset: 2px;
+}
 </style>

@@ -22,7 +22,7 @@ export function ToolGroup({ group }: { group: ToolGroupData }) {
 
   return (
     <div className="tool-group">
-      <button type="button" className="tool-group-summary" onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="tool-group-summary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <span className={`msg-badge ${badgeCls}`}>{group.label}</span>
         <span className="tool-group-label">
           {group.label} (x{group.events.length})

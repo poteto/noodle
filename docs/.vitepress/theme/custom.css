@@ -598,3 +598,74 @@ html {
   background: var(--noodle-surface-hover);
   border-color: var(--noodle-border-active);
 }
+
+
+/* ============================================================
+   Focus-visible
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--noodle-accent);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--noodle-accent);
+  outline-offset: 1px;
+}
+
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+
+/* ============================================================
+   Copy button feedback
+   ============================================================ */
+
+.vp-doc div[class*="language-"] button.copy.copied {
+  border-color: var(--noodle-accent) !important;
+  opacity: 1;
+}
+
+
+/* ============================================================
+   Heading anchor hover
+   ============================================================ */
+
+.vp-doc .header-anchor {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.vp-doc h1:hover .header-anchor,
+.vp-doc h2:hover .header-anchor,
+.vp-doc h3:hover .header-anchor,
+.vp-doc h4:hover .header-anchor,
+.vp-doc h5:hover .header-anchor,
+.vp-doc h6:hover .header-anchor {
+  opacity: 1;
+}
+
+.vp-doc .header-anchor:focus-visible {
+  opacity: 1;
+}

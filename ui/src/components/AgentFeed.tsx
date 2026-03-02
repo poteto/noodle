@@ -156,7 +156,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
         <div className="input-label">
           {isSessionThinking ? (
             <>
-              <span className="thinking-dots">
+              <span className="thinking-dots" role="status" aria-label="Agent is thinking">
                 <span className="thinking-dot" />
                 <span className="thinking-dot" />
                 <span className="thinking-dot" />
@@ -179,6 +179,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
               onKeyDown={handleKeyDown}
               placeholder="Enter instructions or critique..."
               rows={1}
+              aria-label="Agent instructions"
             />
             <div className="input-hint">
               <kbd>Enter</kbd>

@@ -126,7 +126,7 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
             onClick={handleRequestChanges}
             disabled={isPending}
           >
-            {showFeedback ? "Send" : "Request Changes"}
+            {isPending ? "Sending…" : showFeedback ? "Send" : "Request Changes"}
           </button>
           <button
             type="button"
@@ -134,7 +134,7 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
             onClick={handleReject}
             disabled={isPending}
           >
-            Dismiss Order
+            {isPending ? "Dismissing…" : "Dismiss Order"}
           </button>
         </div>
       </div>
@@ -175,11 +175,13 @@ export function ReviewList() {
   return (
     <div className="grid grid-cols-[1fr_300px] h-full overflow-hidden">
       {reviews.length > 1 && (
-        <div className="review-tab-bar">
+        <div className="review-tab-bar" role="tablist">
           {reviews.map((r, i) => (
             <button
               key={r.order_id}
               type="button"
+              role="tab"
+              aria-selected={i === selectedIdx}
               className={`review-tab ${i === selectedIdx ? "active" : ""}`}
               onClick={() => setSelectedIdx(i)}
             >

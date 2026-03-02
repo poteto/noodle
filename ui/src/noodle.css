@@ -1866,6 +1866,11 @@ foreignObject.node.node-clickable .tree-node-card:active {
     transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.review-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .review-action-btn:hover {
   opacity: 0.88;
 }

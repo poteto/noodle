@@ -74,7 +74,7 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
           disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 bg-red text-white"
         >
-          REJECT
+          {isPending ? "REJECTING…" : "REJECT"}
         </button>
         <button
           type="button"
@@ -82,7 +82,7 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
           disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 border border-accent text-accent"
         >
-          {showFeedback ? "SEND" : "REQUEST CHANGES"}
+          {isPending ? "SENDING…" : showFeedback ? "SEND" : "REQUEST CHANGES"}
         </button>
       </div>
     </div>
