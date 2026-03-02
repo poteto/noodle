@@ -33,7 +33,7 @@ mode = "auto"
 
 ### `[routing]`
 
-Controls which Agent provider and model are used for skill execution. Routing has global defaults and optional per-tag overrides.
+Controls which Agent provider and model are used for skill execution.
 
 #### `[routing.defaults]`
 
@@ -47,27 +47,6 @@ Controls which Agent provider and model are used for skill execution. Routing ha
 provider = "claude"
 model = "claude-opus-4-6"
 ```
-
-#### `[routing.tags.<name>]`
-
-Tag-based routing overrides. When a skill or ticket is tagged, the matching policy takes precedence over defaults.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `provider` | string | — | Agent provider for this tag |
-| `model` | string | — | Model for this tag |
-
-```toml
-[routing.tags.mechanical]
-provider = "codex"
-model = "gpt-5.3-codex"
-
-[routing.tags.urgent]
-provider = "claude"
-model = "claude-opus-4-6"
-```
-
----
 
 ### `[skills]`
 
@@ -84,61 +63,21 @@ paths = [".agents/skills"]
 
 ---
 
-### `[recovery]`
-
-Controls automatic retry behavior when an agent session fails.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `max_retries` | int | `3` | Maximum retry attempts before marking a ticket as failed |
-
-```toml
-[recovery]
-max_retries = 3
-```
-
----
-
-### `[monitor]`
-
-Configures the monitoring loop that detects stuck sessions and stale tickets.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `stuck_threshold` | duration | `"120s"` | Time without progress before a session is considered stuck |
-| `ticket_stale` | duration | `"30m"` | Time before an unfinished ticket is flagged as stale |
-| `poll_interval` | duration | `"5s"` | How often the monitor checks session health |
-
-```toml
-[monitor]
-stuck_threshold = "120s"
-ticket_stale = "30m"
-poll_interval = "5s"
-```
-
----
-
 ### `[concurrency]`
 
-Controls parallel execution limits and backpressure.
+Controls parallel execution limits.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `max_cooks` | int | `4` | Maximum number of concurrent agent sessions |
-| `max_completion_overflow` | int | `1024` | Buffer size for completion events before backpressure kicks in |
-| `merge_backpressure_threshold` | int | `128` | Pending merges before new completions are throttled |
-| `shutdown_timeout` | duration | `"30s"` | Grace period for running sessions during shutdown |
+| `max_concurrency` | int | `4` | Maximum number of concurrent agent sessions |
 
 ```toml
 [concurrency]
-max_cooks = 4
-max_completion_overflow = 1024
-merge_backpressure_threshold = 128
-shutdown_timeout = "30s"
+max_concurrency = 4
 ```
 
 ::: warning Cost
-Each agent consumes tokens independently. `max_cooks = 4` means up to four concurrent API sessions. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
+Each agent consumes tokens independently. `max_concurrency = 4` means up to four concurrent API sessions. Start with `max_concurrency = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
 :::
 
 ---
@@ -304,7 +243,7 @@ paths = [".agents/skills"]
 path = "~/.claude"
 
 [concurrency]
-max_cooks = 2
+max_concurrency = 2
 ```
 
 ### Cloud execution with Sprites
@@ -327,20 +266,12 @@ max_concurrent = 20
 max_concurrent = 2
 ```
 
-### Mixed routing with tag overrides
+### Defaults-only routing
 
-Route mechanical tasks to a cheaper model, keep complex work on a capable one:
+Set a single project-wide default provider and model:
 
 ```toml
 [routing.defaults]
-provider = "claude"
-model = "claude-opus-4-6"
-
-[routing.tags.mechanical]
-provider = "codex"
-model = "gpt-5.3-codex"
-
-[routing.tags.review]
 provider = "claude"
 model = "claude-opus-4-6"
 ```

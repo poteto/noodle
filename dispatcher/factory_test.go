@@ -27,7 +27,8 @@ func (s *factorySessionStub) Status() string              { return s.status }
 func (s *factorySessionStub) Events() <-chan SessionEvent { return nil }
 func (s *factorySessionStub) Done() <-chan struct{}       { return nil }
 func (s *factorySessionStub) TotalCost() float64          { return 0 }
-func (s *factorySessionStub) Kill() error                 { return nil }
+func (s *factorySessionStub) Terminate() error            { return nil }
+func (s *factorySessionStub) ForceKill() error            { return nil }
 func (s *factorySessionStub) Controller() AgentController { return noopController{} }
 
 var _ Session = (*factorySessionStub)(nil)

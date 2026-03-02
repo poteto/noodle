@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-func TestDeriveSessionMetaStuckAndHealth(t *testing.T) {
+func TestDeriveSessionMetaRunningAndHealth(t *testing.T) {
 	now := time.Date(2026, 2, 22, 15, 10, 0, 0, time.UTC)
-	threshold := 120 * time.Second
 
 	meta := DeriveSessionMeta(
 		"cook-a",
@@ -28,17 +27,16 @@ func TestDeriveSessionMetaStuckAndHealth(t *testing.T) {
 		},
 		SessionMeta{},
 		now,
-		threshold,
 	)
 
-	if meta.Status != SessionStatusStuck {
+	if meta.Status != SessionStatusRunning {
 		t.Fatalf("status = %q", meta.Status)
 	}
-	if meta.Health != HealthRed {
+	if meta.Health != HealthGreen {
 		t.Fatalf("health = %q", meta.Health)
 	}
-	if !meta.Stuck {
-		t.Fatal("expected stuck=true")
+	if meta.Stuck {
+		t.Fatal("expected stuck=false")
 	}
 	if meta.DurationSeconds <= 0 {
 		t.Fatalf("duration seconds = %d", meta.DurationSeconds)
@@ -57,7 +55,6 @@ func TestDeriveSessionMetaExited(t *testing.T) {
 		SessionClaims{SessionID: "cook-b", HasEvents: true, Completed: true},
 		SessionMeta{},
 		now,
-		120*time.Second,
 	)
 	if meta.Status != SessionStatusExited {
 		t.Fatalf("status = %q", meta.Status)
@@ -76,7 +73,6 @@ func TestDeriveSessionMetaNoCompletionIsFailed(t *testing.T) {
 		SessionClaims{SessionID: "cook-d", HasEvents: false},
 		SessionMeta{},
 		now,
-		120*time.Second,
 	)
 	if meta.Status != SessionStatusFailed {
 		t.Fatalf("status = %q", meta.Status)
@@ -95,7 +91,6 @@ func TestDeriveSessionMetaNoCompletionWithEventsIsExited(t *testing.T) {
 		SessionClaims{SessionID: "cook-e", HasEvents: true},
 		SessionMeta{},
 		now,
-		120*time.Second,
 	)
 	if meta.Status != SessionStatusExited {
 		t.Fatalf("status = %q", meta.Status)
@@ -114,7 +109,6 @@ func TestDeriveSessionMetaFailed(t *testing.T) {
 		SessionClaims{SessionID: "cook-c", HasEvents: true, Failed: true},
 		SessionMeta{},
 		now,
-		120*time.Second,
 	)
 	if meta.Status != SessionStatusFailed {
 		t.Fatalf("status = %q", meta.Status)

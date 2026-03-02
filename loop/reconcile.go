@@ -476,7 +476,8 @@ type adoptedSession struct {
 func (s *adoptedSession) ID() string          { return s.id }
 func (s *adoptedSession) Status() string      { return s.status }
 func (s *adoptedSession) TotalCost() float64  { return 0 }
-func (s *adoptedSession) Kill() error         { return nil }
+func (s *adoptedSession) Terminate() error    { return nil }
+func (s *adoptedSession) ForceKill() error    { return nil }
 func (s *adoptedSession) VerdictPath() string { return "" }
 func (s *adoptedSession) Controller() loopruntime.AgentController {
 	return loopruntime.NoopController()

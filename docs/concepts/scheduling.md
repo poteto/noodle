@@ -166,21 +166,17 @@ Default routing comes from `.noodle.toml`:
 [routing.defaults]
 provider = "claude"
 model = "claude-opus-4-6"
-
-[routing.tags.fast]
-provider = "claude"
-model = "claude-sonnet-4-6"
 ```
 
 The scheduling agent can override defaults per stage when writing orders. See [Runtimes](/concepts/runtimes) for where stages execute.
 
 ## Agent Concurrency
 
-Multiple agents run in parallel, each in its own git worktree. The `max_cooks` setting controls how many run at once:
+Multiple agents run in parallel, each in its own git worktree. The `max_concurrency` setting controls how many run at once:
 
 ```toml
 [concurrency]
-max_cooks = 4
+max_concurrency = 4
 ```
 
 Each agent works on an isolated branch. When it finishes, its changes enter a merge queue. Merges are serialized, one at a time, to keep the main branch clean. If a merge fails, the stage is marked failed and can be retried.

@@ -5,6 +5,7 @@ export type { PendingReviewItem } from "./generated-loop-types";
 //////////
 // source: snapshot_builder.go
 
+
 //////////
 // source: types.go
 
@@ -56,13 +57,13 @@ export interface Snapshot {
   orders: Order[];
   active_order_ids: string[];
   action_needed: string[];
-  events_by_session: Record<string, EventLine[]>;
+  events_by_session: { [key: string]: EventLine[]};
   feed_events: FeedEvent[];
   total_cost_usd: number /* float64 */;
   pending_reviews: PendingReviewItem[];
   pending_review_count: number /* int */;
   mode: string;
-  max_cooks: number /* int */;
+  max_concurrency: number /* int */;
   warnings: string[];
 }
 /**
@@ -83,7 +84,6 @@ export interface Session {
   context_window_usage_pct: number /* float64 */;
   retry_count: number /* int */;
   idle_seconds: number /* int64 */;
-  stuck_threshold_seconds: number /* int64 */;
   loop_state: string;
   remote_host?: string;
   dispatch_warning?: string;
@@ -114,7 +114,7 @@ export interface Stage {
   runtime?: string;
   group?: number /* int */;
   status: string;
-  extra?: Record<string, unknown>;
+  extra?: { [key: string]: unknown};
   session_id?: string;
 }
 /**
@@ -137,4 +137,5 @@ export interface FeedEvent {
   label: string;
   body: string;
   category: string;
+  failure?: any /* loop.EventFailureMetadata */;
 }

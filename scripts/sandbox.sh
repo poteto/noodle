@@ -319,7 +319,7 @@ cat > .noodle/status.json <<'EOF'
   "active": [],
   "loop_state": "running",
   "autonomy": "auto",
-  "max_cooks": 1
+  "max_concurrency": 1
 }
 EOF
 

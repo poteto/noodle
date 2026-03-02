@@ -5,8 +5,8 @@
 The `mode` config field sets the run mode governing loop behavior:
 
 ```toml
-mode = "auto"        # full automation: schedule, dispatch, retry, merge
-# mode = "supervised" # human approves merges and retries
+mode = "auto"        # full automation: schedule, dispatch, merge
+# mode = "supervised" # human approves merges
 # mode = "manual"     # human triggers everything
 ```
 
@@ -14,29 +14,15 @@ mode = "auto"        # full automation: schedule, dispatch, retry, merge
 
 **Before (V1):** `autonomy` accepted `auto` or `approve`. `approve` parked worktrees for human merge approval.
 
-**After (V2):** `mode` accepts `auto`, `supervised`, or `manual`. Each mode gates four actions independently:
+**After (V2):** `mode` accepts `auto`, `supervised`, or `manual`. Each mode gates three actions independently:
 
-| Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
-|------|----------|----------|------------|------------|
-| `auto` | yes | yes | yes | yes |
-| `supervised` | yes | yes | no | no |
-| `manual` | no | no | no | no |
+| Mode | Schedule | Dispatch | Auto-merge |
+|------|----------|----------|------------|
+| `auto` | yes | yes | yes |
+| `supervised` | yes | yes | no |
+| `manual` | no | no | no |
 
 Mode transitions are epoch-stamped. In-flight effects created under a previous epoch are cancelled, not applied.
-
-## Routing tags
-
-Override the default model for specific task categories:
-
-```toml
-[routing.tags.frontend]
-provider = "claude"
-model = "claude-opus-4-6"
-
-[routing.tags.backend]
-provider = "codex"
-model = "gpt-5.3-codex"
-```
 
 ## Runtime configuration
 
@@ -76,7 +62,7 @@ The loop maintains these files in `.noodle/`:
 |------|-------------|
 | `orders.json` | Projected orders with stage lifecycle status |
 | `orders-next.json` | Scheduler output; promoted atomically by the loop |
-| `status.json` | Runtime status (active order IDs, loop state, run mode, max cooks) |
+| `status.json` | Runtime status (active order IDs, loop state, run mode, max concurrency) |
 | `state.json` | Schema version marker |
 | `control.ndjson` | Control command input (append-only) |
 | `control-ack.ndjson` | Control command acknowledgments |

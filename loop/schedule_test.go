@@ -214,7 +214,7 @@ func TestSpawnSchedulePersistsActiveStageStatus(t *testing.T) {
 	}
 }
 
-func TestSpawnScheduleRetryableDispatchFailureResetsPending(t *testing.T) {
+func TestSpawnScheduleDispatchFailureMarksStageFailed(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -244,7 +244,7 @@ func TestSpawnScheduleRetryableDispatchFailureResetsPending(t *testing.T) {
 	})
 
 	if err := l.spawnSchedule(context.Background(), order, 0, ""); err != nil {
-		t.Fatalf("spawnSchedule should treat retryable dispatch failures as recoverable: %v", err)
+		t.Fatalf("spawnSchedule: %v", err)
 	}
 	if _, ok := l.cooks.activeCooksByOrder[scheduleOrderID]; ok {
 		t.Fatal("schedule cook should not be active after retryable dispatch failure")
@@ -257,7 +257,10 @@ func TestSpawnScheduleRetryableDispatchFailureResetsPending(t *testing.T) {
 	if len(updated.Orders) != 1 || len(updated.Orders[0].Stages) != 1 {
 		t.Fatalf("unexpected orders shape: %+v", updated.Orders)
 	}
-	if updated.Orders[0].Stages[0].Status != StageStatusPending {
-		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusPending)
+	if updated.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", updated.Orders[0].Status, OrderStatusFailed)
+	}
+	if updated.Orders[0].Stages[0].Status != StageStatusFailed {
+		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusFailed)
 	}
 }

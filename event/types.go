@@ -70,7 +70,6 @@ type TicketStatus string
 const (
 	TicketStatusActive  TicketStatus = "active"
 	TicketStatusBlocked TicketStatus = "blocked"
-	TicketStatusStale   TicketStatus = "stale"
 )
 
 // Ticket is the current materialized claim for one target.

@@ -25,11 +25,11 @@ func BenchmarkPlanCycleSpawnsScale(b *testing.B) {
 
 			l := New(b.TempDir(), "noodle", config.DefaultConfig(), Dependencies{
 				Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
-				Worktree:   &fakeWorktree{},
-				Adapter:    &fakeAdapterRunner{},
-				Mise:       &fakeMise{},
-				Monitor:    fakeMonitor{},
-				Registry:   testLoopRegistry(),
+				Worktree: &fakeWorktree{},
+				Adapter:  &fakeAdapterRunner{},
+				Mise:     &fakeMise{},
+				Monitor:  fakeMonitor{},
+				Registry: testLoopRegistry(),
 			})
 
 			brief := mise.Brief{}
@@ -69,11 +69,11 @@ func benchCycleDispatch(b *testing.B, orderCount int) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = orderCount
+	cfg.Concurrency.MaxConcurrency = orderCount
 	cfg.Runtime.Process.MaxConcurrent = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
-		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},

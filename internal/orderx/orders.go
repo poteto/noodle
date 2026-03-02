@@ -9,7 +9,6 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/filex"
-	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/internal/taskreg"
 )
 
@@ -79,34 +78,20 @@ func ApplyOrderRoutingDefaults(of OrdersFile, reg taskreg.Registry, cfg config.C
 	return of, true
 }
 
-func applyStageRoutingDefaults(stage *Stage, reg taskreg.Registry, cfg config.Config) bool {
+func applyStageRoutingDefaults(stage *Stage, _ taskreg.Registry, cfg config.Config) bool {
 	changed := false
 	defaultProvider := strings.TrimSpace(cfg.Routing.Defaults.Provider)
 	defaultModel := strings.TrimSpace(cfg.Routing.Defaults.Model)
-	tagProvider := ""
-	tagModel := ""
-
-	if taskType, ok := reg.ResolveStage(taskreg.StageInput{
-		TaskKey: stage.TaskKey,
-		Skill:   stage.Skill,
-	}); ok {
-		if policy, exists := cfg.Routing.Tags[taskType.Key]; exists {
-			tagProvider = strings.TrimSpace(policy.Provider)
-			tagModel = strings.TrimSpace(policy.Model)
-		}
-	}
 
 	if strings.TrimSpace(stage.Provider) == "" {
-		provider := stringx.FirstNonEmpty(tagProvider, defaultProvider)
-		if provider != "" {
-			stage.Provider = provider
+		if defaultProvider != "" {
+			stage.Provider = defaultProvider
 			changed = true
 		}
 	}
 	if strings.TrimSpace(stage.Model) == "" {
-		model := stringx.FirstNonEmpty(tagModel, defaultModel)
-		if model != "" {
-			stage.Model = model
+		if defaultModel != "" {
+			stage.Model = defaultModel
 			changed = true
 		}
 	}

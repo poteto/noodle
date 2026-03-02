@@ -161,7 +161,7 @@ func TestProcessSessionKillMarksKilled(t *testing.T) {
 		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
 	})
 
-	if err := session.Kill(); err != nil {
+	if err := session.ForceKill(); err != nil {
 		t.Fatalf("Kill: %v", err)
 	}
 

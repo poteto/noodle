@@ -4,12 +4,8 @@ mode = "auto"
 provider = "claude"
 model = "claude-sonnet-4-6"
 
-[routing.tags.review]
-provider = "claude"
-model = "claude-opus-4-6"
-
 [skills]
 paths = [".agents/skills"]
 
 [concurrency]
-max_cooks = 2
+max_concurrency = 2

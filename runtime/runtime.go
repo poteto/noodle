@@ -32,7 +32,8 @@ type SessionHandle interface {
 	Status() string
 	Done() <-chan struct{}
 	TotalCost() float64
-	Kill() error
+	Terminate() error
+	ForceKill() error
 	VerdictPath() string
 	Controller() AgentController
 }
@@ -48,7 +49,8 @@ type RecoveredSession struct {
 // Runtime dispatches, observes, and recovers sessions for one platform.
 type Runtime interface {
 	Dispatch(ctx context.Context, req DispatchRequest) (SessionHandle, error)
-	Kill(handle SessionHandle) error
+	Terminate(handle SessionHandle) error
+	ForceKill(handle SessionHandle) error
 	Recover(ctx context.Context) ([]RecoveredSession, error)
 }
 
@@ -61,7 +63,8 @@ func (s dispatcherSessionHandle) ID() string            { return s.session.ID() 
 func (s dispatcherSessionHandle) Status() string        { return s.session.Status() }
 func (s dispatcherSessionHandle) Done() <-chan struct{} { return s.session.Done() }
 func (s dispatcherSessionHandle) TotalCost() float64    { return s.session.TotalCost() }
-func (s dispatcherSessionHandle) Kill() error           { return s.session.Kill() }
+func (s dispatcherSessionHandle) Terminate() error      { return s.session.Terminate() }
+func (s dispatcherSessionHandle) ForceKill() error      { return s.session.ForceKill() }
 func (s dispatcherSessionHandle) VerdictPath() string {
 	return filepath.Join(s.runtimeDir, "quality", s.session.ID()+".json")
 }

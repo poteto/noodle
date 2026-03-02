@@ -179,18 +179,18 @@ func (d *ProcessDispatcher) startSessionProcess(
 
 	controller, err := d.configureStdin(ctx, process, req.Provider, composedPrompt)
 	if err != nil {
-		_ = process.Kill()
+		_ = process.ForceKill()
 		return nil, nil, err
 	}
 
 	go drainToFile(process.Stderr(), stderrPath)
 
 	if err := WriteProcessMetadata(sessionDir, sessionID, process.PID(), nowUTC()); err != nil {
-		_ = process.Kill()
+		_ = process.ForceKill()
 		return nil, nil, fmt.Errorf("write process metadata: %w", err)
 	}
 	if err := writeDispatchMetadata(d.runtimeDir, sessionID, req, nowUTC()); err != nil {
-		_ = process.Kill()
+		_ = process.ForceKill()
 		return nil, nil, fmt.Errorf("write spawn metadata: %w", err)
 	}
 	return controller, process, nil

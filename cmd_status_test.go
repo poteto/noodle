@@ -43,7 +43,7 @@ func TestRunStatusReadsSessionsAndOrders(t *testing.T) {
 	}
 	if err := os.WriteFile(
 		filepath.Join(runtimeDir, "status.json"),
-		[]byte(`{"active":["order-1"],"loop_state":"draining","max_cooks":4}`),
+		[]byte(`{"active":["order-1"],"loop_state":"draining","max_concurrency":4}`),
 		0o644,
 	); err != nil {
 		t.Fatalf("write status: %v", err)

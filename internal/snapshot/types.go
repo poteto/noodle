@@ -53,7 +53,7 @@ type Snapshot struct {
 	PendingReviews     []loop.PendingReviewItem `json:"pending_reviews"`
 	PendingReviewCount int                      `json:"pending_review_count"`
 	Mode               string                   `json:"mode"`
-	MaxCooks           int                      `json:"max_cooks"`
+	MaxConcurrency     int                      `json:"max_concurrency"`
 	Warnings           []string                 `json:"warnings"`
 }
 
@@ -73,7 +73,6 @@ type Session struct {
 	ContextWindowUsagePct float64   `json:"context_window_usage_pct"`
 	RetryCount            int       `json:"retry_count"`
 	IdleSeconds           int64     `json:"idle_seconds"`
-	StuckThresholdSeconds int64     `json:"stuck_threshold_seconds"`
 	LoopState             string    `json:"loop_state"`
 	RemoteHost            string    `json:"remote_host,omitempty"`
 	DispatchWarning       string    `json:"dispatch_warning,omitempty"`

@@ -16,7 +16,7 @@ default = "process"
 max_concurrent = 4
 ```
 
-`max_concurrent` defaults to 4. This caps how many local agent processes run simultaneously, independent of the global `max_cooks` ceiling.
+`max_concurrent` defaults to 4. This caps how many local agent processes run simultaneously, independent of the global `max_concurrency` ceiling.
 
 ## Sprites
 

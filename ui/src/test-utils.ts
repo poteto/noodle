@@ -35,7 +35,6 @@ export function buildSession(overrides?: Partial<Session>): Session {
     context_window_usage_pct: 35,
     retry_count: 0,
     idle_seconds: 0,
-    stuck_threshold_seconds: 300,
     loop_state: "running",
     ...overrides,
   };
@@ -68,7 +67,7 @@ export function buildSnapshot(overrides?: Partial<Snapshot>): Snapshot {
     pending_reviews: [],
     pending_review_count: 0,
     mode: "supervised",
-    max_cooks: 4,
+    max_concurrency: 4,
     warnings: [],
     ...overrides,
   };

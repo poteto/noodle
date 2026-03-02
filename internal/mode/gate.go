@@ -6,7 +6,6 @@ import "github.com/poteto/noodle/internal/state"
 const (
 	ActionSchedule  = "schedule"
 	ActionDispatch  = "dispatch"
-	ActionRetry     = "retry"
 	ActionAutoMerge = "auto_merge"
 )
 
@@ -23,12 +22,6 @@ func (ModeGate) CanSchedule(m state.RunMode) bool {
 // auto and supervised allow dispatch; manual does not.
 func (ModeGate) CanDispatch(m state.RunMode) bool {
 	return m != state.RunModeManual
-}
-
-// CanRetry reports whether automatic retry is allowed in the given mode.
-// Only auto mode allows automatic retry.
-func (ModeGate) CanRetry(m state.RunMode) bool {
-	return m == state.RunModeAuto
 }
 
 // CanAutoMerge reports whether automatic merge is allowed in the given mode.
@@ -50,15 +43,6 @@ func (g ModeGate) BlockedReason(m state.RunMode, action string) string {
 	case ActionDispatch:
 		if !g.CanDispatch(m) {
 			return "manual mode requires explicit dispatch"
-		}
-	case ActionRetry:
-		if !g.CanRetry(m) {
-			switch m {
-			case state.RunModeSupervised:
-				return "supervised mode requires manual retry"
-			case state.RunModeManual:
-				return "manual mode requires manual retry"
-			}
 		}
 	case ActionAutoMerge:
 		if !g.CanAutoMerge(m) {

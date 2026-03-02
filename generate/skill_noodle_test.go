@@ -29,7 +29,7 @@ func TestGeneratedSkillContainsAllConfigFields(t *testing.T) {
 		"routing.defaults.provider",
 		"routing.defaults.model",
 		"skills.paths",
-		"concurrency.max_cooks",
+		"concurrency.max_concurrency",
 	}
 
 	for _, field := range requiredFields {

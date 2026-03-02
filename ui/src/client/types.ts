@@ -78,7 +78,7 @@ export type ControlCommand = { id?: string } & (
   | { action: "request-changes"; order_id: string; prompt?: string }
   | { action: "park-review"; order_id: string; prompt?: string }
   | { action: "mode"; value: string }
-  | { action: "set-max-cooks"; value: string }
+  | { action: "set-max-concurrency"; value: string }
   | { action: "reorder"; order_id: string; value: string }
   | ({ action: "enqueue"; order_id: string } & StageFields)
   | ({ action: "edit-item"; order_id: string } & StageFields)

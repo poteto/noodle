@@ -114,19 +114,11 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	}
 	session, _, err := l.dispatchSession(ctx, req)
 	if err != nil {
-		_ = l.persistOrderStageStatus(order.ID, stageIndex, StageStatusPending)
-		if envelope, ok := asDispatchFailureEnvelope(err); ok && envelope.Class == AgentStartFailureClassRetryable {
-			l.logger.Warn(
-				"schedule dispatch failed; stage reset to pending",
-				"order", order.ID,
-				"stage", stageIndex,
-				"class", envelope.Class,
-				"recoverability", envelope.Recoverability,
-				"error", envelope.Cause,
-			)
-			return nil
-		}
-		return err
+		return l.handleCookDispatchFailure(dispatchCandidate{
+			OrderID:    order.ID,
+			StageIndex: stageIndex,
+			Stage:      stage,
+		}, stage, "", false, err)
 	}
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{

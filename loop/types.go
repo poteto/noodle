@@ -183,6 +183,7 @@ type Loop struct {
 	registryFailCount int
 
 	watcherWG          sync.WaitGroup
+	shutdownOnce       sync.Once
 	watcherCount       atomic.Int64
 	dispatchGeneration atomic.Uint64
 

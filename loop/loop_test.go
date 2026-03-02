@@ -21,14 +21,14 @@ import (
 )
 
 type fakeWorktree struct {
-	created         []string
-	merged          []string
-	remoteMerged    []string
-	cleaned         []string
-	mergeErr        error
-	remoteMergeErr  error
-	createErr       error
-	createErrByName map[string]error
+	created            []string
+	merged             []string
+	remoteMerged       []string
+	cleaned            []string
+	mergeErr           error
+	remoteMergeErr     error
+	createErr          error
+	createErrByName    map[string]error
 	hasUnmergedCommits map[string]bool
 }
 
@@ -411,7 +411,7 @@ func TestCycleSpawnFailureCleansUpNewWorktree(t *testing.T) {
 	}
 }
 
-func TestCycleRetryableDispatchFailureResetsStagePending(t *testing.T) {
+func TestCycleDispatchFailureMarksStageFailed(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -462,11 +462,11 @@ func TestCycleRetryableDispatchFailureResetsStagePending(t *testing.T) {
 	if len(got.Orders) != 1 {
 		t.Fatalf("orders count = %d, want 1", len(got.Orders))
 	}
-	if got.Orders[0].Status != OrderStatusActive {
-		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, OrderStatusActive)
+	if got.Orders[0].Status != OrderStatusFailed {
+		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, OrderStatusFailed)
 	}
-	if status := got.Orders[0].Stages[0].Status; status != StageStatusPending {
-		t.Fatalf("stage status = %q, want %q", status, StageStatusPending)
+	if status := got.Orders[0].Stages[0].Status; status != StageStatusFailed {
+		t.Fatalf("stage status = %q, want %q", status, StageStatusFailed)
 	}
 }
 
@@ -1069,7 +1069,7 @@ func TestCycleRemovesStaleAdoptedSlotsBeforeScheduling(t *testing.T) {
 	}
 
 	cfg := config.DefaultConfig()
-	cfg.Concurrency.MaxCooks = 1
+	cfg.Concurrency.MaxConcurrency = 1
 	rt := newMockRuntime()
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": rt},

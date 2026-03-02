@@ -35,18 +35,10 @@ Noodle reads `.noodle.toml` at project root. If missing, `noodle start` scaffold
 | `agents.claude.path` | string | "" | Custom path to Claude Code binary |
 | `agents.codex.args` | array | [] | Extra CLI arguments for Codex CLI |
 | `agents.codex.path` | string | "" | Custom path to Codex CLI binary |
-| `concurrency.max_completion_overflow` | integer | 1024 |  |
-| `concurrency.max_cooks` | integer | 4 | Maximum concurrent cook sessions |
-| `concurrency.merge_backpressure_threshold` | integer | 128 |  |
-| `concurrency.shutdown_timeout` | string | "30s" |  |
-| `mode` | string | "auto" | Run mode governing schedule/dispatch/retry/merge gates: auto (full automation), supervised (human approves merges/retries), or manual (human triggers everything) |
-| `monitor.poll_interval` | string | "5s" | How often the monitor checks session status |
-| `monitor.stuck_threshold` | string | "120s" | Duration before a cook is considered stuck |
-| `monitor.ticket_stale` | string | "30m" | Duration before a ticket is considered stale |
-| `recovery.max_retries` | integer | 3 | Maximum retry attempts for failed cooks |
+| `concurrency.max_concurrency` | integer | 4 | Maximum concurrent cook sessions |
+| `mode` | string | "auto" | Run mode governing schedule/dispatch/merge gates: auto (full automation), supervised (human approves merges), or manual (human triggers scheduling/dispatch/merge) |
 | `routing.defaults.model` | string | "claude-opus-4-6" | Default model name for cook sessions |
 | `routing.defaults.provider` | string | "claude" | Default LLM provider for cook sessions (claude or codex) |
-| `routing.tags` | table | {} | Per-tag model overrides keyed by tag name |
 | `runtime.cursor.api_key_env` | string | "" |  |
 | `runtime.cursor.base_url` | string | "" |  |
 | `runtime.cursor.max_concurrent` | integer | 10 |  |
@@ -75,17 +67,17 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 ```
 
-For adapter config and routing tags, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
+For adapter config, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
 
 ## Mode Contract
 
 The `mode` config field sets the run mode. Three modes are supported:
 
-| Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
-|------|----------|----------|------------|------------|
-| `auto` | yes | yes | yes | yes |
-| `supervised` | yes | yes | no | no |
-| `manual` | no | no | no | no |
+| Mode | Schedule | Dispatch | Auto-merge |
+|------|----------|----------|------------|
+| `auto` | yes | yes | yes |
+| `supervised` | yes | yes | no |
+| `manual` | no | no | no |
 
 Mode transitions are tracked with a monotonic `mode_epoch`. Each transition increments the epoch. In-flight effects are epoch-stamped at creation; stale effects (created under a previous epoch) are cancelled rather than applied.
 
@@ -160,7 +152,7 @@ State
 | `requeue` | Reset a failed order for retry |
 | `reorder` | Move an order to a new position |
 | `edit-item` | Edit a pending order's prompt, task key, or model |
-| `set-max-cooks` | Override concurrency limit at runtime |
+| `set-max-concurrency` | Override concurrency limit at runtime |
 | `advance` | Manually advance an order to its next stage |
 | `add-stage` | Append a new stage to an existing order |
 | `park-review` | Park an order for human review with a reason |
@@ -210,6 +202,9 @@ Projection writes external views:
 `noodle start`:
 - `--once` (bool): Run one scheduling cycle and exit
 
+`noodle worktree create`:
+- `--from` (string): Branch or commit to base the new worktree on (default: HEAD)
+
 `noodle worktree merge`:
 - `--into` (string): Target branch to merge into (default: integration branch)
 
@@ -234,6 +229,6 @@ Run `noodle debug` to dump the full runtime state. Common issues:
 
 ## References
 
-- [references/config-schema.md](references/config-schema.md) — routing tags, config validation
+- [references/config-schema.md](references/config-schema.md) — config validation
 - [references/adapters.md](references/adapters.md) — adapter setup, script writing, provider examples
 - [references/hooks.md](references/hooks.md) — brain injection hook, settings.json setup

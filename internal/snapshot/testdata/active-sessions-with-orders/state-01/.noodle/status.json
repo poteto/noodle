@@ -1,1 +1,1 @@
-{"active":["order-1","order-2"],"loop_state":"running","max_cooks":3}
+{"active":["order-1","order-2"],"loop_state":"running","max_concurrency":3}

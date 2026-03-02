@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
+source_hash: e8e684f177619a3b42fc12b31c1c2955d55bdf57bced493774f4b9c6c4a3f341
 ---
 
 ## Expected Snapshot
@@ -27,7 +27,6 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "execute"
     },
@@ -46,7 +45,6 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "review"
     }
@@ -67,7 +65,6 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "execute"
     },
@@ -86,7 +83,6 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
       "context_window_usage_pct": 0,
       "retry_count": 0,
       "idle_seconds": 0,
-      "stuck_threshold_seconds": 0,
       "loop_state": "",
       "task_key": "review"
     }
@@ -128,16 +124,7 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
           "session_id": "cook-b"
         }
       ],
-      "status": "active",
-      "on_failure": [
-        {
-          "task_key": "oops",
-          "skill": "oops",
-          "provider": "claude",
-          "model": "claude-sonnet-4-6",
-          "status": "pending"
-        }
-      ]
+      "status": "active"
     }
   ],
   "active_order_ids": [
@@ -151,6 +138,7 @@ source_hash: a6aa546adc446bfd651688fcbc1c96af44ffc988a8b8d5e69108663faff6a9b4
   "pending_reviews": [],
   "pending_review_count": 0,
   "mode": "",
-  "max_cooks": 3
+  "max_concurrency": 3,
+  "warnings": null
 }
 ```

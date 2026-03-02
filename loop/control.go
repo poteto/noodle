@@ -241,8 +241,8 @@ func (l *Loop) dispatchControlCommand(cmd ControlCommand) error {
 		return l.controlReorder(cmd)
 	case "stop":
 		return l.controlStop(cmd.Name)
-	case "set-max-cooks":
-		return l.controlSetMaxCooks(cmd.Value)
+	case "set-max-concurrency":
+		return l.controlSetMaxConcurrency(cmd.Value)
 	case "advance":
 		return l.controlAdvance(cmd.OrderID)
 	case "add-stage":
@@ -279,7 +279,7 @@ func (l *Loop) controlSteer(target, prompt string) error {
 
 func (l *Loop) controlStopAll() {
 	for _, cook := range l.cooks.activeCooksByOrder {
-		_ = cook.session.Kill()
+		_ = cook.session.ForceKill()
 	}
 }
 
@@ -314,7 +314,7 @@ func (l *Loop) controlStop(name string) error {
 // controlStopKill is the fallback for non-steerable sessions: kill the process
 // and clean up the cook.
 func (l *Loop) controlStopKill(cook *cookHandle) error {
-	_ = cook.session.Kill()
+	_ = cook.session.ForceKill()
 	l.trackCookCompleted(cook, StageResult{
 		SessionID:   cook.session.ID(),
 		Status:      StageResultCancelled,

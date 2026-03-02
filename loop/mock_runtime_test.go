@@ -47,11 +47,18 @@ func (m *mockRuntime) Dispatch(_ context.Context, req loopruntime.DispatchReques
 	return s, nil
 }
 
-func (m *mockRuntime) Kill(handle loopruntime.SessionHandle) error {
+func (m *mockRuntime) Terminate(handle loopruntime.SessionHandle) error {
 	if handle == nil {
 		return nil
 	}
-	return handle.Kill()
+	return handle.Terminate()
+}
+
+func (m *mockRuntime) ForceKill(handle loopruntime.SessionHandle) error {
+	if handle == nil {
+		return nil
+	}
+	return handle.ForceKill()
 }
 
 func (m *mockRuntime) Recover(_ context.Context) ([]loopruntime.RecoveredSession, error) {
@@ -69,14 +76,19 @@ type mockSession struct {
 	cost   float64
 }
 
-func (s *mockSession) ID() string            { return s.id }
-func (s *mockSession) Status() string        { return s.status }
-func (s *mockSession) Done() <-chan struct{} { return s.done }
-func (s *mockSession) TotalCost() float64    { return s.cost }
+func (s *mockSession) ID() string                              { return s.id }
+func (s *mockSession) Status() string                          { return s.status }
+func (s *mockSession) Done() <-chan struct{}                   { return s.done }
+func (s *mockSession) TotalCost() float64                      { return s.cost }
 func (s *mockSession) VerdictPath() string                     { return "" }
 func (s *mockSession) Controller() loopruntime.AgentController { return loopruntime.NoopController() }
 
-func (s *mockSession) Kill() error {
+func (s *mockSession) Terminate() error {
+	s.status = "terminated"
+	return nil
+}
+
+func (s *mockSession) ForceKill() error {
 	s.status = "killed"
 	select {
 	case <-s.done:

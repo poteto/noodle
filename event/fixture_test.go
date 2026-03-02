@@ -28,13 +28,8 @@ func runTicketFixture(t *testing.T, fixtureCase fixturedir.FixtureCase) {
 	sessions := fixturedir.ParseStateJSON[map[string][]Event](t, state, "sessions.json")
 	options := fixturedir.ParseStateJSON[struct {
 		Now            time.Time `json:"now"`
-		Timeout        string    `json:"timeout"`
 		ActiveSessions []string  `json:"active_sessions"`
 	}](t, state, "options.json")
-	timeout, err := time.ParseDuration(options.Timeout)
-	if err != nil {
-		t.Fatalf("parse timeout %q: %v", options.Timeout, err)
-	}
 
 	expected := fixturedir.ParseSectionJSON[[]Ticket](t, fixtureCase, "Expected Tickets")
 
@@ -56,7 +51,6 @@ func runTicketFixture(t *testing.T, fixtureCase fixturedir.FixtureCase) {
 
 	materializer := NewTicketMaterializer(runtimeDir)
 	materializer.now = func() time.Time { return options.Now }
-	materializer.staleTimeout = timeout
 
 	actual, err := materializer.Materialize(context.Background(), options.ActiveSessions)
 	if err != nil {

@@ -1,11 +1,11 @@
 # Multi-Skill Example
 
-Extends the minimal example with custom task types. Demonstrates multi-stage order pipelines and routing tag overrides.
+Extends the minimal example with custom task types. Demonstrates multi-stage order pipelines with routing defaults.
 
 ## What's Here
 
 ```
-.noodle.toml                      # Config with routing tags and concurrency
+.noodle.toml                      # Config with routing defaults and concurrency
 .agents/skills/schedule/SKILL.md  # Builds multi-stage orders (execute -> test -> deploy)
 .agents/skills/execute/SKILL.md   # Implements a task and commits
 .agents/skills/test/SKILL.md      # Runs the test suite (custom task type)
@@ -26,7 +26,7 @@ A typical order pipeline:
 
 Each stage runs sequentially within an order. The loop advances to the next stage only after the current one completes.
 
-The config also sets a `routing.tags.review` override, routing review-tagged work to a different model than the default.
+The config sets project-wide routing defaults and concurrency for multi-stage execution.
 
 ## Running
 

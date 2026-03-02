@@ -15,7 +15,7 @@ source_hash: b1554e800a8017e9f04f080aed6f8e67b23e0f0055c8e3122ffd651f687e7684
     "cook_id": "cook-c",
     "claimed_at": "2026-02-22T20:00:00Z",
     "last_progress": "2026-02-22T20:00:00Z",
-    "status": "stale"
+    "status": "active"
   },
   {
     "target": "phase-03",
@@ -23,7 +23,7 @@ source_hash: b1554e800a8017e9f04f080aed6f8e67b23e0f0055c8e3122ffd651f687e7684
     "cook_id": "cook-b",
     "claimed_at": "2026-02-22T20:10:00Z",
     "last_progress": "2026-02-22T20:10:00Z",
-    "status": "stale",
+    "status": "blocked",
     "blocked_by": "42",
     "reason": "waiting on dependency"
   },

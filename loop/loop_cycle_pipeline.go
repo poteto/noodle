@@ -9,6 +9,8 @@ import (
 	"github.com/poteto/noodle/mise"
 )
 
+const mergeBackpressureLimit = 128
+
 func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool, bool, error) {
 	l.refreshAdoptedTargets()
 	brief, warnings, miseChanged, err := l.deps.Mise.Build(ctx, l.snapshotActiveSummary(), l.snapshotRecentHistory())
@@ -250,8 +252,7 @@ func (l *Loop) emitSyncWarnings(warnings []string) {
 
 func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {
 	if l.mergeQueue != nil {
-		threshold := l.config.Concurrency.MergeBackpressureThreshold
-		if threshold > 0 && l.mergeQueue.Pending()+l.mergeQueue.InFlight() > threshold {
+		if l.mergeQueue.Pending()+l.mergeQueue.InFlight() > mergeBackpressureLimit {
 			return nil
 		}
 	}

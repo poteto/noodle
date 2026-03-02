@@ -14,7 +14,6 @@ import (
 
 type Monitor struct {
 	runtimeDir      string
-	stuckThreshold  time.Duration
 	pollInterval    time.Duration
 	debounce        time.Duration
 	observer        Observer
@@ -30,14 +29,13 @@ func NewMonitor(runtimeDir string) *Monitor {
 	pidObserver := NewPidObserver(runtimeDir)
 	heartbeatObserver := NewHeartbeatObserver(runtimeDir)
 	return &Monitor{
-		runtimeDir:     runtimeDir,
-		stuckThreshold: defaultStuckThreshold,
-		pollInterval:   defaultPollInterval,
-		debounce:       defaultDebounce,
-		observer:       NewCompositeObserver(runtimeDir, pidObserver, heartbeatObserver),
-		claims:         NewCanonicalClaimsReader(runtimeDir),
-		tickets:        NewEventTicketMaterializer(runtimeDir),
-		now:            time.Now,
+		runtimeDir:   runtimeDir,
+		pollInterval: defaultPollInterval,
+		debounce:     defaultDebounce,
+		observer:     NewCompositeObserver(runtimeDir, pidObserver, heartbeatObserver),
+		claims:       NewCanonicalClaimsReader(runtimeDir),
+		tickets:      NewEventTicketMaterializer(runtimeDir),
+		now:          time.Now,
 	}
 }
 
@@ -70,9 +68,9 @@ func (m *Monitor) RunOnce(ctx context.Context) ([]SessionMeta, error) {
 			return nil, fmt.Errorf("read previous meta for %s: %w", sessionID, err)
 		}
 
-		meta := DeriveSessionMeta(sessionID, observation, claims, previous, now, m.stuckThreshold)
+		meta := DeriveSessionMeta(sessionID, observation, claims, previous, now)
 		if shouldRepairTerminalAliveSession(observation, claims) {
-			KillSessionByPID(m.runtimeDir, sessionID)
+			TerminateSessionByPID(m.runtimeDir, sessionID)
 			meta.Alive = false
 			meta.Stuck = false
 			if claims.Failed {

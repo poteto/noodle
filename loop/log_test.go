@@ -116,9 +116,6 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	}
 
 	cfg := config.DefaultConfig()
-	if o.maxRetries != nil {
-		cfg.Recovery.MaxRetries = *o.maxRetries
-	}
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
@@ -144,8 +141,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 }
 
 type testLoopOpts struct {
-	brief      *mise.Brief
-	maxRetries *int
+	brief *mise.Brief
 }
 
 type testLoopContext struct {

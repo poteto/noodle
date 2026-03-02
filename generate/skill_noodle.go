@@ -32,22 +32,17 @@ type SkillData struct {
 
 // fieldDescriptions maps TOML paths to human-readable descriptions.
 var fieldDescriptions = map[string]string{
-	"mode":                      "Run mode governing schedule/dispatch/retry/merge gates: auto (full automation), supervised (human approves merges/retries), or manual (human triggers everything)",
-	"routing.defaults.provider": "Default LLM provider for cook sessions (claude or codex)",
-	"routing.defaults.model":    "Default model name for cook sessions",
-	"routing.tags":              "Per-tag model overrides keyed by tag name",
-	"skills.paths":              "Ordered search paths for skill resolution",
-	"adapters":                  "Adapter configs keyed by adapter name (e.g. backlog)",
-	"recovery.max_retries":      "Maximum retry attempts for failed cooks",
-	"monitor.stuck_threshold":   "Duration before a cook is considered stuck",
-	"monitor.ticket_stale":      "Duration before a ticket is considered stale",
-	"monitor.poll_interval":     "How often the monitor checks session status",
-	"concurrency.max_cooks":     "Maximum concurrent cook sessions",
-	"agents.claude.path":        "Custom path to Claude Code binary",
-	"agents.claude.args":        "Extra CLI arguments for Claude Code",
-	"agents.codex.path":         "Custom path to Codex CLI binary",
-	"agents.codex.args":         "Extra CLI arguments for Codex CLI",
-	"runtime.default":           "Default runtime kind for spawning cooks (process, sprites, cursor)",
+	"mode":                        "Run mode governing schedule/dispatch/merge gates: auto (full automation), supervised (human approves merges), or manual (human triggers scheduling/dispatch/merge)",
+	"routing.defaults.provider":   "Default LLM provider for cook sessions (claude or codex)",
+	"routing.defaults.model":      "Default model name for cook sessions",
+	"skills.paths":                "Ordered search paths for skill resolution",
+	"adapters":                    "Adapter configs keyed by adapter name (e.g. backlog)",
+	"concurrency.max_concurrency": "Maximum concurrent cook sessions",
+	"agents.claude.path":          "Custom path to Claude Code binary",
+	"agents.claude.args":          "Extra CLI arguments for Claude Code",
+	"agents.codex.path":           "Custom path to Codex CLI binary",
+	"agents.codex.args":           "Extra CLI arguments for Codex CLI",
+	"runtime.default":             "Default runtime kind for spawning cooks (process, sprites, cursor)",
 }
 
 // GenerateSkillContent produces the full SKILL.md content.
@@ -255,17 +250,17 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 ` + "```" + `
 
-For adapter config and routing tags, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
+For adapter config, see [references/adapters.md](references/adapters.md) and [references/config-schema.md](references/config-schema.md).
 
 ## Mode Contract
 
 The ` + "`" + `mode` + "`" + ` config field sets the run mode. Three modes are supported:
 
-| Mode | Schedule | Dispatch | Auto-retry | Auto-merge |
-|------|----------|----------|------------|------------|
-| ` + "`" + `auto` + "`" + ` | yes | yes | yes | yes |
-| ` + "`" + `supervised` + "`" + ` | yes | yes | no | no |
-| ` + "`" + `manual` + "`" + ` | no | no | no | no |
+| Mode | Schedule | Dispatch | Auto-merge |
+|------|----------|----------|------------|
+| ` + "`" + `auto` + "`" + ` | yes | yes | yes |
+| ` + "`" + `supervised` + "`" + ` | yes | yes | no |
+| ` + "`" + `manual` + "`" + ` | no | no | no |
 
 Mode transitions are tracked with a monotonic ` + "`" + `mode_epoch` + "`" + `. Each transition increments the epoch. In-flight effects are epoch-stamped at creation; stale effects (created under a previous epoch) are cancelled rather than applied.
 
@@ -340,7 +335,7 @@ State
 | ` + "`" + `requeue` + "`" + ` | Reset a failed order for retry |
 | ` + "`" + `reorder` + "`" + ` | Move an order to a new position |
 | ` + "`" + `edit-item` + "`" + ` | Edit a pending order's prompt, task key, or model |
-| ` + "`" + `set-max-cooks` + "`" + ` | Override concurrency limit at runtime |
+| ` + "`" + `set-max-concurrency` + "`" + ` | Override concurrency limit at runtime |
 | ` + "`" + `advance` + "`" + ` | Manually advance an order to its next stage |
 | ` + "`" + `add-stage` + "`" + ` | Append a new stage to an existing order |
 | ` + "`" + `park-review` + "`" + ` | Park an order for human review with a reason |
@@ -406,7 +401,7 @@ Run ` + "`" + `noodle debug` + "`" + ` to dump the full runtime state. Common is
 
 ## References
 
-- [references/config-schema.md](references/config-schema.md) — routing tags, config validation
+- [references/config-schema.md](references/config-schema.md) — config validation
 - [references/adapters.md](references/adapters.md) — adapter setup, script writing, provider examples
 - [references/hooks.md](references/hooks.md) — brain injection hook, settings.json setup
 `

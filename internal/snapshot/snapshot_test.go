@@ -485,7 +485,7 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 		ActiveOrderIDs:     []string{"order-1"},
 		ActionNeeded:       []string{"check order-1"},
 		TotalCostUSD:       1.23,
-		MaxCooks:           4,
+		MaxConcurrency:     4,
 		Mode:               "auto",
 		PendingReviews:     nil,
 		PendingReviewCount: 0,
@@ -523,8 +523,8 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 	if snap.TotalCostUSD != 1.23 {
 		t.Errorf("total_cost = %f, want 1.23", snap.TotalCostUSD)
 	}
-	if snap.MaxCooks != 4 {
-		t.Errorf("max_cooks = %d, want 4", snap.MaxCooks)
+	if snap.MaxConcurrency != 4 {
+		t.Errorf("max_concurrency = %d, want 4", snap.MaxConcurrency)
 	}
 	if snap.Mode != "auto" {
 		t.Errorf("mode = %q, want auto", snap.Mode)

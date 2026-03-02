@@ -144,7 +144,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		PendingReviews:     nonNilReviews(state.PendingReviews),
 		PendingReviewCount: state.PendingReviewCount,
 		Mode:               state.Mode,
-		MaxCooks:           state.MaxCooks,
+		MaxConcurrency:     state.MaxConcurrency,
 	}, nil
 }
 

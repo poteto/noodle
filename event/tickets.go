@@ -13,28 +13,24 @@ import (
 	"github.com/poteto/noodle/internal/filex"
 )
 
-const defaultTicketStaleTimeout = 30 * time.Minute
-
 type ticketState struct {
 	Ticket
 }
 
 // TicketMaterializer derives active tickets from session event logs.
 type TicketMaterializer struct {
-	runtimeDir   string
-	staleTimeout time.Duration
-	now          func() time.Time
-	reader       *EventReader
+	runtimeDir string
+	now        func() time.Time
+	reader     *EventReader
 }
 
 // NewTicketMaterializer constructs a ticket materializer.
 func NewTicketMaterializer(runtimeDir string) *TicketMaterializer {
 	reader := NewEventReader(runtimeDir)
 	return &TicketMaterializer{
-		runtimeDir:   strings.TrimSpace(runtimeDir),
-		staleTimeout: defaultTicketStaleTimeout,
-		now:          time.Now,
-		reader:       reader,
+		runtimeDir: strings.TrimSpace(runtimeDir),
+		now:        time.Now,
+		reader:     reader,
 	}
 }
 
@@ -75,26 +71,19 @@ func (m *TicketMaterializer) Materialize(ctx context.Context, activeSessionIDs [
 		return allEvents[i].Timestamp.Before(allEvents[j].Timestamp)
 	})
 
-	tickets := materializeTickets(allEvents, m.now().UTC(), m.staleTimeout)
+	tickets := materializeTickets(allEvents, m.now().UTC())
 	if err := writeTicketsAtomic(ticketsPath(m.runtimeDir), tickets); err != nil {
 		return nil, err
 	}
 	return tickets, nil
 }
 
-// ActiveTickets returns only non-stale tickets.
+// ActiveTickets returns non-terminal tickets.
 func ActiveTickets(tickets []Ticket) []Ticket {
-	active := make([]Ticket, 0, len(tickets))
-	for _, ticket := range tickets {
-		if ticket.Status == TicketStatusStale {
-			continue
-		}
-		active = append(active, ticket)
-	}
-	return active
+	return append([]Ticket(nil), tickets...)
 }
 
-func materializeTickets(events []Event, now time.Time, staleTimeout time.Duration) []Ticket {
+func materializeTickets(events []Event, _ time.Time) []Ticket {
 	states := make(map[string]ticketState)
 
 	for _, event := range events {
@@ -150,17 +139,7 @@ func materializeTickets(events []Event, now time.Time, staleTimeout time.Duratio
 
 	tickets := make([]Ticket, 0, len(states))
 	for _, state := range states {
-		ticket := state.Ticket
-		last := ticket.LastProgress
-		if last.IsZero() {
-			last = ticket.ClaimedAt
-		}
-		if staleTimeout > 0 &&
-			!last.IsZero() &&
-			now.Sub(last) > staleTimeout {
-			ticket.Status = TicketStatusStale
-		}
-		tickets = append(tickets, ticket)
+		tickets = append(tickets, state.Ticket)
 	}
 
 	sort.SliceStable(tickets, func(i, j int) bool {

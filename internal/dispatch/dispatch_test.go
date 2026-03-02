@@ -293,7 +293,7 @@ func TestRouteCompletion(t *testing.T) {
 			wantEventNum: 1,
 		},
 		{
-			name: "failure with retry generates dispatch_requested",
+			name: "failure generates stage_failed",
 			input: state.State{
 				Orders: map[string]state.OrderNode{
 					"order-1": {
@@ -320,10 +320,10 @@ func TestRouteCompletion(t *testing.T) {
 				Error:       "runtime exited",
 				CompletedAt: now,
 			},
-			wantStage:    state.StagePending,
+			wantStage:    state.StageFailed,
 			wantAttempt:  state.AttemptFailed,
-			wantOrder:    state.OrderActive,
-			wantEvent:    ingest.EventDispatchRequested,
+			wantOrder:    state.OrderFailed,
+			wantEvent:    ingest.EventStageFailed,
 			wantEventNum: 1,
 		},
 		{
@@ -502,85 +502,6 @@ func TestRouteFailure(t *testing.T) {
 	}
 }
 
-func TestRetryCandidate(t *testing.T) {
-	tests := []struct {
-		name       string
-		input      state.State
-		policy     RetryPolicy
-		wantCan    bool
-		wantReason string
-	}{
-		{
-			name: "allows retry when under max attempts",
-			input: state.State{
-				Orders: map[string]state.OrderNode{
-					"order-1": {
-						OrderID: "order-1",
-						Status:  state.OrderActive,
-						Stages: []state.StageNode{
-							{
-								StageIndex: 0,
-								Status:     state.StageFailed,
-								Attempts: []state.AttemptNode{
-									{AttemptID: "att-1", Status: state.AttemptFailed},
-								},
-							},
-						},
-					},
-				},
-			},
-			policy: RetryPolicy{
-				MaxAttempts: 2,
-				ShouldRetry: func(rec CompletionRecord) bool {
-					return rec.Status == state.AttemptFailed
-				},
-			},
-			wantCan: true,
-		},
-		{
-			name: "denies retry when at max attempts",
-			input: state.State{
-				Orders: map[string]state.OrderNode{
-					"order-1": {
-						OrderID: "order-1",
-						Status:  state.OrderActive,
-						Stages: []state.StageNode{
-							{
-								StageIndex: 0,
-								Status:     state.StageFailed,
-								Attempts: []state.AttemptNode{
-									{AttemptID: "att-1", Status: state.AttemptFailed},
-									{AttemptID: "att-2", Status: state.AttemptFailed},
-								},
-							},
-						},
-					},
-				},
-			},
-			policy: RetryPolicy{
-				MaxAttempts: 2,
-				ShouldRetry: func(rec CompletionRecord) bool {
-					return rec.Status == state.AttemptFailed
-				},
-			},
-			wantCan:    false,
-			wantReason: "max attempts reached",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotCan, gotReason := RetryCandidate(tt.input, "order-1", 0, tt.policy)
-			if gotCan != tt.wantCan {
-				t.Fatalf("can retry mismatch: got %v want %v", gotCan, tt.wantCan)
-			}
-			if gotReason != tt.wantReason {
-				t.Fatalf("reason mismatch: got %q want %q", gotReason, tt.wantReason)
-			}
-		})
-	}
-}
-
 func TestEdgeCases(t *testing.T) {
 	now := time.Date(2026, 2, 28, 21, 0, 0, 0, time.UTC)
 
@@ -598,11 +519,6 @@ func TestEdgeCases(t *testing.T) {
 		failed := RouteFailure(s, "missing", 0, "x")
 		if !reflect.DeepEqual(failed, s) {
 			t.Fatalf("route failure missing order should no-op:\n got=%+v\nwant=%+v", failed, s)
-		}
-
-		canRetry, reason := RetryCandidate(s, "missing", 0, RetryPolicy{MaxAttempts: 2})
-		if canRetry || reason != "order not found" {
-			t.Fatalf("missing retry candidate mismatch: canRetry=%v reason=%q", canRetry, reason)
 		}
 	})
 

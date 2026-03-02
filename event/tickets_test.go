@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestTicketMaterializerLifecycleAndStale(t *testing.T) {
+func TestTicketMaterializerLifecycle(t *testing.T) {
 	runtimeDir := filepath.Join(t.TempDir(), ".noodle")
 	now := time.Date(2026, 2, 22, 20, 0, 0, 0, time.UTC)
 
@@ -49,7 +49,6 @@ func TestTicketMaterializerLifecycleAndStale(t *testing.T) {
 
 	materializer := NewTicketMaterializer(runtimeDir)
 	materializer.now = func() time.Time { return now }
-	materializer.staleTimeout = 30 * time.Minute
 
 	tickets, err := materializer.Materialize(context.Background(), nil)
 	if err != nil {
@@ -69,13 +68,13 @@ func TestTicketMaterializerLifecycleAndStale(t *testing.T) {
 	if got := statusByTarget["phase-03"]; got != TicketStatusBlocked {
 		t.Fatalf("ticket phase-03 status = %q, want %q", got, TicketStatusBlocked)
 	}
-	if got := statusByTarget["src/legacy/file.go"]; got != TicketStatusStale {
-		t.Fatalf("stale ticket status = %q, want %q", got, TicketStatusStale)
+	if got := statusByTarget["src/legacy/file.go"]; got != TicketStatusActive {
+		t.Fatalf("ticket src/legacy/file.go status = %q, want %q", got, TicketStatusActive)
 	}
 
 	active := ActiveTickets(tickets)
-	if len(active) != 2 {
-		t.Fatalf("active tickets count = %d, want 2", len(active))
+	if len(active) != 3 {
+		t.Fatalf("active tickets count = %d, want 3", len(active))
 	}
 
 	materializedPath := ticketsPath(runtimeDir)

@@ -1,7 +1,7 @@
 ---
-priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
+priority: [103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94]
 # Launch-blocking:
-#   102-107 config cleanup — small deletions, simplify surface before launch
+#   -107 config cleanup — small deletions, simplify surface before launch
 #   98,99 relax backlog schema — simplify adapters, less rigid
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
@@ -39,17 +39,16 @@ priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 96, 101, 84, 90, 86, 93, 94
 
 ## Backend
 
-102. [ ] Remove `routing.tags.*` from `.noodle.toml` config. The scheduler skill decides routing per stage, so tag-based routing config is unnecessary. Remove the config parsing, the mise `routing` section that exposes tags, and update docs. [[plans/102-config-cleanup/overview]]
 
-103. [ ] Remove `[recovery]` config section (`max_retries`). The scheduler already sees `stage.failed` / `order.failed` events and decides whether to reschedule. Hardcoded retry logic in the loop is redundant. Just mark the stage/order as failed and let the scheduler handle it. [[plans/102-config-cleanup/overview]]
+103. [ ] Remove `[recovery]` config section (`max_retries`). The scheduler already sees `stage.failed` / `order.failed` events and decides whether to reschedule. Hardcoded retry logic in the loop is redundant. Just mark the stage/order as failed and let the scheduler handle it. [[plans/-config-cleanup/overview]]
 
-104. [ ] Remove `stuck_threshold` entirely and hardcode `poll_interval` to 1s. `stuck_threshold` is a bad concept: long-running tasks aren't stuck, they're just working. Delete the stuck detection logic. `poll_interval` is an implementation detail (lightweight local I/O), not a user knob. [[plans/102-config-cleanup/overview]]
+104. [ ] Remove `stuck_threshold` entirely and hardcode `poll_interval` to 1s. `stuck_threshold` is a bad concept: long-running tasks aren't stuck, they're just working. Delete the stuck detection logic. `poll_interval` is an implementation detail (lightweight local I/O), not a user knob. [[plans/-config-cleanup/overview]]
 
-105. [ ] Remove ticket staleness tracking. No need to mark tickets as stale. If a stage is stuck, the scheduler sees it via events and decides what to do. [[plans/102-config-cleanup/overview]]
+105. [ ] Remove ticket staleness tracking. No need to mark tickets as stale. If a stage is stuck, the scheduler sees it via events and decides what to do. [[plans/-config-cleanup/overview]]
 
-106. [ ] Rename `max_cooks` to `max_concurrency` in `.noodle.toml` config and all Go code. [[plans/102-config-cleanup/overview]]
+106. [ ] Rename `max_cooks` to `max_concurrency` in `.noodle.toml` config and all Go code. [[plans/-config-cleanup/overview]]
 
-107. [ ] Remove `max_completion_overflow`, `merge_backpressure_threshold`, and `shutdown_timeout` from user-facing config. These are internal plumbing (channel buffer size, merge queue backpressure, graceful shutdown wait). Hardcode sensible defaults (1024, 128). For shutdown: kill all agents immediately on quit, no timeout/grace period. Users expect stopping Noodle to stop immediately. [[plans/102-config-cleanup/overview]]
+107. [ ] Remove `max_completion_overflow`, `merge_backpressure_threshold`, and `shutdown_timeout` from user-facing config. These are internal plumbing (channel buffer size, merge queue backpressure, graceful shutdown wait). Hardcode sensible defaults (4, 128). For shutdown: kill all agents immediately on quit, no timeout/grace period. Users expect stopping Noodle to stop immediately. [[plans/102-config-cleanup/overview]]
 
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
 

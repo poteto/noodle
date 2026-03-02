@@ -20,7 +20,7 @@ func (l *Loop) killCook(name string) error {
 	}
 	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook.worktreeName == name || cook.session.ID() == name {
-			return cook.session.Kill()
+			return cook.session.ForceKill()
 		}
 	}
 	return fmt.Errorf("session not found")
@@ -100,7 +100,7 @@ func (l *Loop) steerRespawn(cook *cookHandle, prompt string) error {
 		steerPrompt = "Resume context: " + resumeCtx + "\n\nChef steering: " + steerPrompt
 	}
 
-	if err := cook.session.Kill(); err != nil {
+	if err := cook.session.ForceKill(); err != nil {
 		return err
 	}
 	l.trackCookCompleted(cook, StageResult{
