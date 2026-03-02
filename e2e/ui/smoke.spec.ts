@@ -26,8 +26,8 @@ test.describe("Noodle UI smoke", () => {
     await page.goto("/");
     const sidebar = page.locator("aside.sidebar");
 
-    // Manager channel item exists under Agents
-    await expect(sidebar.getByText("Manager", { exact: true })).toBeVisible();
+    // Scheduler channel item exists under Agents
+    await expect(sidebar.getByText("Scheduler", { exact: true })).toBeVisible();
     await expect(sidebar.locator(".agent-meta-line")).toContainText(/IDLE|MONITORING THE SITUATION/);
   });
 

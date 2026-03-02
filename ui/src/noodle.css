@@ -219,7 +219,7 @@
   border-color: var(--color-accent-dim);
 }
 
-/* Manager gets accent avatar */
+/* Scheduler gets accent avatar */
 .agent-item.manager .agent-avatar {
   background: var(--color-accent);
   color: var(--color-bg-depth);
@@ -690,7 +690,7 @@
 .message-row:hover {
   background: rgba(255, 255, 255, 0.02);
 }
-/* Manager rows — yellow accent on hover */
+/* Scheduler rows — yellow accent on hover */
 .message-row.type-manager:hover {
   border-left-color: var(--color-accent);
 }
@@ -770,7 +770,7 @@
   color: var(--color-text-primary);
 }
 .msg-badge.badge-user:hover { background: #2a2a2a; }
-/* Manager badge — black on accent yellow */
+/* Scheduler badge — black on accent yellow */
 .msg-badge.badge-manager {
   background: var(--color-accent);
   color: black;

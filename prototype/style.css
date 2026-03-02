@@ -211,7 +211,7 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Manager gets accent avatar */
+/* Scheduler gets accent avatar */
 .agent-item.manager .agent-avatar {
   background: var(--accent);
   color: var(--bg-depth);
@@ -566,7 +566,7 @@ body {
   flex-shrink: 0;
   margin-top: 2px;
 }
-/* Manager avatar — accent */
+/* Scheduler avatar — accent */
 .message-row.from-manager .msg-avatar {
   background: var(--accent);
   color: var(--bg-depth);

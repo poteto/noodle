@@ -177,9 +177,9 @@ export function Sidebar() {
             className={`agent-item manager ${isSchedulerActive ? "active" : ""}`}
             onClick={() => selectChannel(schedulerChannel)}
           >
-            <div className="agent-avatar">M</div>
+            <div className="agent-avatar">S</div>
             <div className="agent-info">
-              <span className="agent-name">Manager</span>
+              <span className="agent-name">Scheduler</span>
               <span className="agent-meta-line">
                 {schedulerRunning ? "MONITORING THE SITUATION" : "IDLE"}
               </span>

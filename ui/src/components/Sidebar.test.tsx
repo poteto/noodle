@@ -60,7 +60,7 @@ describe("Sidebar", () => {
 
   it("renders scheduler channel item", () => {
     render(<Sidebar />);
-    expect(screen.getByText("Manager")).toBeInTheDocument();
+    expect(screen.getByText("Scheduler")).toBeInTheDocument();
   });
 
   it("renders orders from snapshot", () => {
@@ -81,11 +81,11 @@ describe("Sidebar", () => {
     expect(screen.getByText("Fix auth bug")).toBeInTheDocument();
   });
 
-  it("navigates to / when Manager clicked", async () => {
+  it("navigates to / when Scheduler clicked", async () => {
     mockActiveChannel = { type: "agent", sessionId: "s1" };
     render(<Sidebar />);
     const user = userEvent.setup();
-    await user.click(screen.getByText("Manager"));
+    await user.click(screen.getByText("Scheduler"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
@@ -141,11 +141,11 @@ describe("Sidebar", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
   });
 
-  it("navigates to / when Manager clicked from feed page", async () => {
+  it("navigates to / when Scheduler clicked from feed page", async () => {
     mockPathname = "/";
     render(<Sidebar />);
     const user = userEvent.setup();
-    await user.click(screen.getByText("Manager"));
+    await user.click(screen.getByText("Scheduler"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
@@ -154,10 +154,10 @@ describe("Sidebar", () => {
     expect(container.querySelector(".logo-mark")).toBeTruthy();
   });
 
-  it("renders agent avatar for manager", () => {
+  it("renders agent avatar for scheduler", () => {
     const { container } = render(<Sidebar />);
     const avatar = container.querySelector(".agent-avatar");
     expect(avatar).toBeTruthy();
-    expect(avatar?.textContent).toBe("M");
+    expect(avatar?.textContent).toBe("S");
   });
 });
