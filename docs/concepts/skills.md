@@ -148,3 +148,35 @@ The scheduling agent now sees `greet` as an available task type and can create o
 Skills compose naturally. The `schedule` skill reads project state and writes orders. The `execute` skill picks up a task and does the work. The `reflect` skill reviews what happened and writes to the brain. Each skill has a clear input and output, and they coordinate through shared state.
 
 No skill imports another skill. No skill calls another skill directly. They're independent, which means you can swap out any piece without touching the others.
+
+## Recommended skills by project type
+
+**Any project**, start with these:
+
+| Skill      | Purpose                           |
+| ---------- | --------------------------------- |
+| `schedule` | Reads backlog, writes work orders |
+| `execute`  | Implements tasks, commits changes |
+| `commit`   | Conventional commit formatting    |
+
+**Projects that want quality gates**, add:
+
+| Skill     | Purpose                             |
+| --------- | ----------------------------------- |
+| `quality` | Reviews completed work before merge |
+| `testing` | Runs test suite against changes     |
+| `review`  | Code review walkthrough             |
+
+**Projects with complex tasks**, add:
+
+| Skill       | Purpose                                   |
+| ----------- | ----------------------------------------- |
+| `plan`      | Breaks down large tasks into phased plans |
+| `debugging` | Systematic root-cause analysis            |
+
+**Projects that want self-improvement**, add [brainmaxxing](https://github.com/poteto/brainmaxxing):
+
+| Skill      | Purpose                                        |
+| ---------- | ---------------------------------------------- |
+| `reflect`  | Writes session learnings to the brain          |
+| `meditate` | Distills principles from accumulated learnings |
