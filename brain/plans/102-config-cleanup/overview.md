@@ -17,7 +17,7 @@ Noodle's `.noodle.toml` exposes config knobs that are either unused, redundant w
 **In scope (6 todos):**
 
 - **102** — Remove `routing.tags.*` from config. Scheduler decides routing per stage.
-- **103** — Remove `[recovery]` section (`max_retries`). Scheduler handles retry decisions via events.
+- **103** — Remove `[recovery]` section (`max_retries`) and delete unused internal retry fallback (`defaultRetryMaxAttempts`). Scheduler handles retry decisions via events.
 - **104** — Remove `stuck_threshold` entirely; hardcode `poll_interval` to 1s.
 - **105** — Remove ticket staleness tracking. Scheduler handles stuck stages via events.
 - **106** — Rename `max_cooks` to `max_concurrency` in config and all Go code.

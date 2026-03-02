@@ -8,7 +8,7 @@ Back to [[plans/102-config-cleanup/overview]]
 
 ## Goal
 
-Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`max_retries = 3`) is defined and validated but never read by production code — the dispatch package uses its own hardcoded `defaultRetryMaxAttempts = 2`.
+Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`max_retries = 3`) is defined and validated but never read by production code. Also delete the unused internal fallback `defaultRetryMaxAttempts = 2` and implicit default retry policy wiring in `internal/dispatch` so retries remain scheduler-owned.
 
 ## Changes
 
@@ -32,6 +32,15 @@ Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`m
 ### `generate/skill_noodle.go`
 - Remove `recovery.max_retries` field description
 
+### `internal/dispatch/dispatch.go`
+- Delete `defaultRetryMaxAttempts`
+- Delete `defaultRetryPolicy()` if it is only used as an implicit fallback
+- Remove implicit retry-policy fallback wiring and require explicit policy at call sites if this package remains in use
+
+### `internal/dispatch/dispatch_test.go`
+- Update tests to pass explicit retry policy inputs where needed
+- Remove assertions that depend on implicit default retry policy behavior
+
 ### Test fixtures
 - Remove `recovery` fields from any `.noodle.toml` fixtures (check `loop/testdata/`)
 - Remove `Recovery` references in `loop/fixture_test.go`, `loop/log_test.go`, `loop/loop_event_integration_test.go`
@@ -51,6 +60,7 @@ Remove `RecoveryConfig` entirely — no replacement type needed.
 ### Static
 - `pnpm check` passes (full suite)
 - No references to `RecoveryConfig` remain
+- No references to `defaultRetryMaxAttempts` or `defaultRetryPolicy()` remain
 
 ### Runtime
 - Parse a `.noodle.toml` without `[recovery]` — should work (already the common case)
