@@ -1,10 +1,10 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect width="1200" height="630" fill="#050505"/>
 <rect y="620" width="1200" height="10" fill="#222"/>
-<text fill="#ffffff" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="28" font-weight="500" letter-spacing="0.2em"><tspan x="60" y="80">NOODLE</tspan></text>
-<text fill="#666666" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="24" letter-spacing="0em"><tspan x="60" y="200">{{category}}</tspan></text>
-<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="56" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="280">{{line1}}</tspan></text>
-<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="56" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="350">{{line2}}</tspan></text>
-<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="56" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="420">{{line3}}</tspan></text>
-<text fill="#444444" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="22" letter-spacing="0em"><tspan x="60" y="570">{{siteDescription}}</tspan></text>
+<text fill="#f5c518" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="32" font-weight="500" letter-spacing="0.2em"><tspan x="60" y="80">NOODLE</tspan></text>
+<text fill="#777777" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="28" letter-spacing="0em"><tspan x="60" y="200">{{category}}</tspan></text>
+<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="64" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="285">{{line1}}</tspan></text>
+<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="64" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="365">{{line2}}</tspan></text>
+<text fill="#e0e0e0" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="64" font-weight="600" letter-spacing="-0.02em"><tspan x="60" y="445">{{line3}}</tspan></text>
+<text fill="#555555" xml:space="preserve" style="white-space: pre" font-family="JetBrains Mono, monospace" font-size="26" letter-spacing="0em"><tspan x="60" y="570">Skills that run themselves. Orchestrate agents using skills.</tspan></text>
 </svg>

@@ -4,7 +4,8 @@ import { buildEndGenerateOpenGraphImages } from "./plugins/og-image.mjs";
 export default defineConfig({
   base: "/noodle/",
   title: "Noodle",
-  description: "Skills that run themselves. Orchestrate agents using skills.",
+  description:
+    "Noodle is an open-source AI coding framework that orchestrates agents using skills — reusable, self-scheduling units of work. Built with Go, it uses LLM-powered scheduling and a kitchen brigade model to automate code review, testing, planning, and more.",
 
   markdown: {
     theme: "min-dark",
@@ -52,6 +53,7 @@ export default defineConfig({
       },
       fallbackWithFrontmatter: false,
     },
+    maxCharactersPerLine: 15,
   }),
 
   themeConfig: {
