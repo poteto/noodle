@@ -8,7 +8,7 @@ Back to [[plans/102-config-cleanup/overview]]
 
 ## Goal
 
-Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`max_retries = 3`) is defined and validated but never read by production code. Also delete the unused internal fallback `defaultRetryMaxAttempts = 2`, remove implicit retry branches from the dispatch state machine, and remove loop auto-retry-on-dispatch-failure behavior so retries remain scheduler-owned.
+Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`max_retries = 3`) is defined and validated but never read by production code. Also delete the unused internal fallback `defaultRetryMaxAttempts = 2`, remove loop auto-retry-on-dispatch-failure behavior in runtime paths, and clean up implicit retry branches from `internal/dispatch` if still unused so retries remain scheduler-owned.
 
 ## Changes
 
@@ -55,9 +55,14 @@ Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`m
 - Remove the retryable-path special case in `spawnSchedule` that silently resets schedule stage to pending
 - Keep failure handling explicit (scheduler sees failure and decides what to do)
 
+### Runtime precedence note
+- Treat `loop/*` retry-removal work as the runtime-authoritative behavior change.
+- `internal/dispatch/*` changes are cleanup-only unless a concrete runtime caller exists.
+
 ### `loop/dispatch_failure_envelope.go`
 - Remove `AgentStartFailureClassRetryable` and retryability-driven branching used only for loop auto-retry decisions.
 - Preserve runtime fallback and unrecoverable classification paths (`AgentStartFailureClassFallback`, `AgentStartFailureClassUnrecoverable`).
+- In `classifyAgentStartFailure()`, make the default class explicit: `unrecoverable` unless a known fallback flow is being emitted.
 
 ### `internal/mode/gate.go` + `internal/mode/mode_test.go`
 - Remove `ActionRetry`, `CanRetry`, and retry-specific blocked reason text (no runtime callers should remain)
@@ -65,6 +70,10 @@ Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`m
 
 ### `docs/concepts/modes.md`
 - Remove language implying automatic loop retries; document that retries are scheduler-directed
+
+### Bootstrap retry scope
+- `spawnBootstrapIfNeeded()`'s `bootstrapAttempts` retry loop is **out of scope** for Plan 102.
+- Rationale: bootstrap retries are onboarding resilience for schedule-skill creation, not workload-stage retry policy.
 
 ### `generate/skill_noodle.go`
 - Update mode contract table and prose to remove "Auto-retry" claims and retry-gate wording tied to implicit loop retries.
@@ -98,6 +107,7 @@ Remove `RecoveryConfig` entirely — no replacement type needed.
 - No implicit retry branches remain in `RouteCompletion()` / `RouteFailure()`
 - No loop/runtime branches that auto-reset failed dispatches to pending based on retryable classification
 - No references to `ActionRetry` / `CanRetry` remain
+- `classifyAgentStartFailure()` has an explicit non-retryable default and preserved fallback path behavior
 
 ### Runtime
 - Parse a `.noodle.toml` without `[recovery]` — should work (already the common case)

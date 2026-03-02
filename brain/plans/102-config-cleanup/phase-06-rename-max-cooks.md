@@ -99,6 +99,9 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 ### Test fixtures
 - Update any `max_cooks` in `loop/testdata/*/.noodle.toml`
 
+### Repo-wide closure sweep
+- Run repo-wide grep for `max_cooks|MaxCooks|set-max-cooks` and migrate remaining hits in tests, fixtures, e2e helpers, scripts, and docs until zero references remain.
+
 ## Data Structures
 
 `ConcurrencyConfig.MaxCooks` becomes `ConcurrencyConfig.MaxConcurrency`. Resource snapshot's `MaxCooks` becomes `MaxConcurrency`.

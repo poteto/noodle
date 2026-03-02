@@ -66,6 +66,7 @@ Approach A wins because each todo has different risk profiles (unused field dele
 
 - This checklist is an index only; phase docs are authoritative for implementation details.
 - **Retry behavior (Phase 1):** remove loop auto-retry branches on dispatch failures (`loop/cook_spawn.go`, `loop/schedule.go`) and any retry-only gate surface (`internal/mode/gate.go`, `docs/concepts/modes.md`) so retries are scheduler-directed.
+- **Dispatch package cleanup (Phase 1, non-runtime-critical):** clean up `internal/dispatch` retry helpers/branches if they remain unused by runtime code paths.
 - **Recovery config/docs (Phase 1):** remove all `[recovery]` references across config, docs, generator output, fixtures, and loop tests.
 - **Routing tags (Phase 4):** remove all `routing.tags` plumbing in config/runtime/schema/docs/examples, including skill docs (`.agents/skills/noodle/SKILL.md`) and example docs (`examples/multi-skill/README.md`).
 - **Monitor config/docs (Phases 2-5):** remove all `monitor.*` references from config/docs/generator output, including skill docs (`.agents/skills/noodle/SKILL.md`).
