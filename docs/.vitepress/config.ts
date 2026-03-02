@@ -20,10 +20,14 @@ export default defineConfig({
     ],
   ],
 
-  transformHead({ pageData }) {
+  transformHead({ pageData, siteData }) {
     // Add OG tags for pages the plugin doesn't cover (homepage, 404, cookbook index)
     if (pageData.relativePath === "index.md") {
       return [
+        ["meta", { property: "og:title", content: siteData.title }],
+        ["meta", { property: "og:description", content: siteData.description }],
+        ["meta", { property: "og:url", content: "https://poteto.github.io/noodle/" }],
+        ["meta", { property: "og:site_name", content: siteData.title }],
         ["meta", { property: "og:type", content: "website" }],
         ["meta", { property: "og:image", content: "https://poteto.github.io/noodle/og-introduction.png" }],
         ["meta", { property: "og:image:width", content: "1200" }],

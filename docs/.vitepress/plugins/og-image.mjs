@@ -556,11 +556,18 @@ async function renderSVGAndRewriteHTML(
       reason: String(err),
     };
   }
+  const relativePath = relative(siteConfig.outDir, file);
+  const pagePath = relativePath.replace(/index\.html$/, "").replace(/\.html$/, "");
   const result = await unified()
     .use(RehypeParse)
     .use(RehypeMeta, {
       og: true,
       twitter: true,
+      title: page.title,
+      description: page.frontmatter?.description || siteDescription,
+      name: siteTitle,
+      origin: domain,
+      pathname: `/${pagePath}`,
       image: {
         url: `${domain}/${relative(siteConfig.outDir, ogImageFilePathFullName)
           .split(sep)
