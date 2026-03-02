@@ -262,11 +262,11 @@ func TestCodexAdapterParsesTurnCompleted(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("event count: got %d want 1", len(events))
 	}
-	if events[0].Type != EventComplete {
-		t.Fatalf("event type: got %q want %q", events[0].Type, EventComplete)
+	if events[0].Type != EventResult {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventResult)
 	}
-	if events[0].Message != "turn completed" {
-		t.Fatalf("event message: got %q want %q", events[0].Message, "turn completed")
+	if events[0].Message != "turn complete" {
+		t.Fatalf("event message: got %q want %q", events[0].Message, "turn complete")
 	}
 }
 
@@ -283,8 +283,8 @@ func TestRegistryParsesTurnCompletedViaCodexAdapter(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("event count: got %d want 1", len(events))
 	}
-	if events[0].Type != EventComplete {
-		t.Fatalf("event type: got %q want %q", events[0].Type, EventComplete)
+	if events[0].Type != EventResult {
+		t.Fatalf("event type: got %q want %q", events[0].Type, EventResult)
 	}
 }
 
