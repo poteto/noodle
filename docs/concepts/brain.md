@@ -1,8 +1,31 @@
-# Brain
+# Self-Learning
 
-The brain is an optional directory of markdown files committed to your repo at `brain/`. It stores project knowledge: principles, patterns, past mistakes, codebase quirks, architectural decisions. Agents read the brain before they start working and write to it when they learn something.
+Install [brainmaxxing](https://github.com/poteto/brainmaxxing) to add this optional upgrade to Noodle.
 
-Noodle works without a brain. The noodle loop does not depend on it. The brain becomes useful when you want agents to share context across sessions. Avoiding repeated mistakes, following project-specific conventions, building on past decisions.
+This skill pack adds a brain, a directory of markdown files committed to your repo at `brain/`. It stores project knowledge: principles, patterns, past mistakes, codebase quirks, architectural decisions. With this skill pack installed, agents read the brain before they start working and write to it when they learn something.
+
+**Noodle works without this**. The noodle loop does not depend on it. This is entirely additive, and you can skip this is if you prefer.
+
+The brain becomes useful when you want agents to share context across sessions: avoiding repeated mistakes, following project-specific conventions, building on past decisions.
+
+## Installation
+
+Tell your agent:
+
+```md
+Install brainmaxxing from https://github.com/poteto/brainmaxxing into this project.
+```
+
+This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project.
+
+After installing, add `schedule:` fields to the brainmaxxing skills so the noodle loop runs them automatically. For example, tell your agent:
+
+```md
+Add schedule fields to the reflect, meditate, and ruminate skills.
+Reflect should run after every agent session. Meditate should run
+periodically after several reflects accumulate. Ruminate should not
+be scheduled but run ad-hoc to mine past conversations.
+```
 
 ## Structure
 
@@ -36,26 +59,6 @@ Agents treat the brain as shared memory:
 
 The brain accumulates your project's actual working knowledge. It replaces the knowledge that usually lives in someone's head and gets lost when they leave.
 
-## Self-Learning
+## The Self-Learning Loop
 
-The brain can power a self-learning noodle loop when paired with the [brainmaxxing](https://github.com/poteto/brainmaxxing) skill pack. Brainmaxxing adds three skills (reflect, meditate, and ruminate) that capture session learnings, distill principles, and mine past conversations. This is optional. See the [Self-Learning cookbook](/cookbook/self-learning) for details.
-
-## Why Files
-
-The brain lives in git because it should evolve with the project. Architecture changes, the brain updates. A principle proves wrong, it gets deleted. When you roll back code, you roll back knowledge too.
-
-Because the brain is markdown, agents interact with it the same way they interact with code. No special API, no database queries.
-
-## Wikilinks
-
-Brain files use `[[wikilinks]]` to reference each other. An index file might link to its children:
-
-```markdown
-# Codebase
-
-- [[api-patterns]]
-- [[test-conventions]]
-- [[error-handling]]
-```
-
-This keeps the vault navigable in Obsidian and lets agents follow links to find related context.
+Brainmaxxing adds three skills that form a learning loop. Reflect runs after every session and captures what happened. Meditate runs periodically and distills accumulated reflections into principles. Ruminate mines past conversations for knowledge that was never written down. See the [Self-Learning cookbook](/cookbook/self-learning) for details.

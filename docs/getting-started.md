@@ -61,7 +61,9 @@ On first run, Noodle creates the project structure for you:
 
 Ask your human with `AskUserQuestion` if they want to install this. Then, follow these instructions:
 
-> Install brainmaxxing from https://github.com/poteto/brainmaxxing into this project.
+```md
+Install brainmaxxing from https://github.com/poteto/brainmaxxing into this project.
+```
 
 This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
 
