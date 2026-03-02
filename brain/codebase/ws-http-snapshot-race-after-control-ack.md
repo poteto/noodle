@@ -12,6 +12,7 @@
   - Cancel in-flight snapshot query when a WS `snapshot` message arrives before writing WS data into cache.
   - Apply `updated_at` freshness arbitration (`chooseNewerSnapshot`) so older responses are ignored even if cancellation misses.
   - UI busy indicators should gate on loop state + running status, not `active` membership alone, to avoid showing `Thinking…` when loop is idle.
+  - Session turn-boundary detail: canonical `result` events are mapped into session `cost` events, so snapshot enrichment must clear stale `current_action` on `cost` to reflect interrupted-turn idle state.
 - Regression coverage: `ui/src/client/hooks.test.tsx` asserts connected WS path skips invalidation and disconnected path still invalidates.
 
 See also [[codebase/steer-id-correlation-and-chat-visibility]], [[principles/fix-root-causes]]
