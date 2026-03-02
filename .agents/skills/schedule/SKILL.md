@@ -32,11 +32,11 @@ Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID
 
 Backlog items always have `id` and `title`. Other fields are adapter-defined and may vary. The default adapter (todos.md) provides: `status`, `section`, `tags`, `estimate`, and `plan`. Custom adapters may include any fields — treat unknown fields as useful context.
 
-**One plan at a time:** Schedule one plan's next phase at a time. Pick the highest-priority plan with remaining phases and schedule its next phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
+**One plan at a time:** Schedule all remaining phases of one plan at once. Pick the highest-priority plan with remaining phases and schedule an order for each unfinished phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
 
 **Shared infrastructure:** When multiple plans depend on common infrastructure (shared types, utilities, base packages), propose a standalone infra order that isn't tied to any single plan. Use a descriptive slug ID (e.g., `"infra-shared-types"`, `"infra-event-system"`) — orders don't need to match a backlog item ID. If the infra work is substantial, create a backlog item for it via the adapter (`noodle adapter run backlog add`), then use that item's ID as the order ID. The infra order should run before any plan that depends on it.
 
-**Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Determine the next unfinished phase (first unchecked `- [ ]` item). Schedule an execute stage for that phase. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
+**Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Schedule an order for each remaining unfinished phase (each unchecked `- [ ]` item), in order. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies. The loop executes orders sequentially, so later phases naturally wait for earlier ones to complete.
 
 **Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a general order with `task_key: "execute"` and use `extra_prompt` to instruct the session to invoke `/plan` first — e.g., `"This item needs a plan before implementation. Use /plan to break it down, then execute the first phase."` The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally.
 
@@ -95,7 +95,7 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 
 ## Scheduling Heuristics
 
-- **One plan at a time**: Finish one plan's phases before starting another. Breadth-first wastes context rebuilding plan state each time; depth-first produces complete, shippable results. Exception: shared infra orders can run alongside or before a plan's phases.
+- **One plan at a time**: Schedule all remaining phases of one plan upfront. Don't spread work across plans — depth-first produces complete, shippable results. The loop executes orders sequentially, so all phases run in order. Exception: shared infra orders can run alongside or before a plan's phases.
 - **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every order must cite which principle or rule drove its placement.
