@@ -60,19 +60,18 @@ No input. Prints newline-delimited JSON (NDJSON) to stdout, one backlog item per
 }
 ```
 
-Only `id` and `title` are required. Everything else is optional and passed through to mise.json as-is — the scheduler sees whatever your adapter returns.
+Only `id` and `title` are required. Everything else is optional. Unrecognized fields are ignored.
 
-| Field      | Type     | Required | Notes                                    |
-| ---------- | -------- | -------- | ---------------------------------------- |
-| `id`       | string   | yes      | unique identifier                        |
-| `title`    | string   | yes      | item title                               |
-| `status`   | string   | no       | e.g. `open`, `in_progress`, `done`       |
-| `section`  | string   | no       | grouping label                           |
-| `tags`     | string[] | no       | arbitrary tags                           |
-| `estimate` | string   | no       | size estimate, e.g. `small`, `medium`    |
-| `plan`     | string   | no       | path to a plan overview file             |
-
-You can include any other fields too. Noodle doesn't validate them — they're forwarded to the scheduler for context.
+| Field         | Type     | Required | Notes                                 |
+| ------------- | -------- | -------- | ------------------------------------- |
+| `id`          | string   | yes      | unique identifier                     |
+| `title`       | string   | yes      | item title                            |
+| `description` | string   | no       | item details                          |
+| `section`     | string   | no       | grouping label                        |
+| `status`      | string   | no       | e.g. `open`, `in_progress`, `done`    |
+| `tags`        | string[] | no       | arbitrary tags                        |
+| `estimate`    | string   | no       | size estimate, e.g. `small`, `medium` |
+| `plan`        | string   | no       | path to a plan overview file          |
 
 ### `add`
 

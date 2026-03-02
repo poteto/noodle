@@ -160,9 +160,6 @@ func backlogAdd() error {
 		return fmt.Errorf("title required")
 	}
 	section := strings.TrimSpace(payload.Section)
-	if section == "" {
-		section = "Inbox"
-	}
 
 	lines, err := readLines(todosFile)
 	if err != nil {
@@ -170,11 +167,13 @@ func backlogAdd() error {
 	}
 	id := nextTodoID(lines)
 
-	if !hasSection(lines, section) {
-		if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) != "" {
-			lines = append(lines, "")
+	if section != "" {
+		if !hasSection(lines, section) {
+			if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) != "" {
+				lines = append(lines, "")
+			}
+			lines = append(lines, "## "+section)
 		}
-		lines = append(lines, "## "+section)
 	}
 	lines = append(lines, fmt.Sprintf("%d. [ ] %s", id, payload.Title))
 	lines = updateNextID(lines, id+1)
