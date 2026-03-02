@@ -23,6 +23,8 @@
 
 ## Plan-first order (no plan yet)
 
+No `task_key` on the planning stage — avoids loading the execute skill, which would conflict with the plan skill's "stop after planning" instruction. Use `prompt` to describe the planning task directly.
+
 ```json
 {
   "orders": [
@@ -32,8 +34,8 @@
       "rationale": "complex cross-cutting item without a plan; needs plan-first then adversarial review",
       "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending",
-         "extra_prompt": "This item needs a plan before implementation. Use /plan to break it down."},
+        {"provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending",
+         "prompt": "Plan backlog item #97: adapter schema validator. Use /plan to break it down into phases. Do not implement — planning only."},
         {"task_key": "adversarial-review", "skill": "adversarial-review", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
