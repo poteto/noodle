@@ -43,6 +43,8 @@
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/snapshot-tygo-output-path]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
+- [[codebase/treeview-tooltip-cleanup-on-unmount]]
+- [[codebase/treeview-schedule-node-routes-to-live-feed]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/worktree-gotchas]]
 - [[codebase/worktree-prune-patch-equivalence]]
