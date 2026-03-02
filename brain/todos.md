@@ -1,11 +1,11 @@
 ---
-priority: [102, 103, 104, 105, 106, 107, 95, 84, 90, 98, 99, 86, 93, 94]
+priority: [102, 103, 104, 105, 106, 107, 98, 99, 95, 84, 90, 86, 93, 94]
 # Launch-blocking:
 #   102-107 config cleanup — small deletions, simplify surface before launch
+#   98,99 relax backlog schema — simplify adapters, less rigid
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
-#   98,99 relax backlog schema — lower barrier for adapters
 #   86 diffs integration — code-change review UX
 #   93,94 distribution — Homebrew + cross-platform binaries
 # Post-launch:
