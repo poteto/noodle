@@ -51,7 +51,12 @@ export default defineConfig({
   }),
 
   themeConfig: {
-    nav: [{ text: "GitHub", link: "https://github.com/poteto/noodle" }],
+    nav: [
+      ...(process.env.NOODLE_VERSION
+        ? [{ text: process.env.NOODLE_VERSION, link: `https://github.com/poteto/noodle/releases/tag/${process.env.NOODLE_VERSION}` }]
+        : []),
+      { text: "GitHub", link: "https://github.com/poteto/noodle" },
+    ],
 
     sidebar: [
       {

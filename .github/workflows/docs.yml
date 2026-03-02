@@ -1,9 +1,8 @@
 name: Deploy docs
 
 on:
-  push:
-    branches: [main]
-    paths: [docs/**]
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -31,6 +30,8 @@ jobs:
       - run: pnpm --dir docs install --frozen-lockfile
 
       - run: pnpm --dir docs build
+        env:
+          NOODLE_VERSION: ${{ github.event.release.tag_name }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
