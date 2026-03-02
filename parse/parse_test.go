@@ -183,6 +183,18 @@ func TestClaudeAdapterEmitsUserTextAsPrompt(t *testing.T) {
 	}
 }
 
+func TestClaudeAdapterSkipsInterruptNoticeUserText(t *testing.T) {
+	adapter := ClaudeAdapter{}
+	line := `{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Request interrupted by user."}]},"_ts":"2026-02-23T12:00:00Z"}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse user text: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count: got %d want 0", len(events))
+	}
+}
+
 func TestCodexAdapterParsesAgentMessagesFromEventAndItem(t *testing.T) {
 	adapter := CodexAdapter{}
 
@@ -214,6 +226,18 @@ func TestCodexAdapterParsesAgentMessagesFromEventAndItem(t *testing.T) {
 	}
 	if events[0].Message != "text:Parser fallback works." {
 		t.Fatalf("event message: got %q want %q", events[0].Message, "text:Parser fallback works.")
+	}
+}
+
+func TestCodexAdapterSkipsInterruptNoticeUserMessage(t *testing.T) {
+	adapter := CodexAdapter{}
+	line := `{"type":"event_msg","timestamp":"2026-02-22T16:44:00Z","payload":{"type":"user_message","message":"Request interrupted by user"}}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse user_message line: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count: got %d want 0", len(events))
 	}
 }
 

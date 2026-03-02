@@ -67,7 +67,7 @@ func parseCodexEventMsg(payload json.RawMessage, ts time.Time) ([]CanonicalEvent
 		}}, nil
 	case "user_message":
 		text := strings.TrimSpace(event.Message)
-		if text == "" {
+		if text == "" || isInterruptNotice(text) {
 			return nil, nil
 		}
 		return []CanonicalEvent{{

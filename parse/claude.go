@@ -151,7 +151,7 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 			switch content.Type {
 			case "text":
 				text := strings.TrimSpace(content.Text)
-				if text != "" {
+				if text != "" && !isInterruptNotice(text) {
 					events = append(events, CanonicalEvent{
 						Type:      EventAction,
 						Message:   "user:" + text,

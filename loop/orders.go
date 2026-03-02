@@ -292,7 +292,8 @@ func isOrdersNextRejectedError(err error) bool {
 // WriteOrdersAtomic, THEN deletes orders-next.json. If the loop crashes after
 // writing orders.json but before deleting orders-next.json, the next cycle
 // re-promotes idempotently — duplicate order IDs across the two files are
-// skipped (not rejected).
+// skipped (not rejected), except when replacing a failed order with a new
+// active proposal for explicit restart.
 func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 	nextData, err := os.ReadFile(nextPath)
 	if os.IsNotExist(err) {
@@ -319,19 +320,24 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		return false, false, fmt.Errorf("read existing orders: %w", err)
 	}
 
-	// Build set of existing order IDs for dedup.
-	existingIDs := make(map[string]struct{}, len(existing.Orders))
-	for _, order := range existing.Orders {
-		existingIDs[order.ID] = struct{}{}
+	// Build index of existing order IDs for dedup/replacement decisions.
+	existingIndex := make(map[string]int, len(existing.Orders))
+	for i, order := range existing.Orders {
+		existingIndex[order.ID] = i
 	}
 
-	// Merge incoming orders, skipping duplicates.
+	// Merge incoming orders. Duplicates are skipped for crash-safe idempotency,
+	// except a failed existing order can be replaced by a new active proposal.
 	for _, order := range incoming.Orders {
-		if _, exists := existingIDs[order.ID]; exists {
+		idx, exists := existingIndex[order.ID]
+		if exists {
+			if shouldReplaceFailedOrder(existing.Orders[idx], order) {
+				existing.Orders[idx] = order
+			}
 			continue
 		}
 		existing.Orders = append(existing.Orders, order)
-		existingIDs[order.ID] = struct{}{}
+		existingIndex[order.ID] = len(existing.Orders) - 1
 	}
 
 	// Write merged orders atomically.
@@ -345,6 +351,10 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 	}
 
 	return true, emptyPromotion, nil
+}
+
+func shouldReplaceFailedOrder(existing Order, incoming Order) bool {
+	return existing.Status == OrderStatusFailed && incoming.Status == OrderStatusActive
 }
 
 // NormalizeAndValidateOrders delegates to orderx.

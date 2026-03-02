@@ -185,6 +185,81 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 	}
 }
 
+func TestConsumeOrdersNextDuplicateFailedIDReplaced(t *testing.T) {
+	dir := t.TempDir()
+	ordersPath := filepath.Join(dir, "orders.json")
+	nextPath := filepath.Join(dir, "orders-next.json")
+
+	existing := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{
+				ID:     "dup",
+				Title:  "old failed order",
+				Status: orderx.OrderStatusFailed,
+				Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusFailed}},
+			},
+			{
+				ID:     "keep",
+				Status: orderx.OrderStatusActive,
+				Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}},
+			},
+		},
+	}
+	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
+		t.Fatal(err)
+	}
+
+	next := orderx.OrdersFile{
+		Orders: []orderx.Order{
+			{
+				ID:     "dup",
+				Title:  "restarted order",
+				Status: orderx.OrderStatusActive,
+				Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}},
+			},
+		},
+	}
+	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
+		t.Fatal(err)
+	}
+
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
+	if err != nil {
+		t.Fatalf("consumeOrdersNext: %v", err)
+	}
+	if !promoted {
+		t.Fatal("expected promoted=true")
+	}
+
+	got, err := orderx.ReadOrders(ordersPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Orders) != 2 {
+		t.Fatalf("expected 2 orders, got %d", len(got.Orders))
+	}
+
+	var replaced *orderx.Order
+	for i := range got.Orders {
+		if got.Orders[i].ID == "dup" {
+			replaced = &got.Orders[i]
+			break
+		}
+	}
+	if replaced == nil {
+		t.Fatal("expected dup order to exist after promotion")
+	}
+	if replaced.Status != orderx.OrderStatusActive {
+		t.Fatalf("dup order status = %q, want %q", replaced.Status, orderx.OrderStatusActive)
+	}
+	if replaced.Title != "restarted order" {
+		t.Fatalf("dup order title = %q, want %q", replaced.Title, "restarted order")
+	}
+	if len(replaced.Stages) != 1 || replaced.Stages[0].Status != orderx.StageStatusPending {
+		t.Fatalf("dup order stages not replaced: %+v", replaced.Stages)
+	}
+}
+
 func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 	dir := t.TempDir()
 	ordersPath := filepath.Join(dir, "orders.json")
