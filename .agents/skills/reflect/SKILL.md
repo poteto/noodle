@@ -4,7 +4,7 @@ description: >-
   Reflect on the conversation and update the brain. Use when wrapping up, after mistakes
   or corrections, or when significant codebase knowledge was gained. Triggers: "reflect",
   "remember this".
-schedule: "After a cook session completes"
+schedule: "Follow-up stage after quality — capture learnings from the completed execute→quality cycle."
 ---
 
 # Reflect

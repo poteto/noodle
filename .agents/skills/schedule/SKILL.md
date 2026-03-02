@@ -38,27 +38,15 @@ Backlog items always have `id` and `title`. Other fields are adapter-defined and
 
 **Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Determine the next unfinished phase (first unchecked `- [ ]` item). Schedule an execute stage for that phase. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
 
-**Items without plans:** Schedule as a simple execute task using the backlog item's title and description as the prompt.
+**Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a general order with `task_key: "execute"` and use `extra_prompt` to instruct the session to invoke `/plan` first — e.g., `"This item needs a plan before implementation. Use /plan to break it down, then execute the first phase."` The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally.
 
 **Standalone orders:** Orders can have arbitrary IDs — they don't need to correspond to a backlog item. When a standalone order completes, the `backlog done` adapter call is a no-op (no matching item to mark done). Use standalone orders for shared infrastructure, maintenance tasks, or cross-cutting work that serves multiple backlog items.
 
 **Nothing to schedule:** When no backlog items are actionable (all blocked, all in-progress, all done, etc.), still write `orders-next.json` with an empty orders array (`{"orders":[]}`). This signals to the loop that scheduling ran but found nothing — preventing hot-loop re-spawns.
 
-### Follow-Up Stages
+### Follow-Up and Standalone Stages
 
-After an execute stage, consider what naturally follows. Add follow-up stages to the same order:
-
-- **quality** after **execute** — review the cook's work. **Cross-provider review:** prefer the opposite provider from the execute stage. If codex executed, claude reviews; if claude executed, codex reviews. Fresh eyes from a different model catch more issues.
-- **reflect** after **quality** — capture learnings from the completed cycle
-
-These are starting points, not a closed list. If the `task_types` registry contains new types you haven't seen before, read their `schedule` hints and infer where they fit.
-
-### Standalone Orders
-
-Some task types run as standalone single-stage orders:
-
-- **meditate** after several reflects have accumulated — audit the brain vault (expensive, don't over-schedule)
-- **debate** when a plan item has an unresolved design question — prepend as a stage before execute
+Each task type's `schedule` field describes when and how to schedule it — as a follow-up stage within an order, as a standalone order, or both. Read these hints from `task_types` in mise and compose orders accordingly.
 
 ## Recent Events
 
@@ -102,7 +90,7 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 | Empty orders | Full survey of mise — schedule from scratch |
 | Quality rejection | Rescope the rejected item for retry with feedback |
 | New backlog items | Create orders respecting workflow stage order |
-| Items without plans | Schedule as simple execute tasks |
+| Items without plans | Assess complexity — simple items execute directly, complex items get a plan-first order |
 | All items blocked/done | Write empty orders array, let loop cooldown |
 
 ## Scheduling Heuristics

@@ -1,7 +1,7 @@
 ---
 name: quality
 description: Post-cook quality gate. Reviews completed cook work for correctness, scope discipline, and principle compliance. Emits stage_message events with findings.
-schedule: "After each cook session completes"
+schedule: "Follow-up stage after execute. Cross-provider review preferred — if codex executed, schedule quality on claude; if claude executed, schedule on codex."
 ---
 
 # Quality
