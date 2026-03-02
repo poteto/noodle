@@ -479,6 +479,17 @@ body {
   background: var(--noodle-surface);
 }
 
+@media (max-width: 768px) {
+  .vp-doc table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-left: 12px;
+    margin-right: 12px;
+    width: auto;
+  }
+}
+
 
 /* ============================================================
    Search
