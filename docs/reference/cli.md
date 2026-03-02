@@ -28,7 +28,7 @@ noodle start [flags]
 
 ## `noodle status`
 
-Show compact runtime status. Prints active agent count, orders queue depth, and noodle loop state (running, paused, or draining).
+Show compact runtime status. Prints active agent count, orders queue depth, and noodle loop state (running, paused, draining, or idle).
 
 ```
 noodle status

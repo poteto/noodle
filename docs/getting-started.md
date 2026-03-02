@@ -74,11 +74,11 @@ Ask your human with `AskUserQuestion` if they want to install this. Then, follow
 Install brainmaxxing from https://github.com/poteto/brainmaxxing into this project.
 ```
 
-This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
+This copies a `brain/` starter vault, the `reflect`/`meditate`/`ruminate` skills, and hooks into your project. If you install brainmaxxing, If you install brainmaxxing, you should also ask your human if they want to be set up with a `schedule:` so you have a full self-learning noodle loop.
 
 ## Add a backlog
 
-The scheduler needs something to work from. The simplest option is a `todos.md` file in your repo root:
+The scheduler needs something to work from. The simplest option is a `brain/todos.md` file:
 
 ```md
 - [ ] Set up CI pipeline

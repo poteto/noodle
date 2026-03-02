@@ -9,9 +9,9 @@ The default backlog is a markdown file (`brain/todos.md`). You don't need an ada
 An adapter is a set of commands configured in `.noodle.toml`. Each command handles one operation:
 
 - **sync**: pulls items from the external source into Noodle's backlog format
-- **add**: creates a new item in the external system
 - **done**: marks an item complete in the external system
-- **edit**: updates an existing item
+- **add** _(planned)_: creates a new item in the external system
+- **edit** _(planned)_: updates an existing item
 
 ```toml
 [adapters.backlog]
@@ -72,22 +72,6 @@ Only `id` and `title` are required. Everything else — any field, any type — 
 
 `status` and `plan` are the only optional fields Noodle interprets. All other fields (e.g. `tags`, `section`, `estimate`, `priority`, or anything your system tracks) are passed through as-is. The scheduler sees them in mise.json and can use them for context, but Noodle itself doesn't act on them.
 
-### `add`
-
-Noodle calls your `add` command when the scheduler creates a new backlog item. Your command receives JSON on stdin and should create the item in your external system, then print the new item's ID to stdout.
-
-**stdin:**
-```json
-{
-  "title": "Ship feature",
-  "section": "Backend"
-}
-```
-
-Only `title` is required. `section` is optional — if provided and the section doesn't exist yet, it's created.
-
-**stdout:** the new item ID (e.g. `42`)
-
 ### `done`
 
 Noodle calls your `done` command when an order completes, passing the item ID as the first argument. Your command should mark that item complete in your external system. No stdin, no output expected.
@@ -96,20 +80,13 @@ Noodle calls your `done` command when an order completes, passing the item ID as
 my-adapters/backlog-done <id>
 ```
 
-### `edit`
+### `add` _(planned)_
 
-Noodle calls your `edit` command when a backlog item needs updating, passing the item ID as the first argument and JSON on stdin with the new values.
+Not yet called by the noodle loop. When implemented, your `add` command will receive JSON on stdin and should create the item in your external system, then print the new item's ID to stdout.
 
-```
-my-adapters/backlog-edit <id>
-```
+### `edit` _(planned)_
 
-**stdin:**
-```json
-{
-  "title": "Ship feature v2"
-}
-```
+Not yet called by the noodle loop. When implemented, your `edit` command will receive the item ID as the first argument and JSON on stdin with the new values.
 
 ## Writing an adapter
 

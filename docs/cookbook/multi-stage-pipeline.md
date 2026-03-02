@@ -89,7 +89,7 @@ The scheduler now creates orders with three stages instead of one:
       "id": "todo-1",
       "title": "Add /healthz endpoint",
       "rationale": "Standard health check for the API",
-      "status": "pending",
+      "status": "active",
       "stages": [
         { "skill": "execute", "status": "pending" },
         { "skill": "test", "status": "pending" },

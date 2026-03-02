@@ -55,7 +55,7 @@ Each order has a single execute stage:
       "id": "todo-1",
       "title": "Add a hello-world CLI command",
       "rationale": "First backlog item, straightforward addition",
-      "status": "pending",
+      "status": "active",
       "stages": [
         { "skill": "execute", "status": "pending" }
       ]

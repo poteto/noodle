@@ -8,7 +8,7 @@ Noodle automates that loop. A scheduling agent reads your backlog and picks work
 
 ## Where does the backlog come from?
 
-Anywhere. A `todos.md` file works out of the box. [Adapters](/concepts/adapters) let Noodle pull from GitHub Issues, Linear, Jira, or whatever you already use.
+Anywhere. A `brain/todos.md` file works out of the box. [Adapters](/concepts/adapters) let Noodle pull from GitHub Issues, Linear, Jira, or whatever you already use.
 
 ## Can agents run in the cloud?
 

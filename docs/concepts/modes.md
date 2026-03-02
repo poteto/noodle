@@ -6,19 +6,19 @@ Noodle has three run modes that control how much autonomy agents have. The mode 
 
 ### Auto
 
-Full autonomy. The scheduler picks work, agents execute, failed stages retry, and completed work merges. No human in the noodle loop.
+Full autonomy. The scheduler picks work, agents execute, and completed work merges. No human in the noodle loop.
 
 Use auto mode for projects with good test coverage, or when you want agents to work unattended. Everything still goes through the merge queue, so changes are serialized and can be rolled back.
 
 ### Supervised
 
-The scheduler picks work and agents execute automatically, but merges and retries need your approval. You review the output and decide what lands.
+The scheduler picks work and agents execute automatically, but merges need your approval. You review the output and decide what lands.
 
 Use supervised mode when you trust agents to do the work but want to see the results before they hit the main branch.
 
 ### Manual
 
-You control everything. No automatic scheduling, no automatic dispatch, no auto-merge, no auto-retry. You trigger each step.
+You control everything. No automatic scheduling, no automatic dispatch, no auto-merge. You trigger each step.
 
 Use manual mode for high-stakes changes: production deployments, database migrations, security-sensitive code.
 
@@ -36,11 +36,11 @@ The mode can also change at runtime through control commands. Transitions are tr
 
 ## What each mode gates
 
-|            | Schedule | Dispatch | Retry | Merge |
-| ---------- | -------- | -------- | ----- | ----- |
-| `auto`       | auto     | auto     | auto  | auto  |
-| `supervised` | auto     | auto     | human   | human   |
-| `manual`     | human      | human      | human   | human   |
+|            | Schedule | Dispatch | Merge |
+| ---------- | -------- | -------- | ----- |
+| `auto`       | auto     | auto     | auto  |
+| `supervised` | auto     | auto     | human   |
+| `manual`     | human      | human      | human   |
 
 ## Trust as a Dial
 

@@ -26,7 +26,7 @@ Before each scheduling decision, Noodle builds a mise (a snapshot of everything 
 | `resources`      | Total agent capacity and available slots                                    |
 | `recent_history` | Outcomes of recently completed sessions                                     |
 | `task_types`     | All skills with `schedule` fields and their triggers                        |
-| `routing`        | Default and per-tag provider/model configuration                            |
+| `routing`        | Default provider/model configuration and available runtimes                  |
 | `warnings`       | Issues the scheduler should know about (stale config, failed registries)    |
 
 Because the mise is plain JSON, you can inspect it directly to see exactly what the scheduler sees.
@@ -73,7 +73,7 @@ A stage is a single step within an order.
 | `skill`    | Skill to invoke (alternative to `task_key`)     |
 | `provider` | Agent provider for this stage                   |
 | `model`    | Model to use                                    |
-| `runtime`  | Where to run: `process`, `sprites`, or `cursor` |
+| `runtime`  | Where to run: `process` or `sprites`             |
 | `group`    | Parallel execution group number                 |
 | `status`   | Stage lifecycle status                          |
 

@@ -120,7 +120,7 @@ Controls which runtime executes agent sessions and per-runtime settings.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `default` | string | `"process"` | Default runtime kind: `"process"`, `"sprites"`, or `"cursor"` |
+| `default` | string | `"process"` | Default runtime kind: `"process"` or `"sprites"` |
 
 ```toml
 [runtime]
@@ -161,25 +161,6 @@ git_token_env = "GITHUB_TOKEN"
 max_concurrent = 50
 ```
 
-#### `[runtime.cursor]`
-
-Cloud runtime using [Cursor](https://cursor.com) background agents.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `api_key_env` | string | `"CURSOR_API_KEY"` | Environment variable name for the Cursor API key |
-| `base_url` | string | `""` | Custom API base URL (leave empty for default) |
-| `repository` | string | `""` | Repository identifier for Cursor sessions |
-| `max_concurrent` | int | `10` | Maximum concurrent Cursor sessions |
-
-```toml
-[runtime.cursor]
-api_key_env = "CURSOR_API_KEY"
-base_url = ""
-repository = "owner/repo"
-max_concurrent = 10
-```
-
 ---
 
 ### `[server]`
@@ -189,7 +170,7 @@ Controls the web UI server.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `port` | int | `3000` | Port for the web UI server |
-| `enabled` | bool | auto | Whether to start the server. When omitted, the server starts automatically in interactive terminals |
+| `enabled` | bool | `true` | Whether to start the server. When omitted, the server starts automatically |
 
 ```toml
 [server]
@@ -216,9 +197,7 @@ skill = "backlog"
 
 [adapters.backlog.scripts]
 sync = "my-adapters/backlog-sync"
-add = "my-adapters/backlog-add"
 done = "my-adapters/backlog-done"
-edit = "my-adapters/backlog-edit"
 ```
 
 Scripts are executed relative to the project root. Each script receives structured input on stdin and must produce structured output on stdout. See the [backlog skill docs](/concepts/skills) for the expected interface.
