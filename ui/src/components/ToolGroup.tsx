@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import type { ToolGroupData } from "./group-tools";
 import { MessageRow } from "./MessageRow";
 
@@ -26,7 +27,7 @@ export function ToolGroup({ group }: { group: ToolGroupData }) {
         <span className="tool-group-label">
           {group.label} (x{group.events.length})
         </span>
-        <span className={`tool-group-chevron ${open ? "open" : ""}`}>&#x25B8;</span>
+        <ChevronRight className={`tool-group-chevron ${open ? "open" : ""}`} size={14} />
       </button>
       <div className={`tool-group-children ${open ? "open" : ""}`}>
         <div>

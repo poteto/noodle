@@ -2,16 +2,26 @@ import { useState } from "react";
 import { useActiveChannel, useSuspenseSnapshot, useWSStatus, formatCost } from "~/client";
 import type { ChannelId, StageStatus } from "~/client";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutGrid, User, Network, BadgeCheck } from "lucide-react";
+import {
+  LayoutGrid,
+  User,
+  Network,
+  BadgeCheck,
+  Play,
+  Check,
+  X,
+  Square,
+  ChevronRight,
+} from "lucide-react";
 import { OverflowTooltip } from "./OverflowTooltip";
 
-const stageStatusIcon: Record<StageStatus, { symbol: string; cls: string }> = {
-  active: { symbol: "▶", cls: "stage-active" },
-  merging: { symbol: "▶", cls: "stage-active" },
-  pending: { symbol: "□", cls: "stage-pending" },
-  completed: { symbol: "✓", cls: "stage-done" },
-  failed: { symbol: "✗", cls: "stage-done" },
-  cancelled: { symbol: "□", cls: "stage-pending" },
+const stageStatusIcon: Record<StageStatus, { icon: React.ReactNode; cls: string }> = {
+  active: { icon: <Play size={10} />, cls: "stage-active" },
+  merging: { icon: <Play size={10} />, cls: "stage-active" },
+  pending: { icon: <Square size={10} />, cls: "stage-pending" },
+  completed: { icon: <Check size={10} />, cls: "stage-done" },
+  failed: { icon: <X size={10} />, cls: "stage-done" },
+  cancelled: { icon: <Square size={10} />, cls: "stage-pending" },
 };
 
 function ConnectionDot() {
@@ -214,7 +224,7 @@ export function Sidebar() {
                 className={`tree-order ${orderActive ? "active" : ""} ${hasActiveStage ? "has-active-stage" : ""}`}
                 onClick={() => toggleOrder(order.id)}
               >
-                <span className={`tree-chevron ${isExpanded ? "open" : ""}`}>▸</span>
+                <ChevronRight className={`tree-chevron ${isExpanded ? "open" : ""}`} size={14} />
                 <OverflowTooltip className="tree-label" text={order.title || order.id} />
                 {hasActiveStage && <div className="status-dot active" />}
               </button>
@@ -240,7 +250,7 @@ export function Sidebar() {
                       disabled={!agentChannel}
                       style={{ cursor: agentChannel ? "pointer" : "default" }}
                     >
-                      <span className="tree-icon">{info.symbol}</span>
+                      <span className="tree-icon">{info.icon}</span>
                       <OverflowTooltip className="tree-stage-label" text={stageLabel} />
                     </button>
                   );

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { useSuspenseSnapshot, formatCost, formatDuration } from "~/client";
 import type { Snapshot } from "~/client";
 
@@ -150,10 +151,10 @@ export function Dashboard() {
                   {col.label}
                   {sortKey === col.key && (
                     <span
-                      className="ml-1 inline-block"
+                      className="ml-1 inline-block align-middle"
                       style={{ animation: "scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both" }}
                     >
-                      {sortDir === "asc" ? "\u2191" : "\u2193"}
+                      {sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
                     </span>
                   )}
                 </th>

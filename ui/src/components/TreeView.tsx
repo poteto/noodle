@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
+import { Plus, Minus } from "lucide-react";
 import { easeCubicOut, hierarchy, select, tree, zoom as createZoom, zoomIdentity } from "d3";
 import type {
   D3ZoomEvent,
@@ -273,10 +274,10 @@ export function TreeView() {
       <svg ref={svgRef} className="w-full h-full" style={{ display: "block" }} />
       <div className="tree-zoom-controls">
         <button type="button" onClick={handleZoomIn}>
-          +
+          <Plus size={14} />
         </button>
         <button type="button" onClick={handleZoomOut}>
-          &minus;
+          <Minus size={14} />
         </button>
       </div>
     </div>
