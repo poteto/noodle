@@ -127,30 +127,20 @@ func TestShouldStartServer(t *testing.T) {
 	boolPtr := func(v bool) *bool { return &v }
 
 	tests := []struct {
-		name        string
-		enabled     *bool
-		interactive bool
-		want        bool
+		name    string
+		enabled *bool
+		want    bool
 	}{
-		{"nil+interactive", nil, true, true},
-		{"nil+non-interactive", nil, false, false},
-		{"true+non-interactive", boolPtr(true), false, true},
-		{"false+interactive", boolPtr(false), true, false},
+		{"nil defaults to true", nil, true},
+		{"explicit true", boolPtr(true), true},
+		{"explicit false", boolPtr(false), false},
 	}
-	// env var override: NOODLE_SERVER=1 forces server on even in non-interactive mode.
-	t.Run("nil+non-interactive+NOODLE_SERVER", func(t *testing.T) {
-		t.Setenv("NOODLE_SERVER", "1")
-		cfg := config.ServerConfig{Enabled: nil}
-		if got := shouldStartServer(cfg, false); !got {
-			t.Fatal("shouldStartServer should return true when NOODLE_SERVER=1")
-		}
-	})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.ServerConfig{Enabled: tt.enabled}
-			got := shouldStartServer(cfg, tt.interactive)
+			got := shouldStartServer(cfg)
 			if got != tt.want {
-				t.Fatalf("shouldStartServer(%v, %v) = %v, want %v", tt.enabled, tt.interactive, got, tt.want)
+				t.Fatalf("shouldStartServer(%v) = %v, want %v", tt.enabled, got, tt.want)
 			}
 		})
 	}

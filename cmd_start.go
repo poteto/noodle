@@ -94,8 +94,7 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 		EventSink: broker,
 		Logger:    slog.New(apiLogger),
 	})
-	interactive := isInteractiveTerminal()
-	startServer := shouldStartServer(app.Config.Server, interactive)
+	startServer := shouldStartServer(app.Config.Server)
 
 	apiLogger.Info("start initialized",
 		"project", cwd,
@@ -124,22 +123,18 @@ func runStart(ctx context.Context, app *App, opts startOptions) error {
 			}
 		}()
 	} else {
-		apiLogger.Info("web server disabled", "interactive", interactive)
+		apiLogger.Info("web server disabled")
 	}
 	return runtimeLoop.Run(ctx)
 }
 
 // shouldStartServer determines if the web server should start.
-// If Enabled is explicitly set, use that. Otherwise auto-enable for interactive
-// sessions or when NOODLE_SERVER=1 (used by pnpm dev).
-func shouldStartServer(cfg config.ServerConfig, interactive bool) bool {
+// Enabled by default; only disabled when config explicitly sets enabled=false.
+func shouldStartServer(cfg config.ServerConfig) bool {
 	if cfg.Enabled != nil {
 		return *cfg.Enabled
 	}
-	if os.Getenv("NOODLE_SERVER") == "1" {
-		return true
-	}
-	return interactive
+	return true
 }
 
 func runWebServer(
