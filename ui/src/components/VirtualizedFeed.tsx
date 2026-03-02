@@ -44,6 +44,7 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
     estimateSize: (index) => estimateSize(items[index]),
     overscan: 10,
     getItemKey: (index) => itemKey(items[index]),
+    paddingEnd: 24,
   });
 
   // Auto-scroll to true bottom (past tail/thinking indicator) when new items arrive.
@@ -91,7 +92,7 @@ export function VirtualizedFeed({ items, emptyMessage, tail }: VirtualizedFeedPr
             {emptyMessage ?? "No events yet."}
           </div>
         ) : (
-          <div data-virtualized style={{ height: totalSize + 24, position: "relative" }}>
+          <div data-virtualized style={{ height: totalSize, position: "relative" }}>
             {virtualItems.map((virtualRow) => {
               const item = items[virtualRow.index];
               return (
