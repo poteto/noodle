@@ -19,7 +19,7 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 
 ### `config/parse.go`
 - Update default-setting logic to reference `MaxConcurrency`
-- Update validation to reference `MaxConcurrency`
+- Update parse-time normalization to reference `MaxConcurrency` (warn and fall back to default on invalid values)
 
 ### `config/config_test.go`
 - Update all `MaxCooks` references to `MaxConcurrency`
@@ -100,3 +100,4 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 ### Runtime
 - `go test ./...` — all tests pass with renamed field
 - Parse `.noodle.toml` with `max_concurrency = 4` — works
+- Parse `.noodle.toml` with invalid `max_concurrency` — warns and falls back to default

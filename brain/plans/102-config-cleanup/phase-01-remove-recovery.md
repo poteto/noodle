@@ -20,7 +20,7 @@ Delete the `[recovery]` config section and `RecoveryConfig` type. This field (`m
 ### `config/parse.go`
 - Remove `recovery.max_retries` default-setting logic
 - Remove `recovery.max_retries >= 0` validation
-- **Add removed-key detection:** after TOML decode, check for undecoded keys that match removed config paths (`recovery.*`). Emit a clear parse error: "recovery section was removed — Noodle no longer uses this config." This prevents silent no-op when users keep old config. Subsequent phases will add their removed keys to this same check.
+- **Add removed-key detection (warning-only):** after TOML decode, check undecoded keys that match removed config paths (`recovery.*`). Emit a clear warning ("recovery section was removed; ignoring field and using defaults"), then continue parsing. Subsequent phases should add their removed keys to this same warning path.
 
 ### `config/config_test.go`
 - Remove tests asserting recovery defaults and parsing
@@ -54,5 +54,5 @@ Remove `RecoveryConfig` entirely — no replacement type needed.
 
 ### Runtime
 - Parse a `.noodle.toml` without `[recovery]` — should work (already the common case)
-- Parse a `.noodle.toml` WITH `[recovery]` — must produce a clear error message, not silently ignore
-- **Test the removed-key check:** assert that a `.noodle.toml` containing `[recovery]` or `recovery.max_retries` returns an error naming the removed field
+- Parse a `.noodle.toml` WITH `[recovery]` — should still parse, with a clear warning and defaults applied
+- **Test the removed-key check:** assert that a `.noodle.toml` containing `[recovery]` or `recovery.max_retries` returns warning(s), not an error

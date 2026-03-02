@@ -30,9 +30,9 @@ Noodle's `.noodle.toml` exposes config knobs that are either unused, redundant w
 
 ## Constraints
 
-- **No backward compatibility, but loud failure.** Per CLAUDE.md: no `omitempty` shims, no legacy fallbacks. Phase 1 establishes a removed-key check at the parse boundary — old `.noodle.toml` files with removed fields produce a clear parse error naming the removed field, not silent acceptance.
+- **Compatibility-first parse behavior.** Removed/unknown keys and invalid values must not hard-fail startup. Parse boundary logic should emit clear warnings naming the field and applied fallback, then continue with defaults.
 - **Error messages describe failure state.** Per CLAUDE.md: "session not found", not "session must exist."
-- **Boundary discipline.** Config validation stays at the parse boundary in `config/parse.go`. Hardcoded defaults live where the value is consumed.
+- **Boundary discipline.** Config warning/fallback normalization stays at the parse boundary in `config/parse.go`. Hardcoded defaults live where the value is consumed.
 
 ### Alternatives considered
 
@@ -72,6 +72,8 @@ pnpm check          # full suite — required gate
 ```
 
 **E2e smoke test (after all phases):** `noodle start` → enqueue an order → cook runs to completion → `Ctrl-C` exits within ~2s. This proves the full config-parse → loop → cook → shutdown path works end-to-end with the reduced config surface.
+
+**Config migration behavior:** old configs containing removed keys should still start, with explicit warnings and defaults applied.
 
 Config surface should be:
 - `[routing.defaults]` — provider, model
