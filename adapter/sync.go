@@ -42,12 +42,6 @@ func validateBacklogItem(item BacklogItem, lineNumber int) error {
 	if strings.TrimSpace(item.Title) == "" {
 		return fmt.Errorf("backlog sync line %d: missing required field title", lineNumber)
 	}
-	if !isValidBacklogStatus(item.Status) {
-		return fmt.Errorf("backlog sync line %d: invalid status %q", lineNumber, item.Status)
-	}
-	if !isValidEstimate(item.Estimate) {
-		return fmt.Errorf("backlog sync line %d: invalid estimate %q", lineNumber, item.Estimate)
-	}
 	return nil
 }
 

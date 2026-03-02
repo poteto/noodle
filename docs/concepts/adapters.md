@@ -44,29 +44,35 @@ No input. Prints newline-delimited JSON (NDJSON) to stdout, one backlog item per
 {
   "id": "1",
   "title": "Fix login bug",
-  "status": "open"
+  "status": "open",
+  "tags": ["bug", "auth"]
 }
 {
   "id": "2",
   "title": "Update docs",
-  "status": "done"
+  "status": "done",
+  "section": "Documentation"
 }
 {
   "id": "3",
   "title": "Refactor API",
-  "status": "open"
+  "estimate": "medium"
 }
 ```
 
-Required fields:
+Only `id` and `title` are required. Everything else is optional and passed through to mise.json as-is — the scheduler sees whatever your adapter returns.
 
-| Field    | Type   | Values                        |
-| -------- | ------ | ----------------------------- |
-| `id`     | string |                               |
-| `title`  | string |                               |
-| `status` | string | `open`, `in_progress`, `done` |
+| Field      | Type     | Required | Notes                                    |
+| ---------- | -------- | -------- | ---------------------------------------- |
+| `id`       | string   | yes      | unique identifier                        |
+| `title`    | string   | yes      | item title                               |
+| `status`   | string   | no       | e.g. `open`, `in_progress`, `done`       |
+| `section`  | string   | no       | grouping label                           |
+| `tags`     | string[] | no       | arbitrary tags                           |
+| `estimate` | string   | no       | size estimate, e.g. `small`, `medium`    |
+| `plan`     | string   | no       | path to a plan overview file             |
 
-Any additional fields you include are passed through to mise.json as-is. The scheduler sees everything your adapter returns.
+You can include any other fields too. Noodle doesn't validate them — they're forwarded to the scheduler for context.
 
 ### `add`
 
@@ -75,9 +81,12 @@ Noodle calls your `add` command when the scheduler creates a new backlog item. Y
 **stdin:**
 ```json
 {
-  "title": "Ship feature"
+  "title": "Ship feature",
+  "section": "Backend"
 }
 ```
+
+Only `title` is required. `section` is optional — if provided and the section doesn't exist yet, it's created.
 
 **stdout:** the new item ID (e.g. `42`)
 

@@ -2,52 +2,22 @@ package adapter
 
 import "strings"
 
-type BacklogStatus string
-
+// Well-known status values. Not exhaustive — adapters may return any string.
 const (
-	BacklogStatusOpen       BacklogStatus = "open"
-	BacklogStatusInProgress BacklogStatus = "in_progress"
-	BacklogStatusDone       BacklogStatus = "done"
-)
-
-type Estimate string
-
-const (
-	EstimateSmall  Estimate = "small"
-	EstimateMedium Estimate = "medium"
-	EstimateLarge  Estimate = "large"
+	BacklogStatusOpen       = "open"
+	BacklogStatusInProgress = "in_progress"
+	BacklogStatusDone       = "done"
 )
 
 type BacklogItem struct {
-	ID          string        `json:"id"`
-	Title       string        `json:"title"`
-	Description string        `json:"description,omitempty"`
-	Section     string        `json:"section,omitempty"`
-	Status      BacklogStatus `json:"status"`
-	Tags        []string      `json:"tags,omitempty"`
-	Estimate    Estimate      `json:"estimate,omitempty"`
-	Plan        string        `json:"plan,omitempty"`
-}
-
-func isValidBacklogStatus(status BacklogStatus) bool {
-	switch status {
-	case BacklogStatusOpen, BacklogStatusInProgress, BacklogStatusDone:
-		return true
-	default:
-		return false
-	}
-}
-
-func isValidEstimate(estimate Estimate) bool {
-	if estimate == "" {
-		return true
-	}
-	switch estimate {
-	case EstimateSmall, EstimateMedium, EstimateLarge:
-		return true
-	default:
-		return false
-	}
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description,omitempty"`
+	Section     string   `json:"section,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Estimate    string   `json:"estimate,omitempty"`
+	Plan        string   `json:"plan,omitempty"`
 }
 
 func normalizeTags(tags []string) []string {
