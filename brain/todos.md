@@ -13,7 +13,7 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 97 -->
+<!-- next-id: 100 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -36,6 +36,12 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, collapsed by default with a click-to-expand interaction (avoid noise in the feed), and (2) in a dedicated diff tab/panel that collects all code changes from a session (expanded by default). Ship-ready: fully integrated, styled, and tested. [[plans/86-diffs-integration/overview]]
 
 ## Backend
+
+97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
+
+98. [ ] Relax backlog schema: only require `id` and `title`. Everything else is optional and passed through to mise.json as-is for the scheduler to see. Remove hardcoded `status`/`estimate` enums and strict validation. Noodle should be flexible about what fields adapters return. Update adapters docs page schema section to match.
+
+99. [ ] Make `section` optional in backlog `add` payload. Currently the default adapter defaults it to "Inbox" but it shouldn't be a first-class field. Pass it through like any other optional field.
 95. [ ] Backend should exclusively own `orders.json` — prevent agents from writing to it directly. The loop promotes `orders-next.json` into `orders.json`, and this should be enforced at the backend level (e.g. file permissions, validation gate) rather than relying on skill instructions.
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads).
