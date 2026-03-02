@@ -34,6 +34,10 @@ export default defineConfig({
         link: "/getting-started",
       },
       {
+        text: "Thinking in Noodle",
+        link: "/thinking-in-noodle",
+      },
+      {
         text: "Concepts",
         items: [
           { text: "Skills", link: "/concepts/skills" },

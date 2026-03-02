@@ -108,7 +108,9 @@ Instead of telling agents which skills to use, you have a skill that figures out
 
 So you've got a `schedule` skill that reads the backlog and picks work, an `execute` skill that does the work, a `review` skill that checks it, and a `reflect` skill that captures what was learned. Each one knows when it should run.
 
-But now you need something to actually run the loop. We still have to manually run the `schedule` skill. What we need is a loop: something that reads the schedule, spawns an agent, lets it work, merges the result, and repeats. You also need to keep agents from stepping on each other: if two are working at the same time, they need separate copies of the repo.
+But now you need something to actually schedule everything. We still have to manually run the `schedule` skill. What we need is a loop: something that reads the schedule, spawns an agent, lets it work, merges the result, and repeats. You also need to keep agents from stepping on each other: if two are working at the same time, they need separate copies of the repo.
+
+It would be even better if the scheduler itself is an agent. Then we wouldn't need complicated workflow syntax or APIs. Just let agents do it.
 
 ## Noodling the circle
 
