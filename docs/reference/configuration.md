@@ -137,6 +137,10 @@ merge_backpressure_threshold = 128
 shutdown_timeout = "30s"
 ```
 
+::: warning Cost
+Each cook is a full LLM session. `max_cooks = 4` means up to four concurrent API sessions, each consuming tokens independently. Start with `max_cooks = 1` or `2` while you're learning the system, then scale up once you've seen the cost per session on your workload.
+:::
+
 ---
 
 ### `[agents]`

@@ -1,6 +1,8 @@
 # Self-Learning
 
-Noodle's brain is a persistent memory vault — an Obsidian-compatible directory of markdown files that survives across sessions. Three skills form a loop that makes the brain get better over time: reflect, meditate, and ruminate.
+This page describes the [brainmaxxing](https://github.com/poteto/brainmaxxing) skill pack -- an optional addon that gives Noodle agents persistent memory across sessions. Brainmaxxing is not part of Noodle's core. The schedule-execute-merge loop works without it.
+
+Brainmaxxing adds three skills that form a self-learning loop on top of the [brain](/concepts/brain) (an Obsidian-compatible directory of markdown files). Together they make the brain get better over time: reflect, meditate, and ruminate.
 
 ## The loop
 
@@ -14,6 +16,8 @@ Reflect captures. Meditate distills. Ruminate fills gaps.
 
 ## Reflect
 
+*Part of [brainmaxxing](https://github.com/poteto/brainmaxxing).*
+
 ```yaml
 ---
 name: reflect
@@ -22,7 +26,7 @@ schedule: "After a cook session completes"
 ---
 ```
 
-After a cook finishes work — implementing a feature, fixing a bug, running a deploy — the reflect skill looks at what happened and writes it down. It creates or updates brain files with:
+After a cook finishes work -- implementing a feature, fixing a bug, running a deploy -- the reflect skill looks at what happened and writes it down. It creates or updates brain files with:
 
 - What worked and what didn't
 - Patterns the agent discovered while coding
@@ -33,10 +37,12 @@ Reflect is fast and frequent. It runs after every session, so it captures inform
 
 ## Meditate
 
+*Part of [brainmaxxing](https://github.com/poteto/brainmaxxing).*
+
 ```yaml
 ---
 name: meditate
-description: Audit and evolve the brain vault — prune outdated content, discover cross-cutting principles.
+description: Audit and evolve the brain vault -- prune outdated content, discover cross-cutting principles.
 schedule: "Periodically after several reflect cycles have accumulated"
 ---
 ```
@@ -52,6 +58,8 @@ It does three things:
 Meditate runs less often than reflect. It needs enough raw material to work with — a single reflection isn't worth auditing, but ten of them probably contain patterns worth distilling.
 
 ## Ruminate
+
+*Part of [brainmaxxing](https://github.com/poteto/brainmaxxing).*
 
 Ruminate is the scavenger. It goes back through past conversations and session logs looking for knowledge that was never captured by reflect. Maybe a cook solved a tricky problem but the reflection was too brief. Maybe a conversation contained a design decision that nobody wrote down.
 
@@ -70,3 +78,7 @@ Session 4: The next cook reads `brain/principles.md` before starting work. It kn
 Session 5: Ruminate reviews older session logs and finds a conversation where the user explained why the seed file exists and what happens if you skip it. It adds this context to `brain/testing/database-setup.md`.
 
 Each session leaves the brain a little better than it found it. The agent gets smarter not by having a larger model, but by having better notes.
+
+## Setup
+
+Install the brainmaxxing skill pack from [github.com/poteto/brainmaxxing](https://github.com/poteto/brainmaxxing). The repo includes installation instructions and the three skill definitions (reflect, meditate, ruminate) ready to drop into your `.agents/skills/` directory.

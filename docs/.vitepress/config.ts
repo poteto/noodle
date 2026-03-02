@@ -34,16 +34,13 @@ export default defineConfig({
         link: "/getting-started",
       },
       {
-        text: "Install (for Agents)",
-        link: "/install",
-      },
-      {
         text: "Concepts",
         items: [
           { text: "Skills", link: "/concepts/skills" },
           { text: "Scheduling", link: "/concepts/scheduling" },
           { text: "Brain", link: "/concepts/brain" },
           { text: "Modes", link: "/concepts/modes" },
+          { text: "Adapters", link: "/concepts/adapters" },
           { text: "Runtimes", link: "/concepts/runtimes" },
         ],
       },
@@ -53,6 +50,7 @@ export default defineConfig({
           { text: "CLI", link: "/reference/cli" },
           { text: "Configuration", link: "/reference/configuration" },
           { text: "Skill Frontmatter", link: "/reference/skill-frontmatter" },
+          { text: "Glossary", link: "/glossary" },
         ],
       },
       {

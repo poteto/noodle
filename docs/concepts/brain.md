@@ -1,6 +1,8 @@
 # Brain
 
-The brain is a directory of markdown files committed to your repo at `brain/`. It stores everything your project has learned — principles, patterns, past mistakes, codebase quirks, architectural decisions. Agents read the brain before they start working and write to it after they learn something.
+The brain is an optional directory of markdown files committed to your repo at `brain/`. It stores project knowledge -- principles, patterns, past mistakes, codebase quirks, architectural decisions. Agents read the brain before they start working and write to it when they learn something.
+
+Noodle works without a brain. The core loop (schedule, execute, merge) does not depend on it. The brain becomes useful when you want agents to share context across sessions -- avoiding repeated mistakes, following project-specific conventions, building on past decisions.
 
 ## Structure
 
@@ -36,7 +38,7 @@ The brain accumulates your project's actual working knowledge. It replaces the k
 
 ## Self-Learning
 
-The brain powers Noodle's self-learning loop through three skills — reflect, meditate, and ruminate. See [Vision](/vision) for how they work together.
+The brain can power a self-learning loop when paired with the [brainmaxxing](https://github.com/poteto/brainmaxxing) skill pack. Brainmaxxing adds three skills -- reflect, meditate, and ruminate -- that capture session learnings, distill principles, and mine past conversations. This is optional. See the [Self-Learning cookbook](/cookbook/self-learning) for details.
 
 ## Why Files
 

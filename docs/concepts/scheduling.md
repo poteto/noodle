@@ -1,6 +1,6 @@
 # Scheduling
 
-Noodle uses an LLM-powered scheduling loop to decide what work to do, when to do it, and which agent handles it. The scheduler is itself a [skill](/concepts/skills) — it reads project state, evaluates task types, and writes work orders.
+Noodle uses an agent-powered scheduling loop to decide what work to do, when to do it, and which agent handles it. The scheduler is itself a [skill](/concepts/skills) — it reads project state, evaluates task types, and writes work orders.
 
 ## The Loop
 
@@ -19,15 +19,15 @@ The loop runs continuously. It repeats on a timer and reacts to file changes —
 
 Before each scheduling decision, Noodle builds a mise — a snapshot of everything the scheduler needs. Written to `.noodle/mise.json`, it contains:
 
-| Section            | Contents                                                              |
-| ------------------ | --------------------------------------------------------------------- |
-| `backlog`          | Items from your backlog adapter (GitHub issues, Linear tickets, local file) |
-| `active_summary`   | Running agents grouped by task type, status, and runtime              |
-| `resources`        | Total cook capacity and available slots                               |
-| `recent_history`   | Outcomes of recently completed sessions                               |
-| `task_types`       | All registered task-type skills and their schedule triggers           |
-| `routing`          | Default and per-tag provider/model configuration                      |
-| `warnings`         | Issues the scheduler should know about (stale config, failed registries) |
+| Section          | Contents                                                                    |
+| ---------------- | --------------------------------------------------------------------------- |
+| `backlog`        | Items from your backlog adapter (GitHub issues, Linear tickets, local file) |
+| `active_summary` | Running agents grouped by task type, status, and runtime                    |
+| `resources`      | Total cook capacity and available slots                                     |
+| `recent_history` | Outcomes of recently completed sessions                                     |
+| `task_types`     | All registered task-type skills and their schedule triggers                 |
+| `routing`        | Default and per-tag provider/model configuration                            |
+| `warnings`       | Issues the scheduler should know about (stale config, failed registries)    |
 
 Because the mise is plain JSON, you can inspect it directly to see exactly what the scheduler sees.
 
@@ -53,29 +53,29 @@ An order is a unit of work with one or more stages. The scheduling agent writes 
 }
 ```
 
-| Field       | Description                                    |
-| ----------- | ---------------------------------------------- |
-| `id`        | Unique identifier                              |
-| `title`     | Human-readable summary                         |
-| `rationale` | Why the scheduler chose this work              |
-| `plan`      | Optional list of high-level steps              |
-| `stages`    | Pipeline of stages to execute                  |
-| `status`    | `active`, `completed`, or `failed`             |
+| Field       | Description                        |
+| ----------- | ---------------------------------- |
+| `id`        | Unique identifier                  |
+| `title`     | Human-readable summary             |
+| `rationale` | Why the scheduler chose this work  |
+| `plan`      | Optional list of high-level steps  |
+| `stages`    | Pipeline of stages to execute      |
+| `status`    | `active`, `completed`, or `failed` |
 
 ## Stages
 
 A stage is a single step within an order.
 
-| Field       | Description                                                        |
-| ----------- | ------------------------------------------------------------------ |
-| `task_key`  | Which task-type skill to run                                       |
-| `prompt`    | Instructions for the agent                                         |
-| `skill`     | Skill to invoke (alternative to `task_key`)                        |
-| `provider`  | LLM provider for this stage                                        |
-| `model`     | Model to use                                                       |
-| `runtime`   | Where to run: `process`, `sprites`, or `cursor`                    |
-| `group`     | Parallel execution group number                                    |
-| `status`    | Stage lifecycle status                                             |
+| Field      | Description                                     |
+| ---------- | ----------------------------------------------- |
+| `task_key` | Which task-type skill to run                    |
+| `prompt`   | Instructions for the agent                      |
+| `skill`    | Skill to invoke (alternative to `task_key`)     |
+| `provider` | Agent provider for this stage                   |
+| `model`    | Model to use                                    |
+| `runtime`  | Where to run: `process`, `sprites`, or `cursor` |
+| `group`    | Parallel execution group number                 |
+| `status`   | Stage lifecycle status                          |
 
 ### Stage Lifecycle
 

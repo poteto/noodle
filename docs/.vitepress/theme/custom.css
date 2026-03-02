@@ -208,7 +208,7 @@ body {
 
 .VPSidebarItem .text {
   font-family: var(--noodle-font);
-  font-size: 13px;
+  font-size: 0.9em;
 }
 
 .VPSidebarItem.is-active > .item > .indicator {
@@ -222,7 +222,7 @@ body {
 
 /* Section titles */
 .VPSidebarItem.level-0 > .item > .link > .text {
-  font-size: 11px;
+  font-size: 0.7em;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--noodle-text-muted);
@@ -264,6 +264,10 @@ body {
   font-weight: 600;
 }
 
+.vp-doc p {
+  font-size: 1em;
+}
+
 
 /* ============================================================
    Code blocks
@@ -277,7 +281,7 @@ body {
 .vp-doc div[class*="language-"] > span.lang {
   background: var(--noodle-border-active);
   color: var(--noodle-text-main);
-  font-size: 10px;
+  font-size: 0.625em;
   text-transform: uppercase;
   padding: 2px 8px;
   font-family: var(--noodle-font);
@@ -287,7 +291,7 @@ body {
   background: var(--noodle-surface);
   border: 1px solid var(--noodle-border);
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: 0.9em;
   color: var(--noodle-text-main);
 }
 
@@ -338,7 +342,7 @@ body {
 }
 
 .VPDocAsideOutline .outline-title {
-  font-size: 11px;
+  font-size: 0.7em;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -394,7 +398,7 @@ body {
 .VPFeature .details {
   color: var(--noodle-text-muted) !important;
   font-family: var(--noodle-font);
-  font-size: 13px;
+  font-size: 0.8em;
 }
 
 
@@ -444,7 +448,7 @@ body {
   background: var(--noodle-surface);
   border: 1px solid var(--noodle-border);
   font-family: var(--noodle-font);
-  font-size: 11px;
+  font-size: 0.7em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

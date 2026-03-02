@@ -54,13 +54,12 @@ import { withBase } from "vitepress";
         <section class="hero">
           <h1 class="hero-line-2 hero-title">NOODLE</h1>
           <h2 class="hero-line-3 hero-subtitle">
-            <span class="block">Skill-based</span>
-            <span class="cursor">agent orchestration</span>
+            <span class="block">Orchestrate agents</span>
+            <span class="cursor">using skills</span>
           </h2>
 
           <p class="hero-sub hero-desc">
-            Build your own agent orchestration workflow.<br />
-            All you need are skills.
+            Skills are all you need. Noodle handles the rest.
           </p>
 
           <div class="hero-cta cta-row">
@@ -221,8 +220,9 @@ import { withBase } from "vitepress";
                 <h3 class="card-title">Brain</h3>
               </div>
               <p class="card-desc">
-                Optional persistent memory across sessions. An Obsidian vault
-                that grows and evolves with your project over time.
+                Optional persistent memory across sessions. Add
+                <a href="https://github.com/poteto/brainmaxxing" target="_blank" rel="noopener">brainmaxxing</a>
+                for self-learning agents.
               </p>
               <a :href="withBase('/concepts/brain')" class="card-link">
                 Learn more
@@ -685,6 +685,16 @@ import { withBase } from "vitepress";
   line-height: 1.9;
   position: relative;
   z-index: 1;
+}
+
+.card-desc a {
+  color: rgba(250, 204, 21, 0.6);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.card-desc a:hover {
+  color: #facc15;
 }
 
 .card-link {
