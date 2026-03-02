@@ -1,4 +1,4 @@
-# Minimal Loop
+# Minimal Noodle Loop
 
 The smallest working Noodle project. Two skills, a backlog, and a config file. This is the "hello world." If you can run this, everything else builds on top of it.
 
@@ -34,7 +34,7 @@ paths = [".agents/skills"]
 
 `.agents/skills/schedule/SKILL.md`:
 
-```yaml
+````yaml
 ---
 name: schedule
 description: Reads backlog and produces work orders for the loop.
@@ -65,7 +65,7 @@ Each order has a single execute stage:
 ​```
 
 When no unchecked items remain, write `{"orders": []}`.
-```
+````
 
 The scheduler's job is reading. It looks at the backlog, decides what needs doing, and writes structured orders that other skills pick up. It doesn't implement anything itself.
 

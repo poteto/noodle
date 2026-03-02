@@ -32,7 +32,7 @@ Two things are new here. `routing.tags.review` defines a named routing tag: when
 
 ## Additional skills
 
-The schedule and execute skills are the same as the [minimal loop](minimal-loop). You add two more.
+The schedule and execute skills are the same as the [minimal loop](minimal-noodle-loop). You add two more.
 
 ### Test
 

@@ -11,7 +11,11 @@ import { withBase } from "vitepress";
           <a :href="withBase('/')" class="brand">NOODLE</a>
           <nav class="header-nav">
             <a :href="withBase('/getting-started')" class="nav-link">Docs</a>
-            <a :href="withBase('/cookbook/minimal-loop')" class="nav-link">Cookbook</a>
+            <a
+              :href="withBase('/cookbook/minimal-noodle-loop')"
+              class="nav-link"
+              >Cookbook</a
+            >
           </nav>
         </div>
         <div class="header-right">
@@ -221,7 +225,12 @@ import { withBase } from "vitepress";
               </div>
               <p class="card-desc">
                 Optional persistent memory across sessions. Add
-                <a href="https://github.com/poteto/brainmaxxing" target="_blank" rel="noopener">brainmaxxing</a>
+                <a
+                  href="https://github.com/poteto/brainmaxxing"
+                  target="_blank"
+                  rel="noopener"
+                  >brainmaxxing</a
+                >
                 for self-learning agents.
               </p>
               <a :href="withBase('/concepts/brain')" class="card-link">
@@ -305,10 +314,14 @@ import { withBase } from "vitepress";
             <a :href="withBase('/getting-started')" class="quickstart-link"
               >Documentation →</a
             >
-            <a :href="withBase('/reference/configuration')" class="quickstart-link"
+            <a
+              :href="withBase('/reference/configuration')"
+              class="quickstart-link"
               >Configuration →</a
             >
-            <a :href="withBase('/cookbook/minimal-loop')" class="quickstart-link"
+            <a
+              :href="withBase('/cookbook/minimal-noodle-loop')"
+              class="quickstart-link"
               >Cookbook →</a
             >
           </div>
@@ -572,7 +585,9 @@ import { withBase } from "vitepress";
   letter-spacing: 0.025em;
   border-radius: 2px;
   text-decoration: none;
-  transition: border-color 0.2s, color 0.2s;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
 }
 
 .btn-secondary:hover {
@@ -627,7 +642,9 @@ import { withBase } from "vitepress";
   background: #080808;
   padding: 32px;
   border: 1px solid transparent;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
   display: flex;
   flex-direction: column;
 }

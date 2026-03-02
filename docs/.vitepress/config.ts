@@ -3,8 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   base: "/noodle/",
   title: "Noodle",
-  description:
-    "Skill-based agent orchestration. Built in Go.",
+  description: "Skill-based agent orchestration. Built in Go.",
 
   markdown: {
     theme: "min-dark",
@@ -50,26 +49,30 @@ export default defineConfig({
         items: [
           { text: "CLI", link: "/reference/cli" },
           { text: "Configuration", link: "/reference/configuration" },
-          { text: "Skill Frontmatter", link: "/reference/skill-frontmatter" },
           { text: "Glossary", link: "/glossary" },
         ],
       },
       {
         text: "Cookbook",
-        collapsed: false,
         items: [
-          { text: "Minimal Loop", link: "/cookbook/minimal-loop" },
-          { text: "Multi-Stage Pipeline", link: "/cookbook/multi-stage-pipeline" },
+          {
+            text: "Minimal Noodle Loop",
+            link: "/cookbook/minimal-noodle-loop",
+          },
+          {
+            text: "Multi-Stage Pipeline",
+            link: "/cookbook/multi-stage-pipeline",
+          },
           { text: "Self-Learning", link: "/cookbook/self-learning" },
           { text: "Model Routing", link: "/cookbook/model-routing" },
         ],
       },
       {
-        text: "Contributing",
+        text: "Troubleshooting",
         items: [
           {
-            text: "Failure Message Policy",
-            link: "/contributing/failure-message-policy",
+            text: "File an Issue",
+            link: "https://github.com/poteto/noodle/issues",
           },
         ],
       },
