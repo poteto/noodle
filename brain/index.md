@@ -31,6 +31,7 @@
 - [[codebase/failed-target-auto-repair-for-requeued-orders]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
+- [[codebase/local-git-identity-integration-tests]]
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/schedule-bootstrap-hot-loop]]

@@ -1,6 +1,9 @@
 package startup_test
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,8 +44,15 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 	if out, err := gitInit.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, out)
 	}
+	identity := configureLocalGitIdentity(t, projectDir)
 	gitCommit := exec.Command("git", "commit", "--allow-empty", "-m", "init")
 	gitCommit.Dir = projectDir
+	gitCommit.Env = withEnvOverrides(os.Environ(), map[string]string{
+		"GIT_AUTHOR_NAME":     identity.name,
+		"GIT_AUTHOR_EMAIL":    identity.email,
+		"GIT_COMMITTER_NAME":  identity.name,
+		"GIT_COMMITTER_EMAIL": identity.email,
+	})
 	if out, err := gitCommit.CombinedOutput(); err != nil {
 		t.Fatalf("git commit: %v\n%s", err, out)
 	}
@@ -157,4 +167,59 @@ func findProjectRoot(t *testing.T) string {
 		}
 		dir = parent
 	}
+}
+
+type gitIdentity struct {
+	name  string
+	email string
+}
+
+func configureLocalGitIdentity(t *testing.T, dir string) gitIdentity {
+	t.Helper()
+
+	suffix := randomHex(t, 6)
+	name := "Noodle Test " + suffix
+	email := fmt.Sprintf("noodle-test-%s@example.invalid", suffix)
+
+	nameCmd := exec.Command("git", "config", "user.name", name)
+	nameCmd.Dir = dir
+	if out, err := nameCmd.CombinedOutput(); err != nil {
+		t.Fatalf("git config user.name: %v\n%s", err, out)
+	}
+
+	emailCmd := exec.Command("git", "config", "user.email", email)
+	emailCmd.Dir = dir
+	if out, err := emailCmd.CombinedOutput(); err != nil {
+		t.Fatalf("git config user.email: %v\n%s", err, out)
+	}
+
+	return gitIdentity{name: name, email: email}
+}
+
+func randomHex(t *testing.T, n int) string {
+	t.Helper()
+
+	buf := make([]byte, n)
+	if _, err := rand.Read(buf); err != nil {
+		t.Fatalf("random suffix: %v", err)
+	}
+	return hex.EncodeToString(buf)
+}
+
+func withEnvOverrides(env []string, overrides map[string]string) []string {
+	filtered := make([]string, 0, len(env)+len(overrides))
+	for _, entry := range env {
+		key := entry
+		if i := strings.Index(entry, "="); i >= 0 {
+			key = entry[:i]
+		}
+		if _, ok := overrides[key]; ok {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	for key, value := range overrides {
+		filtered = append(filtered, key+"="+value)
+	}
+	return filtered
 }
