@@ -1,6 +1,6 @@
 # Vision
 
-Other orchestration tools have you wiring together plugins and lifecycle hooks and impose their opinions on you. Noodle has only one concept: skills. Your agents write them, and Noodle handles the rest: scheduling work, assigning it to agents, merging the output, and looping in a Ralph Wiggum loop.
+Most orchestration tools have you wiring together plugins and lifecycle hooks. Noodle has only one concept: skills. Your agents write them, and Noodle handles the rest: scheduling work, assigning it to agents, merging the output, and looping in a Ralph Wiggum loop.
 
 ```yaml
 ---
@@ -18,7 +18,7 @@ Skills work the same way in Noodle. Every behavior your agents have comes from a
 
 The `schedule` field in the frontmatter is what turns a skill from something you invoke manually into something that Noodle runs on its own. Write a plain-English description of when it should fire, and the scheduling agent decides when the conditions are met.
 
-Then create a `schedule` skill, and the scheduling agent does the supervision for you. Because it's just a skill, you have extreme flexibiity: pick the right model or even runtime (local/remote) for each task, or describe what kind of tasks you want to prioritize first.
+Then create a `schedule` skill, and the scheduling agent does the supervision for you. Because it's just a skill, you have extreme flexibility: pick the right model or even runtime (local/remote) for each task, or describe what kind of tasks you want to prioritize first.
 
 ## Why not just use an agent directly?
 
@@ -57,13 +57,11 @@ schedule: >
 ---
 ```
 
-The scheduler produces orders and Noodle dispatches them to agents. Each agent runs the execute skill in its own worktree, makes changes, and commits. Completed work enters the merge queue. The scheduler re-evaluates. The loop continues until the backlog is empty or you stop it.
+Noodle automatically discovers every skill with a `schedule:` field and feeds them to your scheduler agent. The scheduler reads those triggers alongside the current project state and decides what to dispatch. Each agent runs its assigned skill in its own worktree, makes changes, and commits. Completed work enters the merge queue. The scheduler re-evaluates. The loop continues until the backlog is empty or you stop it.
 
 ## Run anywhere
 
-Noodle can orchestrate agents locally or in the cloud. Local agents run as child processes on your machine. Remote agents run in VMs or containers. The scheduling agent picks the runtime for each task and can match the model to the work. Use a powerful model for architecture decisions, a fast one for straightforward implementation.
-
-Run twenty agents in parallel on cloud VMs while your laptop sits idle. Route expensive tasks to powerful remote machines and keep cheap ones local. The agents work on branches, push their changes, and Noodle merges them back.
+Noodle can orchestrate agents locally or in the cloud. Run them as child processes on your machine, or spin up twenty in parallel on cloud VMs while your laptop sits idle. The scheduling agent picks the runtime for each task and matches the model to the work -- a powerful model for architecture decisions, a fast one for straightforward implementation. Agents work on branches, push their changes, and Noodle merges them back.
 
 ## Who is this for
 
@@ -75,10 +73,10 @@ If you haven't tried AI-assisted coding yet, start there first. Use an agent on 
 
 You don't learn Noodle by reading API docs. You learn it by reading a few skills and writing your own.
 
-Each skill you write captures how you want work done. The schedule field tells the scheduler when to fire it. The body tells the agent how to do it. That's the whole model. Start with schedule and execute. Add a review skill when you want a quality gate. Add more skills as your workflow demands them.
+Each skill you write captures how you want work done. The `schedule:` field tells the scheduler when to fire it. The body tells the agent how to do it. That's the whole model. Start with `schedule` and `execute` skills. Add a `review` skill and tell it to block merging until it passes another agent's review. Add more skills as your workflow evolves.
 
 ## Going further
 
-Noodle works without persistent memory, but if you want agents that learn across sessions, check out [brainmaxxing](https://github.com/poteto/brainmaxxing). It's an optional skill pack that adds reflect, meditate, and ruminate -- three skills that capture session learnings, distill principles, and mine past conversations for knowledge that was never written down. The brain (a directory of markdown files) accumulates your project's working knowledge over time.
+Noodle works without persistent memory, but if you want agents that learn across sessions, check out [brainmaxxing](https://github.com/poteto/brainmaxxing). It's an optional skill pack that adds `reflect`, `meditate`, and `ruminate`: three skills that capture session learnings, distill principles from them, and mine past conversations for knowledge that was never written down. Those principles feed back into your skills, so every future session starts sharper than the last.
 
 Brainmaxxing is a separate install. Noodle's core loop does not depend on it.
