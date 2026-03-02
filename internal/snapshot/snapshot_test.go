@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -540,6 +541,69 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 	}
 	if len(snap.ActionNeeded) != 1 || snap.ActionNeeded[0] != "check order-1" {
 		t.Errorf("action_needed = %v", snap.ActionNeeded)
+	}
+}
+
+func TestLoadSnapshotClearsCurrentActionAfterResultCost(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 3, 2, 12, 0, 0, 0, time.UTC)
+
+	writer, err := event.NewEventWriter(dir, "cook-a")
+	if err != nil {
+		t.Fatalf("new event writer: %v", err)
+	}
+	actionPayload, _ := json.Marshal(map[string]any{
+		"tool":    "bash",
+		"summary": "go test ./...",
+	})
+	costPayload, _ := json.Marshal(map[string]any{
+		"tokens_in": 1234,
+	})
+	if err := writer.Append(context.Background(), event.Event{
+		Type:      event.EventAction,
+		Payload:   actionPayload,
+		Timestamp: now.Add(-3 * time.Second),
+		SessionID: "cook-a",
+	}); err != nil {
+		t.Fatalf("append action: %v", err)
+	}
+	if err := writer.Append(context.Background(), event.Event{
+		Type:      event.EventCost,
+		Payload:   costPayload,
+		Timestamp: now.Add(-2 * time.Second),
+		SessionID: "cook-a",
+	}); err != nil {
+		t.Fatalf("append cost: %v", err)
+	}
+
+	state := loop.LoopState{
+		Status: "running",
+		ActiveCooks: []loop.CookSummary{
+			{
+				SessionID:   "cook-a",
+				OrderID:     "order-1",
+				TaskKey:     "schedule",
+				Runtime:     "claude-code",
+				Provider:    "claude",
+				Model:       "claude-sonnet-4-6",
+				DisplayName: "Scheduler",
+				Status:      "running",
+			},
+		},
+	}
+
+	snap, err := LoadSnapshot(dir, now, state)
+	if err != nil {
+		t.Fatalf("LoadSnapshot: %v", err)
+	}
+	if len(snap.Active) != 1 {
+		t.Fatalf("active count = %d, want 1", len(snap.Active))
+	}
+	if snap.Active[0].CurrentAction != "" {
+		t.Fatalf("current_action = %q, want empty after cost/result", snap.Active[0].CurrentAction)
+	}
+	if snap.Active[0].ContextWindowUsagePct <= 0 {
+		t.Fatalf("context_window_usage_pct = %v, want > 0", snap.Active[0].ContextWindowUsagePct)
 	}
 }
 

@@ -165,6 +165,10 @@ func enrichActiveSession(reader *event.EventReader, sessionID string, session *S
 				session.CurrentAction = label + " " + body
 			}
 		case event.EventCost:
+			// Cost events are emitted from canonical result events.
+			// Treat them as turn completion so stale prior action text does not
+			// keep the UI in a perpetual "thinking" state after interrupts.
+			session.CurrentAction = ""
 			var cost struct {
 				TokensIn int `json:"tokens_in"`
 			}

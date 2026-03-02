@@ -99,4 +99,22 @@ describe("SchedulerFeed", () => {
     expect(screen.getByText("Talk to the scheduler...")).toBeInTheDocument();
     expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
   });
+
+  it("shows idle prompt when scheduler session is active but has no current action", () => {
+    const session = buildSession({
+      id: "scheduler-2",
+      loop_state: "running",
+      task_key: "schedule",
+      current_action: "",
+    });
+    mockSnapshot = buildSnapshot({
+      loop_state: "running",
+      sessions: [session],
+      active: [session],
+    });
+
+    render(<SchedulerFeed />);
+    expect(screen.getByText("Talk to the scheduler...")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
+  });
 });
