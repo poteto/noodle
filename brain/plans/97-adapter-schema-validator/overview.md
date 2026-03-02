@@ -29,10 +29,14 @@ The fix: lenient parsing that skips bad items, collects per-item warnings, and s
 
 ## Constraints
 
-- `ParseBacklogItems` signature changes from `([]BacklogItem, error)` to `([]BacklogItem, []string, error)` — all callers (runner, mise builder, fixture tests) must update
+- `ParseBacklogItems` signature changes from `([]BacklogItem, error)` to `([]BacklogItem, []string, error)` — all callers (runner, mise builder, fixture tests) must update **in the same phase** to keep the code compilable at every commit
 - Warnings are ephemeral per cycle — regenerated each mise.Build(), not accumulated across cycles
+- On fatal errors (scanner I/O), return `(nil, nil, err)` — callers must not use partial results alongside errors
+- Warning text is template-controlled (`fmt.Sprintf` with Go stdlib error descriptions), never raw adapter output — prevents prompt injection via crafted NDJSON
 - LoopState is the existing pub/sub mechanism between loop and server — use it for dynamic warnings
+- Warning changes must trigger the file-write → fsnotify → WS broadcast chain (add warnings to `stampStatus` equality check)
 - Scheduler prompt follows the existing pattern: `buildSchedulePrompt()` takes typed parameters, not a grab-bag
+- Warning dedup in server uses `sort.Strings` + `slices.Compact` for deterministic order (not `map` sets — unstable iteration defeats hash-based broadcast gating)
 
 ## Alternatives considered
 
@@ -49,11 +53,10 @@ The fix: lenient parsing that skips bad items, collects per-item warnings, and s
 
 ## Phases
 
-1. [[plans/97-adapter-schema-validator/phase-01-lenient-parsing]] — Lenient parsing with warnings in adapter package
-2. [[plans/97-adapter-schema-validator/phase-02-propagate-warnings]] — Wire warnings through runner and mise builder
-3. [[plans/97-adapter-schema-validator/phase-03-ui-warnings]] — Surface warnings in UI via LoopState
-4. [[plans/97-adapter-schema-validator/phase-04-scheduler-injection]] — Inject warnings into scheduler prompt
-5. [[plans/97-adapter-schema-validator/phase-05-docs]] — Update adapter docs with validation behavior
+1. [[plans/97-adapter-schema-validator/phase-01-lenient-parsing]] — Lenient parsing with warnings + all caller migration (adapter, runner, builder, tests)
+2. [[plans/97-adapter-schema-validator/phase-02-ui-warnings]] — Surface warnings in UI via LoopState (stampStatus trigger, sorted dedup)
+3. [[plans/97-adapter-schema-validator/phase-03-scheduler-injection]] — Inject warnings into scheduler prompt (capped, %q-escaped)
+4. [[plans/97-adapter-schema-validator/phase-04-docs]] — Update adapter docs with validation behavior
 
 ## Verification
 

@@ -1,6 +1,6 @@
 Back to [[plans/97-adapter-schema-validator/overview]]
 
-# Phase 5: Update Adapter Docs
+# Phase 4: Update Adapter Docs
 
 ## Goal
 
