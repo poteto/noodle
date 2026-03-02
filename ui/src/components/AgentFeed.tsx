@@ -51,7 +51,7 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
   const { data: snapshot } = useSuspenseSnapshot();
   const initialEvents = snapshot.events_by_session[sessionId];
   const { data: events = [] } = useSessionEvents(sessionId, initialEvents);
-  const { mutate: send } = useSendControl();
+  const { mutate: send, isPending: isControlPending } = useSendControl();
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -182,8 +182,13 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
                 </button>
                 {orderForSession && (
                   <Tooltip content="Marks this order as complete and notifies the scheduler">
-                    <button type="button" className="btn-complete" onClick={handleForceComplete}>
-                      Mark Complete
+                    <button
+                      type="button"
+                      className="btn-complete"
+                      onClick={handleForceComplete}
+                      disabled={isControlPending}
+                    >
+                      {isControlPending ? "Completing…" : "Mark Complete"}
                     </button>
                   </Tooltip>
                 )}
