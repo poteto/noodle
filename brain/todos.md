@@ -13,7 +13,7 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 
 # Todos
 
-<!-- next-id: 101 -->
+<!-- next-id: 102 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -52,6 +52,8 @@ priority: [20, 84, 90, 86, 88, 85, 69]
 ## Extensibility
 
 96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. WIP in docs, not yet available.
+
+101. [ ] Split out Sprites runtime into its own runtime plugin. Sprites should not be a built-in default, it should be an installable plugin that uses the custom runtime interface (#96).
 
 ## Features
 
