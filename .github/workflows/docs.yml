@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to deploy (tag, branch, or SHA)"
-        required: true
+        description: "Optional git ref to deploy (tag, branch, or SHA). Defaults to main."
+        required: false
+        default: "main"
 
 permissions:
   contents: read
