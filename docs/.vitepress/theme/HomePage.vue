@@ -301,7 +301,7 @@ import { withBase } from "vitepress";
         <!-- Quick-start strip -->
         <div class="quickstart">
           <div class="quickstart-left">
-            <p class="quickstart-label">Quick Install</p>
+            <p class="quickstart-label">Ask your agent</p>
             <code class="quickstart-cmd"
               >Install Noodle and set up this project. Follow the instructions
               at INSTALL.md</code
