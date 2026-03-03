@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TopologyRouteImport } from './routes/topology'
 import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActorIdRouteImport } from './routes/actor.$id'
@@ -23,6 +24,11 @@ const TopologyRoute = TopologyRouteImport.update({
 const ReviewsRoute = ReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -44,6 +50,7 @@ const ActorIdRoute = ActorIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/reviews': typeof ReviewsRoute
   '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/reviews': typeof ReviewsRoute
   '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
@@ -59,21 +67,42 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/reviews': typeof ReviewsRoute
   '/topology': typeof TopologyRoute
   '/actor/$id': typeof ActorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/onboarding'
+    | '/reviews'
+    | '/topology'
+    | '/actor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
-  id: '__root__' | '/' | '/dashboard' | '/reviews' | '/topology' | '/actor/$id'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/onboarding'
+    | '/reviews'
+    | '/topology'
+    | '/actor/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/onboarding'
+    | '/reviews'
+    | '/topology'
+    | '/actor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  OnboardingRoute: typeof OnboardingRoute
   ReviewsRoute: typeof ReviewsRoute
   TopologyRoute: typeof TopologyRoute
   ActorIdRoute: typeof ActorIdRoute
@@ -93,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/reviews'
       fullPath: '/reviews'
       preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -122,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  OnboardingRoute: OnboardingRoute,
   ReviewsRoute: ReviewsRoute,
   TopologyRoute: TopologyRoute,
   ActorIdRoute: ActorIdRoute,

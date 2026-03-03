@@ -38,6 +38,10 @@ function RootComponent() {
     [navigate],
   );
 
+  if (pathname === "/onboarding") {
+    return <Outlet />;
+  }
+
   return (
     <ActiveChannelProvider channel={activeChannel} onChannelChange={setActiveChannel}>
       <WSConnectionBridge />
@@ -52,8 +56,8 @@ function RootComponent() {
 }
 
 function WSConnectionBridge() {
-  const queryClient = useQueryClient();
-  useEffect(() => connectWS(queryClient), [queryClient]);
+  const qc = useQueryClient();
+  useEffect(() => connectWS(qc), [qc]);
   return null;
 }
 
