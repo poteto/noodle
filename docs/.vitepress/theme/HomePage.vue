@@ -780,24 +780,25 @@ function copyPrompt() {
 
 .quickstart-copy {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 12px;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 20px;
   background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 2px;
+  border: none;
+  border-left: 1px solid #2a2a2a;
   color: #8a8a8a;
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   cursor: pointer;
   transition:
     color 0.2s,
-    border-color 0.2s;
+    background 0.2s;
 }
 
 .quickstart-copy:hover {
   color: #fff;
-  border-color: #333;
+  background: #222;
 }
 
 /* ============================================================
