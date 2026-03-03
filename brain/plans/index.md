@@ -1,7 +1,8 @@
 # Plans
 
+- [ ] [[plans/112-codebase-simplification-audit/overview]]
 - [ ] [[plans/69-cursor-dispatcher/overview]]
-- [ ] [[plans/81-stage-groups/overview]]
+- [x] [[archive/plans/81-stage-groups/overview]]
 - [ ] [[plans/84-subagent-tracking/overview]]
 - [ ] [[plans/88-subagent-tracking-v2/overview]]
 - [ ] [[plans/86-diffs-integration/overview]]
@@ -11,3 +12,4 @@
 - [ ] [[plans/96-101-runtime-plugins/overview]]
 - [x] [[archive/plans/108-orders-dsl/overview]]
 - [ ] [[plans/97-adapter-schema-validator/overview]]
+- [ ] [[plans/90-interactive-sessions/overview]]
