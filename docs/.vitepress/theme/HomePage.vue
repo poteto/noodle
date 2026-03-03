@@ -393,7 +393,7 @@ function copyPrompt() {
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.2em;
-  font-size: 14px;
+  font-size: 0.875em;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -415,7 +415,7 @@ function copyPrompt() {
 }
 
 .nav-link {
-  font-size: 13px;
+  font-size: 0.8125em;
   color: #8a8a8a;
   text-decoration: none;
   transition: color 0.2s;
@@ -439,7 +439,7 @@ function copyPrompt() {
 }
 
 .github-link {
-  font-size: 13px;
+  font-size: 0.8125em;
   color: #8a8a8a;
   text-decoration: none;
   display: flex;
@@ -487,14 +487,14 @@ function copyPrompt() {
   border: 1px solid rgba(250, 204, 21, 0.2);
   border-radius: 3px;
   color: #facc15;
-  font-size: 10px;
+  font-size: 0.625em;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 600;
 }
 
 .badge-label {
-  font-size: 11px;
+  font-size: 0.6875em;
   color: #6b6b6b;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -559,7 +559,7 @@ function copyPrompt() {
   background: #facc15;
   color: #000;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.875em;
   letter-spacing: 0.025em;
   border-radius: 2px;
   text-decoration: none;
@@ -579,7 +579,7 @@ function copyPrompt() {
   border: 1px solid #222;
   color: #a3a3a3;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875em;
   letter-spacing: 0.025em;
   border-radius: 2px;
   text-decoration: none;
@@ -608,7 +608,7 @@ function copyPrompt() {
    ============================================================ */
 
 .section-label {
-  font-size: 13px;
+  font-size: 0.8125em;
   color: #555555;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -690,7 +690,7 @@ function copyPrompt() {
 .card-title {
   color: #fff;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.875em;
   letter-spacing: 0.025em;
 }
 
@@ -740,7 +740,7 @@ function copyPrompt() {
 }
 
 .quickstart-label {
-  font-size: 13px;
+  font-size: 0.8125em;
   color: #6b6b6b;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -758,7 +758,7 @@ function copyPrompt() {
 .quickstart-pre {
   margin: 0;
   padding: 20px 24px;
-  font-size: 14px;
+  font-size: 0.875em;
   line-height: 1.6;
   color: #d4d4d4;
   overflow-x: auto;
@@ -789,7 +789,7 @@ function copyPrompt() {
   border-left: 1px solid #2a2a2a;
   color: #8a8a8a;
   font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
+  font-size: 0.6875em;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
@@ -821,7 +821,7 @@ function copyPrompt() {
 }
 
 .footer-text {
-  font-size: 12px;
+  font-size: 0.75em;
   color: #555555;
   letter-spacing: 0.1em;
 }
