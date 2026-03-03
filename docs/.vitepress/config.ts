@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import { buildEndGenerateOpenGraphImages } from "./plugins/og-image.mjs";
+import { NOODLE_DOCS_VERSION } from "./version";
 
 export default defineConfig({
   base: "/noodle/",
@@ -58,9 +59,7 @@ export default defineConfig({
 
   themeConfig: {
     nav: [
-      ...(process.env.NOODLE_VERSION
-        ? [{ text: process.env.NOODLE_VERSION, link: `https://github.com/poteto/noodle/releases/tag/${process.env.NOODLE_VERSION}` }]
-        : []),
+      { text: NOODLE_DOCS_VERSION, link: `https://github.com/poteto/noodle/releases/tag/${NOODLE_DOCS_VERSION}` },
       { text: "GitHub", link: "https://github.com/poteto/noodle" },
     ],
 

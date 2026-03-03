@@ -10,7 +10,7 @@
     "setup": "pnpm install",
     "build": "pnpm --filter noodle-ui build && go build -o ./bin/noodle .",
     "generate": "go generate ./generate/...",
-    "changelog": "node ./scripts/release-changelog.mjs",
+    "release": "node ./scripts/release.mjs",
     "test": "go test ./...",
     "test:short": "go test -short ./...",
     "vet": "go vet ./...",

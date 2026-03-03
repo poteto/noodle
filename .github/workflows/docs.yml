@@ -36,8 +36,6 @@ jobs:
       - run: pnpm --dir docs install --frozen-lockfile
 
       - run: pnpm --dir docs build
-        env:
-          NOODLE_VERSION: ${{ inputs.ref }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
