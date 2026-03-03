@@ -1,14 +1,14 @@
 # Install Noodle
 
-Noodle is a skill-based agent orchestration framework. You write skills — markdown files that describe what an agent should do — and Noodle's loop schedules and runs them autonomously. Think of it as a kitchen brigade: a head chef (the scheduler) reads the backlog, writes orders, and dispatches line cooks (agents) to do the work in isolated worktrees.
+Noodle is a skill-based agent orchestration framework. You write skills (markdown files describing what an agent should do) and Noodle's loop schedules and runs them. Think kitchen brigade: a head chef (the scheduler) reads the backlog, writes orders, and dispatches line cooks (agents) to do the work in isolated worktrees.
 
-## How the Loop Works
+## How the loop works
 
 The scheduler reads `.noodle/mise.json` (project state: backlog, active agents, history, registered skills) and writes `.noodle/orders-next.json`. The loop promotes orders and spawns agent sessions. Each agent gets a skill loaded as its instructions. When the agent finishes, its worktree merges back.
 
-The minimum loop is schedule → execute → merge. You can add more stages — quality review, reflection, whatever your project needs — by writing skills for them. The scheduler decides when to run each one.
+The minimum loop is schedule then execute. Noodle handles merging completed work back to main. You can add more stages (quality review, reflection, etc.) by writing skills for them.
 
-## What Skills Are
+## What skills are
 
 A skill is a directory with a `SKILL.md`. The markdown body is the agent's instructions. YAML frontmatter is metadata:
 
@@ -20,15 +20,15 @@ schedule: "After execute completes and all tests pass."
 ---
 ```
 
-**General skills** (no `schedule` field) are invoked directly by agents — things like `commit` or `debugging`. **Scheduled skills** (with `schedule`) run autonomously. The scheduler reads the `schedule` value as prose and decides when conditions are met.
+Skills without a `schedule` field are invoked directly by agents, like `commit` or `debugging`. Skills with a `schedule` field run on their own. The scheduler reads the `schedule` value as prose and decides when conditions are met.
 
-A working loop needs at minimum: a **schedule skill** (reads backlog, writes orders) and one **task-type skill** like **execute** (does the work). Additional stages (review, deploy, reflect — whatever fits your workflow) make the loop better but aren't required to start.
+A working loop needs at least a schedule skill (reads backlog, writes orders) and one task-type skill like execute (does the work). More stages make the loop better but aren't required to start.
 
 ---
 
 ## Setup
 
-Work through these steps in order. Each has a skip condition — if the check passes, move to the next step.
+Work through these steps in order. Each has a skip condition. If the check passes, move on.
 
 ### 1. Install the binary
 
@@ -41,34 +41,23 @@ Detect the platform and install:
 
 Verify: `noodle --version` prints a version string.
 
-Save the installed version (e.g., `v0.1.3`) — you'll need it for the next step.
-
 ### 2. Install the noodle skill
 
 **Skip if:** `.agents/skills/noodle/SKILL.md` AND all files in `.agents/skills/noodle/references/` exist.
 
 If only some files exist (interrupted install), fetch the missing ones.
 
-The noodle skill is a reference manual that teaches agents how to use the CLI and write skills. It's the one skill you copy verbatim — everything else you'll write yourself.
+The noodle skill teaches agents how to use the CLI and write skills. Copy this one verbatim. Everything else you write yourself.
 
-Fetch these files from GitHub, using the installed version as the tag (fall back to `main` if the version is unknown):
+Fetch these files from GitHub:
 
 ```
-.agents/skills/noodle/SKILL.md
-.agents/skills/noodle/references/skill-authoring.md
-.agents/skills/noodle/references/configuration.md
+https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/SKILL.md
+https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/references/skill-authoring.md
+https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/noodle/references/configuration.md
 ```
 
-The raw URLs follow this pattern:
-```
-https://raw.githubusercontent.com/poteto/noodle/{version}/.agents/skills/noodle/SKILL.md
-https://raw.githubusercontent.com/poteto/noodle/{version}/.agents/skills/noodle/references/skill-authoring.md
-https://raw.githubusercontent.com/poteto/noodle/{version}/.agents/skills/noodle/references/configuration.md
-```
-
-Replace `{version}` with the tag from step 1 (e.g., `v0.1.3`).
-
-Create the directories if they don't exist. Write the fetched content to the corresponding paths.
+Write them to the same paths under the project root (`.agents/skills/noodle/...`). Create directories as needed.
 
 ### 3. Configure
 
@@ -100,7 +89,7 @@ model = "gpt-5.3-codex"
 paths = [".agents/skills"]
 ```
 
-This is a minimal config. The user can expand it later — see [the configuration reference](https://poteto.github.io/noodle/reference/configuration) for all options.
+Minimal config. The user can expand it later. See [the configuration reference](https://poteto.github.io/noodle/reference/configuration) for all options.
 
 ### 4. Add .noodle/ to .gitignore
 
@@ -125,9 +114,9 @@ Create `todos.md` with these bootstrap tasks:
 - [ ] Write a schedule skill and execute skill for this project
 ```
 
-This is the real onboarding task. When the loop picks it up, the agent will read the project (past conversation logs in `.claude/` or `.codex/`, existing code, language, tools) and write skills adapted to how the project actually works. See "Writing Skills" below for guidance.
+This is the real onboarding. The loop picks this up, reads the project (conversation logs, existing code, language, tools), and writes skills that fit how the project works. See "Writing skills" below.
 
-If `todos.md` already exists but `.agents/skills/schedule/` doesn't, skip the file write but continue to step 6 — the user still needs skills.
+If `todos.md` already exists but `.agents/skills/schedule/` doesn't, skip the file write but continue to step 6. The user still needs skills.
 
 ### 6. Ask about brainmaxxing
 
@@ -145,33 +134,26 @@ Tell the user to start the loop:
 noodle start
 ```
 
-Noodle will scaffold `.noodle/` runtime state, the scheduler will read the backlog, and the loop begins. The first order will be the bootstrap task from step 5 — writing skills for this project.
+Noodle scaffolds `.noodle/` runtime state, the scheduler reads the backlog, and the loop begins. First order: the bootstrap task from step 5.
 
 ---
 
-## Writing Skills
+## Writing skills
 
-When the loop picks up the "write skills" task from the backlog, you need to write two skills: a **schedule skill** and an **execute skill**. Use the noodle skill's reference docs (installed in step 2) for the orders schema and CLI details. Browse Noodle's own skills at `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns — but adapt them to this project, don't copy them.
+The "write skills" backlog task means writing two skills: schedule and execute. The noodle skill's reference docs (from step 2) cover the orders schema and CLI. Browse Noodle's own skills at `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns, but adapt them to this project. Don't copy.
 
-### Schedule Skill
+### Schedule skill
 
-The schedule skill reads project state and writes orders. It needs to:
+The schedule skill reads project state and writes orders. It reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter) and writes `orders-next.json`, not `orders.json` directly. The loop atomically promotes orders. Use `noodle schema orders` for the schema. Route to providers/models based on `routing.defaults` in `.noodle.toml`.
 
-- **Read the backlog** from `.noodle/mise.json` (which syncs from `todos.md` or whatever backlog adapter is configured)
-- **Write `orders-next.json`** — never `orders.json` directly. The loop atomically promotes orders. Use `noodle schema orders` to get the schema.
-- **Route to providers/models** based on `routing.defaults` in `.noodle.toml` and the task's complexity
-- **Have a `schedule` frontmatter field** — something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation"
+Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
 
-### Execute Skill
+### Execute skill
 
-The execute skill does the actual work. It needs to:
+The execute skill does the work. Scope and decompose the assigned task into discrete changes. Work in worktrees, never on main (`noodle worktree create/merge`). Verify with whatever build, test, and lint commands this project uses. Commit following this project's conventions.
 
-- **Scope and decompose** the assigned task into discrete changes
-- **Work in worktrees** — never on main. Use `noodle worktree create/merge` commands.
-- **Verify** — run whatever build, test, and lint commands this project uses
-- **Commit** — follow this project's commit conventions
-- **Have a `schedule` frontmatter field** — something like "when backlog items are ready for implementation"
+Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
 
-### Key Principle
+### Key principle
 
-Read the project first. Look at existing code, test commands, CI config, past conversation logs. Write skills that match how this project actually works — its language, test runner, CI, and workflow.
+Read the project first. Look at existing code, test commands, CI config, past conversation logs. Write skills that match how this project works.

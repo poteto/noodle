@@ -91,7 +91,6 @@ function OnboardingPage() {
 const LOOP_STEPS = [
   { label: "Schedule", desc: "The scheduler reads your backlog and writes orders" },
   { label: "Execute", desc: "Agents implement changes in isolated worktrees" },
-  { label: "Merge", desc: "Completed work lands on main" },
 ];
 
 const REQUIREMENTS = [
