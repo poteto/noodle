@@ -1,7 +1,7 @@
 ---
-priority: [108, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
+priority: [97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
 # Priority notes:
-#   108 compact wire format — simplify scheduler output
+#    compact wire format — simplify scheduler output
 #   97 adapter schema validator — surface broken adapters
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   84 sub-agent tracking — visibility into agent orchestration
@@ -50,7 +50,6 @@ priority: [108, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
 
 ## Design Explorations
 
-108. [ ] Compact wire format for orders-next.json — `do`/`with` replace `task_key`/`provider`, drop `status` and `skill` from scheduler output. Expansion at the promotion boundary produces internal `orderx.OrdersFile` structs. [[plans/108-orders-dsl/overview]]
 
 ## Features
 
