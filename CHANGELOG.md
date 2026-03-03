@@ -1,3 +1,13 @@
+## [0.1.5](https://github.com/poteto/noodle/compare/v0.1.4...v0.1.5) (2026-03-03)
+
+### Bug Fixes
+
+* change default backlog path from brain/todos.md to todos.md ([c46c382](https://github.com/poteto/noodle/commit/c46c38262609ea10c815957ec1297add846a4847))
+* **docs:** read homepage version from VERSION file ([3abe720](https://github.com/poteto/noodle/commit/3abe7208c158af690011d508c82f82a8fa9c80d9))
+* **install:** add default adapter setup and restore project adapter path ([f97a49a](https://github.com/poteto/noodle/commit/f97a49a908667899875bfb80bd2e2ef48467e55c))
+* **loop:** Surface worktree git errors and recover backlog parsing ([b9b4244](https://github.com/poteto/noodle/commit/b9b4244005422015093429efaaadbb94aff6fb3b))
+* **parse:** ignore claude controlresponse routing noise ([9f0785c](https://github.com/poteto/noodle/commit/9f0785c7a335c040eaaf6b02b87a5b346b7d670c))
+
 ## [0.1.4](https://github.com/poteto/noodle/compare/v0.1.3...v0.1.4) (2026-03-03)
 
 ### Features
