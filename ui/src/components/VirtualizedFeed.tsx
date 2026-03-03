@@ -36,7 +36,7 @@ function estimateSize(item: EventLine | ToolGroupData): number {
 interface VirtualizedFeedProps {
   items: (EventLine | ToolGroupData)[];
   /** Override the empty-state message. */
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
   /** Rendered after all virtual items, inside the scroll container. Never unmounted. */
   tail?: React.ReactNode;
 }

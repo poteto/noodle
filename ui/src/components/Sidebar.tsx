@@ -220,7 +220,7 @@ export function Sidebar() {
 
       <div className="agent-tree">
         {visibleOrders.length === 0 && (
-          <div className="orders-empty">Waiting for the scheduler</div>
+          <div className="orders-empty">No orders yet. The scheduler will create orders once it reads your backlog.</div>
         )}
         {visibleOrders.map((order) => {
           const isExpanded = expandedOrders.has(order.id);

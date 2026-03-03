@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { useSuspenseSnapshot, formatCost, formatDuration } from "~/client";
 import type { Snapshot } from "~/client";
@@ -194,9 +194,14 @@ export function Dashboard() {
               <tr>
                 <td
                   colSpan={7}
-                  className="px-3 py-8 text-center font-mono text-sm text-border-subtle"
+                  className="px-3 py-8 text-center font-mono text-sm text-text-tertiary"
                 >
-                  No sessions
+                  No sessions yet. Noodle runs sessions when the scheduler creates orders from your
+                  backlog.
+                  <br />
+                  <Link to="/onboarding" className="text-accent hover:underline">
+                    Learn how the loop works
+                  </Link>
                 </td>
               </tr>
             )}

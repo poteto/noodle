@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useSuspenseSnapshot, useSessionEvents, useSendControl, formatCost } from "~/client";
 import type { Session } from "~/client";
 import { StreamingDelta } from "./StreamingDelta";
@@ -57,14 +58,20 @@ export function SchedulerFeed() {
 
   const items = useMemo(() => groupConsecutiveTools(events), [events]);
 
-  let emptyMessage: string | undefined;
+  let emptyMessage: React.ReactNode | undefined;
   if (events.length === 0) {
     if (isBootstrappingSchedule || isBootstrappingSchedulePending) {
-      emptyMessage = "Bootstrapping schedule skill. Creating scheduler instructions now.";
-    } else {
-      emptyMessage = schedulerSession
-        ? "No events yet."
-        : "No scheduler session found. Send a prompt to start.";
+      emptyMessage = "Bootstrapping schedule skill. This usually takes a few seconds.";
+    } else if (!schedulerSession) {
+      emptyMessage = (
+        <>
+          The scheduler starts when you run <code style={{ fontFamily: "var(--font-mono)" }}>noodle start</code> and have skills installed.
+          <br />
+          <Link to="/onboarding" style={{ color: "var(--color-accent)" }}>
+            Learn how the loop works
+          </Link>
+        </>
+      );
     }
   }
 

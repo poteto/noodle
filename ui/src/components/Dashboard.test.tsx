@@ -19,6 +19,11 @@ vi.mock("~/client", async () => {
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   createFileRoute: () => () => ({}),
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 function setSnapshot(overrides: Partial<Snapshot>) {
@@ -185,7 +190,8 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
-    expect(screen.getByText("No sessions")).toBeInTheDocument();
+    expect(screen.getByText(/No sessions yet/)).toBeInTheDocument();
+    expect(screen.getByText("Learn how the loop works")).toBeInTheDocument();
   });
 
   it("uses display_name as title fallback", () => {

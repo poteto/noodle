@@ -18,6 +18,14 @@ vi.mock("~/client", async () => {
   };
 });
 
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 beforeEach(() => {
   mockSnapshot = buildSnapshot();
   mockSend.mockClear();
@@ -31,7 +39,8 @@ describe("SchedulerFeed", () => {
 
   it("renders empty state when no scheduler session", () => {
     render(<SchedulerFeed />);
-    expect(screen.getByText(/No scheduler session found/)).toBeInTheDocument();
+    expect(screen.getByText(/The scheduler starts when you run/)).toBeInTheDocument();
+    expect(screen.getByText("Learn how the loop works")).toBeInTheDocument();
   });
 
   it("renders input area", () => {
@@ -56,7 +65,7 @@ describe("SchedulerFeed", () => {
     render(<SchedulerFeed />);
     expect(screen.getByText("Bootstrapping schedule skill...")).toBeInTheDocument();
     expect(
-      screen.getByText("Bootstrapping schedule skill. Creating scheduler instructions now."),
+      screen.getByText("Bootstrapping schedule skill. This usually takes a few seconds."),
     ).toBeInTheDocument();
   });
 
@@ -76,7 +85,7 @@ describe("SchedulerFeed", () => {
     render(<SchedulerFeed />);
     expect(screen.getByText("Bootstrapping schedule skill...")).toBeInTheDocument();
     expect(
-      screen.getByText("Bootstrapping schedule skill. Creating scheduler instructions now."),
+      screen.getByText("Bootstrapping schedule skill. This usually takes a few seconds."),
     ).toBeInTheDocument();
   });
 
