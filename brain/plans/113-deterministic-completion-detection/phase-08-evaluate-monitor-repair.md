@@ -12,7 +12,7 @@ With the CompletionTracker providing reliable in-process completion detection an
 
 ### Fix 1: Claims must detect Claude terminal state
 
-**`monitor/claims.go`**: Currently `claims.Completed` is only set on `EventComplete` (`claims.go:89`). Claude never emits `EventComplete` — only `EventResult`. A Claude session that emits `EventResult` then hangs forever will never trigger zombie repair. Fix: set `claims.Completed = true` when `EventResult` is seen (a completed turn is a terminal signal for zombie detection purposes).
+**`monitor/claims.go`**: Currently `claims.Completed` is only set on `EventComplete` (`claims.go:89`). Claude never emits `EventComplete` — only `EventResult`. A Claude session that emits `EventResult` then hangs forever will never trigger zombie repair. Fix: set `claims.Completed = true` when `EventResult` is seen (a completed turn is a terminal signal for zombie detection purposes). Additionally, set `claims.Failed = true` when `EventError` is seen — a session that emits only error events then hangs should also trigger repair.
 
 ### Fix 2: ForceKill race
 

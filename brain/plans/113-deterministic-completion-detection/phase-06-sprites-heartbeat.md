@@ -29,6 +29,8 @@ The heartbeat mechanism writes `{timestamp, ttl_seconds}` to `heartbeat.json`. B
 
 **Initial heartbeat:** Write one heartbeat immediately on session start (in the constructor or `start()` method) so that sessions are alive from the moment they're created, before any events arrive.
 
+**Fix observer caching bug:** `CompositeObserver.observerForSession()` caches the observer type on first read. If `spawn.json` isn't written yet (sprites setup in progress), it defaults to the local PID observer and caches permanently. Fix: either invalidate the cache when `spawn.json` appears, or don't cache (re-read runtime type each monitor pass — it's a cheap `os.ReadFile`).
+
 This also simplifies processSession — one less responsibility in the session-type layer.
 
 ## Routing
