@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/taskreg"
 	loopruntime "github.com/poteto/noodle/runtime"
+	"github.com/poteto/noodle/skill"
 )
 
 func writeTaskTypeSkill(t *testing.T, projectDir, name, scheduleHint string) {
@@ -478,6 +480,71 @@ func TestOopsBootstrapCompletionInjectsScheduleOrder(t *testing.T) {
 	}
 	if rt.calls[1].Skill != "schedule" {
 		t.Fatalf("second dispatch skill = %q, want schedule", rt.calls[1].Skill)
+	}
+}
+
+func TestReconcileAndCycleDispatchBootstrapWhenNoScheduleOrOopsTaskType(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	reg := taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name:        "execute",
+			Path:        "/skills/execute",
+			Frontmatter: skill.Frontmatter{Schedule: "When a planned item is ready"},
+		},
+	})
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   reg,
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) == 0 || updated.Orders[0].ID != scheduleOrderID {
+		t.Fatalf("expected fallback schedule order to remain, got %#v", updated.Orders)
+	}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(rt.calls) != 1 {
+		t.Fatalf("expected one bootstrap dispatch call, got %d (%#v)", len(rt.calls), rt.calls)
+	}
+	req := rt.calls[0]
+	if req.Name != bootstrapSessionPrefix+scheduleOrderID {
+		t.Fatalf("bootstrap dispatch name = %q, want %q", req.Name, bootstrapSessionPrefix+scheduleOrderID)
+	}
+	if strings.TrimSpace(req.Skill) != "" {
+		t.Fatalf("bootstrap dispatch skill = %q, want empty", req.Skill)
+	}
+	if strings.TrimSpace(req.SystemPrompt) == "" {
+		t.Fatal("bootstrap dispatch should carry system prompt")
 	}
 }
 

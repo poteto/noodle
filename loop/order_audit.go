@@ -48,6 +48,10 @@ func (l *Loop) auditOrders() {
 		for _, order := range orders.Orders {
 			hasValid := false
 			for _, stage := range order.Stages {
+				if isScheduleOrder(order) && isScheduleStage(stage) {
+					hasValid = true
+					break
+				}
 				input := taskreg.StageInput{
 					TaskKey: stage.TaskKey,
 					Skill:   stage.Skill,

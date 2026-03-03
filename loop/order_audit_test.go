@@ -390,3 +390,78 @@ func TestDiffRegistryKeys(t *testing.T) {
 		t.Fatalf("Removed = %v, want [deploy]", diff.Removed)
 	}
 }
+
+func TestAuditOrdersPreservesScheduleOrderWhenScheduleTaskTypeMissing(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     "schedule",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "schedule",
+						Skill:    "schedule",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+			{
+				ID:     "bogus-order",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "bogus",
+						Skill:    "bogus",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	reg := taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name:        "execute",
+			Path:        "/skills/execute",
+			Frontmatter: skill.Frontmatter{Schedule: "When ready"},
+		},
+	})
+
+	l := &Loop{
+		projectDir: projectDir,
+		runtimeDir: runtimeDir,
+		config:     config.DefaultConfig(),
+		registry:   reg,
+		events:     event.NewLoopEventWriter(filepath.Join(runtimeDir, "loop-events.ndjson")),
+		deps: Dependencies{
+			Now:        time.Now,
+			OrdersFile: ordersPath,
+		},
+	}
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	l.auditOrders()
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) != 1 || updated.Orders[0].ID != "schedule" {
+		t.Fatalf("expected only preserved schedule order, got %#v", updated.Orders)
+	}
+}

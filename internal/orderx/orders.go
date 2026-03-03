@@ -209,7 +209,7 @@ func NormalizeAndValidateOrders(
 			if err := ValidateStageStatus(orders[i].Stages[j].Status); err != nil {
 				return of, false, fmt.Errorf("order %q stage %d: %w", id, j, err)
 			}
-			if isValidStageTaskType(&orders[i].Stages[j], reg) {
+			if isValidStageTaskType(&orders[i].Stages[j], reg) || isFoundationalScheduleStage(orders[i].ID, &orders[i].Stages[j]) {
 				validStages = append(validStages, orders[i].Stages[j])
 			} else {
 				changed = true
@@ -239,6 +239,15 @@ func isValidStageTaskType(stage *Stage, reg taskreg.Registry) bool {
 		Skill:   stage.Skill,
 	})
 	return ok
+}
+
+// isFoundationalScheduleStage keeps the scheduler bootstrap lane alive even when
+// the schedule task type is temporarily missing from the registry.
+func isFoundationalScheduleStage(orderID string, stage *Stage) bool {
+	if !strings.EqualFold(strings.TrimSpace(orderID), "schedule") {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), "schedule")
 }
 
 const extraPromptMaxRunes = 1000

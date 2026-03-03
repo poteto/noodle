@@ -10,6 +10,8 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/taskreg"
+	"github.com/poteto/noodle/skill"
 )
 
 func TestReadWriteOrdersRoundTrip(t *testing.T) {
@@ -605,6 +607,48 @@ func TestNormalizeAndValidateOrdersDropsOrderWithMissingID(t *testing.T) {
 	}
 	if got.Orders[0].ID != "keep-1" {
 		t.Fatalf("remaining order ID = %q, want %q", got.Orders[0].ID, "keep-1")
+	}
+}
+
+func TestNormalizeAndValidateOrdersPreservesScheduleOrderWithoutTaskType(t *testing.T) {
+	reg := taskreg.NewFromSkills([]skill.SkillMeta{
+		{
+			Name:        "execute",
+			Path:        "/skills/execute",
+			Frontmatter: skill.Frontmatter{Schedule: "When a planned item is ready"},
+		},
+	})
+
+	input := OrdersFile{
+		Orders: []Order{
+			{
+				ID:     "schedule",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "schedule",
+						Skill:    "schedule",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+		},
+	}
+
+	got, changed, err := NormalizeAndValidateOrders(input, reg, config.DefaultConfig())
+	if err != nil {
+		t.Fatalf("NormalizeAndValidateOrders: %v", err)
+	}
+	if changed {
+		t.Fatalf("expected changed=false, got true with %#v", got.Orders)
+	}
+	if len(got.Orders) != 1 || got.Orders[0].ID != "schedule" {
+		t.Fatalf("expected preserved schedule order, got %#v", got.Orders)
+	}
+	if len(got.Orders[0].Stages) != 1 || got.Orders[0].Stages[0].TaskKey != "schedule" {
+		t.Fatalf("expected preserved schedule stage, got %#v", got.Orders[0].Stages)
 	}
 }
 
