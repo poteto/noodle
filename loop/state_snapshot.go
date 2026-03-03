@@ -59,32 +59,14 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 	for _, order := range ordersFile.Orders {
 		ordersCopy = append(ordersCopy, cloneOrder(order))
 	}
-	activeCooks := make([]CookSummary, 0, len(l.cooks.activeCooksByOrder))
+	activeCooks := make([]CookSummary, 0, len(l.cooks.activeCooksByOrder)+1)
 	totalCost := 0.0
 	for _, cook := range l.cooks.activeCooksByOrder {
-		if cook == nil || cook.session == nil {
-			continue
-		}
-		totalCost += cook.session.TotalCost()
-		runtime := cook.dispatchedRuntime
-		if runtime == "" {
-			runtime = cook.stage.Runtime
-		}
-		activeCooks = append(activeCooks, CookSummary{
-			SessionID:    cook.session.ID(),
-			OrderID:      cook.orderID,
-			TaskKey:      cook.stage.TaskKey,
-			Skill:        cook.stage.Skill,
-			Runtime:      runtime,
-			Provider:     cook.stage.Provider,
-			Model:        cook.stage.Model,
-			WorktreeName: cook.worktreeName,
-			StartedAt:    cook.startedAt,
-			DisplayName:  cook.displayName,
-			Status:       stringx.Normalize(cook.session.Status()),
-			TotalCostUSD: cook.session.TotalCost(),
-		})
+		l.appendActiveCookSummary(&activeCooks, &totalCost, cook)
 	}
+	// Bootstrap sessions are tracked separately from activeCooksByOrder but
+	// still need to appear in snapshots so the UI can route to the live actor.
+	l.appendActiveCookSummary(&activeCooks, &totalCost, l.bootstrapInFlight)
 	sort.Slice(activeCooks, func(i, j int) bool {
 		return activeCooks[i].SessionID < activeCooks[j].SessionID
 	})
@@ -136,6 +118,32 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		ModeEpoch:          uint64(l.canonical.ModeEpoch),
 		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
 	}
+}
+
+func (l *Loop) appendActiveCookSummary(activeCooks *[]CookSummary, totalCost *float64, cook *cookHandle) {
+	if cook == nil || cook.session == nil {
+		return
+	}
+	sessionCost := cook.session.TotalCost()
+	*totalCost += sessionCost
+	runtime := cook.dispatchedRuntime
+	if runtime == "" {
+		runtime = cook.stage.Runtime
+	}
+	*activeCooks = append(*activeCooks, CookSummary{
+		SessionID:    cook.session.ID(),
+		OrderID:      cook.orderID,
+		TaskKey:      cook.stage.TaskKey,
+		Skill:        cook.stage.Skill,
+		Runtime:      runtime,
+		Provider:     cook.stage.Provider,
+		Model:        cook.stage.Model,
+		WorktreeName: cook.worktreeName,
+		StartedAt:    cook.startedAt,
+		DisplayName:  cook.displayName,
+		Status:       stringx.Normalize(cook.session.Status()),
+		TotalCostUSD: sessionCost,
+	})
 }
 
 func cloneLoopState(state LoopState) LoopState {
