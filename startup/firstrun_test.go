@@ -18,40 +18,31 @@ func TestEnsureProjectStructureFreshDirectory(t *testing.T) {
 		t.Fatalf("EnsureProjectStructure: %v", err)
 	}
 
-	// Verify directories exist
-	for _, sub := range []string{"brain", ".noodle"} {
-		info, err := os.Stat(filepath.Join(dir, sub))
-		if err != nil {
-			t.Fatalf("directory %s not created: %v", sub, err)
-		}
-		if !info.IsDir() {
-			t.Fatalf("%s is not a directory", sub)
-		}
+	// Verify .noodle directory exists
+	info, err := os.Stat(filepath.Join(dir, ".noodle"))
+	if err != nil {
+		t.Fatalf("directory .noodle not created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatal(".noodle is not a directory")
 	}
 
-	// Verify files exist with expected content
-	wantFiles := map[string]string{
-		"brain/index.md":      "# Brain",
-		"brain/todos.md":      "<!-- next-id: 1 -->",
-		"brain/principles.md": "# Principles",
-		".noodle.toml":        `mode = "supervised"`,
+	// Verify brain/ is NOT created
+	if _, err := os.Stat(filepath.Join(dir, "brain")); err == nil {
+		t.Fatal("brain/ should not be created by EnsureProjectStructure")
 	}
-	for relPath, wantContent := range wantFiles {
-		data, err := os.ReadFile(filepath.Join(dir, relPath))
-		if err != nil {
-			t.Fatalf("file %s not created: %v", relPath, err)
-		}
-		if !strings.Contains(string(data), wantContent) {
-			t.Fatalf("%s missing expected content %q, got:\n%s", relPath, wantContent, data)
-		}
+
+	// Verify .noodle.toml exists with expected content
+	data, err := os.ReadFile(filepath.Join(dir, ".noodle.toml"))
+	if err != nil {
+		t.Fatalf("file .noodle.toml not created: %v", err)
+	}
+	if !strings.Contains(string(data), `mode = "supervised"`) {
+		t.Fatalf(".noodle.toml missing expected content, got:\n%s", data)
 	}
 
 	// Verify generated config is parseable
-	configData, err := os.ReadFile(filepath.Join(dir, ".noodle.toml"))
-	if err != nil {
-		t.Fatalf("read generated config: %v", err)
-	}
-	parsed, err := config.Parse(configData)
+	parsed, err := config.Parse(data)
 	if err != nil {
 		t.Fatalf("generated config did not parse: %v", err)
 	}
@@ -59,9 +50,13 @@ func TestEnsureProjectStructureFreshDirectory(t *testing.T) {
 		t.Fatalf("routing.defaults.model = %q, want claude-opus-4-6", parsed.Routing.Defaults.Model)
 	}
 
-	// Verify something was logged
-	if buf.Len() == 0 {
-		t.Fatal("expected log output for created files")
+	// Verify welcome message was printed
+	output := buf.String()
+	if !strings.Contains(output, "Noodle initialized") {
+		t.Fatalf("expected welcome message on first run, got:\n%s", output)
+	}
+	if !strings.Contains(output, "INSTALL.md") {
+		t.Fatalf("welcome message should mention INSTALL.md, got:\n%s", output)
 	}
 }
 
@@ -73,12 +68,8 @@ func TestEnsureProjectStructureIdempotent(t *testing.T) {
 	if err := EnsureProjectStructure(dir, &buf); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
-	firstOutput := buf.String()
-
-	// Modify a file to prove it's not overwritten
-	marker := "# Brain\n\nUser content here.\n"
-	if err := os.WriteFile(filepath.Join(dir, "brain", "index.md"), []byte(marker), 0o644); err != nil {
-		t.Fatalf("write marker: %v", err)
+	if !strings.Contains(buf.String(), "Noodle initialized") {
+		t.Fatal("expected welcome message on first run")
 	}
 
 	// Second run
@@ -91,16 +82,6 @@ func TestEnsureProjectStructureIdempotent(t *testing.T) {
 	if buf.Len() != 0 {
 		t.Fatalf("expected no output on idempotent run, got:\n%s", buf.String())
 	}
-	_ = firstOutput
-
-	// Verify marker file was not overwritten
-	data, err := os.ReadFile(filepath.Join(dir, "brain", "index.md"))
-	if err != nil {
-		t.Fatalf("read marker: %v", err)
-	}
-	if string(data) != marker {
-		t.Fatalf("brain/index.md was overwritten: got %q", data)
-	}
 }
 
 func TestEnsureProjectStructureRecreatesDeletedDirectory(t *testing.T) {
@@ -112,24 +93,24 @@ func TestEnsureProjectStructureRecreatesDeletedDirectory(t *testing.T) {
 	}
 
 	// Delete a required directory
-	if err := os.RemoveAll(filepath.Join(dir, "brain")); err != nil {
-		t.Fatalf("remove brain/: %v", err)
+	if err := os.RemoveAll(filepath.Join(dir, ".noodle")); err != nil {
+		t.Fatalf("remove .noodle/: %v", err)
 	}
 
-	// Re-run should recreate it
+	// Re-run should recreate it and show the welcome again
 	buf.Reset()
 	if err := EnsureProjectStructure(dir, &buf); err != nil {
 		t.Fatalf("second run: %v", err)
 	}
-	if !strings.Contains(buf.String(), "brain") {
-		t.Fatalf("expected brain directory recreation in output, got:\n%s", buf.String())
+	if !strings.Contains(buf.String(), "Noodle initialized") {
+		t.Fatalf("expected welcome message after directory deletion, got:\n%s", buf.String())
 	}
 
-	info, err := os.Stat(filepath.Join(dir, "brain"))
+	info, err := os.Stat(filepath.Join(dir, ".noodle"))
 	if err != nil {
-		t.Fatalf("brain/ not recreated: %v", err)
+		t.Fatalf(".noodle/ not recreated: %v", err)
 	}
 	if !info.IsDir() {
-		t.Fatal("brain/ is not a directory after recreation")
+		t.Fatal(".noodle/ is not a directory after recreation")
 	}
 }

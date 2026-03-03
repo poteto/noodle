@@ -72,9 +72,6 @@ func TestCLIIntegrationStartScaffolds(t *testing.T) {
 
 	// Verify scaffolded files exist
 	for _, path := range []string{
-		"brain/index.md",
-		"brain/todos.md",
-		"brain/principles.md",
 		".noodle",
 		".noodle.toml",
 	} {
