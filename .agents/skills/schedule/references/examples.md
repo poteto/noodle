@@ -94,46 +94,26 @@ No `task_key` on the planning stage — avoids loading the execute skill, which 
 }
 ```
 
-## Parallel phases from one plan
+## Parallel stages from one plan
 
-Phases 2 and 3 touch independent packages (`internal/adapter/` vs `internal/ui/`), so they run as separate parallel orders. Phase 1 (shared types) must complete first since both depend on it.
+One order, three execute stages. Phase 1 is sequential (phases 2 and 3 depend on its shared types). Phases 2 and 3 touch independent packages (`internal/adapter/` vs `internal/ui/`), so they run as parallel stages within the same order.
 
 ```json
 {
   "orders": [
     {
-      "id": "84-phase-1",
-      "title": "plan 84 phase 1: shared event types",
+      "id": "84",
+      "title": "plan 84: notifications",
       "plan": ["brain/plans/84-notifications/overview.md"],
-      "rationale": "foundation-before-feature: phases 2 and 3 both depend on shared types from phase 1",
+      "rationale": "one-plan-at-a-time: highest-priority plan with remaining phases; phases 2+3 parallelized (independent packages)",
       "status": "active",
       "stages": [
         {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
-         "extra_prompt": "Plan 84 phase 1: define shared event types in internal/event/. Phases 2 and 3 depend on these types."},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    },
-    {
-      "id": "84-phase-2",
-      "title": "plan 84 phase 2: adapter integration",
-      "plan": ["brain/plans/84-notifications/overview.md"],
-      "rationale": "independent of phase 3 (separate package), can run in parallel after phase 1",
-      "status": "active",
-      "stages": [
+         "extra_prompt": "Phase 1: define shared event types in internal/event/. Phases 2 and 3 depend on these types."},
         {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
-         "extra_prompt": "Plan 84 phase 2: wire event types into internal/adapter/. Independent of phase 3."},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
-      ]
-    },
-    {
-      "id": "84-phase-3",
-      "title": "plan 84 phase 3: UI notification panel",
-      "plan": ["brain/plans/84-notifications/overview.md"],
-      "rationale": "independent of phase 2 (separate package), can run in parallel after phase 1",
-      "status": "active",
-      "stages": [
+         "extra_prompt": "Phase 2: wire event types into internal/adapter/. Independent of phase 3 — can run in parallel."},
         {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
-         "extra_prompt": "Plan 84 phase 3: build notification panel in internal/ui/. Independent of phase 2."},
+         "extra_prompt": "Phase 3: build notification panel in internal/ui/. Independent of phase 2 — can run in parallel."},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
     }
