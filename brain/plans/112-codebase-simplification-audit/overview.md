@@ -4,23 +4,23 @@ created: 2026-03-03
 status: active
 ---
 
-# Plan 112: Codebase Simplification Program (Root-Cause First)
+# Plan 112: Codebase Simplification
 
 Back to [[plans/index]]
 
 ## Context
 
-A full-repo, multi-agent read-only audit was completed to identify simplification and refactor opportunities aligned to first-principles architecture, subtraction, boundary discipline, idempotency, and cross-platform correctness. This plan captures the complete findings inventory so execution can proceed deliberately.
+Full-repo audit identified 119 simplification opportunities. Most are symptoms of 3 root causes. This plan targets those root causes — fixing them eliminates ~37 findings directly, ~15 more evaporate as symptoms, and the remaining ~67 become individually addressable without coordination.
 
-## Scope
+## Strategy
 
-**In scope:**
-- Consolidated findings across Go backend, loop/runtime/dispatcher, internal core packages, server/WebSocket, UI, docs, skills, automation, and brain structure.
-- Executable phased program for resolving the findings with explicit sequencing, rollback, and verification gates.
+Target the root causes whose fix makes the most other things disappear:
 
-**Out of scope:**
-- Reprioritizing unrelated existing plans.
-- Shipping speculative architecture not directly tied to root-cause findings in this inventory.
+1. **Canonical model unification** — `internal/state` and `internal/orderx` are two competing representations of the same domain. Unifying them eliminates translation layers, event contract duplication, projection drift, and reducer duplication.
+2. **Loop orchestration consolidation** — Failure/merge/completion logic is implemented three times across completion/control/reconcile. One path eliminates the duplication and the P0 data-loss bugs it causes.
+3. **WS lifecycle fix** — Server-side panic/leak risks plus duplicated frontend connection management. Bounded scope, high user impact.
+
+Everything else is deferred — fix individually as files are touched, not as coordinated phases.
 
 ## Constraints
 
@@ -29,14 +29,6 @@ A full-repo, multi-agent read-only audit was completed to identify simplificatio
 - Error messages should describe failure states.
 - Single-writer / idempotent behavior must be preserved for shared state files.
 
-### Alternatives Considered
-
-1. Triage only top 10 findings and defer the rest.
-2. Capture all findings in one overview, then phase by root-cause cluster and dependency.
-3. Split findings into separate plans per subsystem.
-
-Chosen: **(2)** to preserve full audit signal in one canonical overview while phasing by root-cause cluster and dependency order.
-
 ## Applicable Skills
 
 - `execute`
@@ -44,66 +36,76 @@ Chosen: **(2)** to preserve full audit signal in one canonical overview while ph
 - `testing`
 - `review`
 - `ts-best-practices`
-- `noodle`
-- `skill-creator`
-- `brain`
 
-## Root-Cause Clusters
+## Severity (in-scope findings)
 
-- `RC1` Contract fragmentation (`internal/state` vs `internal/orderx`, projection drift, reducer/ingest contract split). Findings: `48-63`.
-- `RC2` Loop/control lifecycle ambiguity (non-deterministic stage failure, duplicated merge/failure orchestration, restart-idempotency holes). Findings: `35-47`.
-- `RC3` Runtime/session lifecycle safety (termination error swallowing, recovery metadata parsing fragility, bounded shutdown gaps). Findings: `25-34`, `71-75`.
-- `RC4` WS lifecycle split across backend and UI (channel close/send panic risk, subscriber leaks, duplicated UI connection managers). Findings: `69-70`, `76-88`.
-- `RC5` CLI/config/adapter boundary drift (root pre-run behavior, duplicated defaults, shell-based adapter pathing). Findings: `1-24`.
-- `RC6` Event pipeline inefficiency and silent drop behavior. Findings: `64-68`.
-- `RC7` Docs/skills/brain/tooling instruction drift (category — multiple independent drift sources, not a single structural root cause). Findings: `89-119`.
-
-## Severity Distribution
-
-- **P0** (crash, data loss, or hang): `41`, `44`, `50`, `64`, `69`, `71`, `73`, `83` — 8 findings.
-- **P1** (incorrect behavior, races, contract violations): `1`, `2`, `20`, `25`, `27`, `28`, `31`, `32`, `36`, `37`, `38`, `40`, `42`, `43`, `45`, `48`, `49`, `53`, `54`, `70`, `72`, `74`, `75`, `76`, `77`, `84`, `85`, `89`, `105`, `106` — 30 findings.
-- **P2** (duplication, dead code, quality, hygiene): all remaining — 81 findings.
-
-Within each phase, P0 findings must be resolved first. See per-phase priority sections.
+- **P0** (crash, data loss, or hang): `41`, `44`, `50`, `64`, `69`, `71`, `83` — 7 findings.
+- **P1** (incorrect behavior, races, contract violations): `26`, `36`, `38`, `40`, `42`, `43`, `45`, `48`, `49`, `53`, `54`, `56`, `60`, `67`, `70`, `76`, `77` — 17 findings.
+- **P2** (duplication, dead code, cleanup): remaining in-scope findings.
 
 ## Effort Sizing
 
 | Phase | Size | Rationale |
 |---|---|---|
-| `00` Scaffold | S | Link fixes, CI alignment, matrix definition |
-| `01` CLI/Config/Adapter | M | 24 findings but mostly boundary cleanup, no model changes |
-| `02` Contract Cutline | L | Core model unification + migration — highest risk phase |
-| `03` Loop/Runtime Safety | L | 28 findings, lifecycle determinism, crash/restart hardening |
-| `04` Server/UI WS | M | WS lifecycle convergence across Go + TS |
-| `05` Event Pipeline Perf | S | 3 performance findings, isolated packages |
-| `06` Docs/Skills/Brain | M | Many items but individually small, can parallel after `00` |
+| `01` Canonical Model | L | Core model unification + migration — highest leverage, highest risk |
+| `02` Loop Orchestration | L | Consolidate 3 paths into 1, fix P0 data-loss bugs |
+| `03` WS Lifecycle | S | Bounded crash/leak fixes, single frontend connection |
 
 ## Execution Policy
 
-- **Serialization rule:** Phases `01-05` are shared-state core phases and must run sequentially (single active phase at a time).
-- **Parallel allowance:** Phase `06` depends only on Phase `00` and may run in parallel with Phases `01-05`. Restricted to non-core files (`docs/`, `.agents/`, `brain/`), with no modifications to loop/runtime/internal contracts. Contract-dependent doc findings (`89`, `95`, `105`, `106`) should align with Phase `02` output if available; defer those items if Phase `02` has not landed.
-- **Scaffold-first guard:** Phase `00` must complete before any other phase begins.
+- Phases run sequentially: `01` → `02` → `03`.
+- Phase `01` must land before Phase `02` (loop changes consume the unified model).
+- Phase `03` has no logical dependency on Phase `02`. If the P0 panic fix (`69`) is urgent, Phase `03` may run after Phase `01` completes instead of waiting for Phase `02`.
 
-## Findings-to-Phase Traceability
+## Findings Traceability
 
-| Finding IDs | Owner Phase | Rationale |
+### In scope
+
+| Finding IDs | Phase | Disposition |
 |---|---|---|
-| `97-103`, `113`, `118` | `Phase 00` | Stabilize verification/test harness and planning traceability before refactors |
-| `1-24` | `Phase 01` | Boundary cleanup for CLI/config/adapter surfaces (no downstream dependents) |
-| `48-63`, `64`, `67` | `Phase 02` | Canonical contract cutline, internal model consolidation, and event routing correctness |
-| `25-47`, `71-75` | `Phase 03` | Loop/runtime/control deterministic lifecycle + restart safety |
-| `69-70`, `76-88` | `Phase 04` | Unified WS/server/UI transport lifecycle convergence |
-| `65`, `66`, `68` | `Phase 05` | Event pipeline hot-path performance |
-| `89-96`, `104-112`, `114-117`, `119` | `Phase 06` | Docs/skills/brain/tooling hygiene and drift removal |
+| `48-64`, `67` | `01` | Directly addressed or evaporate with model unification |
+| `26`, `35-47`, `71` | `02` | Directly addressed or evaporate with orchestration consolidation |
+| `69-70`, `76-77`, `83` | `03` | Directly addressed |
+
+### Deferred
+
+| Finding IDs | Category | Disposition |
+|---|---|---|
+| `1-24` | CLI/config/adapter boundary | Fix individually as touched |
+| `25`, `27-34`, `72-75` | Dispatcher/runtime safety | Fix individually as touched |
+| `65-66`, `68` | Event pipeline performance | Defer until profiling warrants |
+| `78-82`, `84-88` | UI quality/routing | Fix individually as touched |
+| `89-119` | Docs/skills/brain/CI hygiene | Fix as you go |
 
 ## Rollback Strategy
 
-- Every phase must land as independently revertible commits.
-- If a phase fails runtime gates, rollback that phase fully before starting the next.
-- `Phase 02` and `Phase 03` require an explicit state snapshot backup before rollout and a documented restore command path.
-- No phase may change compatibility posture implicitly; any deliberate forward-only migration must be stated in-phase.
+- Every phase lands as independently revertible commits.
+- Phases `01` and `02` require a `.noodle/` state snapshot before rollout (both change serialized formats).
+- State reset (if migration is infeasible) requires explicit lead approval.
+- If a phase fails runtime gates, rollback fully before proceeding.
 
-## Findings Inventory (Complete)
+## Phases
+
+- [[plans/112-codebase-simplification-audit/phase-01-canonical-model]]
+- [[plans/112-codebase-simplification-audit/phase-02-loop-orchestration]]
+- [[plans/112-codebase-simplification-audit/phase-03-ws-lifecycle]]
+
+## Verification
+
+### Per-phase gate
+
+Phase-local verification commands defined in each phase file.
+
+### Program closure gate
+
+- `pnpm check`
+- `go test ./... && go vet ./...`
+- `pnpm --filter noodle-ui test`
+- `pnpm test:smoke`
+
+## Audit Findings Reference
+
+Complete inventory from the original audit, preserved for traceability. Findings not assigned to a phase above are deferred.
 
 ### Root CLI / command boundary
 
@@ -262,32 +264,3 @@ Within each phase, P0 findings must be resolved first. See per-phase priority se
 117. Plan naming convention drift (`96-101` multi-id directory).
 118. Todo priority/frontmatter drift vs open items.
 119. Principle overlap clusters create ambiguity and repeated guidance.
-
-## Phases
-
-- [[plans/112-codebase-simplification-audit/phase-00-scaffold-and-gates]]
-- [[plans/112-codebase-simplification-audit/phase-01-cli-config-adapter-boundaries]]
-- [[plans/112-codebase-simplification-audit/phase-02-canonical-contract-cutline]]
-- [[plans/112-codebase-simplification-audit/phase-03-loop-runtime-control-safety]]
-- [[plans/112-codebase-simplification-audit/phase-04-server-ui-ws-convergence]]
-- [[plans/112-codebase-simplification-audit/phase-05-event-pipeline-and-performance]]
-- [[plans/112-codebase-simplification-audit/phase-06-docs-skills-brain-hygiene]]
-
-## Verification Gates
-
-### Global static gate (all phases)
-
-- `pnpm check`
-- `go test ./... && go vet ./...`
-- `pnpm --filter noodle-ui test`
-- `pnpm test:smoke`
-- `sh scripts/lint-arch.sh`
-
-### Global runtime gate (all phases)
-
-- Phase-specific runtime checks must be automated where feasible.
-- Manual checks are allowed only as secondary confirmation after automated checks pass.
-
-### Cross-platform gate (program-level)
-
-- CI matrix must pass on `linux`, `macos`, and `windows` before final program closure.
