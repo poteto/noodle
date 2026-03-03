@@ -21,7 +21,13 @@ Fix the monitor gap where sprites sessions don't write heartbeats, making `Heart
 
 ## Design Notes
 
-The heartbeat mechanism is simple: write `{timestamp, ttl_seconds}` to `heartbeat.json` on every canonical event. By moving this to sessionBase, sprites sessions automatically get heartbeat support without any sprites-specific code.
+The heartbeat mechanism writes `{timestamp, ttl_seconds}` to `heartbeat.json`. By moving this to sessionBase, sprites sessions automatically get heartbeat support without any sprites-specific code.
+
+**Throttling:** Write heartbeat at most once per 5 seconds to avoid write amplification during streaming deltas. Track `lastHeartbeatTime` in sessionBase and skip writes within the throttle window.
+
+**Periodic timer:** Add a background goroutine that writes heartbeat every 15 seconds regardless of event activity. This prevents heartbeat expiry during quiet workloads (e.g., sprites sessions running long tool executions with no stdout). The timer stops when the session's Done channel closes.
+
+**TTL:** Increase heartbeat TTL to 30 seconds (matching the periodic timer + margin) to accommodate quiet periods.
 
 This also simplifies processSession — one less responsibility in the session-type layer.
 

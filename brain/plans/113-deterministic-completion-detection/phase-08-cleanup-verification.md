@@ -9,10 +9,9 @@ After a session exits with "completed" status, verify that the claimed deliverab
 ## Changes
 
 **`loop/cook_completion.go`** — update `handleCompletion()`:
-- After determining `StageResultCompleted`, run a verification check before advancing
-- For worktree sessions: verify the worktree has changes (`git diff --stat` or equivalent) OR a stage_yield was emitted
-- For non-worktree sessions: verify at least one `EventResult` canonical event exists (the CompletionTracker's `HasDeliverable` flag)
-- If verification fails, downgrade to `StageResultFailed` with reason "completed with no deliverable"
+- After determining `StageResultCompleted`, check `SessionOutcome.HasDeliverable`
+- If `HasDeliverable` is false AND no `stage_yield` was emitted → downgrade to `StageResultFailed` with reason "completed with no deliverable"
+- **Do NOT check worktree git changes** — many valid stages (review, quality, reflect) intentionally produce no diff. The existing `completeWithoutMerge` path handles no-change completions correctly. The verification gate only checks whether the agent completed at least one turn with output.
 
 **`dispatcher/types.go`** — `SessionOutcome.HasDeliverable` field (defined in phase 1) is the primary input for this check
 
@@ -22,11 +21,9 @@ After a session exits with "completed" status, verify that the claimed deliverab
 
 ## Design Notes
 
-This gate catches the case where `terminalStatus()` (or now `CompletionTracker`) marks a session as "completed" because it saw lifecycle events, but the session didn't actually produce output. Example: agent initialized, read some files, encountered an error, and exited — the tracker sees `EventInit` + `EventAction` and marks completed, but no useful work was produced.
+With the updated CompletionTracker (phase 2), `sawAction` alone now maps to `StatusFailed`, so most false completions are already caught. This gate provides an additional check: even if the tracker says "completed" (because `sawResult` was seen), verify via `HasDeliverable` that the session actually produced output worth advancing.
 
-The `HasDeliverable` flag (set when `EventResult` or `EventComplete` is seen) distinguishes "did work with output" from "started but produced nothing."
-
-The worktree check is defense-in-depth: even if the tracker says "has deliverable," confirm the worktree actually has changes before attempting merge.
+The `HasDeliverable` flag (set when `EventResult` or `EventComplete` is seen) is the only check. No git-diff gate — review/quality/reflect stages legitimately complete with no code changes, and the existing `completeWithoutMerge` path already handles this correctly.
 
 ## Routing
 
@@ -35,6 +32,7 @@ The worktree check is defense-in-depth: even if the tracker says "has deliverabl
 ## Verification
 
 - Unit test: session with HasDeliverable=true → advances normally
-- Unit test: session with HasDeliverable=false → downgraded to failed
-- Unit test: worktree session with HasDeliverable=true but no git changes → downgraded
+- Unit test: session with HasDeliverable=false and no stage_yield → downgraded to failed
+- Unit test: session with HasDeliverable=false but stage_yield emitted → advances (yield overrides)
+- Unit test: no-change worktree session with HasDeliverable=true → advances normally (no git-diff gate)
 - `go test ./loop/... -race`

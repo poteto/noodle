@@ -41,6 +41,9 @@ Additionally:
 - Must handle providers that crash without emitting any completion event
 - Sprites SDK mirrors `os/exec.Cmd` — same interface guarantees apply
 - Event writes go through stamp processor (in-process) — no external file watching
+- `stage_yield` is a session event (not canonical) — yield handling stays in the loop, not the tracker
+- `Resolve()` must run AFTER stream processing completes — ordering is non-negotiable
+- Zombie detection must remain claims-based — `Outcome()` is only populated after `Done()` closes
 
 ## Alternatives Considered
 
