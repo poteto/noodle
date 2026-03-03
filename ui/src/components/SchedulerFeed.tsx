@@ -65,7 +65,9 @@ export function SchedulerFeed() {
     } else if (!schedulerSession) {
       emptyMessage = (
         <>
-          The scheduler starts when you run <code style={{ fontFamily: "var(--font-mono)" }}>noodle start</code> and have skills installed.
+          {"The scheduler starts when you run "}
+          <code style={{ fontFamily: "var(--font-mono)" }}>noodle start</code>
+          {" and have skills installed."}
           <br />
           <Link to="/onboarding" style={{ color: "var(--color-accent)" }}>
             Learn how the loop works

@@ -19,10 +19,8 @@ vi.mock("~/client", async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
   ),
 }));
 

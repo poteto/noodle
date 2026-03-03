@@ -156,7 +156,9 @@ function EmptyReviews() {
         <header className="feed-header">
           <div className="feed-title">Reviews</div>
         </header>
-        <div className="review-empty">No pending reviews. Completed sessions in supervised mode appear here for review.</div>
+        <div className="review-empty">
+          No pending reviews. Completed sessions in supervised mode appear here for review.
+        </div>
       </main>
       <aside className="context-panel">
         <div className="context-header">Review Actions</div>
