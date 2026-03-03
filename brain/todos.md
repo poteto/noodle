@@ -1,5 +1,5 @@
 ---
-priority: [113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
+priority: [114, 113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 # Priority notes:
 #    codebase simplification program — root-cause-first execution of full audit
 #   113 deterministic completion detection — replace fragile completion heuristics
