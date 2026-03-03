@@ -104,7 +104,11 @@ func (p *Processor) ProcessLine(line []byte) ([]byte, []parse.CanonicalEvent, er
 
 	provider, events, err := p.Registry.ParseLine(stampedLine)
 	if err != nil {
-		return nil, nil, err
+		return stampedLine, []parse.CanonicalEvent{{
+			Type:      parse.EventError,
+			Message:   "canonical routing failed: " + err.Error(),
+			Timestamp: stampTime,
+		}}, nil
 	}
 
 	for i := range events {

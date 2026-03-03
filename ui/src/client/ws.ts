@@ -5,6 +5,7 @@ import { chooseNewerSnapshot } from "./snapshot-freshness";
 
 const SNAPSHOT_KEY = ["snapshot"] as const;
 const RECONNECT_DELAY_MS = 2000;
+const CONTROL_ACK_TIMEOUT_MS = 1500;
 
 export type WSStatus = "connected" | "connecting" | "disconnected";
 
@@ -29,6 +30,7 @@ type WSClientMessage =
 let ws: WebSocket | null = null;
 let queryClientRef: QueryClient | null = null;
 let closed = false;
+let connectionOwners = 0;
 
 // WS status — module-level store for useSyncExternalStore (avoids useQuery
 // returning a new object reference on every snapshot push).
@@ -208,13 +210,20 @@ function connect() {
  */
 export function connectWS(queryClient: QueryClient): () => void {
   queryClientRef = queryClient;
-  closed = false;
-  connect();
+  connectionOwners += 1;
+  if (connectionOwners === 1) {
+    closed = false;
+    connect();
+  }
 
   return () => {
-    closed = true;
-    ws?.close();
-    ws = null;
+    connectionOwners = Math.max(0, connectionOwners - 1);
+    if (connectionOwners === 0) {
+      closed = true;
+      ws?.close();
+      ws = null;
+      setStatus("disconnected");
+    }
   };
 }
 
@@ -247,6 +256,10 @@ export function unsubscribeSession(sessionId: string) {
  * Send a control command over WebSocket with ack correlation.
  */
 export function sendWSControl(cmd: ControlCommand): Promise<ControlAck> {
+  if (ws?.readyState !== WebSocket.OPEN) {
+    return Promise.reject(new Error("websocket unavailable"));
+  }
+
   const id = cmd.id || `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const cmdWithId = { ...cmd, id };
 
@@ -254,13 +267,13 @@ export function sendWSControl(cmd: ControlCommand): Promise<ControlAck> {
     pendingControls.set(id, { resolve, reject });
     sendJSON({ type: "control", data: cmdWithId });
 
-    // Timeout after 10s
+    // Timeout quickly so hooks can fall back to HTTP if WS ack path stalls.
     setTimeout(() => {
       if (pendingControls.has(id)) {
         pendingControls.delete(id);
         reject(new Error("control command timed out"));
       }
-    }, 10_000);
+    }, CONTROL_ACK_TIMEOUT_MS);
   });
 }
 

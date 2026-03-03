@@ -2,12 +2,16 @@ package loop
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
-	"github.com/poteto/noodle/internal/recover"
 	"github.com/poteto/noodle/internal/stringx"
 )
+
+var recoverySuffixRegexp = regexp.MustCompile(`-recover-(\d+)$`)
 
 func (l *Loop) readSessionStatus(sessionID string) (string, bool, error) {
 	metaPath := filepath.Join(l.runtimeDir, "sessions", sessionID, "meta.json")
@@ -56,7 +60,7 @@ func (l *Loop) buildAdoptedCook(targetID string, sessionID string, status string
 			},
 			worktreeName: name,
 			worktreePath: worktreePath,
-			attempt:      recover.RecoveryChainLength(name),
+			attempt:      recoveryChainLength(name),
 		}, true, nil
 	}
 
@@ -73,4 +77,21 @@ func (l *Loop) dropAdoptedTarget(targetID string, sessionID string) {
 		filtered = append(filtered, id)
 	}
 	l.cooks.adoptedSessions = filtered
+}
+
+func recoveryChainLength(name string) int {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return 0
+	}
+	matches := recoverySuffixRegexp.FindStringSubmatch(name)
+	if len(matches) != 2 {
+		return 0
+	}
+	var value int
+	_, _ = fmt.Sscanf(matches[1], "%d", &value)
+	if value < 0 {
+		return 0
+	}
+	return value
 }

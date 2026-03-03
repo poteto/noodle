@@ -176,57 +176,142 @@ func (l *Loop) rebuildRegistry() {
 func (l *Loop) Shutdown() {
 	l.shutdownOnce.Do(func() {
 		if l.mergeQueue != nil {
-			l.mergeQueue.Close()
+			closed := make(chan struct{})
+			go func() {
+				defer close(closed)
+				l.mergeQueue.Close()
+			}()
+			select {
+			case <-closed:
+			case <-time.After(shutdownDeadline):
+				l.logger.Warn("shutdown merge queue close timed out", "timeout", shutdownDeadline)
+			}
 		}
 
-		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
-			_ = session.Terminate()
-		})
-		l.forEachAdoptedSession(func(sessionID string) {
-			monitor.TerminateSessionByPID(l.runtimeDir, sessionID)
-		})
+		activeSessions := l.activeSessionsSnapshot()
+		adoptedSessions := l.adoptedSessionIDsSnapshot()
 
-		<-time.After(shutdownDeadline)
+		l.terminateActiveSessions(activeSessions)
+		l.terminateAdoptedSessions(adoptedSessions)
+		if l.waitForActiveSessionExit(shutdownDeadline, activeSessions) {
+			return
+		}
 
-		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
-			_ = session.ForceKill()
-		})
-		l.forEachAdoptedSession(func(sessionID string) {
-			monitor.ForceKillSessionByPID(l.runtimeDir, sessionID)
-		})
+		l.logger.Warn("shutdown terminate deadline exceeded; escalating to force kill",
+			"timeout", shutdownDeadline,
+			"active_sessions_pending", countPendingDone(activeSessions),
+		)
+
+		l.forceKillActiveSessions(activeSessions)
+		l.forceKillAdoptedSessions(adoptedSessions)
+		if l.waitForActiveSessionExit(shutdownDeadline, activeSessions) {
+			return
+		}
+
+		l.logger.Warn("shutdown force kill deadline exceeded",
+			"timeout", shutdownDeadline,
+			"active_sessions_pending", countPendingDone(activeSessions),
+		)
 	})
 }
 
-func (l *Loop) forEachActiveSession(fn func(loopruntime.SessionHandle)) {
-	var wg sync.WaitGroup
+func (l *Loop) activeSessionsSnapshot() []loopruntime.SessionHandle {
+	sessions := make([]loopruntime.SessionHandle, 0, len(l.cooks.activeCooksByOrder))
 	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook == nil || cook.session == nil {
 			continue
 		}
-		wg.Add(1)
-		session := cook.session
-		go func() {
-			defer wg.Done()
-			fn(session)
-		}()
+		sessions = append(sessions, cook.session)
 	}
-	wg.Wait()
+	return sessions
 }
 
-func (l *Loop) forEachAdoptedSession(fn func(string)) {
-	var wg sync.WaitGroup
+func (l *Loop) adoptedSessionIDsSnapshot() []string {
+	sessionIDs := make([]string, 0, len(l.cooks.adoptedSessions))
 	for _, sessionID := range l.cooks.adoptedSessions {
 		id := strings.TrimSpace(sessionID)
 		if id == "" {
 			continue
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			fn(id)
-		}()
+		sessionIDs = append(sessionIDs, id)
 	}
-	wg.Wait()
+	return sessionIDs
+}
+
+func (l *Loop) terminateActiveSessions(sessions []loopruntime.SessionHandle) {
+	for _, session := range sessions {
+		if err := session.Terminate(); err != nil {
+			l.logger.Warn("shutdown terminate session failed", "session", session.ID(), "error", err)
+		}
+	}
+}
+
+func (l *Loop) forceKillActiveSessions(sessions []loopruntime.SessionHandle) {
+	for _, session := range sessions {
+		if err := session.ForceKill(); err != nil {
+			l.logger.Warn("shutdown force kill session failed", "session", session.ID(), "error", err)
+		}
+	}
+}
+
+func (l *Loop) terminateAdoptedSessions(sessionIDs []string) {
+	for _, sessionID := range sessionIDs {
+		monitor.TerminateSessionByPID(l.runtimeDir, sessionID)
+	}
+}
+
+func (l *Loop) forceKillAdoptedSessions(sessionIDs []string) {
+	for _, sessionID := range sessionIDs {
+		monitor.ForceKillSessionByPID(l.runtimeDir, sessionID)
+	}
+}
+
+func (l *Loop) waitForActiveSessionExit(timeout time.Duration, sessions []loopruntime.SessionHandle) bool {
+	if len(sessions) == 0 {
+		return true
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	for _, session := range sessions {
+		doneCh := session.Done()
+		wg.Add(1)
+		go func(done <-chan struct{}) {
+			defer wg.Done()
+			select {
+			case <-done:
+			case <-ctx.Done():
+			}
+		}(doneCh)
+	}
+
+	wait := make(chan struct{})
+	go func() {
+		defer close(wait)
+		wg.Wait()
+	}()
+
+	select {
+	case <-wait:
+		return ctx.Err() == nil
+	case <-ctx.Done():
+		<-wait
+		return false
+	}
+}
+
+func countPendingDone(sessions []loopruntime.SessionHandle) int {
+	pending := 0
+	for _, session := range sessions {
+		select {
+		case <-session.Done():
+		default:
+			pending++
+		}
+	}
+	return pending
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -457,7 +542,9 @@ func (l *Loop) shutdownAndDrain() {
 			"leaked_watchers", l.watcherCount.Load(),
 		)
 		for orderID, cook := range l.cooks.activeCooksByOrder {
-			_ = cook.session.ForceKill()
+			if err := cook.session.ForceKill(); err != nil {
+				l.logger.Warn("force kill leaked session failed", "order_id", orderID, "session_id", cook.session.ID(), "error", err)
+			}
 			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
 		}
 	}

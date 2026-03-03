@@ -13,21 +13,6 @@ import (
 	"github.com/poteto/noodle/internal/stringx"
 )
 
-var knownEventTypes = map[string]struct{}{
-	string(EventControlReceived):   {},
-	string(EventSchedulePromoted):  {},
-	string(EventDispatchRequested): {},
-	string(EventDispatchCompleted): {},
-	string(EventStageCompleted):    {},
-	string(EventStageFailed):       {},
-	string(EventOrderCompleted):    {},
-	string(EventOrderFailed):       {},
-	string(EventModeChanged):       {},
-	string(EventSessionAdopted):    {},
-	string(EventMergeCompleted):    {},
-	string(EventMergeFailed):       {},
-}
-
 // Ingester is the single ingestion arbiter for external inputs.
 type Ingester struct {
 	nextID atomic.Uint64
@@ -179,13 +164,13 @@ func compactAndDecodePayload(raw json.RawMessage) (json.RawMessage, map[string]j
 
 func extractEventType(fields map[string]json.RawMessage) (string, error) {
 	if eventType, ok := readStringField(fields, "type"); ok {
-		if _, exists := knownEventTypes[eventType]; exists {
+		if IsKnownEventType(EventType(eventType)) {
 			return eventType, nil
 		}
 		return "", fmt.Errorf("event type not recognized: %s", eventType)
 	}
 	if eventType, ok := readStringField(fields, "event_type"); ok {
-		if _, exists := knownEventTypes[eventType]; exists {
+		if IsKnownEventType(EventType(eventType)) {
 			return eventType, nil
 		}
 		return "", fmt.Errorf("event type not recognized: %s", eventType)

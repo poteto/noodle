@@ -91,6 +91,22 @@ describe("useSendControl", () => {
     expect(mockSendWSControl).toHaveBeenCalledTimes(1);
     expect(invalidateSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("falls back to HTTP when websocket control send fails", async () => {
+    wsStatus = "disconnected";
+    mockSendWSControl.mockRejectedValue(new Error("websocket unavailable"));
+    mockSendControl.mockResolvedValue(okAck("pause"));
+
+    const queryClient = new QueryClient();
+    const { result } = renderHook(() => useSendControl(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    await result.current.mutateAsync({ action: "pause" });
+
+    expect(mockSendWSControl).toHaveBeenCalledTimes(1);
+    expect(mockSendControl).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("useActiveChannel", () => {

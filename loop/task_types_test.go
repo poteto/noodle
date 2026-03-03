@@ -68,8 +68,7 @@ func TestResolveByIDPrefixNoLongerMatches(t *testing.T) {
 func TestUnknownItemDoesNotResolve(t *testing.T) {
 	reg := testLoopRegistry()
 	if _, ok := reg.ResolveStage(taskreg.StageInput{
-		ID:    "42",
-		Title: "some ticket",
+		ID: "42",
 	}); ok {
 		t.Fatal("unknown item should not resolve")
 	}

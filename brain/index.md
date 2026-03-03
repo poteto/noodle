@@ -32,6 +32,7 @@
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
 - [[codebase/orders-lifecycle-defaults-on-promotion]]
+- [[codebase/provider-routing-must-fail-loudly]]
 - [[codebase/release-changelog-wrapper-script]]
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]

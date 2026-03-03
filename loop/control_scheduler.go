@@ -20,7 +20,9 @@ func (l *Loop) controlAdvance(orderID string) error {
 
 	// Kill the active session to prevent double-processing when it exits.
 	if cook, ok := l.cooks.activeCooksByOrder[orderID]; ok {
-		_ = cook.session.ForceKill()
+		if err := cook.session.ForceKill(); err != nil {
+			return fmt.Errorf("force kill active session for order %q failed: %w", orderID, err)
+		}
 		l.trackCookCompleted(cook, StageResult{
 			SessionID:   cook.session.ID(),
 			Status:      StageResultCancelled,

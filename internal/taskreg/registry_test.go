@@ -86,7 +86,7 @@ func TestResolveStageByIDPrefixNoLongerMatches(t *testing.T) {
 
 func TestResolveStageUnknown(t *testing.T) {
 	reg := NewFromSkills(testSkills())
-	if _, ok := reg.ResolveStage(StageInput{ID: "42", Title: "some ticket"}); ok {
+	if _, ok := reg.ResolveStage(StageInput{ID: "42"}); ok {
 		t.Fatal("unknown item should not resolve")
 	}
 }

@@ -1,7 +1,6 @@
 import { createElement, createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { useQuery, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
-  connectWS,
   SNAPSHOT_KEY,
   subscribeSession,
   unsubscribeSession,
@@ -26,8 +25,6 @@ import type {
 export function useSnapshot() {
   const queryClient = useQueryClient();
 
-  useEffect(() => connectWS(queryClient), [queryClient]);
-
   return useQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,
     queryFn: async ({ signal }) => {
@@ -47,8 +44,6 @@ export function useSnapshot() {
 // The component calling this must be wrapped in a <Suspense> boundary.
 export function useSuspenseSnapshot() {
   const queryClient = useQueryClient();
-
-  useEffect(() => connectWS(queryClient), [queryClient]);
 
   return useSuspenseQuery<Snapshot>({
     queryKey: SNAPSHOT_KEY,

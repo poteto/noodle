@@ -11,36 +11,34 @@ import (
 	"github.com/poteto/noodle/internal/stringx"
 )
 
+type reduceHandler func(state.State, ingest.StateEvent) (state.State, []Effect, error)
+
+var reduceHandlers = map[ingest.EventType]reduceHandler{
+	ingest.EventDispatchRequested: reduceDispatchRequested,
+	ingest.EventDispatchCompleted: reduceDispatchCompleted,
+	ingest.EventStageCompleted:    reduceStageCompleted,
+	ingest.EventStageFailed:       reduceStageFailed,
+	ingest.EventOrderCompleted:    reduceOrderCompleted,
+	ingest.EventOrderFailed:       reduceOrderFailed,
+	ingest.EventModeChanged:       reduceModeChanged,
+	ingest.EventMergeCompleted:    reduceMergeCompleted,
+	ingest.EventMergeFailed:       reduceMergeFailed,
+	ingest.EventControlReceived:   reduceControlReceived,
+	ingest.EventSchedulePromoted:  reduceSchedulePromoted,
+	ingest.EventSessionAdopted:    reduceSessionAdopted,
+}
+
 // Reduce is the default reducer implementation.
 func Reduce(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
-	switch ingest.EventType(event.Type) {
-	case ingest.EventDispatchRequested:
-		return reduceDispatchRequested(current, event)
-	case ingest.EventDispatchCompleted:
-		return reduceDispatchCompleted(current, event)
-	case ingest.EventStageCompleted:
-		return reduceStageCompleted(current, event)
-	case ingest.EventStageFailed:
-		return reduceStageFailed(current, event)
-	case ingest.EventOrderCompleted:
-		return reduceOrderCompleted(current, event)
-	case ingest.EventOrderFailed:
-		return reduceOrderFailed(current, event)
-	case ingest.EventModeChanged:
-		return reduceModeChanged(current, event)
-	case ingest.EventMergeCompleted:
-		return reduceMergeCompleted(current, event)
-	case ingest.EventMergeFailed:
-		return reduceMergeFailed(current, event)
-	case ingest.EventControlReceived:
-		return reduceControlReceived(current, event)
-	case ingest.EventSchedulePromoted:
-		return reduceSchedulePromoted(current, event)
-	case ingest.EventSessionAdopted:
-		return reduceSessionAdopted(current, event)
-	default:
+	eventType := ingest.EventType(event.Type)
+	if !ingest.IsKnownEventType(eventType) {
 		return current, nil, nil
 	}
+	handler, ok := reduceHandlers[eventType]
+	if !ok {
+		return current, nil, fmt.Errorf("event type has no reducer handler: %q", event.Type)
+	}
+	return handler(current, event)
 }
 
 // DefaultReducer returns the canonical reducer function.
@@ -89,8 +87,8 @@ type sessionAdoptedPayload struct {
 
 func reduceDispatchRequested(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce dispatch_requested: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
@@ -120,8 +118,8 @@ func reduceDispatchRequested(current state.State, event ingest.StateEvent) (stat
 
 func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce dispatch_completed: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
@@ -163,8 +161,8 @@ func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (stat
 
 func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_completed: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
@@ -221,8 +219,8 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 
 func reduceStageFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_failed: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
@@ -252,8 +250,8 @@ func reduceStageFailed(current state.State, event ingest.StateEvent) (state.Stat
 
 func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderPayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce order_completed: %w", err)
 	}
 	order, ok := current.Orders[payload.OrderID]
 	if !ok || order.Status.IsTerminal() {
@@ -280,8 +278,8 @@ func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.S
 
 func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderPayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce order_failed: %w", err)
 	}
 	order, ok := current.Orders[payload.OrderID]
 	if !ok || order.Status.IsTerminal() {
@@ -308,8 +306,8 @@ func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.Stat
 
 func reduceModeChanged(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload modePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce mode_changed: %w", err)
 	}
 	mode, ok := parseRunMode(payload.Mode)
 	if !ok {
@@ -341,8 +339,8 @@ func reduceModeChanged(current state.State, event ingest.StateEvent) (state.Stat
 
 func reduceControlReceived(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload controlPayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce control_received: %w", err)
 	}
 
 	switch stringx.Normalize(payload.Command) {
@@ -380,8 +378,8 @@ func reduceControlReceived(current state.State, event ingest.StateEvent) (state.
 
 func reduceSchedulePromoted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload schedulePromotedPayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce schedule_promoted: %w", err)
 	}
 	orderID := strings.TrimSpace(payload.OrderID)
 	if orderID == "" {
@@ -423,8 +421,8 @@ func reduceSchedulePromoted(current state.State, event ingest.StateEvent) (state
 
 func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload sessionAdoptedPayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce session_adopted: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() || stage.Status.IsTerminal() {
@@ -469,8 +467,8 @@ func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.S
 
 func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce merge_completed: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() {
@@ -504,8 +502,8 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 
 func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
 	var payload orderStagePayload
-	if !decodeEventPayload(event, &payload) {
-		return current, nil, nil
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce merge_failed: %w", err)
 	}
 	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
 	if !ok || order.Status.IsTerminal() {
@@ -534,14 +532,14 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 	return next, []Effect{effect}, nil
 }
 
-func decodeEventPayload(event ingest.StateEvent, out any) bool {
+func decodeEventPayload(event ingest.StateEvent, out any) error {
 	if len(event.Payload) == 0 {
-		return false
+		return fmt.Errorf("event payload unavailable for type %q", event.Type)
 	}
 	if err := json.Unmarshal(event.Payload, out); err != nil {
-		return false
+		return fmt.Errorf("event payload unreadable for type %q: %w", event.Type, err)
 	}
-	return true
+	return nil
 }
 
 func parseRunMode(raw string) (state.RunMode, bool) {
@@ -629,4 +627,3 @@ func allStagesTerminal(order state.OrderNode) bool {
 	}
 	return true
 }
-

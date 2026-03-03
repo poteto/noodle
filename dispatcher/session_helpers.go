@@ -70,13 +70,13 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 			SessionID: sessionID,
 		}, true
 	case parse.EventAction:
-		tool, summary := parseActionMessage(canonical.Message)
+		action := parse.ParseActionMessage(canonical.Message)
 		payload := map[string]any{"message": canonical.Message}
-		if tool != "" {
-			payload["tool"] = tool
+		if action.Tool != "" {
+			payload["tool"] = action.Tool
 		}
-		if summary != "" {
-			payload["summary"] = summary
+		if action.Summary != "" {
+			payload["summary"] = action.Summary
 		}
 		return event.Event{
 			Type:      event.EventAction,
@@ -117,28 +117,4 @@ func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event
 // FormatEventLine converts a canonical event into an event.Event for sink broadcasting.
 func FormatEventLine(sessionID string, ce parse.CanonicalEvent) (event.Event, bool) {
 	return eventFromCanonical(sessionID, ce)
-}
-
-// parseActionMessage extracts a tool name and summary from a canonical action message.
-// Conventions: "$ cmd" → bash, "text:..." → think, "user:..." → prompt, "Tool detail" → tool.
-func parseActionMessage(message string) (tool string, summary string) {
-	message = strings.TrimSpace(message)
-	if message == "" {
-		return "", ""
-	}
-	if strings.HasPrefix(message, "$ ") {
-		return "Bash", strings.TrimPrefix(message, "$ ")
-	}
-	if strings.HasPrefix(message, "text:") {
-		return "Think", strings.TrimPrefix(message, "text:")
-	}
-	if strings.HasPrefix(message, "user:") {
-		return "Prompt", strings.TrimPrefix(message, "user:")
-	}
-	// "ToolName detail" or just "ToolName"
-	idx := strings.IndexByte(message, ' ')
-	if idx == -1 {
-		return message, ""
-	}
-	return message[:idx], message[idx+1:]
 }
