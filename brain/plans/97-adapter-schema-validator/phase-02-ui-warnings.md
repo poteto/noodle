@@ -20,6 +20,7 @@ Make adapter warnings visible in the web UI. Today, `server.warnings` is static 
 
 ### `loop/loop_cycle_pipeline.go`
 
+- **Clear `l.lastMiseWarnings` at the top of each cycle** (before `buildCycleBrief`). This ensures a failed cycle doesn't leave stale warnings from the prior cycle visible in the UI or scheduler prompt. Each cycle converges to correct state regardless of prior outcome.
 - After `buildCycleBrief()` returns warnings: store them on `l.lastMiseWarnings`
 - This must happen **before** `stampStatus()` is called, so `publishState()` picks up the current warnings
 
@@ -39,12 +40,17 @@ if slices.Equal(l.lastStatus.Active, status.Active) &&
 
 This ensures a warning-only change triggers a file write → watcher → `loadAndBroadcast` → WS broadcast. Follows the existing `stampStatus` pattern exactly.
 
+### `server/warnings.go` (new file) — merge helper
+
+- Extract a `mergeWarnings(static, dynamic []string) []string` helper. All 3 merge sites call this single function — no inline duplication.
+- **Must allocate a fresh slice** before sorting: `merged := make([]string, 0, len(static)+len(dynamic)); merged = append(merged, static...); merged = append(merged, dynamic...)`. Never `append(static, dynamic...)` — that can alias the `s.warnings` backing array and race across concurrent HTTP/WS goroutines.
+- Dedup: `sort.Strings(merged)` then `slices.Compact(merged)`.
+
 ### `server/server.go` and `server/ws_hub.go`
 
-- In `loadAndBroadcast()` (line 249): merge `warnings` (static config) with `snap.LoopState.Warnings` (dynamic adapter)
-- In `loadInitialSnapshot()` (line 326): same merge
-- In `handleSnapshot()` (line 173): same merge
-- **Dedup:** Use `sort.Strings` + `slices.Compact` on the merged slice to produce deterministic, deduplicated output. Do NOT use a `map[string]bool` set — unstable iteration order would produce nondeterministic JSON serialization, defeating the SHA256 hash gate in `loadAndBroadcast` (line 252-267) and causing spurious WS broadcasts.
+- In `loadAndBroadcast()` (line 249): call `mergeWarnings(warnings, snap.LoopState.Warnings)`
+- In `loadInitialSnapshot()` (line 326): same
+- In `handleSnapshot()` (line 173): same
 
 ### `internal/snapshot/types.go`
 
@@ -59,7 +65,7 @@ This ensures a warning-only change triggers a file write → watcher → `loadAn
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `claude` | `claude-opus-4-6` | Cross-layer wiring between loop and server, needs judgment on merge strategy and change-detection path |
+| `codex` | `gpt-5.3-codex` | Mechanical field plumbing and merge helper extraction, follows existing patterns |
 
 ## Verification
 
@@ -74,3 +80,6 @@ This ensures a warning-only change triggers a file write → watcher → `loadAn
 - Test: duplicate warnings between config and adapter are deduped
 - Test: warning-only change (no other state change) still triggers WS broadcast
 - Test: identical warnings across cycles do NOT trigger spurious broadcasts (hash gate)
+- Test: `stampStatus` equality predicate returns false (triggers write) when only warnings differ
+- Test: `mergeWarnings` produces deterministic sorted output and does not mutate input slices
+- Test: cycle that fails fatally after prior warnings → `lastMiseWarnings` is cleared, UI shows no stale warnings

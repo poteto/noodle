@@ -31,12 +31,13 @@ The fix: lenient parsing that skips bad items, collects per-item warnings, and s
 
 - `ParseBacklogItems` signature changes from `([]BacklogItem, error)` to `([]BacklogItem, []string, error)` — all callers (runner, mise builder, fixture tests) must update **in the same phase** to keep the code compilable at every commit
 - Warnings are ephemeral per cycle — regenerated each mise.Build(), not accumulated across cycles
-- On fatal errors (scanner I/O), return `(nil, nil, err)` — callers must not use partial results alongside errors
+- Scanner buffer increased to 1 MiB; `bufio.ErrTooLong` is a per-item warning, not fatal. Only true I/O errors return `(nil, nil, err)` — callers must not use partial results alongside errors
 - Warning text is template-controlled (`fmt.Sprintf` with Go stdlib error descriptions), never raw adapter output — prevents prompt injection via crafted NDJSON
 - LoopState is the existing pub/sub mechanism between loop and server — use it for dynamic warnings
 - Warning changes must trigger the file-write → fsnotify → WS broadcast chain (add warnings to `stampStatus` equality check)
 - Scheduler prompt follows the existing pattern: `buildSchedulePrompt()` takes typed parameters, not a grab-bag
-- Warning dedup in server uses `sort.Strings` + `slices.Compact` for deterministic order (not `map` sets — unstable iteration defeats hash-based broadcast gating)
+- Warning dedup in server uses a single `mergeWarnings` helper (fresh slice allocation + `sort.Strings` + `slices.Compact`). Never sort shared slices in-place — concurrent HTTP/WS paths would race
+- `lastMiseWarnings` cleared at cycle start so fatal cycles don't leave stale warnings
 
 ## Alternatives considered
 

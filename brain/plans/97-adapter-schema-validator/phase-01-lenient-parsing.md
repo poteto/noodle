@@ -13,8 +13,9 @@ Change `ParseBacklogItems` from hard-fail to lenient parsing **and** update all 
 - `ParseBacklogItems(ndjson string) ([]BacklogItem, []string, error)` — new signature with warnings return
 - On `json.Unmarshal` error: skip the line, append warning `"line N: invalid JSON: <detail>"`
 - On `validateBacklogItem` failure: skip the item, append warning with the same message format as today but as a string
-- Scanner errors remain fatal (returned as error) — these indicate I/O problems, not item-level issues
-- **On scanner error, return `(nil, nil, err)`.** Do not return partial items or warnings alongside a fatal error — callers should not use return values when `err != nil`.
+- Increase scanner buffer with `scanner.Buffer()` to 1 MiB. The default 64 KiB limit causes `bufio.ErrTooLong` on legitimate large items (long titles, large Extra payloads), which would kill the entire sync — contradicting the lenient goal.
+- `bufio.ErrTooLong`: treat as a per-item warning ("line N: token too long, skipped"), not fatal. The line is oversized but subsequent lines are still valid.
+- True I/O errors (e.g., context cancellation): remain fatal — return `(nil, nil, err)`. Callers must not use return values when `err != nil`.
 - `validateBacklogItem` changes return from `error` to `string` (empty string = valid)
 
 Warning format is template-controlled: `fmt.Sprintf("line %d: invalid JSON: %s", lineNumber, err.Error())`. The adapter's raw output is never included directly — only Go stdlib parse-error descriptions.
@@ -50,7 +51,8 @@ Warning format is template-controlled: `fmt.Sprintf("line %d: invalid JSON: %s",
 
 - Update `adapter/testdata/backlog-missing-id/expected.md` from error expectation to warning expectation
 - Add new fixture directories under `adapter/testdata/` for warning cases
-- Each fixture: `input.ndjson` + expected items JSON + expected warnings
+- Each fixture: `input.ndjson` + expected items JSON + expected warnings JSON
+- **Harness must assert warnings:** Update `fixture_test.go` to read an `expected-warnings.json` file from each fixture directory (empty array `[]` for no-warning cases). Assert `reflect.DeepEqual(warnings, expectedWarnings)`. Without this, warning fixtures are decorative — a regression in warning text or order would pass silently.
 
 ### Tests (from former Phase 2)
 
@@ -77,7 +79,7 @@ No new types. The return signature `([]BacklogItem, []string, error)` mirrors `B
 - `go vet ./adapter/... ./mise/...` clean
 
 ### Runtime
-- Fixture tests cover: all-valid (no warnings), mixed valid/invalid (items + warnings), all-invalid (empty items + warnings), JSON syntax errors, missing required fields
+- Fixture tests cover: all-valid (no warnings), mixed valid/invalid (items + warnings), all-invalid (empty items + warnings), JSON syntax errors, missing required fields, oversized line (>64KiB, treated as warning not fatal)
 - Existing `backlog-missing-id` fixture passes with updated expectations (warning, not error)
 - `TestParseBacklogItemsValidation` passes with updated assertions
 - Builder test: adapter warnings propagate into `brief.Warnings`
