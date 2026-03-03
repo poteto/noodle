@@ -764,8 +764,8 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if !strings.Contains(rt.calls[0].Prompt, "Do not modify "+expectedMise+".") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Operate fully autonomously. Never ask the user questions.") {
-		t.Fatalf("spawn prompt missing autonomous mode note: %q", rt.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Only ask the user a question when backlog is empty and no actionable work exists") {
+		t.Fatalf("spawn prompt missing empty-backlog question guidance: %q", rt.calls[0].Prompt)
 	}
 	if !strings.Contains(
 		rt.calls[0].Prompt,

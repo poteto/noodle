@@ -45,7 +45,7 @@ Read ` + "`.noodle/mise.json`" + `, write ` + "`.noodle/orders-next.json`" + `.
 The loop atomically promotes orders-next.json into orders.json — never write orders.json directly.
 Use ` + "`noodle schema mise`" + ` and ` + "`noodle schema orders`" + ` as the schema source of truth.
 
-Operate fully autonomously. Never ask the user to choose or pause for confirmation.
+Operate fully autonomously. Only ask the user when backlog is empty and there is no actionable work; ask whether they want a backlog-adapter setup order scheduled.
 
 ## Task Types
 

@@ -19,8 +19,7 @@ const (
 type RepairPromptKind string
 
 const (
-	RepairPromptKindMissingScripts   RepairPromptKind = "missing-scripts"
-	RepairPromptKindBacklogBootstrap RepairPromptKind = "backlog-bootstrap"
+	RepairPromptKindMissingScripts RepairPromptKind = "missing-scripts"
 )
 
 // RepairPromptOutcome captures typed repair prompt details for startup.

@@ -274,7 +274,7 @@ func TestReportConfigDiagnosticsStartRepairLaunchFailure(t *testing.T) {
 	}
 }
 
-func TestReportConfigDiagnosticsNoBacklogAdapterPromptsAndLaunches(t *testing.T) {
+func TestReportConfigDiagnosticsNoBacklogAdapterDoesNotPromptOrLaunch(t *testing.T) {
 	validation := config.ValidationResult{
 		Diagnostics: []config.ConfigDiagnostic{
 			{
@@ -287,34 +287,22 @@ func TestReportConfigDiagnosticsNoBacklogAdapterPromptsAndLaunches(t *testing.T)
 	}
 
 	originalTerminalCheck := terminalInteractiveCheck
-	originalWorkSource := workSourcePromptFunc
 	originalLauncher := repairSessionLauncherFunc
 	defer func() {
 		terminalInteractiveCheck = originalTerminalCheck
-		workSourcePromptFunc = originalWorkSource
 		repairSessionLauncherFunc = originalLauncher
 	}()
 
 	terminalInteractiveCheck = func() bool { return true }
-	workSourcePromptFunc = func(input io.Reader, w io.Writer) (string, bool, error) {
-		return "github-issues", true, nil
-	}
+	launched := false
 	repairSessionLauncherFunc = func(
 		ctx context.Context,
 		app *App,
 		provider string,
 		prompt string,
 	) (repairLaunchResult, error) {
-		if provider != "claude" {
-			t.Fatalf("expected default provider claude, got %s", provider)
-		}
-		if !strings.Contains(prompt, "GitHub Issues") {
-			t.Fatalf("expected github-issues context in prompt: %q", prompt)
-		}
-		return repairLaunchResult{
-			SessionID:    "bootstrap-session-1",
-			WorktreePath: ".worktrees/bootstrap-1",
-		}, nil
+		launched = true
+		return repairLaunchResult{}, nil
 	}
 
 	app := &App{
@@ -331,52 +319,14 @@ func TestReportConfigDiagnosticsNoBacklogAdapterPromptsAndLaunches(t *testing.T)
 		app,
 		validation,
 	)
-	if err == nil {
-		t.Fatal("expected backlog bootstrap to stop start")
-	}
-	if !strings.Contains(err.Error(), "backlog bootstrap started") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(stderr.String(), "started claude session bootstrap-session-1") {
-		t.Fatalf("expected launch confirmation in output: %q", stderr.String())
-	}
-}
-
-func TestReportConfigDiagnosticsNoBacklogAdapterSkip(t *testing.T) {
-	validation := config.ValidationResult{
-		Diagnostics: []config.ConfigDiagnostic{
-			{
-				FieldPath: "adapters.backlog",
-				Message:   "no backlog adapter configured",
-				Severity:  config.DiagnosticSeverityRepairable,
-				Code:      config.DiagnosticCodeNoBacklogAdapter,
-			},
-		},
-	}
-
-	originalTerminalCheck := terminalInteractiveCheck
-	originalWorkSource := workSourcePromptFunc
-	defer func() {
-		terminalInteractiveCheck = originalTerminalCheck
-		workSourcePromptFunc = originalWorkSource
-	}()
-
-	terminalInteractiveCheck = func() bool { return true }
-	workSourcePromptFunc = func(input io.Reader, w io.Writer) (string, bool, error) {
-		return "", false, nil
-	}
-
-	var stderr bytes.Buffer
-	err := reportConfigDiagnostics(
-		context.Background(),
-		&stderr,
-		strings.NewReader(""),
-		"start",
-		&App{Config: config.DefaultConfig(), Validation: validation},
-		validation,
-	)
 	if err != nil {
-		t.Fatalf("expected no error when user skips backlog bootstrap: %v", err)
+		t.Fatalf("no backlog adapter should not block start: %v", err)
+	}
+	if launched {
+		t.Fatal("no backlog adapter should not launch a repair session")
+	}
+	if !strings.Contains(stderr.String(), "config repairable: adapters.backlog: no backlog adapter configured") {
+		t.Fatalf("expected no-backlog warning in output: %q", stderr.String())
 	}
 }
 
@@ -394,6 +344,7 @@ func TestReportConfigDiagnosticsNoBacklogNonInteractive(t *testing.T) {
 
 	originalTerminalCheck := terminalInteractiveCheck
 	defer func() { terminalInteractiveCheck = originalTerminalCheck }()
+
 	terminalInteractiveCheck = func() bool { return false }
 
 	var stderr bytes.Buffer
@@ -408,60 +359,8 @@ func TestReportConfigDiagnosticsNoBacklogNonInteractive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("non-interactive should not error: %v", err)
 	}
-	// The diagnostic should NOT appear in passthrough output since it was extracted.
-	if strings.Contains(stderr.String(), "no backlog adapter") {
-		t.Fatalf("extracted diagnostic should not appear in passthrough output: %q", stderr.String())
-	}
-}
-
-func TestPromptWorkSourceSelections(t *testing.T) {
-	tests := []struct {
-		input    string
-		source   string
-		selected bool
-	}{
-		{"1\n", "github-issues", true},
-		{"github\n", "github-issues", true},
-		{"2\n", "linear", true},
-		{"linear\n", "linear", true},
-		{"3\n", "markdown", true},
-		{"md\n", "markdown", true},
-		{"4\n", "", false},
-		{"skip\n", "", false},
-		{"\n", "", false},
-	}
-	for _, tt := range tests {
-		var out bytes.Buffer
-		source, selected, err := promptWorkSource(strings.NewReader(tt.input), &out)
-		if err != nil {
-			t.Fatalf("input %q: %v", tt.input, err)
-		}
-		if source != tt.source || selected != tt.selected {
-			t.Fatalf("input %q: got (%q, %v), want (%q, %v)", tt.input, source, selected, tt.source, tt.selected)
-		}
-	}
-}
-
-func TestBuildBacklogBootstrapPromptContainsWorkSource(t *testing.T) {
-	tests := []struct {
-		source string
-		want   string
-	}{
-		{"github-issues", "GitHub Issues"},
-		{"linear", "Linear"},
-		{"markdown", "markdown file"},
-	}
-	for _, tt := range tests {
-		prompt := buildBacklogBootstrapPrompt(tt.source)
-		if !strings.Contains(prompt, tt.want) {
-			t.Fatalf("source %q: prompt missing %q: %q", tt.source, tt.want, prompt)
-		}
-		if !strings.Contains(prompt, "backlog-sync") {
-			t.Fatalf("source %q: prompt missing backlog-sync: %q", tt.source, prompt)
-		}
-		if !strings.Contains(prompt, "[adapters.backlog]") {
-			t.Fatalf("source %q: prompt missing toml config: %q", tt.source, prompt)
-		}
+	if !strings.Contains(stderr.String(), "config repairable: adapters.backlog: no backlog adapter configured") {
+		t.Fatalf("expected no-backlog warning in output: %q", stderr.String())
 	}
 }
 

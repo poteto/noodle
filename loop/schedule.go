@@ -224,7 +224,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 		"Use Skill(" + skillName + ") to refresh the schedule from " + miseFile + ".",
 		"Write to `" + ordersNextFile + "` (not orders.json). The loop promotes it atomically.",
 		"Do not modify " + miseFile + ".",
-		"Operate fully autonomously. Never ask the user questions.",
+		"Operate fully autonomously. Only ask the user a question when backlog is empty and no actionable work exists; ask whether to schedule an order that creates a backlog adapter.",
 		"You may synthesize orders for non-execute task types (e.g. review, reflect, meditate) based on workflow rules in the skill and the task types list below.",
 		"Each order is a pipeline of stages. Group related stages (e.g. execute, quality, reflect) into one order.",
 		"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
