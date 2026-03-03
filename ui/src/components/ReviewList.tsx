@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSuspenseSnapshot, useSendControl, useReviewDiff } from "~/client";
 import type { PendingReviewItem } from "~/client";
 import { DiffViewer } from "./DiffViewer";
@@ -169,16 +169,6 @@ export function ReviewList() {
   const { data: snapshot } = useSuspenseSnapshot();
   const reviews = snapshot.pending_reviews ?? [];
   const [selectedIdx, setSelectedIdx] = useState(0);
-
-  useEffect(() => {
-    if (reviews.length === 0) {
-      setSelectedIdx(0);
-      return;
-    }
-    if (selectedIdx >= reviews.length) {
-      setSelectedIdx(reviews.length - 1);
-    }
-  }, [reviews.length, selectedIdx]);
 
   if (reviews.length === 0) {
     return (
