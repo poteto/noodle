@@ -190,28 +190,26 @@ export function AgentFeed({ sessionId }: { sessionId: string }) {
           </div>
           <div className="input-row-actions">
             {isSessionThinking && (
-              <>
+              <button
+                type="button"
+                className="btn-stop"
+                onClick={handleStop}
+                disabled={isControlPending}
+              >
+                {isControlPending ? "Stopping…" : "Stop"}
+              </button>
+            )}
+            {orderForSession && (
+              <Tooltip content="Marks this order as complete and notifies the scheduler">
                 <button
                   type="button"
-                  className="btn-stop"
-                  onClick={handleStop}
+                  className="btn-complete"
+                  onClick={handleForceComplete}
                   disabled={isControlPending}
                 >
-                  {isControlPending ? "Stopping…" : "Stop"}
+                  {isControlPending ? "Completing…" : "Mark Complete"}
                 </button>
-                {orderForSession && (
-                  <Tooltip content="Marks this order as complete and notifies the scheduler">
-                    <button
-                      type="button"
-                      className="btn-complete"
-                      onClick={handleForceComplete}
-                      disabled={isControlPending}
-                    >
-                      {isControlPending ? "Completing…" : "Mark Complete"}
-                    </button>
-                  </Tooltip>
-                )}
-              </>
+              </Tooltip>
             )}
             <button
               type="button"
