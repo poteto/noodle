@@ -1,3 +1,33 @@
+## [0.1.4](https://github.com/poteto/noodle/compare/v0.1.3...v0.1.4) (2026-03-03)
+
+### Features
+
+* **cli:** add canonical VERSION and version command ([aaf156e](https://github.com/poteto/noodle/commit/aaf156e02d3c9787a88f174ddf20555c14fa2633))
+* **loop:** wire compact orders format into promotion flow ([3e68732](https://github.com/poteto/noodle/commit/3e68732dfb85b7b0ec917e832435f5350569f1a8))
+* **orderx:** add compact wire types and expansion for orders-next ([689bbf9](https://github.com/poteto/noodle/commit/689bbf94a4529f8ba32fd97e88200fc779b87b82))
+* **plan:** Add schedule field for [#needs](https://github.com/poteto/noodle/issues/needs)_plan backlog items ([013a7cf](https://github.com/poteto/noodle/commit/013a7cfe1fd65f6ecbfef22a21eea69fb0cc5510)), closes [#needs_plan](https://github.com/poteto/noodle/issues/needs_plan) [#needs_plan](https://github.com/poteto/noodle/issues/needs_plan)
+* **startup:** add first-run welcome message and remove brain/ scaffolding ([96eb1f0](https://github.com/poteto/noodle/commit/96eb1f0a69bdc1cfa00c1288b5f39d6e71c02c54))
+* **ui:** add /onboarding route for first-contact experience ([52a44a9](https://github.com/poteto/noodle/commit/52a44a9d88f737922dc93b3f78d712e6d7e8901e))
+* **ui:** improve empty states with contextual guidance ([a139851](https://github.com/poteto/noodle/commit/a139851ff34040c904335f8e024c808a180ea189))
+
+### Bug Fixes
+
+* **brain:** apply adversarial review findings to plan 112 ([16969a2](https://github.com/poteto/noodle/commit/16969a2330a24da834b179255e9b0377a2b8c097)), closes [#72](https://github.com/poteto/noodle/issues/72) [#73](https://github.com/poteto/noodle/issues/73)
+* **config:** Set default run mode to supervised ([d2c8e4c](https://github.com/poteto/noodle/commit/d2c8e4c3561f590509a5140613ade7c4c43bf4e2))
+* **e2e:** remove brain/ assertions from smoke test ([75b85fa](https://github.com/poteto/noodle/commit/75b85fad9cb949cc7619f917e8f4b5f4dcc3a8ce))
+* **loop:** include control timestamp in derived command IDs ([e6d31b9](https://github.com/poteto/noodle/commit/e6d31b97376e640efdd07561485d3a3a82b5ad20)), closes [#112](https://github.com/poteto/noodle/issues/112)
+* **loop:** serialize shutdown escalation without abandoned goroutines ([382b2ae](https://github.com/poteto/noodle/commit/382b2aef1beb5854df151b43206ea993bcca5839)), closes [#112](https://github.com/poteto/noodle/issues/112)
+* **loop:** update remaining tests to use compact orders-next format ([eff96b3](https://github.com/poteto/noodle/commit/eff96b3dde0369c8c128a3745cbfdc8cf778e346))
+* **orderx:** make provider/model optional, trim whitespace do values ([812fb9b](https://github.com/poteto/noodle/commit/812fb9b4bc1db89606566937f266d92615c9e4d4))
+* **parse:** route claude rate_limit_event without error ([b9752c0](https://github.com/poteto/noodle/commit/b9752c0e6945861a31f3d74974a62893f034f7eb))
+* **phase-03:** stabilize websocket lifecycle across server and ui ([02ec446](https://github.com/poteto/noodle/commit/02ec446cafeb75233aedde738b1561267dce42f4)), closes [#112](https://github.com/poteto/noodle/issues/112)
+* **ui:** remove redundant ReviewList index clamping effect ([919ca9a](https://github.com/poteto/noodle/commit/919ca9a4b073a8fad12f9155aca03bc299ed6ff2)), closes [#112](https://github.com/poteto/noodle/issues/112)
+* **ui:** resolve oxlint and oxfmt violations in empty states ([8faf7e5](https://github.com/poteto/noodle/commit/8faf7e5cafc39a1b6ce928bab88240bd326a74e5))
+
+### Performance Improvements
+
+* **loop:** collapse branch existence checks into one git call ([fbd5a35](https://github.com/poteto/noodle/commit/fbd5a35501e06e39e42aa85229dd9c675ae678a8)), closes [#112](https://github.com/poteto/noodle/issues/112)
+
 ## [0.1.3](https://github.com/poteto/noodle/compare/v0.1.2...v0.1.3) (2026-03-03)
 
 ### Bug Fixes
