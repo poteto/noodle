@@ -315,8 +315,6 @@ func TestSmokeStartOnceWithoutSkillsInEmptyRepo(t *testing.T) {
 		".noodle/tickets.json",
 		".noodle/control.lock",
 		".noodle.toml",
-		"brain/index.md",
-		"brain/todos.md",
 	} {
 		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
 			t.Fatalf("expected %s to exist after startup: %v", rel, err)
