@@ -790,6 +790,8 @@ function copyPrompt() {
   color: #8a8a8a;
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   cursor: pointer;
   transition:
     color 0.2s,
