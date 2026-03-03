@@ -2,6 +2,8 @@ package loop
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -235,7 +237,10 @@ func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseCh
 
 	orders, err = l.normalizeOrders(orders)
 	if err != nil {
-		return OrdersFile{}, false, err
+		orders, err = l.recoverFromOrdersValidationError(err)
+		if err != nil {
+			return OrdersFile{}, false, err
+		}
 	}
 
 	l.emitSyncWarnings(warnings)
@@ -283,6 +288,43 @@ func (l *Loop) normalizeOrders(orders OrdersFile) (OrdersFile, error) {
 	}
 	l.logger.Info("orders normalized")
 	return normalizedOrders, nil
+}
+
+func (l *Loop) recoverFromOrdersValidationError(normErr error) (OrdersFile, error) {
+	l.classifySchedulerMistake(
+		"build.prepare_orders",
+		"orders validation failed, requesting scheduler repair",
+		normErr,
+		SchedulerMistakeReasonOrdersNextRejected,
+	)
+
+	archivedPath := ""
+	ordersData, readErr := os.ReadFile(l.deps.OrdersFile)
+	if readErr == nil && len(strings.TrimSpace(string(ordersData))) > 0 {
+		archivedPath = fmt.Sprintf("%s.bad.%d", l.deps.OrdersFile, l.deps.Now().UnixNano())
+		if writeErr := os.WriteFile(archivedPath, ordersData, 0o644); writeErr != nil {
+			l.logger.Warn("failed to archive invalid orders state", "error", writeErr)
+			archivedPath = ""
+		}
+	}
+
+	repairMessage := "The loop rejected scheduler-produced orders during preparation.\n" +
+		"Fix this issue in your next orders-next.json output:\n" + normErr.Error()
+	if archivedPath != "" {
+		repairMessage += "\nInvalid orders snapshot: " + archivedPath
+	}
+	l.lastPromotionError = repairMessage
+	l.scheduleNothingUntil = time.Time{}
+
+	repairOrders := bootstrapScheduleOrder(l.config)
+	if err := l.writeOrdersState(repairOrders); err != nil {
+		return OrdersFile{}, fmt.Errorf("recover invalid orders state: %w", err)
+	}
+
+	l.logger.Warn("orders validation failed, replaced orders with schedule repair order",
+		"error", normErr,
+		"archived_orders", archivedPath)
+	return repairOrders, nil
 }
 
 // emitSyncWarnings emits a degraded event if the sync script reported warnings.

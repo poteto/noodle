@@ -144,7 +144,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt(nil)
 	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil)
 
-	if !strings.Contains(prompt, "PREVIOUS ORDERS REJECTED") {
+	if !strings.Contains(prompt, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should include rejection header when promotion error is set")
 	}
 	if !strings.Contains(prompt, "unknown field on_failure") {
@@ -153,7 +153,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 
 	// No error — should not include rejection header.
 	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
-	if strings.Contains(promptClean, "PREVIOUS ORDERS REJECTED") {
+	if strings.Contains(promptClean, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should not include rejection header when no promotion error")
 	}
 }

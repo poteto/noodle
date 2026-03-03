@@ -232,7 +232,7 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 		taskTypesPrompt,
 	}
 	if errMsg := strings.TrimSpace(lastPromotionError); errMsg != "" {
-		parts = append(parts, "PREVIOUS ORDERS REJECTED: Your last orders-next.json was invalid and renamed to .bad. Fix the following error in your next output:\n"+errMsg)
+		parts = append(parts, "PREVIOUS ORDERS ISSUE: The loop rejected or repaired your recent schedule output. Fix the following issue in your next orders-next.json output:\n"+errMsg)
 	}
 	if rationale := strings.TrimSpace(order.Rationale); rationale != "" {
 		parts = append(parts, "Chef guidance: "+rationale)

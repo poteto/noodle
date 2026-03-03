@@ -233,6 +233,79 @@ func TestCycleRepairsMissingLifecycleStatusesWithoutCrashing(t *testing.T) {
 	}
 }
 
+func TestRecoverFromOrdersValidationErrorSchedulesRepair(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	ordersData := []byte(`{
+  "orders": [
+    {
+      "id": "108",
+      "title": "invalid status",
+      "status": "bogus",
+      "stages": [
+        {
+          "task_key": "execute",
+          "skill": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}`)
+	if err := os.WriteFile(ordersPath, ordersData, 0o644); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	prepared, err := l.recoverFromOrdersValidationError(stderrors.New(`order "108": unknown order status "bogus"`))
+	if err != nil {
+		t.Fatalf("recoverFromOrdersValidationError: %v", err)
+	}
+	if len(prepared.Orders) != 1 || prepared.Orders[0].ID != scheduleOrderID {
+		t.Fatalf("prepared orders = %+v, want single schedule repair order", prepared.Orders)
+	}
+
+	envelope := requireLastLoopFailureEnvelope(t, l)
+	if envelope.Path != "build.prepare_orders" {
+		t.Fatalf("path = %q, want %q", envelope.Path, "build.prepare_orders")
+	}
+	if envelope.Class != CycleFailureClassDegradeContinue {
+		t.Fatalf("class = %q, want %q", envelope.Class, CycleFailureClassDegradeContinue)
+	}
+	if envelope.AgentMistake == nil {
+		t.Fatal("expected scheduler mistake classification for invalid orders state")
+	}
+	if envelope.AgentMistake.Owner != failure.FailureOwnerSchedulerAgent {
+		t.Fatalf("owner = %q, want %q", envelope.AgentMistake.Owner, failure.FailureOwnerSchedulerAgent)
+	}
+	if envelope.AgentMistake.SchedulerReason != SchedulerMistakeReasonOrdersNextRejected {
+		t.Fatalf("scheduler reason = %q, want %q", envelope.AgentMistake.SchedulerReason, SchedulerMistakeReasonOrdersNextRejected)
+	}
+
+	archived, err := filepath.Glob(ordersPath + ".bad.*")
+	if err != nil {
+		t.Fatalf("glob archived bad orders: %v", err)
+	}
+	if len(archived) == 0 {
+		t.Fatalf("expected archived bad orders snapshot at %s.bad.*", ordersPath)
+	}
+}
+
 func TestCycleClassifiesDispatchFailureAsOrderHard(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
