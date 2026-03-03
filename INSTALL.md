@@ -96,25 +96,29 @@ Grep `.gitignore` for `.noodle/`. If absent (or `.gitignore` doesn't exist), app
 .noodle/
 ```
 
-### 5. Seed the backlog
+### 5. Write schedule and execute skills
+
+**Skip if:** `.agents/skills/schedule/SKILL.md` AND `.agents/skills/execute/SKILL.md` both exist.
+
+Start by understanding how your human works. Read the conversation history in `~/.claude/` and `~/.codex/` for this project. Look at what commands they run, how they test, how they review code, what they ask agents to do repeatedly. This is the ground truth for what the skills should encode. Existing code, CI config, and test commands fill in the rest.
+
+Then browse `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns. Use Noodle's own schedule and execute skills as starting points, but adapt them to this project. Don't copy. The noodle skill's reference docs (from step 2) cover the orders schema and CLI details.
+
+**Schedule skill** (`schedule/SKILL.md`): Reads project state and writes orders. Reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter). Writes `orders-next.json`, not `orders.json` directly. Routes to providers/models based on `routing.defaults` in `.noodle.toml`. Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
+
+**Execute skill** (`execute/SKILL.md`): Does the work. Scopes and decomposes assigned tasks into discrete changes. Works in worktrees, never on main (`noodle worktree create/merge`). Verifies with whatever build, test, and lint commands this project uses. Commits following this project's conventions. Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
+
+### 6. Seed the backlog
 
 **Skip if:** `todos.md` exists at the project root.
 
-Create `todos.md` with these bootstrap tasks:
+Create an empty `todos.md`:
 
 ```markdown
 # Backlog
-
-- [ ] Write a schedule skill and execute skill for this project
 ```
 
-This is the real onboarding. The loop picks this up, reads the project (conversation logs, existing code, language, tools), and writes skills that fit how the project works. See "Writing skills" below.
-
-If `todos.md` already exists but `.agents/skills/schedule/` doesn't, skip the file write but continue to step 6. The user still needs skills.
-
-### 6. Browse Noodle's skills for inspiration
-
-Browse `https://github.com/poteto/noodle/tree/main/.agents/skills/` and read the skills there. Some may be worth adapting to this project. Don't copy them verbatim, but use them as patterns for writing your own.
+Ask the user what they want to work on and add it as the first task.
 
 ### 7. Ask about brainmaxxing
 
@@ -132,26 +136,4 @@ Tell the user to start the loop:
 noodle start
 ```
 
-Noodle scaffolds `.noodle/` runtime state, the scheduler reads the backlog, and the loop begins. First order: the bootstrap task from step 5.
-
----
-
-## Writing skills
-
-The "write skills" backlog task means writing two skills: schedule and execute. The noodle skill's reference docs (from step 2) cover the orders schema and CLI. Browse Noodle's own skills at `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns, but adapt them to this project. Don't copy.
-
-### Schedule skill
-
-The schedule skill reads project state and writes orders. It reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter) and writes `orders-next.json`, not `orders.json` directly. The loop atomically promotes orders. Use `noodle schema orders` for the schema. Route to providers/models based on `routing.defaults` in `.noodle.toml`.
-
-Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
-
-### Execute skill
-
-The execute skill does the work. Scope and decompose the assigned task into discrete changes. Work in worktrees, never on main (`noodle worktree create/merge`). Verify with whatever build, test, and lint commands this project uses. Commit following this project's conventions.
-
-Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
-
-### Understand your human's workflow first
-
-Before writing skills, read the conversation history in `~/.claude/` and `~/.codex/` for this project. Look at what commands the human runs, how they test, how they review code, what they ask agents to do repeatedly. This is the ground truth for what the schedule and execute skills should encode. Existing code, CI config, and test commands fill in the rest.
+Noodle scaffolds `.noodle/` runtime state, the scheduler reads the backlog, and the loop begins.
