@@ -60,6 +60,26 @@ describe("SchedulerFeed", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows bootstrap status message when schedule bootstrap is pending with no session", () => {
+    mockSnapshot = buildSnapshot({
+      loop_state: "running",
+      sessions: [],
+      orders: [
+        {
+          id: "schedule",
+          status: "active",
+          stages: [{ provider: "claude", model: "opus", status: "pending", task_key: "schedule" }],
+        },
+      ],
+    });
+
+    render(<SchedulerFeed />);
+    expect(screen.getByText("Bootstrapping schedule skill...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Bootstrapping schedule skill. Creating scheduler instructions now."),
+    ).toBeInTheDocument();
+  });
+
   it("sends steer command on submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();

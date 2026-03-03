@@ -13,6 +13,13 @@ function isBootstrapScheduleSession(session: Session): boolean {
   return session.id.toLowerCase().startsWith("bootstrap-schedule");
 }
 
+function isScheduleOnlyOrder(order: { stages: { task_key?: string }[] }): boolean {
+  return (
+    order.stages.length > 0 &&
+    order.stages.every((s) => s.task_key?.toLowerCase().trim() === "schedule")
+  );
+}
+
 export function SchedulerFeed() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send, isPending } = useSendControl();
@@ -26,6 +33,10 @@ export function SchedulerFeed() {
     (s) => s.status === "running" && isBootstrapScheduleSession(s),
   );
   const isBootstrappingSchedule = Boolean(bootstrapScheduleSession);
+  const isBootstrappingSchedulePending =
+    snapshot.loop_state === "running" &&
+    !schedulerSession &&
+    snapshot.orders.some(isScheduleOnlyOrder);
   const isSchedulerThinking =
     snapshot.loop_state === "running" && Boolean(activeSchedulerSession?.current_action?.trim());
   const initialEvents = schedulerSession?.id
@@ -48,7 +59,7 @@ export function SchedulerFeed() {
 
   let emptyMessage: string | undefined;
   if (events.length === 0) {
-    if (isBootstrappingSchedule) {
+    if (isBootstrappingSchedule || isBootstrappingSchedulePending) {
       emptyMessage = "Bootstrapping schedule skill. Creating scheduler instructions now.";
     } else {
       emptyMessage = schedulerSession
@@ -86,13 +97,34 @@ export function SchedulerFeed() {
     }
   }
 
+  function renderInputLabel() {
+    if (isBootstrappingSchedule || isBootstrappingSchedulePending) {
+      return "Bootstrapping schedule skill...";
+    }
+    if (isSchedulerThinking) {
+      return (
+        <>
+          <span className="thinking-dots">
+            <span className="thinking-dot" />
+            <span className="thinking-dot" />
+            <span className="thinking-dot" />
+          </span>
+          Thinking…
+        </>
+      );
+    }
+    return "Talk to the scheduler...";
+  }
+
   return (
     <>
       <header className="feed-header">
         <div className="feed-title">
           Scheduler
           <span className="feed-badge badge-task">{snapshot.loop_state}</span>
-          {isBootstrappingSchedule && <span className="feed-badge badge-task">bootstrap</span>}
+          {(isBootstrappingSchedule || isBootstrappingSchedulePending) && (
+            <span className="feed-badge badge-task">bootstrap</span>
+          )}
           {schedulerSession && <span className="feed-badge">{schedulerSession.model}</span>}
         </div>
         <div className="feed-actions">
@@ -129,22 +161,7 @@ export function SchedulerFeed() {
       />
 
       <div className="input-area">
-        <div className="input-label">
-          {isBootstrappingSchedule ? (
-            "Bootstrapping schedule skill..."
-          ) : isSchedulerThinking ? (
-            <>
-              <span className="thinking-dots">
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
-              </span>
-              Thinking…
-            </>
-          ) : (
-            "Talk to the scheduler..."
-          )}
-        </div>
+        <div className="input-label">{renderInputLabel()}</div>
         <div className="input-row">
           <div className="input-row-field">
             <textarea

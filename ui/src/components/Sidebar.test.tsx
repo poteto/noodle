@@ -104,6 +104,24 @@ describe("Sidebar", () => {
     expect(screen.getByText("Bootstrapping schedule skill")).toBeInTheDocument();
   });
 
+  it("shows schedule bootstrap order in sidebar while bootstrap is pending", () => {
+    mockSnapshot = buildSnapshot({
+      loop_state: "running",
+      sessions: [],
+      orders: [
+        buildOrder({
+          id: "schedule",
+          title: "scheduling tasks based on your backlog",
+          status: "active",
+          stages: [buildStage({ status: "pending", task_key: "schedule" })],
+        }),
+      ],
+    });
+
+    render(<Sidebar />);
+    expect(screen.getByText("Bootstrapping schedule skill")).toBeInTheDocument();
+  });
+
   it("navigates to / when Scheduler clicked", async () => {
     mockActiveChannel = { type: "agent", sessionId: "s1" };
     render(<Sidebar />);
@@ -129,6 +147,35 @@ describe("Sidebar", () => {
     await user.click(screen.getByText("Test order"));
     await user.click(screen.getByText("execute"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
+  });
+
+  it("navigates to bootstrap actor when clicking schedule stage during bootstrap", async () => {
+    mockSnapshot = buildSnapshot({
+      sessions: [
+        buildSession({
+          id: "bootstrap-schedule-123",
+          task_key: "schedule",
+          status: "running",
+        }),
+      ],
+      orders: [
+        buildOrder({
+          id: "schedule",
+          title: "scheduling tasks based on your backlog",
+          status: "active",
+          stages: [buildStage({ status: "pending", task_key: "schedule" })],
+        }),
+      ],
+    });
+
+    render(<Sidebar />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Bootstrapping schedule skill"));
+    await user.click(screen.getByText("schedule"));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/actor/$id",
+      params: { id: "bootstrap-schedule-123" },
+    });
   });
 
   it("displays total cost in footer", () => {

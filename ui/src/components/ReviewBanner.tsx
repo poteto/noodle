@@ -29,6 +29,13 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
     setFeedback("");
   }
 
+  let requestChangesLabel = "REQUEST CHANGES";
+  if (isPending) {
+    requestChangesLabel = "SENDING…";
+  } else if (showFeedback) {
+    requestChangesLabel = "SEND";
+  }
+
   return (
     <div className="border-l-2 border-accent p-4 bg-accent/5 mx-4 mb-2">
       <div className="text-xs font-display font-bold uppercase tracking-wider text-accent mb-1">
@@ -82,7 +89,7 @@ export function ReviewBanner({ review }: { review: PendingReviewItem }) {
           disabled={isPending}
           className="font-body font-bold uppercase text-[10px] tracking-wider px-3 py-1.5 border border-accent text-accent"
         >
-          {isPending ? "SENDING…" : showFeedback ? "SEND" : "REQUEST CHANGES"}
+          {requestChangesLabel}
         </button>
       </div>
     </div>

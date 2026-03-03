@@ -47,7 +47,11 @@ function NavLink({
   icon: React.ReactNode;
 }) {
   return (
-    <Link to={to} className={`nav-item ${active ? "active" : ""}`} aria-current={active ? "page" : undefined}>
+    <Link
+      to={to}
+      className={`nav-item ${active ? "active" : ""}`}
+      aria-current={active ? "page" : undefined}
+    >
       {icon}
       {label}
     </Link>
@@ -135,14 +139,22 @@ export function Sidebar() {
   const schedulerRunning = snapshot.sessions.some(
     (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
   );
-  const bootstrapScheduleRunning = snapshot.sessions.some(
+  const hasSchedulerSession = snapshot.sessions.some(
+    (s) => s.task_key?.toLowerCase().trim() === "schedule",
+  );
+  const bootstrapScheduleSession = snapshot.sessions.find(
     (s) => s.id.toLowerCase().startsWith("bootstrap-schedule") && s.status === "running",
   );
+  const bootstrapScheduleRunning = Boolean(bootstrapScheduleSession);
+  const bootstrapSchedulePending =
+    snapshot.loop_state === "running" &&
+    !hasSchedulerSession &&
+    snapshot.orders.some(isScheduleOnlyOrder);
   const visibleOrders = snapshot.orders.filter((o) => {
     if (!isScheduleOnlyOrder(o)) {
       return true;
     }
-    return bootstrapScheduleRunning;
+    return bootstrapScheduleRunning || bootstrapSchedulePending;
   });
 
   return (
@@ -214,17 +226,26 @@ export function Sidebar() {
           const isExpanded = expandedOrders.has(order.id);
           const hasActiveStage = order.stages.some((s) => s.status === "active");
           const isBootstrapScheduleOrder =
-            bootstrapScheduleRunning &&
+            (bootstrapScheduleRunning || bootstrapSchedulePending) &&
             order.id.toLowerCase().trim() === "schedule" &&
             isScheduleOnlyOrder(order);
           const orderLabel = isBootstrapScheduleOrder
             ? "Bootstrapping schedule skill"
             : order.title || order.id;
           const orderActive = order.stages.some((s) => {
-            if (!s.session_id) {
+            let sessionID = s.session_id;
+            if (
+              !sessionID &&
+              isBootstrapScheduleOrder &&
+              s.task_key?.toLowerCase().trim() === "schedule" &&
+              bootstrapScheduleSession
+            ) {
+              sessionID = bootstrapScheduleSession.id;
+            }
+            if (!sessionID) {
               return false;
             }
-            const ch: ChannelId = { type: "agent", sessionId: s.session_id };
+            const ch: ChannelId = { type: "agent", sessionId: sessionID };
             return channelEq(activeChannel, ch);
           });
 
@@ -242,8 +263,17 @@ export function Sidebar() {
               </button>
               <div className={`tree-stages ${isExpanded ? "open" : ""}`}>
                 {order.stages.map((stage, i) => {
-                  const agentChannel: ChannelId | null = stage.session_id
-                    ? { type: "agent", sessionId: stage.session_id }
+                  let stageSessionID = stage.session_id;
+                  if (
+                    !stageSessionID &&
+                    isBootstrapScheduleOrder &&
+                    stage.task_key?.toLowerCase().trim() === "schedule" &&
+                    bootstrapScheduleSession
+                  ) {
+                    stageSessionID = bootstrapScheduleSession.id;
+                  }
+                  const agentChannel: ChannelId | null = stageSessionID
+                    ? { type: "agent", sessionId: stageSessionID }
                     : null;
                   const info = stageStatusIcon[stage.status] || stageStatusIcon.pending;
                   const stageLabel = stage.task_key || stage.skill || `Stage ${i + 1}`;

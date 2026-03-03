@@ -55,6 +55,36 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 			CompletedAt:  l.deps.Now(),
 		})
 	}
+	if l.bootstrapInFlight != nil {
+		cook := l.bootstrapInFlight
+		metaStatus, ok, err := l.readSessionStatus(cook.session.ID())
+		if err != nil {
+			return err
+		}
+		if ok {
+			resultStatus, terminal := stageResultFromSessionMetaStatus(metaStatus)
+			if terminal {
+				l.logger.Info("bootstrap session meta indicates terminal state; enqueueing completion",
+					"session", cook.session.ID(),
+					"status", metaStatus,
+				)
+				_ = cook.session.ForceKill()
+				l.enqueueCompletion(ctx, StageResult{
+					OrderID:      cook.orderID,
+					StageIndex:   cook.stageIndex,
+					Attempt:      cook.attempt,
+					Status:       resultStatus,
+					SessionID:    cook.session.ID(),
+					Generation:   cook.generation,
+					IsSchedule:   isScheduleStage(cook.stage),
+					IsBootstrap:  true,
+					WorktreeName: cook.worktreeName,
+					WorktreePath: cook.worktreePath,
+					CompletedAt:  l.deps.Now(),
+				})
+			}
+		}
+	}
 	return nil
 }
 

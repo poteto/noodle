@@ -65,6 +65,13 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
     send({ action: "reject", order_id: review.order_id });
   }
 
+  let requestChangesLabel = "Request Changes";
+  if (isPending) {
+    requestChangesLabel = "Sending…";
+  } else if (showFeedback) {
+    requestChangesLabel = "Send";
+  }
+
   return (
     <aside className="context-panel">
       <div className="context-header">Review Actions</div>
@@ -126,7 +133,7 @@ function ReviewActions({ review }: { review: PendingReviewItem }) {
             onClick={handleRequestChanges}
             disabled={isPending}
           >
-            {isPending ? "Sending…" : showFeedback ? "Send" : "Request Changes"}
+            {requestChangesLabel}
           </button>
           <button
             type="button"
