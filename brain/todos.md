@@ -1,13 +1,13 @@
 ---
-priority: [97, 109, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
+priority: [97, 95, 96, 101, 100, 84, 90, 86, 108, 88, 85, 69]
 # Launch-blocking:
 #   97 adapter schema validator — surface broken adapters
-#   109 stage yield — decouple deliverable completion from process exit
+#    stage yield — decouple deliverable completion from process exit
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 # Post-launch:
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   100 runtime mode UI setting
-#   93,94 distribution — Homebrew + cross-platform binaries
+#   , distribution — Homebrew + cross-platform binaries
 #   84 sub-agent tracking — visibility into agent orchestration
 #   90 interactive sessions — collaborative mode, key differentiator
 #   86 diffs integration — code-change review UX
@@ -25,9 +25,7 @@ priority: [97, 109, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
 
 ## Onboarding & Getting Started
 
-94. [ ] Cross-platform distribution — publish Noodle binaries for Linux and Windows in addition to macOS. Set up GoReleaser (or equivalent) to cross-compile for linux/amd64, linux/arm64, windows/amd64. Publish artifacts to GitHub Releases. Add install instructions for non-Homebrew users (curl one-liner, winget/scoop, or direct download). Update getting-started docs with platform-specific instructions.
 
-93. [ ] Publish build to Homebrew — create a Homebrew tap and formula so users can `brew install noodle`.
 
 ## Remote Dispatchers
 
@@ -44,7 +42,6 @@ priority: [97, 109, 95, 96, 101, 100, 93, 94, 84, 90, 86, 108, 88, 85, 69]
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
 
 
-109. [ ] Stage yield — add a `stage_yield` event type that agents emit (via `noodle event emit`) when their deliverable is complete, decoupling result delivery from process exit. Backend: new `EventStageYield` in `event/types.go`, loop reads `stage_yield` on any exit (including kill/cancel) and overrides to completed. The existing `noodle event emit` command already supports arbitrary event types — no new CLI command needed. Skills: plan skill (and any deliverable-producing skill) emits `stage_yield` as its final step. Docs: skill authoring guide and skill-creator skill must document `stage_yield` as the standard completion protocol — without it, stages only complete on clean exit, which is fragile for long-running or interruptible agents.
 
 95. [ ] Backend should exclusively own `orders.json` — prevent agents from writing to it directly. The loop promotes `orders-next.json` into `orders.json`, and this should be enforced at the backend level (e.g. file permissions, validation gate) rather than relying on skill instructions.
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[plans/83-error-recoverability-taxonomy/overview]]
