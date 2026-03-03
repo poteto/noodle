@@ -1,7 +1,8 @@
-import { Suspense, useMemo, useCallback } from "react";
+import { Suspense, useMemo, useCallback, useEffect } from "react";
 import { createRootRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ActiveChannelProvider } from "~/client";
+import { connectWS } from "~/client/ws";
 import type { ChannelId } from "~/client";
 import { Sidebar } from "~/components/Sidebar";
 import "~/app.css";
@@ -39,6 +40,7 @@ function RootComponent() {
 
   return (
     <ActiveChannelProvider channel={activeChannel} onChannelChange={setActiveChannel}>
+      <WSConnectionBridge />
       <Suspense fallback={<div className="h-screen bg-bg-depth" />}>
         <div className="app-layout h-screen">
           <Sidebar />
@@ -47,6 +49,12 @@ function RootComponent() {
       </Suspense>
     </ActiveChannelProvider>
   );
+}
+
+function WSConnectionBridge() {
+  const queryClient = useQueryClient();
+  useEffect(() => connectWS(queryClient), [queryClient]);
+  return null;
 }
 
 export const Route = createRootRoute({

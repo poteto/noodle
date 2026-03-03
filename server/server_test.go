@@ -409,6 +409,49 @@ func TestWSHubDiffGatingIgnoresActiveSessionClockDrift(t *testing.T) {
 	hub.removeClient(fakeClient)
 }
 
+func TestWSClientCloseUnsubscribesAllSessions(t *testing.T) {
+	broker := NewSessionEventBroker()
+	hub := newWSHub(broker)
+	client := &wsClient{
+		send: make(chan []byte, 1),
+		hub:  hub,
+	}
+	hub.addClient(client)
+	broker.Subscribe("s1", client)
+	broker.Subscribe("s2", client)
+
+	client.Close()
+
+	if len(broker.subscribers) != 0 {
+		t.Fatalf("subscribers should be empty after close, got %d", len(broker.subscribers))
+	}
+}
+
+func TestWSHubBroadcastDisconnectsSlowClients(t *testing.T) {
+	broker := NewSessionEventBroker()
+	hub := newWSHub(broker)
+	client := &wsClient{
+		send: make(chan []byte, 1),
+		hub:  hub,
+	}
+	// Fill channel so Send returns false and triggers disconnect.
+	client.send <- []byte(`{"type":"snapshot"}`)
+
+	hub.addClient(client)
+	broker.Subscribe("s1", client)
+	hub.broadcastSnapshot([]byte(`{"type":"snapshot"}`))
+
+	hub.mu.RLock()
+	_, exists := hub.clients[client]
+	hub.mu.RUnlock()
+	if exists {
+		t.Fatal("slow client should be removed from hub after failed send")
+	}
+	if len(broker.subscribers) != 0 {
+		t.Fatalf("slow client should be unsubscribed from broker, got %d subscriptions", len(broker.subscribers))
+	}
+}
+
 func TestWSSubscribeSessionEvents(t *testing.T) {
 	s, dir := testServer(t)
 

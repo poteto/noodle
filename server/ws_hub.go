@@ -46,9 +46,16 @@ func (c *wsClient) Send(msg []byte) (ok bool) {
 // Close implements Subscriber. Uses closeOnce to safely remove and close.
 func (c *wsClient) Close() {
 	c.closeOnce.Do(func() {
-		c.hub.removeClient(c)
+		if c.hub != nil && c.hub.broker != nil {
+			c.hub.broker.UnsubscribeAll(c)
+		}
+		if c.hub != nil {
+			c.hub.removeClient(c)
+		}
 		close(c.send)
-		c.conn.Close()
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
 	})
 }
 
@@ -171,10 +178,9 @@ func (h *wsHub) broadcastSnapshot(data []byte) {
 	h.mu.RUnlock()
 
 	for _, c := range targets {
-		select {
-		case c.send <- data:
-		default:
-			// Client too slow; drop message.
+		if !c.Send(data) {
+			// Client too slow or closed; disconnect to avoid leaks.
+			c.Close()
 		}
 	}
 }

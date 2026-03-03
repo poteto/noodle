@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSuspenseSnapshot, useSendControl, useReviewDiff } from "~/client";
 import type { PendingReviewItem } from "~/client";
 import { DiffViewer } from "./DiffViewer";
@@ -169,9 +169,28 @@ export function ReviewList() {
   const { data: snapshot } = useSuspenseSnapshot();
   const reviews = snapshot.pending_reviews ?? [];
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const review = reviews[selectedIdx];
+
+  useEffect(() => {
+    if (reviews.length === 0) {
+      setSelectedIdx(0);
+      return;
+    }
+    if (selectedIdx >= reviews.length) {
+      setSelectedIdx(reviews.length - 1);
+    }
+  }, [reviews.length, selectedIdx]);
 
   if (reviews.length === 0) {
+    return (
+      <div className="grid grid-cols-[1fr_300px] h-full overflow-hidden">
+        <EmptyReviews />
+      </div>
+    );
+  }
+
+  const activeIdx = selectedIdx >= 0 && selectedIdx < reviews.length ? selectedIdx : 0;
+  const review = reviews[activeIdx];
+  if (!review) {
     return (
       <div className="grid grid-cols-[1fr_300px] h-full overflow-hidden">
         <EmptyReviews />
@@ -188,8 +207,8 @@ export function ReviewList() {
               key={r.order_id}
               type="button"
               role="tab"
-              aria-selected={i === selectedIdx}
-              className={`review-tab ${i === selectedIdx ? "active" : ""}`}
+              aria-selected={i === activeIdx}
+              className={`review-tab ${i === activeIdx ? "active" : ""}`}
               onClick={() => setSelectedIdx(i)}
             >
               {r.title || r.task_key || r.order_id}
