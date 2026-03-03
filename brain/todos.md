@@ -16,7 +16,7 @@ priority: [108, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
 
 # Todos
 
-<!-- next-id: 111 -->
+<!-- next-id: 112 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -33,6 +33,7 @@ priority: [108, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
 100. [ ] Add a UI setting to change the run mode (auto/supervised/manual) at runtime. #needs_plan
 110. [ ] Chat input enhancements — drag-to-add images, copy/paste images, and `@` autocomplete for files (and possibly actors). #needs_plan
 86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, collapsed by default with a click-to-expand interaction (avoid noise in the feed), and (2) in a dedicated diff tab/panel that collects all code changes from a session (expanded by default). Ship-ready: fully integrated, styled, and tested. [[plans/86-diffs-integration/overview]]
+111. [ ] Allow viewing backlog items in the UI. #needs_plan
 
 ## Backend
 
