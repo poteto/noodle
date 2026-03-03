@@ -55,7 +55,7 @@ Everything else is deferred — fix individually as files are touched, not as co
 
 - Phases run sequentially: `01` → `02` → `03`.
 - Phase `01` must land before Phase `02` (loop changes consume the unified model).
-- Phase `03` has no logical dependency on Phase `02`. If the P0 panic fix (`69`) is urgent, Phase `03` may run after Phase `01` completes instead of waiting for Phase `02`.
+- Phase `03` has no logical dependency on Phase `02` but runs after it to avoid coordination overhead.
 
 ## Findings Traceability
 
@@ -64,7 +64,7 @@ Everything else is deferred — fix individually as files are touched, not as co
 | Finding IDs | Phase | Disposition |
 |---|---|---|
 | `48-64`, `67` | `01` | Directly addressed or evaporate with model unification |
-| `26`, `35-47`, `71` | `02` | Directly addressed or evaporate with orchestration consolidation |
+| `26`, `35-47`, `71-72` | `02` | Directly addressed or evaporate with orchestration consolidation |
 | `69-70`, `76-77`, `83` | `03` | Directly addressed |
 
 ### Deferred
@@ -72,7 +72,7 @@ Everything else is deferred — fix individually as files are touched, not as co
 | Finding IDs | Category | Disposition |
 |---|---|---|
 | `1-24` | CLI/config/adapter boundary | Fix individually as touched |
-| `25`, `27-34`, `72-75` | Dispatcher/runtime safety | Fix individually as touched |
+| `25`, `27-34`, `73-75` | Dispatcher/runtime safety | Fix individually as touched |
 | `65-66`, `68` | Event pipeline performance | Defer until profiling warrants |
 | `78-82`, `84-88` | UI quality/routing | Fix individually as touched |
 | `89-119` | Docs/skills/brain/CI hygiene | Fix as you go |
@@ -102,6 +102,7 @@ Phase-local verification commands defined in each phase file.
 - `go test ./... && go vet ./...`
 - `pnpm --filter noodle-ui test`
 - `pnpm test:smoke`
+- CI matrix must pass on `linux`, `macos`, and `windows`.
 
 ## Audit Findings Reference
 

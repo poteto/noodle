@@ -12,7 +12,7 @@ One failure/merge/completion orchestration path. The duplication across completi
 
 ## Findings in scope
 
-- `26`, `35-47`, `71`
+- `26`, `35-47`, `71-72`
 
 ## Priority
 
@@ -42,6 +42,7 @@ This phase changes persisted control and pending-review structures.
 - Existing `pending-review.json` must be readable by the new model or explicitly migrated.
 - Control dedupe state transition must handle pre-phase format gracefully (first run after upgrade reconciles).
 - Startup must fail loudly on unreadable control/metadata state.
+- Recovery must still handle missing/corrupt `meta.json` gracefully (finding `73` is deferred but must not regress).
 
 ## Done when
 
@@ -54,8 +55,8 @@ This phase changes persisted control and pending-review structures.
 ## Verification
 
 ### Static
-- `go test ./loop/... && go vet ./loop/...`
-- `go test -race ./loop/...`
+- `go test ./loop/... ./runtime/... ./server/... && go vet ./loop/... ./runtime/... ./server/...`
+- `go test -race ./loop/... ./runtime/... ./server/...`
 
 ### Runtime
 - Crash/restart replay tests for control, pending-review, and reconcile.
