@@ -8,21 +8,15 @@ The scheduler reads `.noodle/mise.json` (project state: backlog, active agents, 
 
 The minimum loop is schedule then execute. Noodle handles merging completed work back to main. You can add more stages (quality review, reflection, etc.) by writing skills for them.
 
-## What skills are
+## The `schedule` frontmatter field
 
-A skill is a directory with a `SKILL.md`. The markdown body is the agent's instructions. YAML frontmatter is metadata:
+Noodle adds one thing to skills: a `schedule` field in the YAML frontmatter. Skills without it work normally (agents invoke them directly). Skills with it become autonomous. The scheduler reads the `schedule` value as prose and decides when conditions are met.
 
 ```yaml
----
-name: deploy
-description: Deploy verified changes to staging.
 schedule: "After execute completes and all tests pass."
----
 ```
 
-Skills without a `schedule` field are invoked directly by agents, like `commit` or `debugging`. Skills with a `schedule` field run on their own. The scheduler reads the `schedule` value as prose and decides when conditions are met.
-
-A working loop needs at least a schedule skill (reads backlog, writes orders) and one task-type skill like execute (does the work). More stages make the loop better but aren't required to start.
+A working loop needs at least two scheduled skills: a schedule skill (reads backlog, writes orders) and one task-type skill like execute (does the work).
 
 ---
 
