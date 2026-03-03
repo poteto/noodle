@@ -234,6 +234,9 @@ func NormalizeAndValidateOrders(
 }
 
 func isValidStageTaskType(stage *Stage, reg taskreg.Registry) bool {
+	if stage.TaskKey == "" && stage.Prompt != "" {
+		return true
+	}
 	_, ok := reg.ResolveStage(taskreg.StageInput{
 		TaskKey: stage.TaskKey,
 		Skill:   stage.Skill,

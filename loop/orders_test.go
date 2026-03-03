@@ -14,6 +14,18 @@ import (
 	"github.com/poteto/noodle/skill"
 )
 
+// writeCompactOrders writes a CompactOrdersFile as JSON to path.
+func writeCompactOrders(t *testing.T, path string, compact orderx.CompactOrdersFile) {
+	t.Helper()
+	data, err := json.MarshalIndent(compact, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal compact orders: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write compact orders: %v", err)
+	}
+}
+
 func TestReadWriteOrdersRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "orders.json")
@@ -81,14 +93,11 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 	}
 
 	// Write next.
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{ID: "new-1", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "new-1", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
@@ -133,8 +142,8 @@ func TestConsumeOrdersNextDefaultsMissingLifecycleStatuses(t *testing.T) {
       "title": "compact wire order",
       "stages": [
         {
-          "task_key": "execute",
-          "provider": "claude",
+          "do": "execute",
+          "with": "claude",
           "model": "claude-opus-4-6"
         }
       ]
@@ -202,15 +211,12 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 	}
 
 	// Write next with duplicate ID "dup" and new ID "new".
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{ID: "dup", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
-			{ID: "new", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "dup", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
+			{ID: "new", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
@@ -263,19 +269,11 @@ func TestConsumeOrdersNextDuplicateFailedIDReplaced(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{
-				ID:     "dup",
-				Title:  "restarted order",
-				Status: orderx.OrderStatusActive,
-				Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}},
-			},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "dup", Title: "restarted order", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
@@ -326,7 +324,7 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsPendingTail(t *testing.T) {
 				Title:  "existing order",
 				Status: orderx.OrderStatusActive,
 				Stages: []orderx.Stage{
-					{TaskKey: "execute", Prompt: "ship this", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusActive},
+					{TaskKey: "execute", Skill: "execute", Prompt: "ship this", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusActive},
 					{TaskKey: "quality", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
 					{TaskKey: "reflect", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
 				},
@@ -337,22 +335,14 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsPendingTail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{
-				ID:     "dup",
-				Title:  "amended order",
-				Status: orderx.OrderStatusActive,
-				Stages: []orderx.Stage{
-					{TaskKey: "execute", Prompt: "ship this", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusPending},
-					{TaskKey: "adversarial-review", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
-				},
-			},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "dup", Title: "amended order", Stages: []orderx.CompactStage{
+				{Do: "execute", With: "codex", Model: "gpt-5.3-codex", Prompt: "ship this"},
+				{Do: "adversarial-review", With: "claude", Model: "claude-opus-4-6"},
+			}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
@@ -403,22 +393,14 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsCurrentStage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{
-				ID:     "dup",
-				Title:  "amended order",
-				Status: orderx.OrderStatusActive,
-				Stages: []orderx.Stage{
-					{TaskKey: "execute", Prompt: "new prompt", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusPending},
-					{TaskKey: "adversarial-review", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
-				},
-			},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "dup", Title: "amended order", Stages: []orderx.CompactStage{
+				{Do: "execute", With: "codex", Model: "gpt-5.3-codex", Prompt: "new prompt"},
+				{Do: "adversarial-review", With: "claude", Model: "claude-opus-4-6"},
+			}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {
@@ -465,14 +447,11 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 	}
 
 	// orders-next.json still has the incoming order (crash replay).
-	leftover := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{ID: "incoming", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "incoming", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, leftover); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	// Re-run: should be idempotent.
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
@@ -537,14 +516,11 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 	nextPath := filepath.Join(dir, "orders-next.json")
 
 	// No existing orders.json.
-	next := orderx.OrdersFile{
-		Orders: []orderx.Order{
-			{ID: "first", Status: orderx.OrderStatusActive, Stages: []orderx.Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending}}},
+	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
+		Orders: []orderx.CompactOrder{
+			{ID: "first", Stages: []orderx.CompactStage{{Do: "execute", With: "claude", Model: "claude-opus-4-6"}}},
 		},
-	}
-	if err := orderx.WriteOrdersAtomic(nextPath, next); err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
 	if err != nil {

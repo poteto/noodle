@@ -3,14 +3,12 @@
     {
       "id": "order-existing",
       "title": "Already running",
-      "stages": [{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"active"}],
-      "status": "active"
+      "stages": [{"do":"execute","with":"claude","model":"claude-opus-4-6"}]
     },
     {
       "id": "order-new",
       "title": "New from schedule",
-      "stages": [{"task_key":"execute","provider":"claude","model":"claude-opus-4-6","status":"pending"}],
-      "status": "active"
+      "stages": [{"do":"execute","with":"claude","model":"claude-opus-4-6"}]
     }
   ]
 }

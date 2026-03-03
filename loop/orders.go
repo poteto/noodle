@@ -304,7 +304,7 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		return false, false, fmt.Errorf("read orders-next: %w", err)
 	}
 
-	incoming, err := orderx.ParseOrdersStrict(nextData)
+	compact, err := orderx.ParseCompactOrders(nextData)
 	if err != nil {
 		// Rename invalid proposal so it doesn't block future cycles.
 		// Preserve the file for debugging rather than deleting it.
@@ -312,7 +312,12 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
 		return false, false, ordersNextRejectedError{cause: cause}
 	}
-	incoming, _ = orderx.ApplyLifecycleDefaults(incoming)
+	incoming, err := orderx.ExpandCompactOrders(compact)
+	if err != nil {
+		_ = os.Rename(nextPath, nextPath+".bad")
+		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
+		return false, false, ordersNextRejectedError{cause: cause}
+	}
 
 	emptyPromotion := len(incoming.Orders) == 0
 
