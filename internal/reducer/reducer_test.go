@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +74,63 @@ func TestReducerUnknownEventNoop(t *testing.T) {
 	}
 	if len(effects) != 0 {
 		t.Fatalf("unknown event should emit no effects, got %d", len(effects))
+	}
+}
+
+func TestReducerHasHandlersForAllKnownEventTypes(t *testing.T) {
+	for _, eventType := range ingest.AllEventTypes() {
+		if _, ok := reduceHandlers[eventType]; !ok {
+			t.Fatalf("missing reducer handler for event type %q", eventType)
+		}
+	}
+}
+
+func TestReducerPayloadDecodeFailureSurfaced(t *testing.T) {
+	current := fixtureStateForLifecycle()
+	event := ingest.StateEvent{
+		ID:        2,
+		Type:      string(ingest.EventDispatchRequested),
+		Payload:   json.RawMessage(`{"order_id":`),
+		Timestamp: fixtureTime(),
+		Applied:   true,
+	}
+
+	next, effects, err := Reduce(current, event)
+	if err == nil {
+		t.Fatal("expected decode failure error")
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatalf("decode failure changed state:\ncurrent=%+v\nnext=%+v", current, next)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("decode failure should emit no effects, got %d", len(effects))
+	}
+	if got := err.Error(); !containsAll(got, "dispatch_requested", "payload unreadable") {
+		t.Fatalf("decode failure error missing context: %q", got)
+	}
+}
+
+func TestReducerEmptyPayloadFailureSurfaced(t *testing.T) {
+	current := fixtureStateForLifecycle()
+	event := ingest.StateEvent{
+		ID:        3,
+		Type:      string(ingest.EventDispatchRequested),
+		Timestamp: fixtureTime(),
+		Applied:   true,
+	}
+
+	next, effects, err := Reduce(current, event)
+	if err == nil {
+		t.Fatal("expected empty payload error")
+	}
+	if !reflect.DeepEqual(next, current) {
+		t.Fatalf("empty payload changed state:\ncurrent=%+v\nnext=%+v", current, next)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("empty payload should emit no effects, got %d", len(effects))
+	}
+	if got := err.Error(); !containsAll(got, "dispatch_requested", "payload unavailable") {
+		t.Fatalf("empty payload error missing context: %q", got)
 	}
 }
 
@@ -588,6 +646,15 @@ func mustStateEvent(id ingest.EventID, eventType ingest.EventType, payload map[s
 		Timestamp: ts,
 		Applied:   true,
 	}
+}
+
+func containsAll(input string, want ...string) bool {
+	for _, token := range want {
+		if !strings.Contains(input, token) {
+			return false
+		}
+	}
+	return true
 }
 
 // --- Finding 6: control_received, schedule_promoted, session_adopted ---

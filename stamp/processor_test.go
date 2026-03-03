@@ -43,6 +43,31 @@ func TestProcessLineInjectsTimestampAndParsesEvent(t *testing.T) {
 	}
 }
 
+func TestProcessLineUnknownTypeEmitsCanonicalErrorEvent(t *testing.T) {
+	processor := NewProcessor()
+	processor.Now = func() time.Time {
+		return time.Date(2026, 2, 22, 17, 5, 0, 0, time.UTC)
+	}
+
+	line := []byte(`{"type":"tool_message","payload":{"x":"y"}}`)
+	stamped, events, err := processor.ProcessLine(line)
+	if err != nil {
+		t.Fatalf("process line: %v", err)
+	}
+	if len(stamped) == 0 {
+		t.Fatal("expected stamped output")
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count mismatch: got %d want 1", len(events))
+	}
+	if events[0].Type != parse.EventError {
+		t.Fatalf("event type mismatch: got %q want %q", events[0].Type, parse.EventError)
+	}
+	if !strings.Contains(events[0].Message, "canonical routing failed") {
+		t.Fatalf("error event missing routing context: %q", events[0].Message)
+	}
+}
+
 func TestProcessWritesStampedAndSidecarEvents(t *testing.T) {
 	processor := NewProcessor()
 	processor.Now = func() time.Time {

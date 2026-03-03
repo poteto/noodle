@@ -2,8 +2,12 @@ package loop
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/statever"
 )
 
 func (l *Loop) loadOrdersState() error {
@@ -84,6 +88,9 @@ func (l *Loop) flushState() error {
 			return fmt.Errorf("flush orders: %w", err)
 		}
 	}
+	if err := l.writeStateMarker(); err != nil {
+		return fmt.Errorf("flush state marker: %w", err)
+	}
 	if l.TestFlushBarrier != nil {
 		l.TestFlushBarrier()
 	}
@@ -97,4 +104,29 @@ func (l *Loop) flushState() error {
 		return fmt.Errorf("flush last-applied-seq: %w", err)
 	}
 	return nil
+}
+
+func (l *Loop) writeStateMarker() error {
+	path := l.stateMarkerPath()
+	if path == "" {
+		return nil
+	}
+	now := time.Now
+	if l.deps.Now != nil {
+		now = l.deps.Now
+	}
+	return statever.Write(path, statever.StateMarker{
+		SchemaVersion: statever.Current,
+		GeneratedAt:   now().UTC(),
+	})
+}
+
+func (l *Loop) stateMarkerPath() string {
+	if runtimeDir := strings.TrimSpace(l.runtimeDir); runtimeDir != "" {
+		return filepath.Join(runtimeDir, "state.json")
+	}
+	if ordersPath := strings.TrimSpace(l.deps.OrdersFile); ordersPath != "" {
+		return filepath.Join(filepath.Dir(ordersPath), "state.json")
+	}
+	return ""
 }

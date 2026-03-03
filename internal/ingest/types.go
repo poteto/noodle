@@ -38,6 +38,42 @@ const (
 	EventMergeFailed    EventType = "merge_failed"
 )
 
+var allEventTypes = []EventType{
+	EventControlReceived,
+	EventSchedulePromoted,
+	EventDispatchRequested,
+	EventDispatchCompleted,
+	EventStageCompleted,
+	EventStageFailed,
+	EventOrderCompleted,
+	EventOrderFailed,
+	EventModeChanged,
+	EventSessionAdopted,
+	EventMergeCompleted,
+	EventMergeFailed,
+}
+
+var knownEventTypeSet = func() map[EventType]struct{} {
+	index := make(map[EventType]struct{}, len(allEventTypes))
+	for _, eventType := range allEventTypes {
+		index[eventType] = struct{}{}
+	}
+	return index
+}()
+
+// AllEventTypes returns a copy of the canonical event type registry.
+func AllEventTypes() []EventType {
+	out := make([]EventType, len(allEventTypes))
+	copy(out, allEventTypes)
+	return out
+}
+
+// IsKnownEventType reports whether eventType is part of the canonical registry.
+func IsKnownEventType(eventType EventType) bool {
+	_, ok := knownEventTypeSet[eventType]
+	return ok
+}
+
 // StateEvent is the canonical state-event envelope.
 type StateEvent struct {
 	ID             EventID         `json:"id"`

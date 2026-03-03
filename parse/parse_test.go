@@ -50,6 +50,7 @@ func TestDetectProvider(t *testing.T) {
 		name     string
 		line     string
 		expected string
+		wantErr  bool
 	}{
 		{
 			name:     "claude_default",
@@ -61,11 +62,22 @@ func TestDetectProvider(t *testing.T) {
 			line:     `{"type":"response_item","payload":{}}`,
 			expected: "codex",
 		},
+		{
+			name:    "unknown_type",
+			line:    `{"type":"tool_message"}`,
+			wantErr: true,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := DetectProvider([]byte(test.line))
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("expected detect provider error")
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("detect provider: %v", err)
 			}
@@ -73,6 +85,14 @@ func TestDetectProvider(t *testing.T) {
 				t.Fatalf("provider mismatch: got %q want %q", got, test.expected)
 			}
 		})
+	}
+}
+
+func TestRegistryParseLineUnknownTypeFails(t *testing.T) {
+	registry := NewRegistry()
+	_, _, err := registry.ParseLine([]byte(`{"type":"tool_message"}`))
+	if err == nil {
+		t.Fatal("expected parse line error for unknown type")
 	}
 }
 

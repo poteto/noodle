@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/poteto/noodle/internal/statever"
 )
 
 func TestMutateOrdersStateSkipsWriteWhenUnchanged(t *testing.T) {
@@ -98,5 +100,41 @@ func TestMutateOrdersStateWritesWhenChanged(t *testing.T) {
 	}
 	if got.Orders[0].Title != "updated" {
 		t.Fatalf("title = %q, want %q", got.Orders[0].Title, "updated")
+	}
+}
+
+func TestFlushStateWritesStateMarker(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 3, 3, 10, 0, 0, 0, time.UTC)
+
+	l := &Loop{
+		runtimeDir: dir,
+		deps: Dependencies{
+			OrdersFile: filepath.Join(dir, "orders.json"),
+			Now:        func() time.Time { return now },
+		},
+		ordersLoaded: true,
+		orders: OrdersFile{
+			GeneratedAt: now,
+			Orders: []Order{
+				makeOrder("1", OrderStatusActive, []Stage{makeStage(StageStatusPending)}),
+			},
+		},
+		cooks: cookTracker{pendingReview: map[string]*pendingReviewCook{}},
+	}
+
+	if err := l.flushState(); err != nil {
+		t.Fatalf("flushState: %v", err)
+	}
+
+	marker, err := statever.Read(filepath.Join(dir, "state.json"))
+	if err != nil {
+		t.Fatalf("read state marker: %v", err)
+	}
+	if marker.SchemaVersion != statever.Current {
+		t.Fatalf("schema version = %d, want %d", marker.SchemaVersion, statever.Current)
+	}
+	if !marker.GeneratedAt.Equal(now) {
+		t.Fatalf("generated_at = %v, want %v", marker.GeneratedAt, now)
 	}
 }

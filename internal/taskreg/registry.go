@@ -16,7 +16,6 @@ type TaskType struct {
 type StageInput struct {
 	ID      string
 	TaskKey string
-	Title   string
 	Skill   string
 }
 

@@ -42,6 +42,31 @@ func TestIngesterAssignsMonotonicIDs(t *testing.T) {
 	}
 }
 
+func TestCanonicalEventTypeRegistry(t *testing.T) {
+	types := AllEventTypes()
+	if len(types) == 0 {
+		t.Fatal("event type registry should not be empty")
+	}
+
+	seen := make(map[EventType]struct{}, len(types))
+	for _, eventType := range types {
+		if eventType == "" {
+			t.Fatal("event type registry should not include empty event type")
+		}
+		if _, exists := seen[eventType]; exists {
+			t.Fatalf("event type registry includes duplicate %q", eventType)
+		}
+		seen[eventType] = struct{}{}
+		if !IsKnownEventType(eventType) {
+			t.Fatalf("event type %q should be known", eventType)
+		}
+	}
+
+	if IsKnownEventType(EventType("not_known")) {
+		t.Fatal("unknown event type should not be treated as known")
+	}
+}
+
 func TestNextIDMonotonic(t *testing.T) {
 	ingester := NewIngester()
 	if got := ingester.NextID(); got != 1 {

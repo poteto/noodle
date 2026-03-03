@@ -3,6 +3,7 @@ package parse
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // LogAdapter parses one NDJSON line into canonical events.
@@ -13,6 +14,27 @@ type LogAdapter interface {
 // Registry resolves provider adapters by name.
 type Registry struct {
 	adapters map[string]LogAdapter
+}
+
+var codexLineTypes = map[string]struct{}{
+	"event_msg":      {},
+	"response_item":  {},
+	"session_meta":   {},
+	"turn_context":   {},
+	"thread.started": {},
+	"turn.started":   {},
+	"turn.completed": {},
+	"item.started":   {},
+	"item.completed": {},
+	"compacted":      {},
+}
+
+var claudeLineTypes = map[string]struct{}{
+	"system":       {},
+	"assistant":    {},
+	"result":       {},
+	"stream_event": {},
+	"user":         {},
 }
 
 func NewRegistry() *Registry {
@@ -64,13 +86,16 @@ func DetectProvider(line []byte) (string, error) {
 		return "", fmt.Errorf("parse NDJSON line: %w", err)
 	}
 
-	switch probe.Type {
-	case "event_msg", "response_item", "session_meta", "turn_context",
-		"thread.started", "turn.started", "turn.completed",
-		"item.started", "item.completed", "compacted":
+	lineType := strings.TrimSpace(probe.Type)
+	if lineType == "" {
+		return "", fmt.Errorf("provider unresolved for line type: missing type")
+	}
+
+	if _, ok := codexLineTypes[lineType]; ok {
 		return "codex", nil
-	default:
-		// Unknown line types default to Claude format.
+	}
+	if _, ok := claudeLineTypes[lineType]; ok {
 		return "claude", nil
 	}
+	return "", fmt.Errorf("provider unresolved for line type %q", lineType)
 }
