@@ -1,29 +1,31 @@
 ---
-priority: [112, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
+priority: [112, 113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 # Priority notes:
 #   112 codebase simplification program — root-cause-first execution of full audit
-#    compact wire format — simplify scheduler output
+#   113 deterministic completion detection — replace fragile completion heuristics
 #   97 adapter schema validator — surface broken adapters
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   84 sub-agent tracking — visibility into agent orchestration
 #   88 sub-agent tracking v2 — hardening, depends on 84
 #   90 interactive sessions — collaborative mode, key differentiator
+#   110 chat input enhancements — polish interactive sessions UX
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   100 runtime mode UI setting
 #   86 diffs integration — code-change review UX
+#   111 backlog-in-UI visibility — improve operator ergonomics
 #   85 .noodle.toml live reload — convenience, restart works fine
 #   69 cursor dispatcher — extended runtime, process+sprites cover launch
 ---
 
 # Todos
 
-<!-- next-id: 114 -->
+<!-- next-id: 115 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
 ## Onboarding & Getting Started
 
-
+114. [ ] Improve new-user onboarding — currently hard to get started (need at least 2 skills for a working loop) and hard to communicate what Noodle can do upfront. Needs: starter skill pack or bootstrap command, guided first-run experience, and better "what is this" communication for new users. #needs_plan
 
 ## Remote Dispatchers
 
