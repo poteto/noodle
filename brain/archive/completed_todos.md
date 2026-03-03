@@ -1,5 +1,6 @@
 # Completed Todos
 
+112. [x] ~~Codebase simplification audit follow-through — execute plan phases from the full-system read-only audit findings inventory. [[archive/plans/112-codebase-simplification-audit/overview]]~~ — done.
 108. [x] ~~Compact wire format for orders-next.json — `do`/`with` replace `task_key`/`provider`, drop `status` and `skill` from scheduler output. Expansion at the promotion boundary produces internal `orderx.OrdersFile` structs. [[archive/plans/108-orders-dsl/overview]]~~ — done.
 94. [x] ~~Cross-platform distribution — publish Noodle binaries for Linux and Windows in addition to macOS. Set up GoReleaser (or equivalent) to cross-compile for linux/amd64, linux/arm64, windows/amd64. Publish artifacts to GitHub Releases. Add install instructions for non-Homebrew users (curl one-liner, winget/scoop, or direct download). Update getting-started docs with platform-specific instructions.~~ — done.
 93. [x] ~~Publish build to Homebrew — create a Homebrew tap and formula so users can `brew install noodle`.~~ — done.

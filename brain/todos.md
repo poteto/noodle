@@ -1,7 +1,7 @@
 ---
-priority: [112, 113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
+priority: [113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 # Priority notes:
-#   112 codebase simplification program — root-cause-first execution of full audit
+#    codebase simplification program — root-cause-first execution of full audit
 #   113 deterministic completion detection — replace fragile completion heuristics
 #   97 adapter schema validator — surface broken adapters
 #   95 orders.json ownership — correctness, agents shouldn't write orders
@@ -40,7 +40,6 @@ priority: [112, 113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 
 ## Backend
 
-112. [ ] Codebase simplification audit follow-through — execute plan phases from the full-system read-only audit findings inventory. [[plans/112-codebase-simplification-audit/overview]]
 97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior. [[plans/97-adapter-schema-validator/overview]]
 95. [ ] Backend should exclusively own `orders.json` — prevent agents from writing to it directly. The loop promotes `orders-next.json` into `orders.json`, and this should be enforced at the backend level (e.g. file permissions, validation gate) rather than relying on skill instructions. #needs_plan
 113. [ ] Deterministic agent completion detection — replace the fragile `terminalStatus()` heuristic with an incremental CompletionTracker state machine, unify process/sprites completion, add configurable stage_yield-aware shutdown, and cleanup verification gate. [[plans/113-deterministic-completion-detection/overview]]

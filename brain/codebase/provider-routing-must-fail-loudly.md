@@ -1,4 +1,4 @@
-# Provider Routing Must Fail Loudly
+# Provider Routing Must Surface Errors Explicitly
 
 The stamp/parse pipeline previously defaulted unknown NDJSON `type` values to the Claude adapter.
 That made unknown provider lines look valid, then disappear when the adapter emitted no canonical events.
@@ -9,6 +9,6 @@ Current behavior:
 2. Unknown or missing `type` now returns an explicit provider-resolution error.
 3. `stamp.Processor.ProcessLine` converts routing errors into canonical `error` events instead of dropping lines.
 
-This preserves visibility for routing regressions and prevents silent event loss.
+This preserves visibility for routing regressions and prevents silent event loss while keeping the system running.
 
 See also [[codebase/claude-code-ndjson-protocol]], [[principles/fix-root-causes]]

@@ -1,6 +1,6 @@
 # Plans
 
-- [ ] [[plans/112-codebase-simplification-audit/overview]]
+- [x] [[archive/plans/112-codebase-simplification-audit/overview]]
 - [ ] [[plans/69-cursor-dispatcher/overview]]
 - [x] [[archive/plans/81-stage-groups/overview]]
 - [ ] [[plans/84-subagent-tracking/overview]]
