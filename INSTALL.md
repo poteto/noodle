@@ -4,16 +4,9 @@ Noodle is a skill-based agent orchestration framework. You write skills — mark
 
 ## How the Loop Works
 
-```
-backlog (todos.md)
-  -> schedule: read project state, write orders
-  -> execute: agents implement changes in worktrees
-  -> merge: completed work lands on main
-```
-
-That's the minimum loop. You can add more stages — quality review, reflection, whatever your project needs — by writing skills for them. The scheduler decides when to run each one.
-
 The scheduler reads `.noodle/mise.json` (project state: backlog, active agents, history, registered skills) and writes `.noodle/orders-next.json`. The loop promotes orders and spawns agent sessions. Each agent gets a skill loaded as its instructions. When the agent finishes, its worktree merges back.
+
+The minimum loop is schedule → execute → merge. You can add more stages — quality review, reflection, whatever your project needs — by writing skills for them. The scheduler decides when to run each one.
 
 ## What Skills Are
 
