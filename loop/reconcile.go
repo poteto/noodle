@@ -528,17 +528,16 @@ func branchExists(projectDir string, branch string) bool {
 	if branch == "" {
 		return false
 	}
-	for _, ref := range []string{
-		"refs/heads/" + branch,
-		"refs/remotes/origin/" + branch,
-		"refs/remotes/" + branch,
-	} {
-		cmd := exec.Command("git", "-C", projectDir, "show-ref", "--verify", "--quiet", ref)
-		if cmd.Run() == nil {
-			return true
-		}
+	cmd := exec.Command("git", "-C", projectDir, "for-each-ref", "--format=%(refname)",
+		"refs/heads/"+branch,
+		"refs/remotes/origin/"+branch,
+		"refs/remotes/"+branch,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return false
 	}
-	return false
+	return strings.TrimSpace(string(out)) != ""
 }
 
 func (l *Loop) refreshAdoptedTargets() {
