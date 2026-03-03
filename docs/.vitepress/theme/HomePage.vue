@@ -307,21 +307,6 @@ import { withBase } from "vitepress";
               https://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md</code
             >
           </div>
-          <div class="quickstart-links">
-            <a :href="withBase('/getting-started')" class="quickstart-link"
-              >Documentation →</a
-            >
-            <a
-              :href="withBase('/reference/configuration')"
-              class="quickstart-link"
-              >Configuration →</a
-            >
-            <a
-              :href="withBase('/cookbook/minimal-noodle-loop')"
-              class="quickstart-link"
-              >Cookbook →</a
-            >
-          </div>
         </div>
       </div>
     </main>
