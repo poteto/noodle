@@ -273,6 +273,79 @@ port = 13738
 	t.Logf("snapshot warnings: %v", snap.Warnings)
 }
 
+func TestSmokeStartOnceWithoutSkillsInEmptyRepo(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("skipping: git not found on PATH")
+	}
+
+	noodleBin := buildNoodle(t)
+	dir := newProjectTempDir(t)
+
+	// Empty repo: no project files, no skills, no config.
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	skillsDir := filepath.Join(dir, ".agents", "skills")
+	if _, err := os.Stat(skillsDir); !os.IsNotExist(err) {
+		t.Fatalf("expected no skills directory before startup, got err=%v", err)
+	}
+
+	startOnce := func() string {
+		t.Helper()
+		cmd := exec.Command(noodleBin, "start", "--once")
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("start --once in empty repo: %v\noutput:\n%s", err, string(out))
+		}
+		return string(out)
+	}
+
+	firstOut := startOnce()
+	t.Logf("first start --once output:\n%s", strings.TrimSpace(firstOut))
+	secondOut := startOnce()
+	t.Logf("second start --once output:\n%s", strings.TrimSpace(secondOut))
+
+	for _, rel := range []string{
+		".noodle/status.json",
+		".noodle/mise.json",
+		".noodle/tickets.json",
+		".noodle/control.lock",
+		".noodle.toml",
+		"brain/index.md",
+		"brain/todos.md",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+			t.Fatalf("expected %s to exist after startup: %v", rel, err)
+		}
+	}
+
+	statusCmd := exec.Command(noodleBin, "status")
+	statusCmd.Dir = dir
+	statusCmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+	statusOut, err := statusCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("noodle status in empty repo: %v\noutput:\n%s", err, string(statusOut))
+	}
+	t.Logf("status output:\n%s", strings.TrimSpace(string(statusOut)))
+	if !strings.Contains(string(statusOut), "loop=") {
+		t.Fatalf("status output missing loop state: %s", string(statusOut))
+	}
+	if !strings.Contains(string(statusOut), "loop=idle") {
+		t.Fatalf("status output expected loop=idle in empty repo: %s", string(statusOut))
+	}
+	if !strings.Contains(string(statusOut), "orders=0") {
+		t.Fatalf("status output expected orders=0 in empty repo: %s", string(statusOut))
+	}
+
+	if _, err := os.Stat(skillsDir); !os.IsNotExist(err) {
+		t.Fatalf("expected no skills directory after startup, got err=%v", err)
+	}
+}
+
 // assertOrdersExist verifies orders.json exists and has valid structure.
 func assertOrdersExist(t *testing.T, projectDir string) {
 	t.Helper()

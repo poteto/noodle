@@ -299,6 +299,23 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
 			OrderID: cook.orderID,
 		})
+		if strings.EqualFold(strings.TrimSpace(cook.orderID), scheduleBootstrapOrderID) {
+			if l.ensureSkillFresh(scheduleOrderID) {
+				if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+					if hasScheduleOrder(*orders) || hasScheduleBootstrapOrder(*orders) {
+						return false, nil
+					}
+					prependOrder(orders, scheduleOrder(l.config, ""))
+					return true, nil
+				}); err != nil {
+					return err
+				}
+				l.scheduleNothingUntil = time.Time{}
+				l.logger.Info("schedule bootstrap completed, injected schedule order")
+			} else {
+				l.logger.Warn("schedule bootstrap completed but schedule skill is still missing")
+			}
+		}
 		// Final stage of a non-failing order — fire adapter "done".
 		if _, err := l.deps.Adapter.Run(ctx, "backlog", "done", adapter.RunOptions{Args: []string{cook.orderID}}); err != nil {
 			if !isMissingAdapter(err) {

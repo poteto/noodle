@@ -5,12 +5,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/poteto/noodle/config"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
+
+func writeTaskTypeSkill(t *testing.T, projectDir, name, scheduleHint string) {
+	t.Helper()
+	skillDir := filepath.Join(projectDir, ".agents", "skills", name)
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("mkdir skill dir %s: %v", name, err)
+	}
+	content := fmt.Sprintf(`---
+name: %s
+description: %s
+schedule: %q
+---
+
+# %s
+`, name, name, scheduleHint, name)
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write skill %s: %v", name, err)
+	}
+}
 
 func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	projectDir := t.TempDir()
@@ -344,6 +364,120 @@ func TestReconcileInjectsScheduleOrderOnStartup(t *testing.T) {
 	}
 	if !hasScheduleOrder(updated) {
 		t.Fatalf("expected startup reconcile to inject schedule order, got %#v", updated.Orders)
+	}
+}
+
+func TestReconcileInjectsOopsBootstrapOrderWhenScheduleMissing(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+	writeTaskTypeSkill(t, projectDir, "oops", "When infrastructure failures are detected")
+	writeTaskTypeSkill(t, projectDir, "execute", "When a planned item is ready")
+
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{filepath.Join(projectDir, ".agents", "skills")}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	updated, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updated.Orders) == 0 || updated.Orders[0].ID != scheduleBootstrapOrderID {
+		t.Fatalf("expected startup reconcile to inject %q, got %#v", scheduleBootstrapOrderID, updated.Orders)
+	}
+	stage := updated.Orders[0].Stages[0]
+	if stage.TaskKey != "oops" || stage.Skill != "oops" {
+		t.Fatalf("bootstrap order stage = %#v, want oops task+skill", stage)
+	}
+	if !strings.Contains(stage.Prompt, "github.com/poteto/noodle/.agents/skills/schedule/") {
+		t.Fatalf("bootstrap prompt missing schedule skill example reference: %q", stage.Prompt)
+	}
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle: %v", err)
+	}
+	if len(rt.calls) != 1 || rt.calls[0].Skill != "oops" {
+		t.Fatalf("expected immediate oops dispatch, calls=%#v", rt.calls)
+	}
+}
+
+func TestOopsBootstrapCompletionInjectsScheduleOrder(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+	writeTaskTypeSkill(t, projectDir, "oops", "When infrastructure failures are detected")
+	writeTaskTypeSkill(t, projectDir, "execute", "When a planned item is ready")
+
+	cfg := config.DefaultConfig()
+	cfg.Skills.Paths = []string{filepath.Join(projectDir, ".agents", "skills")}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("dispatch oops cycle: %v", err)
+	}
+	if len(rt.sessions) != 1 {
+		t.Fatalf("expected bootstrap oops session, got %d sessions", len(rt.sessions))
+	}
+
+	// Simulate the oops agent having created and merged a schedule skill.
+	writeTaskTypeSkill(t, projectDir, "schedule", "When orders are empty")
+	rt.sessions[0].complete("completed")
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(rt.calls) < 2 {
+		t.Fatalf("expected schedule dispatch after bootstrap completion, calls=%#v", rt.calls)
+	}
+	if rt.calls[1].Skill != "schedule" {
+		t.Fatalf("second dispatch skill = %q, want schedule", rt.calls[1].Skill)
 	}
 }
 

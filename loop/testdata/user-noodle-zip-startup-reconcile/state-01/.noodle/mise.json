@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-03-03T04:21:43.849421Z",
+  "backlog": [],
+  "active_summary": {
+    "total": 0
+  },
+  "tickets": [],
+  "resources": {
+    "max_concurrency": 4,
+    "active": 0,
+    "available": 4
+  },
+  "recent_history": [],
+  "recent_events": [],
+  "routing": {
+    "defaults": {
+      "provider": "claude",
+      "model": "claude-opus-4-6"
+    },
+    "available_runtimes": [
+      "process"
+    ]
+  }
+}

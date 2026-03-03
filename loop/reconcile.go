@@ -136,19 +136,32 @@ func (l *Loop) recoverAdoptedSessions(ctx context.Context) error {
 }
 
 func (l *Loop) ensureScheduleOrderPresent() error {
-	injected := false
+	injectedOrderID := ""
 	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		if hasScheduleOrder(*orders) {
+		if hasScheduleOrder(*orders) || hasScheduleBootstrapOrder(*orders) {
 			return false, nil
 		}
+		if l.hasTaskType(scheduleOrderID) {
+			orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
+			injectedOrderID = scheduleOrderID
+			return true, nil
+		}
+		if l.hasTaskType("oops") {
+			prependOrder(orders, scheduleBootstrapOopsOrder(l.config))
+			injectedOrderID = scheduleBootstrapOrderID
+			return true, nil
+		}
 		orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
-		injected = true
+		injectedOrderID = scheduleOrderID
 		return true, nil
 	}); err != nil {
 		return err
 	}
-	if injected {
+	switch injectedOrderID {
+	case scheduleOrderID:
 		l.logger.Info("startup injected schedule order")
+	case scheduleBootstrapOrderID:
+		l.logger.Info("startup injected schedule bootstrap order")
 	}
 	return nil
 }

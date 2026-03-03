@@ -14,6 +14,9 @@ import (
 )
 
 const scheduleOrderID = "schedule"
+const scheduleBootstrapOrderID = "oops-bootstrap-schedule"
+const scheduleSkillExamplePath = "https://github.com/poteto/noodle/tree/main/.agents/skills/schedule/"
+const scheduleSkillExampleHint = "github.com/poteto/noodle/.agents/skills/schedule/"
 
 func isScheduleStage(stage Stage) bool {
 	return strings.EqualFold(strings.TrimSpace(stage.TaskKey), scheduleOrderID)
@@ -21,6 +24,10 @@ func isScheduleStage(stage Stage) bool {
 
 func isScheduleOrder(order Order) bool {
 	return strings.EqualFold(strings.TrimSpace(order.ID), scheduleOrderID)
+}
+
+func isScheduleBootstrapOrder(order Order) bool {
+	return strings.EqualFold(strings.TrimSpace(order.ID), scheduleBootstrapOrderID)
 }
 
 func hasNonScheduleOrders(orders OrdersFile) bool {
@@ -39,6 +46,24 @@ func hasScheduleOrder(orders OrdersFile) bool {
 		}
 	}
 	return false
+}
+
+func hasScheduleBootstrapOrder(orders OrdersFile) bool {
+	for _, order := range orders.Orders {
+		if isScheduleBootstrapOrder(order) {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *Loop) hasTaskType(taskKey string) bool {
+	_, ok := l.registry.ByKey(strings.TrimSpace(taskKey))
+	return ok
+}
+
+func prependOrder(orders *OrdersFile, order Order) {
+	orders.Orders = append([]Order{order}, orders.Orders...)
 }
 
 func (l *Loop) hasActiveScheduleCook() bool {
@@ -78,6 +103,31 @@ func scheduleOrder(cfg config.Config, prompt string) Order {
 		order.Rationale = "Chef steer: " + prompt
 	}
 	return order
+}
+
+func scheduleBootstrapOopsOrder(cfg config.Config) Order {
+	return Order{
+		ID:        scheduleBootstrapOrderID,
+		Title:     "bootstrapping missing schedule skill",
+		Rationale: "Schedule task type is unavailable; bootstrap scheduler skill first.",
+		Status:    OrderStatusActive,
+		Stages: []Stage{
+			{
+				TaskKey:  "oops",
+				Skill:    "oops",
+				Provider: strings.TrimSpace(cfg.Routing.Defaults.Provider),
+				Model:    strings.TrimSpace(cfg.Routing.Defaults.Model),
+				Status:   StageStatusPending,
+				Prompt: strings.Join([]string{
+					"Schedule skill is missing. Bootstrap it now so Noodle can recover scheduler dispatch.",
+					"Create `.agents/skills/schedule/SKILL.md` with proper frontmatter including `schedule:`.",
+					"Use `" + scheduleSkillExamplePath + "` as the primary example (also referenced as `" + scheduleSkillExampleHint + "`).",
+					"Adapt the scheduling rules to this project's backlog and workflow.",
+					"Commit the skill creation in your worktree.",
+				}, "\n"),
+			},
+		},
+	}
 }
 
 func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resumePrompt string) error {
