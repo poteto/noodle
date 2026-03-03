@@ -12,6 +12,10 @@ Use `noodle schema mise` and `noodle schema orders` as the schema source of trut
 
 Operate fully autonomously. Never ask the user to choose or pause for confirmation.
 
+## One Plan at a Time
+
+This is the cardinal scheduling rule. Pick the highest-priority plan with remaining phases and schedule all of them. Do not spread work across multiple plans — finishing one plan end-to-end produces shippable results; advancing many plans one phase each produces nothing usable. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan. Exception: shared infra orders can run alongside a plan's phases.
+
 ## Orders Model
 
 Output is `{orders: [...]}` where each order is a **pipeline of stages** executed sequentially. Group related work into stages within one order rather than separate orders.
@@ -32,11 +36,11 @@ Schedule execute tasks from the `backlog` array in mise. Use the backlog item ID
 
 Backlog items always have `id` and `title`. Other fields are adapter-defined and may vary. The default adapter (todos.md) provides: `status`, `section`, `tags`, `estimate`, and `plan`. Custom adapters may include any fields — treat unknown fields as useful context.
 
-**One plan at a time:** Schedule all remaining phases of one plan at once. Pick the highest-priority plan with remaining phases and schedule an order for each unfinished phase. Don't spread work across plans — completing one plan end-to-end produces usable results faster than advancing many plans one phase each. If the current plan is blocked, idle (empty orders) rather than context-switching to a different plan.
+**Shared infrastructure:** When multiple plans depend on common infrastructure (shared types, utilities, base packages), propose a standalone infra order before the plan's phases. Use a descriptive slug ID (e.g., `"infra-shared-types"`). If the infra work is substantial, create a backlog item via the adapter (`noodle adapter run backlog add`), then use that item's ID as the order ID.
 
-**Shared infrastructure:** When multiple plans depend on common infrastructure (shared types, utilities, base packages), propose a standalone infra order that isn't tied to any single plan. Use a descriptive slug ID (e.g., `"infra-shared-types"`, `"infra-event-system"`) — orders don't need to match a backlog item ID. If the infra work is substantial, create a backlog item for it via the adapter (`noodle adapter run backlog add`), then use that item's ID as the order ID. The infra order should run before any plan that depends on it.
+**Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Schedule an order for each remaining unfinished phase (each unchecked `- [ ]` item). Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies.
 
-**Items with plans:** When a backlog item has a `plan` field (a relative path like `brain/plans/29-foo/overview.md`), read the plan overview and phase files to understand the work. Schedule an order for each remaining unfinished phase (each unchecked `- [ ]` item), in order. Populate `order.plan` with the plan path(s). Use `extra_prompt` to inject plan context: the plan overview summary, the specific phase brief, and any cross-phase dependencies. The loop executes orders sequentially, so later phases naturally wait for earlier ones to complete.
+**Parallelizing phases:** Read the plan to identify dependencies between phases. Phases that depend on earlier phases' output (shared types, APIs, schemas) must be ordered sequentially. Phases that touch independent areas of the codebase (separate packages, unrelated features, docs vs code) can be scheduled as separate orders that run in parallel. When in doubt, sequential is safer — but don't serialize work that has no real dependency.
 
 **Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a plan-first order: a `prompt`-only stage (no `task_key`) that invokes `/plan`, followed by an `adversarial-review` stage to challenge the plan. No quality or reflect stages — planning output is a design document, not code. **Do NOT use `task_key: "execute"` for plan-first stages** — the execute skill tells the agent to implement, which conflicts with the plan skill's "stop after planning" instruction. The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally with the standard execute → quality → reflect pipeline.
 
@@ -50,26 +54,7 @@ Each task type's `schedule` field describes when and how to schedule it — as a
 
 ## Recent Events
 
-The mise brief includes a `recent_events` array — lifecycle events emitted by the loop since the last schedule run. These are context for your scheduling decisions, not commands.
-
-### Internal Events
-
-These are emitted automatically by the loop. The V2 backend uses canonical event types:
-
-| Event type | Meaning |
-|------------|---------|
-| `stage_completed` | A stage finished successfully (includes order ID, stage index) |
-| `stage_failed` | A stage failed (includes reason) |
-| `order_completed` | All stages in an order finished — the order is done |
-| `order_failed` | An order failed terminally |
-| `merge_failed` | A merge failed (includes error reason) |
-| `order.dropped` | An order was removed because its task type is no longer registered |
-| `order.requeued` | A failed order was reset and re-queued for another attempt |
-| `registry.rebuilt` | The skill registry was rebuilt (skills added or removed) |
-
-### External Events
-
-Users can inject custom events via `noodle event emit <type> [payload]`. These have arbitrary types like `ci.failed`, `deploy.completed`, `test.flaky`, etc. You won't know every possible type — interpret them from context and the summary string.
+The mise brief includes a `recent_events` array — lifecycle events emitted by the loop since the last schedule run. These are context for your scheduling decisions, not commands. See [references/events.md](references/events.md) for the full event type catalog (internal and external).
 
 ### Using Events for Scheduling
 
@@ -83,20 +68,8 @@ Events are context, not commands. Consider them alongside backlog state and sess
 
 Don't react mechanically to every event. Use judgment: a single stage failure in a long pipeline is normal; three consecutive failures of the same order suggests a deeper problem.
 
-## Situational Awareness
-
-| Trigger | Action |
-|---------|--------|
-| Empty orders | Full survey of mise — schedule from scratch |
-| Quality rejection | Rescope the rejected item for retry with feedback |
-| New backlog items | Create orders respecting workflow stage order |
-| Items without plans | Assess complexity — simple items execute directly, complex items get a plan-first order |
-| All items blocked/done | Write empty orders array, let loop cooldown |
-
 ## Scheduling Heuristics
 
-- **One plan at a time**: Schedule all remaining phases of one plan upfront. Don't spread work across plans — depth-first produces complete, shippable results. The loop executes orders sequentially, so all phases run in order. Exception: shared infra orders can run alongside or before a plan's phases.
-- **Foundation before feature**: Infrastructure and shared types first.
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every order must cite which principle or rule drove its placement.
 - **Timebox failures**: If an item has failed 2+ times in `recent_history`, deschedule or split it.
@@ -124,20 +97,7 @@ Always set `"runtime": "process"` on all stages. The `sprites` runtime is still 
 
 Write valid JSON to `.noodle/orders-next.json` matching `noodle schema orders`.
 
-### extra_prompt
-
-Each stage supports an optional `extra_prompt` string — supplemental instructions about *how* to approach the task. Distinct from `prompt` (what to do) and `rationale` (why it's scheduled).
-
-Use cases:
-- Relay failure context from `recent_history` (e.g., "previous attempt failed because tests weren't run — run tests this time")
-- Flag dependencies or preconditions the cook should be aware of
-- Suggest approach constraints based on scheduling context
-
-Keep it concise (~1000 chars max; silently truncated if exceeded). Leave empty when there's nothing extra to say — don't fill it for the sake of filling it. The field lives on each stage, not at the order level.
-
-### Examples
-
-See [references/examples.md](references/examples.md) for order JSON examples: multi-stage, plan-first, debate, shared infrastructure, single-stage.
+See [references/examples.md](references/examples.md) for order JSON examples and `extra_prompt` field usage.
 
 ## Principles
 
