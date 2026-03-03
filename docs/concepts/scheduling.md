@@ -42,55 +42,38 @@ An order is a unit of work with one or more stages. The scheduling agent writes 
   "rationale": "High-priority backlog item, affects production",
   "stages": [
     {
-      "task_key": "execute",
+      "do": "execute",
       "prompt": "Fix the login timeout bug described in issue #42",
-      "provider": "claude",
-      "model": "claude-opus-4-6",
-      "status": "pending"
+      "with": "claude",
+      "model": "claude-opus-4-6"
     }
-  ],
-  "status": "active"
+  ]
 }
 ```
 
-| Field       | Description                        |
-| ----------- | ---------------------------------- |
-| `id`        | Unique identifier                  |
-| `title`     | Human-readable summary             |
-| `rationale` | Why the scheduler chose this work  |
-| `plan`      | Optional list of high-level steps  |
-| `stages`    | Pipeline of stages to execute      |
-| `status`    | `active`, `completed`, or `failed` |
+| Field       | Description                            |
+| ----------- | -------------------------------------- |
+| `id`        | Unique identifier                      |
+| `title`     | Human-readable summary                 |
+| `rationale` | Why the scheduler chose this work      |
+| `plan`      | Optional list of linked plan paths     |
+| `stages`    | Pipeline of stages to execute          |
 
 ## Stages
 
 A stage is a single step within an order.
 
-| Field      | Description                                     |
-| ---------- | ----------------------------------------------- |
-| `task_key` | Which schedulable skill to run                  |
-| `prompt`   | Instructions for the agent                      |
-| `skill`    | Skill to invoke (alternative to `task_key`)     |
-| `provider` | Agent provider for this stage                   |
-| `model`    | Model to use                                    |
-| `runtime`  | Where to run: `process` or `sprites`             |
-| `group`    | Parallel execution group number                 |
-| `status`   | Stage lifecycle status                          |
+| Field          | Description                                     |
+| -------------- | ----------------------------------------------- |
+| `do`           | Which task type to run                          |
+| `prompt`       | Instructions for the agent                      |
+| `with`         | Agent provider for this stage                   |
+| `model`        | Model to use                                    |
+| `runtime`      | Where to run: `process` or `sprites`             |
+| `group`        | Parallel execution group number                 |
+| `extra_prompt` | Supplemental instructions for the cook          |
 
-### Stage Lifecycle
-
-```
-pending → active → merging → completed
-                           → failed
-                           → cancelled
-```
-
-- **pending:** waiting to be dispatched
-- **active:** an agent is running this stage
-- **merging:** agent finished, worktree is being merged
-- **completed:** work merged successfully
-- **failed:** agent or merge failed
-- **cancelled:** cancelled manually or superseded
+The loop manages stage lifecycle transitions automatically (pending, active, merging, completed, failed, cancelled). The scheduler does not write status fields.
 
 ### Composition and Concurrency
 
@@ -100,25 +83,22 @@ Stages run sequentially by default. The first stage finishes before the second s
 {
   "stages": [
     {
-      "task_key": "execute",
-      "provider": "codex",
+      "do": "execute",
+      "with": "codex",
       "model": "gpt-5.3-codex",
-      "runtime": "sprites",
-      "status": "pending"
+      "runtime": "sprites"
     },
     {
-      "task_key": "quality",
-      "provider": "claude",
+      "do": "quality",
+      "with": "claude",
       "model": "claude-opus-4-6",
-      "runtime": "process",
-      "status": "pending"
+      "runtime": "process"
     },
     {
-      "task_key": "reflect",
-      "provider": "claude",
+      "do": "reflect",
+      "with": "claude",
       "model": "claude-opus-4-6",
-      "runtime": "process",
-      "status": "pending"
+      "runtime": "process"
     }
   ]
 }
@@ -132,19 +112,22 @@ Groups are how the scheduling agent expresses a dependency graph. Stages with th
 {
   "stages": [
     {
-      "task_key": "execute",
-      "group": 0,
-      "status": "pending"
+      "do": "execute",
+      "with": "codex",
+      "model": "gpt-5.3-codex",
+      "group": 0
     },
     {
-      "task_key": "execute",
-      "group": 0,
-      "status": "pending"
+      "do": "execute",
+      "with": "codex",
+      "model": "gpt-5.3-codex",
+      "group": 0
     },
     {
-      "task_key": "quality",
-      "group": 1,
-      "status": "pending"
+      "do": "quality",
+      "with": "claude",
+      "model": "claude-opus-4-6",
+      "group": 1
     }
   ]
 }

@@ -22,13 +22,13 @@ Output is `{orders: [...]}` where each order is a **pipeline of stages** execute
 
 ### Stages
 
-Each stage has a `task_key` (must match a registered task type) and runs one at a time within the order. The loop advances to the next stage when the current one completes.
+Each stage has a `do` field (task key, must match a registered task type) and runs one at a time within the order. The loop advances to the next stage when the current one completes.
 
 A typical order pipeline: execute, then quality, then reflect — all as stages of one order.
 
 ## Task Types
 
-Read `task_types` from mise to discover every schedulable task type and its `schedule` hint. Any registered task type can be a stage within an order. Use `task_key` on each stage to bind it to a task type.
+Read `task_types` from mise to discover every schedulable task type and its `schedule` hint. Any registered task type can be a stage within an order. Use `do` on each stage to bind it to a task type.
 
 ### Execute Tasks
 
@@ -42,7 +42,7 @@ Backlog items always have `id` and `title`. Other fields are adapter-defined and
 
 **Parallelizing phases:** Read the plan to identify dependencies between phases. Phases that depend on earlier phases' output (shared types, APIs, schemas) must be sequential stages. Phases that touch independent areas of the codebase (separate packages, unrelated features, docs vs code) can be parallel stages within the same order. When in doubt, sequential is safer — but don't serialize work that has no real dependency.
 
-**Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a plan-first order: a `prompt`-only stage (no `task_key`) that invokes `/plan`, followed by an `adversarial-review` stage to challenge the plan. No quality or reflect stages — planning output is a design document, not code. **Do NOT use `task_key: "execute"` for plan-first stages** — the execute skill tells the agent to implement, which conflicts with the plan skill's "stop after planning" instruction. The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally with the standard execute → quality → reflect pipeline.
+**Items without plans:** Assess complexity before scheduling. If the item is straightforward (single concern, clear scope, small change), schedule as a simple execute task using the backlog item's title and description as the prompt. If the item is complex (multi-file, cross-cutting, ambiguous scope, or you'd want to see an architecture sketch before coding), schedule a plan-first order: a `prompt`-only stage (no `do`) that invokes `/plan`, followed by an `adversarial-review` stage to challenge the plan. No quality or reflect stages — planning output is a design document, not code. **Do NOT use `"do": "execute"` for plan-first stages** — the execute skill tells the agent to implement, which conflicts with the plan skill's "stop after planning" instruction. The plan skill will write phased plans to `brain/plans/`; on the next scheduling cycle, the item will have a `plan` field and can be scheduled normally with the standard execute → quality → reflect pipeline.
 
 **Standalone orders:** Orders can have arbitrary IDs — they don't need to correspond to a backlog item. When a standalone order completes, the `backlog done` adapter call is a no-op (no matching item to mark done). Use standalone orders for shared infrastructure, maintenance tasks, or cross-cutting work that serves multiple backlog items.
 
@@ -73,10 +73,6 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 - **Cheapest mode**: Prefer the lowest-cost provider/model that can handle the task.
 - **Explicit rationale**: Every order must cite which principle or rule drove its placement.
 - **Timebox failures**: If an item has failed 2+ times in `recent_history`, deschedule or split it.
-
-## Stage Lifecycle
-
-Write stages with `"status": "pending"`. The loop manages all subsequent transitions (dispatching, running, merging, review, completed/failed).
 
 ## Model Routing
 

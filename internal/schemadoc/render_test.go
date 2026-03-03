@@ -46,8 +46,8 @@ func TestRenderPromptJSONOrders(t *testing.T) {
 	if !strings.Contains(out, "\n```") {
 		t.Fatalf("missing closing code fence: %q", out)
 	}
-	if !strings.Contains(out, `"generated_at":`) {
-		t.Fatalf("missing generated_at in orders prompt schema: %q", out)
+	if !strings.Contains(out, `"do":`) {
+		t.Fatalf("missing do field in orders prompt schema: %q", out)
 	}
 	if !strings.Contains(out, "Constraints:") {
 		t.Fatalf("missing constraints section in orders prompt schema: %q", out)

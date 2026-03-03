@@ -21,11 +21,10 @@ Use cases:
       "title": "implement work orders redesign",
       "plan": ["plans/49-work-orders-redesign/overview"],
       "rationale": "foundation-before-feature: core infra needed by all other work",
-      "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
-        {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process"},
+        {"do": "quality", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"},
+        {"do": "reflect", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
@@ -34,7 +33,7 @@ Use cases:
 
 ## Plan-first order (no plan yet)
 
-No `task_key` on the planning stage — avoids loading the execute skill, which would conflict with the plan skill's "stop after planning" instruction. Use `prompt` to describe the planning task directly.
+No `do` on the planning stage — avoids loading the execute skill, which would conflict with the plan skill's "stop after planning" instruction. Use `prompt` to describe the planning task directly.
 
 ```json
 {
@@ -43,11 +42,10 @@ No `task_key` on the planning stage — avoids loading the execute skill, which 
       "id": "97",
       "title": "adapter schema validator — plan",
       "rationale": "complex cross-cutting item without a plan; needs plan-first then adversarial review",
-      "status": "active",
       "stages": [
-        {"provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending",
+        {"with": "claude", "model": "claude-opus-4-6", "runtime": "process",
          "prompt": "Plan backlog item #97: adapter schema validator. Use /plan to break it down into phases. Do not implement — planning only."},
-        {"task_key": "adversarial-review", "skill": "adversarial-review", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "adversarial-review", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
@@ -63,11 +61,10 @@ No `task_key` on the planning stage — avoids loading the execute skill, which 
       "id": "52",
       "title": "design cache invalidation strategy",
       "rationale": "unresolved design question needs structured debate before implementation",
-      "status": "active",
       "stages": [
-        {"task_key": "debate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
-        {"task_key": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending"},
-        {"task_key": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "debate", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"},
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process"},
+        {"do": "quality", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
@@ -83,11 +80,10 @@ No `task_key` on the planning stage — avoids loading the execute skill, which 
       "id": "infra-event-system",
       "title": "shared event types used by subagent-tracking and diffs-integration",
       "rationale": "foundation-before-feature: both plan 84 and plan 86 depend on shared event types",
-      "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process",
          "extra_prompt": "Create shared event types in internal/event/ that both subagent-tracking and diffs-integration will consume. Keep scope narrow — only the shared interfaces, not plan-specific logic."},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "quality", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
@@ -106,15 +102,14 @@ One order, three execute stages. Phase 1 is sequential (phases 2 and 3 depend on
       "title": "plan 84: notifications",
       "plan": ["brain/plans/84-notifications/overview.md"],
       "rationale": "one-plan-at-a-time: highest-priority plan with remaining phases; phases 2+3 parallelized (independent packages)",
-      "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process",
          "extra_prompt": "Phase 1: define shared event types in internal/event/. Phases 2 and 3 depend on these types."},
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process",
          "extra_prompt": "Phase 2: wire event types into internal/adapter/. Independent of phase 3 — can run in parallel."},
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "process", "status": "pending",
+        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "process",
          "extra_prompt": "Phase 3: build notification panel in internal/ui/. Independent of phase 2 — can run in parallel."},
-        {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "quality", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
@@ -130,9 +125,8 @@ One order, three execute stages. Phase 1 is sequential (phases 2 and 3 depend on
       "id": "meditate-1",
       "title": "audit brain vault after recent reflects",
       "rationale": "3 reflects accumulated, time to consolidate",
-      "status": "active",
       "stages": [
-        {"task_key": "meditate", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
+        {"do": "meditate", "with": "claude", "model": "claude-opus-4-6", "runtime": "process"}
       ]
     }
   ]
