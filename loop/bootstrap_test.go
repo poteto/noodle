@@ -479,3 +479,55 @@ func TestSystemPromptFieldOnDispatchRequest(t *testing.T) {
 		t.Fatalf("validate: %v", err)
 	}
 }
+
+func TestBootstrapInFlightDoesNotRebuildRegistryEveryCycle(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	skillPath := createBootstrapSkillFixture(t, projectDir)
+
+	rt := newMockRuntime()
+	l := New(projectDir, "noodle", bootstrapConfig(skillPath), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": rt},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     bootstrapMise(),
+		Monitor:  fakeMonitor{},
+		Registry: testRegistryWithoutSchedule(),
+		Now:      time.Now,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle 1: %v", err)
+	}
+	if l.bootstrapInFlight == nil {
+		t.Fatal("expected bootstrap in flight after first cycle")
+	}
+
+	eventsPath := filepath.Join(runtimeDir, "loop-events.ndjson")
+	initialEvents, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read initial events: %v", err)
+	}
+	initialRebuilds := strings.Count(string(initialEvents), `"type":"registry.rebuilt"`)
+	if initialRebuilds == 0 {
+		t.Fatal("expected initial registry rebuild event")
+	}
+
+	for i := 0; i < 3; i++ {
+		if err := l.Cycle(context.Background()); err != nil {
+			t.Fatalf("cycle %d: %v", i+2, err)
+		}
+	}
+
+	finalEvents, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read final events: %v", err)
+	}
+	finalRebuilds := strings.Count(string(finalEvents), `"type":"registry.rebuilt"`)
+	if finalRebuilds != initialRebuilds {
+		t.Fatalf("registry rebuild count changed while bootstrap in flight: initial=%d final=%d", initialRebuilds, finalRebuilds)
+	}
+}

@@ -85,6 +85,13 @@ function stageNodeKey(stage: {
   );
 }
 
+function isScheduleOnlyOrder(order: { stages: { task_key?: string }[] }): boolean {
+  return (
+    order.stages.length > 0 &&
+    order.stages.every((s) => s.task_key?.toLowerCase().trim() === "schedule")
+  );
+}
+
 export function Sidebar() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { activeChannel } = useActiveChannel();
@@ -128,9 +135,15 @@ export function Sidebar() {
   const schedulerRunning = snapshot.sessions.some(
     (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
   );
-  const visibleOrders = snapshot.orders.filter(
-    (o) => !o.stages.every((s) => s.task_key?.toLowerCase().trim() === "schedule"),
+  const bootstrapScheduleRunning = snapshot.sessions.some(
+    (s) => s.id.toLowerCase().startsWith("bootstrap-schedule") && s.status === "running",
   );
+  const visibleOrders = snapshot.orders.filter((o) => {
+    if (!isScheduleOnlyOrder(o)) {
+      return true;
+    }
+    return bootstrapScheduleRunning;
+  });
 
   return (
     <aside className="sidebar">
@@ -200,6 +213,13 @@ export function Sidebar() {
         {visibleOrders.map((order) => {
           const isExpanded = expandedOrders.has(order.id);
           const hasActiveStage = order.stages.some((s) => s.status === "active");
+          const isBootstrapScheduleOrder =
+            bootstrapScheduleRunning &&
+            order.id.toLowerCase().trim() === "schedule" &&
+            isScheduleOnlyOrder(order);
+          const orderLabel = isBootstrapScheduleOrder
+            ? "Bootstrapping schedule skill"
+            : order.title || order.id;
           const orderActive = order.stages.some((s) => {
             if (!s.session_id) {
               return false;
@@ -217,7 +237,7 @@ export function Sidebar() {
                 aria-expanded={isExpanded}
               >
                 <ChevronRight className={`tree-chevron ${isExpanded ? "open" : ""}`} size={14} />
-                <OverflowTooltip className="tree-label" text={order.title || order.id} />
+                <OverflowTooltip className="tree-label" text={orderLabel} />
                 {hasActiveStage && <div className="status-dot active" />}
               </button>
               <div className={`tree-stages ${isExpanded ? "open" : ""}`}>

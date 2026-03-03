@@ -140,6 +140,11 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	stage := *stagePtr
 
 	skillName := nonEmpty(stage.Skill, "schedule")
+	if _, ok := l.registry.ByKey(skillName); !ok && l.bootstrapInFlight != nil {
+		// Bootstrap session is already running; avoid belt-and-suspenders
+		// registry rebuild churn on every cycle while it creates the skill.
+		return nil
+	}
 	// Belt-and-suspenders: ensure the schedule skill is fresh before dispatch.
 	if !l.ensureSkillFresh(skillName) {
 		return l.spawnBootstrapIfNeeded(ctx, order)

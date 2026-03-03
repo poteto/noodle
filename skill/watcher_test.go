@@ -218,3 +218,47 @@ func TestWatcherContextCancellation(t *testing.T) {
 		t.Fatal("Run did not exit after context cancellation")
 	}
 }
+
+func TestWatcherIgnoresSiblingEventsWhenSearchPathMissing(t *testing.T) {
+	root := t.TempDir()
+	missingSkillsPath := filepath.Join(root, ".agents", "skills")
+
+	var count atomic.Int32
+	sw, err := NewSkillWatcher([]string{missingSkillsPath}, func() { count.Add(1) })
+	if err != nil {
+		t.Fatalf("create watcher: %v", err)
+	}
+	defer sw.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go sw.Run(ctx)
+
+	// Write under sibling .noodle directory. This should not trigger callback
+	// even when watcher is attached to root as nearest existing parent.
+	noodleDir := filepath.Join(root, ".noodle")
+	if err := os.MkdirAll(noodleDir, 0o755); err != nil {
+		t.Fatalf("mkdir .noodle: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(noodleDir, "status.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write status: %v", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if got := count.Load(); got != 0 {
+		t.Fatalf("unexpected callback for sibling directory writes, got %d", got)
+	}
+
+	// Creating the configured search path should trigger callback.
+	if err := os.MkdirAll(missingSkillsPath, 0o755); err != nil {
+		t.Fatalf("mkdir skills path: %v", err)
+	}
+	deadline := time.After(2 * time.Second)
+	for count.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("callback not fired for search path creation")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}

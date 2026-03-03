@@ -40,6 +40,26 @@ describe("SchedulerFeed", () => {
     expect(screen.getByText("Send")).toBeInTheDocument();
   });
 
+  it("shows bootstrap status message when schedule bootstrap session is running", () => {
+    const bootstrapSession = buildSession({
+      id: "bootstrap-schedule-123",
+      task_key: "schedule",
+      status: "running",
+      current_action: "",
+    });
+    mockSnapshot = buildSnapshot({
+      loop_state: "running",
+      sessions: [bootstrapSession],
+      active: [bootstrapSession],
+    });
+
+    render(<SchedulerFeed />);
+    expect(screen.getByText("Bootstrapping schedule skill...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Bootstrapping schedule skill. Creating scheduler instructions now."),
+    ).toBeInTheDocument();
+  });
+
   it("sends steer command on submit", async () => {
     render(<SchedulerFeed />);
     const user = userEvent.setup();

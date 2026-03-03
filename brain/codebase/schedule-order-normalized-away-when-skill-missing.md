@@ -31,3 +31,21 @@
 - Added a foundational exception for scheduler bootstrap:
   - Preserve order `id == "schedule"` stage `task_key == "schedule"` through normalization and audit even when registry lacks schedule.
   - This keeps the bootstrap lane alive so `spawnSchedule` can dispatch built-in bootstrap (`bootstrap-schedule`), avoiding `running/idle` churn in empty repos.
+
+## Follow-up Fix 2 (2026-03-03)
+
+- New symptom after startup loop fix: Noodle no longer churned `idle/running`, but UI looked stuck during bootstrap with little visible progress.
+- Root cause:
+  - `spawnSchedule()` called `ensureSkillFresh("schedule")` every cycle while bootstrap was already in flight.
+  - Each `ensureSkillFresh` call forced a full registry rebuild and emitted `registry.rebuilt`.
+  - In active loops this produced event spam (`loop-events.ndjson`) that obscured meaningful progress and made the scheduler channel look broken/noisy.
+- Backend fix:
+  - In `spawnSchedule`, skip `ensureSkillFresh` when the `schedule` task type is missing but `bootstrapInFlight` is already set.
+  - Keep one initial rebuild, avoid repeated rebuild churn until bootstrap completes.
+  - Regression test: `TestBootstrapInFlightDoesNotRebuildRegistryEveryCycle`.
+- Watcher hardening:
+  - `skill/watcher.go` now filters fsnotify events to configured skill search paths (and their ancestors for path creation), avoiding unrelated parent-watch churn.
+  - Regression test: `TestWatcherIgnoresSiblingEventsWhenSearchPathMissing`.
+- UI follow-up:
+  - Sidebar now surfaces schedule bootstrap as a visible order during active bootstrap sessions.
+  - Scheduler feed now shows explicit status text: `Bootstrapping schedule skill...`.

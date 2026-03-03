@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Sidebar } from "./Sidebar";
-import { buildSnapshot, buildOrder, buildStage } from "../test-utils";
+import { buildSnapshot, buildOrder, buildStage, buildSession } from "../test-utils";
 import type { Snapshot, ChannelId } from "~/client";
 
 const mockSetActiveChannel = vi.fn();
@@ -79,6 +79,29 @@ describe("Sidebar", () => {
     });
     render(<Sidebar />);
     expect(screen.getByText("Fix auth bug")).toBeInTheDocument();
+  });
+
+  it("shows schedule bootstrap order in sidebar during bootstrap session", () => {
+    mockSnapshot = buildSnapshot({
+      sessions: [
+        buildSession({
+          id: "bootstrap-schedule-123",
+          task_key: "schedule",
+          status: "running",
+        }),
+      ],
+      orders: [
+        buildOrder({
+          id: "schedule",
+          title: "scheduling tasks based on your backlog",
+          status: "active",
+          stages: [buildStage({ status: "pending", task_key: "schedule" })],
+        }),
+      ],
+    });
+
+    render(<Sidebar />);
+    expect(screen.getByText("Bootstrapping schedule skill")).toBeInTheDocument();
   });
 
   it("navigates to / when Scheduler clicked", async () => {

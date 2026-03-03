@@ -9,6 +9,10 @@ function findSchedulerSession(sessions: Session[]): Session | undefined {
   return sessions.find((s) => s.task_key?.toLowerCase().trim() === "schedule");
 }
 
+function isBootstrapScheduleSession(session: Session): boolean {
+  return session.id.toLowerCase().startsWith("bootstrap-schedule");
+}
+
 export function SchedulerFeed() {
   const { data: snapshot } = useSuspenseSnapshot();
   const { mutate: send, isPending } = useSendControl();
@@ -18,6 +22,10 @@ export function SchedulerFeed() {
   const activeSchedulerSession = snapshot.active.find(
     (s) => s.task_key?.toLowerCase().trim() === "schedule" && s.status === "running",
   );
+  const bootstrapScheduleSession = snapshot.sessions.find(
+    (s) => s.status === "running" && isBootstrapScheduleSession(s),
+  );
+  const isBootstrappingSchedule = Boolean(bootstrapScheduleSession);
   const isSchedulerThinking =
     snapshot.loop_state === "running" && Boolean(activeSchedulerSession?.current_action?.trim());
   const initialEvents = schedulerSession?.id
@@ -40,9 +48,13 @@ export function SchedulerFeed() {
 
   let emptyMessage: string | undefined;
   if (events.length === 0) {
-    emptyMessage = schedulerSession
-      ? "No events yet."
-      : "No scheduler session found. Send a prompt to start.";
+    if (isBootstrappingSchedule) {
+      emptyMessage = "Bootstrapping schedule skill. Creating scheduler instructions now.";
+    } else {
+      emptyMessage = schedulerSession
+        ? "No events yet."
+        : "No scheduler session found. Send a prompt to start.";
+    }
   }
 
   function handleSubmit() {
@@ -80,6 +92,7 @@ export function SchedulerFeed() {
         <div className="feed-title">
           Scheduler
           <span className="feed-badge badge-task">{snapshot.loop_state}</span>
+          {isBootstrappingSchedule && <span className="feed-badge badge-task">bootstrap</span>}
           {schedulerSession && <span className="feed-badge">{schedulerSession.model}</span>}
         </div>
         <div className="feed-actions">
@@ -117,7 +130,9 @@ export function SchedulerFeed() {
 
       <div className="input-area">
         <div className="input-label">
-          {isSchedulerThinking ? (
+          {isBootstrappingSchedule ? (
+            "Bootstrapping schedule skill..."
+          ) : isSchedulerThinking ? (
             <>
               <span className="thinking-dots">
                 <span className="thinking-dot" />

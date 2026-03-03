@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,11 +14,12 @@ import (
 // SkillWatcher watches configured skill paths for filesystem changes and
 // triggers a callback when skills are added, modified, or deleted.
 type SkillWatcher struct {
-	watcher    *fsnotify.Watcher
-	onChange   func()
-	debounce   time.Duration
-	mu         sync.Mutex
+	watcher     *fsnotify.Watcher
+	onChange    func()
+	debounce    time.Duration
+	mu          sync.Mutex
 	watchedDirs map[string]struct{}
+	searchRoots []string
 }
 
 // NewSkillWatcher creates a watcher for the given skill search paths.
@@ -36,6 +38,7 @@ func NewSkillWatcher(paths []string, onChange func()) (*SkillWatcher, error) {
 		onChange:     onChange,
 		debounce:    200 * time.Millisecond,
 		watchedDirs: map[string]struct{}{},
+		searchRoots: make([]string, 0, len(paths)),
 	}
 
 	for _, raw := range paths {
@@ -43,6 +46,8 @@ func NewSkillWatcher(paths []string, onChange func()) (*SkillWatcher, error) {
 		if !ok {
 			continue
 		}
+		resolved = filepath.Clean(resolved)
+		sw.searchRoots = append(sw.searchRoots, resolved)
 		info, err := os.Stat(resolved)
 		if err != nil || !info.IsDir() {
 			// Path doesn't exist yet — watch nearest existing parent.
@@ -83,6 +88,12 @@ func (sw *SkillWatcher) Run(ctx context.Context) {
 			// On Remove/Rename of directories: remove stale watch.
 			if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
 				sw.maybeRemoveDirWatch(event.Name)
+			}
+			// Ignore events outside configured skill search paths. This prevents
+			// fallback parent watches (for missing paths) from triggering rebuilds
+			// on unrelated runtime churn such as .noodle/status writes.
+			if !sw.isRelevantEvent(event.Name) {
+				continue
 			}
 			// Debounce: reset timer on any qualifying event.
 			if timer == nil {
@@ -166,4 +177,27 @@ func (sw *SkillWatcher) watchNearestParent(path string) {
 		}
 		path = parent
 	}
+}
+
+func (sw *SkillWatcher) isRelevantEvent(path string) bool {
+	eventPath := filepath.Clean(path)
+	for _, root := range sw.searchRoots {
+		// Relevant when event is at/under root (skill content changed) or
+		// event is an ancestor of root (missing path created/renamed).
+		if isSameOrDescendant(eventPath, root) || isSameOrDescendant(root, eventPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSameOrDescendant(path, root string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	if rel == "." {
+		return true
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
