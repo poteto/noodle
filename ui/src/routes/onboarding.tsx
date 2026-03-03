@@ -89,11 +89,9 @@ function OnboardingPage() {
 }
 
 const LOOP_STEPS = [
-  { label: "Schedule", desc: "The scheduler picks the next task from your backlog" },
-  { label: "Execute", desc: "An agent runs the skill to do the work" },
-  { label: "Quality", desc: "Automated checks verify the output" },
-  { label: "Reflect", desc: "The agent reviews results and decides next action" },
-  { label: "Merge", desc: "Approved work lands in your codebase" },
+  { label: "Schedule", desc: "The scheduler reads your backlog and writes orders" },
+  { label: "Execute", desc: "Agents implement changes in isolated worktrees" },
+  { label: "Merge", desc: "Completed work lands on main" },
 ];
 
 const REQUIREMENTS = [
