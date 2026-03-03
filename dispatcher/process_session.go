@@ -130,12 +130,16 @@ func (s *processSession) terminalStatus(exitCode int) string {
 }
 
 func (s *processSession) Terminate() error {
-	_ = s.process.Terminate()
+	if err := s.process.Terminate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *processSession) ForceKill() error {
-	_ = s.process.ForceKill()
+	if err := s.process.ForceKill(); err != nil {
+		return err
+	}
 	s.markDone("killed")
 	return nil
 }

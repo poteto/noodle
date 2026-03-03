@@ -2,6 +2,7 @@ package loop
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -48,7 +49,7 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 
 	var payload pendingReviewFile
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return []PendingReviewItem{}, nil
+		return nil, fmt.Errorf("pending review file unreadable at %s: %w", path, err)
 	}
 	if payload.Items == nil {
 		return []PendingReviewItem{}, nil
@@ -116,7 +117,7 @@ func (l *Loop) loadPendingReview() error {
 		}
 		name := strings.TrimSpace(item.WorktreeName)
 		if name == "" {
-			continue
+			name = defaultPendingReviewWorktreeName(id, item.StageIndex, item.TaskKey)
 		}
 		next[id] = &pendingReviewCook{
 			cookIdentity: cookIdentity{
@@ -140,6 +141,14 @@ func (l *Loop) loadPendingReview() error {
 	}
 	l.cooks.pendingReview = next
 	return nil
+}
+
+func defaultPendingReviewWorktreeName(orderID string, stageIndex int, taskKey string) string {
+	name := cookBaseName(orderID, stageIndex, strings.TrimSpace(taskKey))
+	if name == "" {
+		return orderID
+	}
+	return name
 }
 
 // reconcilePendingReview removes pending review entries whose order no longer

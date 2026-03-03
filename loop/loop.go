@@ -176,28 +176,41 @@ func (l *Loop) rebuildRegistry() {
 func (l *Loop) Shutdown() {
 	l.shutdownOnce.Do(func() {
 		if l.mergeQueue != nil {
-			l.mergeQueue.Close()
+			closed := make(chan struct{})
+			go func() {
+				defer close(closed)
+				l.mergeQueue.Close()
+			}()
+			select {
+			case <-closed:
+			case <-time.After(shutdownDeadline):
+				l.logger.Warn("shutdown merge queue close timed out", "timeout", shutdownDeadline)
+			}
 		}
 
-		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
-			_ = session.Terminate()
+		l.forEachActiveSession(shutdownDeadline, func(session loopruntime.SessionHandle) {
+			if err := session.Terminate(); err != nil {
+				l.logger.Warn("shutdown terminate session failed", "session", session.ID(), "error", err)
+			}
 		})
-		l.forEachAdoptedSession(func(sessionID string) {
+		l.forEachAdoptedSession(shutdownDeadline, func(sessionID string) {
 			monitor.TerminateSessionByPID(l.runtimeDir, sessionID)
 		})
 
 		<-time.After(shutdownDeadline)
 
-		l.forEachActiveSession(func(session loopruntime.SessionHandle) {
-			_ = session.ForceKill()
+		l.forEachActiveSession(shutdownDeadline, func(session loopruntime.SessionHandle) {
+			if err := session.ForceKill(); err != nil {
+				l.logger.Warn("shutdown force kill session failed", "session", session.ID(), "error", err)
+			}
 		})
-		l.forEachAdoptedSession(func(sessionID string) {
+		l.forEachAdoptedSession(shutdownDeadline, func(sessionID string) {
 			monitor.ForceKillSessionByPID(l.runtimeDir, sessionID)
 		})
 	})
 }
 
-func (l *Loop) forEachActiveSession(fn func(loopruntime.SessionHandle)) {
+func (l *Loop) forEachActiveSession(timeout time.Duration, fn func(loopruntime.SessionHandle)) {
 	var wg sync.WaitGroup
 	for _, cook := range l.cooks.activeCooksByOrder {
 		if cook == nil || cook.session == nil {
@@ -210,10 +223,19 @@ func (l *Loop) forEachActiveSession(fn func(loopruntime.SessionHandle)) {
 			fn(session)
 		}()
 	}
-	wg.Wait()
+	wait := make(chan struct{})
+	go func() {
+		defer close(wait)
+		wg.Wait()
+	}()
+	select {
+	case <-wait:
+	case <-time.After(timeout):
+		l.logger.Warn("shutdown active session iteration timed out", "timeout", timeout)
+	}
 }
 
-func (l *Loop) forEachAdoptedSession(fn func(string)) {
+func (l *Loop) forEachAdoptedSession(timeout time.Duration, fn func(string)) {
 	var wg sync.WaitGroup
 	for _, sessionID := range l.cooks.adoptedSessions {
 		id := strings.TrimSpace(sessionID)
@@ -226,7 +248,16 @@ func (l *Loop) forEachAdoptedSession(fn func(string)) {
 			fn(id)
 		}()
 	}
-	wg.Wait()
+	wait := make(chan struct{})
+	go func() {
+		defer close(wait)
+		wg.Wait()
+	}()
+	select {
+	case <-wait:
+	case <-time.After(timeout):
+		l.logger.Warn("shutdown adopted session iteration timed out", "timeout", timeout)
+	}
 }
 
 func (l *Loop) Run(ctx context.Context) error {
@@ -457,7 +488,9 @@ func (l *Loop) shutdownAndDrain() {
 			"leaked_watchers", l.watcherCount.Load(),
 		)
 		for orderID, cook := range l.cooks.activeCooksByOrder {
-			_ = cook.session.ForceKill()
+			if err := cook.session.ForceKill(); err != nil {
+				l.logger.Warn("force kill leaked session failed", "order_id", orderID, "session_id", cook.session.ID(), "error", err)
+			}
 			l.logger.Warn("cancelled leaked session", "order_id", orderID, "session_id", cook.session.ID())
 		}
 	}

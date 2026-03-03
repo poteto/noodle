@@ -102,7 +102,12 @@ func (l *Loop) cancelSupersededCook(orderID string, cook *cookHandle) {
 		"order", orderID,
 		"session", cook.session.ID(),
 		"stage", cook.stage.TaskKey)
-	_ = cook.session.ForceKill()
+	if err := cook.session.ForceKill(); err != nil {
+		l.logger.Warn("cancel superseded cook force kill failed",
+			"order", orderID,
+			"session", cook.session.ID(),
+			"error", err)
+	}
 	l.trackCookCompleted(cook, StageResult{
 		SessionID:   cook.session.ID(),
 		Status:      StageResultCancelled,

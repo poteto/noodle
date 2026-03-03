@@ -114,6 +114,65 @@ func TestLoadPendingReviewHydratesLoopState(t *testing.T) {
 	}
 }
 
+func TestReadPendingReviewFailsOnCorruptFile(t *testing.T) {
+	runtimeDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(runtimeDir, "pending-review.json"), []byte(`{"items":`), 0o644); err != nil {
+		t.Fatalf("write pending review: %v", err)
+	}
+
+	_, err := ReadPendingReview(runtimeDir)
+	if err == nil {
+		t.Fatal("expected pending review decode error")
+	}
+}
+
+func TestLoadPendingReviewPreservesEntryWithoutWorktreeName(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	payload := `{
+  "items": [
+    {
+      "order_id": "42",
+      "stage_index": 0,
+      "task_key": "execute",
+      "session_id": "sess-42"
+    }
+  ]
+}`
+	if err := os.WriteFile(filepath.Join(runtimeDir, "pending-review.json"), []byte(payload), 0o644); err != nil {
+		t.Fatalf("write pending review: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}}},
+	}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	pending, ok := l.cooks.pendingReview["42"]
+	if !ok {
+		t.Fatal("expected pending review entry for order 42")
+	}
+	if pending.worktreeName == "" {
+		t.Fatal("expected synthesized worktree name")
+	}
+}
+
 func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
@@ -521,14 +522,23 @@ func isBranchMerged(projectDir string, branch string) bool {
 	return cmd.Run() == nil
 }
 
-// branchExists checks if a local branch ref exists.
+// branchExists checks if a local or remote branch ref exists.
 func branchExists(projectDir string, branch string) bool {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
 		return false
 	}
-	cmd := exec.Command("git", "-C", projectDir, "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
-	return cmd.Run() == nil
+	for _, ref := range []string{
+		"refs/heads/" + branch,
+		"refs/remotes/origin/" + branch,
+		"refs/remotes/" + branch,
+	} {
+		cmd := exec.Command("git", "-C", projectDir, "show-ref", "--verify", "--quiet", ref)
+		if cmd.Run() == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *Loop) refreshAdoptedTargets() {
@@ -543,7 +553,13 @@ func (l *Loop) refreshAdoptedTargets() {
 		if err != nil {
 			continue
 		}
-		if !strings.Contains(string(data), `"status":"running"`) {
+		var meta struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(data, &meta); err != nil {
+			continue
+		}
+		if stringx.Normalize(meta.Status) != "running" {
 			continue
 		}
 		if !monitor.SessionPIDAlive(l.runtimeDir, sessionID) {

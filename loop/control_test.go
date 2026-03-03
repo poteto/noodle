@@ -764,6 +764,40 @@ func TestCommandSequenceIdempotentReplay(t *testing.T) {
 	}
 }
 
+func TestProcessControlLineDerivesDeterministicIDWhenMissing(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	now := time.Date(2026, 3, 3, 12, 0, 0, 0, time.UTC)
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        func() time.Time { return now },
+		OrdersFile: ordersPath,
+	})
+
+	line := `{"action":"pause"}`
+	first := l.processControlLine(line)
+	second := l.processControlLine(line)
+
+	if first.ID == "" {
+		t.Fatal("expected derived command id")
+	}
+	if first.ID != second.ID {
+		t.Fatalf("derived IDs should be deterministic: first=%q second=%q", first.ID, second.ID)
+	}
+	if !strings.HasPrefix(first.ID, "cmd-auto-") {
+		t.Fatalf("derived ID should use cmd-auto prefix: %q", first.ID)
+	}
+}
+
 func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

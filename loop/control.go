@@ -3,6 +3,8 @@ package loop
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -145,7 +147,7 @@ func (l *Loop) processControlLine(line string) ControlAck {
 		}
 	}
 	if cmd.ID == "" {
-		cmd.ID = fmt.Sprintf("cmd-%d", l.deps.Now().UnixNano())
+		cmd.ID = deterministicControlID(cmd)
 	}
 
 	// Assign a monotonic sequence number.
@@ -165,6 +167,27 @@ func (l *Loop) processControlLine(line string) ControlAck {
 	l.cmds.processedIDs[cmd.ID] = struct{}{}
 	l.cmds.lastAppliedSeq = seq
 	return ack
+}
+
+func deterministicControlID(cmd ControlCommand) string {
+	normalized := cmd
+	normalized.ID = ""
+	normalized.At = time.Time{}
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		// Fallback should still be deterministic for identical payloads.
+		sum := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s:%s:%s",
+			cmd.Action,
+			cmd.OrderID,
+			cmd.Name,
+			cmd.Target,
+			cmd.TaskKey,
+			cmd.Prompt,
+		)))
+		return "cmd-auto-" + hex.EncodeToString(sum[:8])
+	}
+	sum := sha256.Sum256(encoded)
+	return "cmd-auto-" + hex.EncodeToString(sum[:8])
 }
 
 func appendAcks(path string, acks []ControlAck) error {
@@ -279,7 +302,9 @@ func (l *Loop) controlSteer(target, prompt string) error {
 
 func (l *Loop) controlStopAll() {
 	for _, cook := range l.cooks.activeCooksByOrder {
-		_ = cook.session.ForceKill()
+		if err := cook.session.ForceKill(); err != nil {
+			l.logger.Warn("stop-all force kill failed", "session", cook.session.ID(), "error", err)
+		}
 	}
 }
 
@@ -314,7 +339,9 @@ func (l *Loop) controlStop(name string) error {
 // controlStopKill is the fallback for non-steerable sessions: kill the process
 // and clean up the cook.
 func (l *Loop) controlStopKill(cook *cookHandle) error {
-	_ = cook.session.ForceKill()
+	if err := cook.session.ForceKill(); err != nil {
+		return fmt.Errorf("force kill session %q failed: %w", cook.session.ID(), err)
+	}
 	l.trackCookCompleted(cook, StageResult{
 		SessionID:   cook.session.ID(),
 		Status:      StageResultCancelled,
