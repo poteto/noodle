@@ -19,6 +19,7 @@ source_hash: f63ad45c1c197c9c5c9eccaaff1a89aa89cfa63dfa6448c0e3b94e5423241acc
       "active_summary_total": 1,
       "first_spawn": {
         "name": "plan-42-0-execute",
+        "skill": "execute",
         "provider": "claude",
         "model": "claude-opus-4-6"
       }
