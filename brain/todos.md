@@ -39,7 +39,7 @@ priority: [97, 95, 96, 101, 100, 84, 90, 86, 108, 88, 85, 69]
 
 ## Backend
 
-97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior.
+97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior. [[plans/97-adapter-schema-validator/overview]]
 
 
 
