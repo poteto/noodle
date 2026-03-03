@@ -30,12 +30,13 @@ var codexLineTypes = map[string]struct{}{
 }
 
 var claudeLineTypes = map[string]struct{}{
-	"system":       {},
-	"assistant":    {},
-	"result":       {},
-	"stream_event": {},
-	"user":         {},
+	"system":           {},
+	"assistant":        {},
+	"result":           {},
+	"stream_event":     {},
+	"user":             {},
 	"rate_limit_event": {},
+	"controlresponse":  {},
 }
 
 func NewRegistry() *Registry {
