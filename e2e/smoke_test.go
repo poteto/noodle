@@ -344,6 +344,151 @@ func TestSmokeStartOnceWithoutSkillsInEmptyRepo(t *testing.T) {
 	}
 }
 
+func TestSmokeStartOnceWorktreeCreateFailureShowsGitError(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("skipping: git not found on PATH")
+	}
+
+	noodleBin := buildNoodle(t)
+	dir := newProjectTempDir(t)
+
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	writeFile(t, filepath.Join(dir, "go.mod"), "module example.com/e2e\n\ngo 1.23\n")
+	writeFile(t, filepath.Join(dir, "main.go"), "package main\n\nfunc main() {}\n")
+	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
+
+	srcSkills := filepath.Join(repoRoot(t), ".agents", "skills")
+	dstSkills := filepath.Join(dir, ".agents", "skills")
+	copyDir(t, filepath.Join(srcSkills, "execute"), filepath.Join(dstSkills, "execute"))
+
+	mkdirAll(t, filepath.Join(dir, ".noodle"))
+	writeFile(t, filepath.Join(dir, ".noodle", "orders.json"), `{
+  "orders": [
+    {
+      "id": "11",
+      "title": "Trigger worktree create failure",
+      "stages": [
+        {
+          "task_key": "execute",
+          "skill": "execute",
+          "provider": "codex",
+          "model": "gpt-5.3-codex",
+          "status": "pending"
+        }
+      ],
+      "status": "active"
+    }
+  ]
+}`)
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "scaffold")
+
+	branchInUsePath := filepath.Join(newProjectTempDir(t), "branch-in-use")
+	run(t, dir, "git", "worktree", "add", "-b", "11-0-execute", branchInUsePath)
+
+	cmd := exec.Command(noodleBin, "start", "--once")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected start --once to fail when worktree creation fails\noutput:\n%s", string(out))
+	}
+
+	output := string(out)
+	t.Logf("start --once output:\n%s", strings.TrimSpace(output))
+	if !strings.Contains(output, "cycle spawn cooks failed at cycle.spawn") {
+		t.Fatalf("expected cycle.spawn failure in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "failed to create worktree") {
+		t.Fatalf("expected worktree failure in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "branch named '11-0-execute' already exists") {
+		t.Fatalf("expected underlying git error details in output, got:\n%s", output)
+	}
+}
+
+func TestSmokeStartOnceBacklogParseWarningIsRecoverable(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("skipping: git not found on PATH")
+	}
+
+	noodleBin := buildNoodle(t)
+	dir := newProjectTempDir(t)
+
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
+	srcSkills := filepath.Join(repoRoot(t), ".agents", "skills")
+	dstSkills := filepath.Join(dir, ".agents", "skills")
+	copyDir(t, filepath.Join(srcSkills, "execute"), filepath.Join(dstSkills, "execute"))
+
+	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	mkdirAll(t, adapterDir)
+	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho 'P0 malformed backlog line'\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-add"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-edit"), "#!/bin/sh\n")
+	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
+
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `mode = "auto"
+
+[routing.defaults]
+provider = "codex"
+model = "gpt-5.3-codex-spark"
+
+[skills]
+paths = [".agents/skills"]
+
+[adapters.backlog]
+skill = "todo"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+done = ".noodle/adapters/backlog-done"
+add = ".noodle/adapters/backlog-add"
+edit = ".noodle/adapters/backlog-edit"
+
+[runtime]
+default = "process"
+
+[server]
+enabled = false
+`)
+
+	cmd := exec.Command(noodleBin, "start", "--once")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected malformed backlog line to be recoverable\nerr: %v\noutput:\n%s", err, string(out))
+	}
+
+	var mise struct {
+		Warnings []string `json:"warnings"`
+	}
+	miseData, readErr := os.ReadFile(filepath.Join(dir, ".noodle", "mise.json"))
+	if readErr != nil {
+		t.Fatalf("read mise.json: %v", readErr)
+	}
+	if unmarshalErr := json.Unmarshal(miseData, &mise); unmarshalErr != nil {
+		t.Fatalf("parse mise.json: %v", unmarshalErr)
+	}
+	joinedWarnings := strings.Join(mise.Warnings, "\n")
+	if !strings.Contains(joinedWarnings, "parse backlog sync line 1") {
+		t.Fatalf("expected parse warning in mise warnings, got: %v", mise.Warnings)
+	}
+}
+
 // TestSmokeScheduleOnlyNoTaskTypes verifies that noodle starts and the scheduler
 // produces orders when no non-schedule task types are registered. With only the
 // schedule skill present, the scheduler should create prompt-only (ad-hoc)

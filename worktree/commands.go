@@ -41,10 +41,10 @@ func (a *App) Create(name string, opts ...CreateOpts) error {
 	if o.From != "" {
 		addArgs = append(addArgs, o.From)
 	}
-	if err := a.gitRun(addArgs...); err != nil {
+	if err := a.gitRunWithDetails(addArgs...); err != nil {
 		// Reuse an existing local branch if it already exists but has no worktree path.
 		if a.branchExists(name) {
-			if retryErr := a.gitRun("worktree", "add", wtPath, name); retryErr == nil {
+			if retryErr := a.gitRunWithDetails("worktree", "add", wtPath, name); retryErr == nil {
 				goto created
 			}
 		}

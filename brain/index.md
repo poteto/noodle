@@ -25,6 +25,7 @@
 
 ## Codebase
 - [[codebase/adopted-session-reconciliation]]
+- [[codebase/backlog-sync-parse-errors-are-recoverable-warnings]]
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
@@ -42,10 +43,12 @@
 - [[codebase/scheduler-steer-alias-prefers-live-session]]
 - [[codebase/session-failure-classification-crash-only]]
 - [[codebase/skill-path-normalization-boundary]]
+- [[codebase/startup-auto-init-config-omits-backlog-adapter]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/unix-process-liveness-eperm]]
 - [[codebase/windows-cross-build-needs-os-specific-process-control]]
 - [[codebase/worktree-gotchas]]
+- [[codebase/worktree-create-errors-must-include-git-stderr]]
 - [[codebase/worktree-prune-patch-equivalence]]
 - [[codebase/worktree-skill-entrypoint]]
 - [[codebase/ws-http-snapshot-race-after-control-ack]]

@@ -45,7 +45,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 		if strings.TrimSpace(b.config.Adapters["backlog"].Scripts["sync"]) == "" {
 			warnings = append(warnings, "backlog sync script missing; returning empty backlog")
 		} else {
-			items, err := b.runner.SyncBacklog(ctx)
+			items, parseWarnings, err := b.runner.SyncBacklog(ctx)
 			if err != nil {
 				if isMissingSyncScriptError(err) {
 					warnings = append(warnings, "backlog sync script missing; returning empty backlog")
@@ -53,6 +53,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 					return Brief{}, warnings, false, err
 				}
 			} else {
+				warnings = append(warnings, parseWarnings...)
 				backlog = filterActiveBacklog(items)
 			}
 		}

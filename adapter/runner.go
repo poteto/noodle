@@ -82,10 +82,10 @@ func (r *Runner) Run(ctx context.Context, adapterName, action string, options Ru
 	return stdout.String(), nil
 }
 
-func (r *Runner) SyncBacklog(ctx context.Context) ([]BacklogItem, error) {
+func (r *Runner) SyncBacklog(ctx context.Context) ([]BacklogItem, []string, error) {
 	output, err := r.Run(ctx, "backlog", "sync", RunOptions{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return ParseBacklogItems(output)
 }
@@ -103,4 +103,3 @@ func commandWithArgs(command string, args []string) string {
 	}
 	return b.String()
 }
-

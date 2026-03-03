@@ -361,6 +361,30 @@ func TestCreateReusesExistingBranch(t *testing.T) {
 	}
 }
 
+func TestCreateIncludesGitErrorDetails(t *testing.T) {
+	t.Parallel()
+	skipWorktreeIntegrationShort(t)
+
+	dir := setupTestRepo(t)
+
+	// Create a branch in a non-managed worktree path so App.Create has to run
+	// git worktree add and will receive the underlying git error text.
+	externalPath := filepath.Join(t.TempDir(), "already-checked-out")
+	runGitIn(t, dir, "worktree", "add", "-b", "already-checked-out", externalPath)
+
+	app := &App{Root: dir, Quiet: true}
+	err := app.Create("already-checked-out")
+	if err == nil {
+		t.Fatal("expected Create to fail")
+	}
+	if !strings.Contains(err.Error(), "failed to create worktree") {
+		t.Fatalf("expected wrapped create error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "a branch named 'already-checked-out' already exists") {
+		t.Fatalf("expected git stderr details in error, got: %v", err)
+	}
+}
+
 func TestCreateFromBranch(t *testing.T) {
 	t.Parallel()
 	skipWorktreeIntegrationShort(t)

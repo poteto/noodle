@@ -52,12 +52,40 @@ func TestRunnerRunCapturesStderrOnError(t *testing.T) {
 }
 
 func TestParseBacklogItemsValidation(t *testing.T) {
-	_, err := ParseBacklogItems(`{"title":"Missing ID","status":"open"}`)
-	if err == nil {
-		t.Fatal("expected missing id error")
+	items, warnings, err := ParseBacklogItems(`{"title":"Missing ID","status":"open"}`)
+	if err != nil {
+		t.Fatalf("expected recoverable parse warning, got error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "missing required field id") {
-		t.Fatalf("unexpected error: %v", err)
+	if len(items) != 0 {
+		t.Fatalf("items len = %d, want 0", len(items))
+	}
+	if len(warnings) == 0 {
+		t.Fatal("expected validation warning")
+	}
+	if !strings.Contains(warnings[0], "missing required field id") {
+		t.Fatalf("unexpected warning: %v", warnings[0])
 	}
 }
 
+func TestParseBacklogItemsSkipsInvalidJSON(t *testing.T) {
+	items, warnings, err := ParseBacklogItems(strings.Join([]string{
+		`{"id":"42","title":"valid","status":"open"}`,
+		`P0 fix me`,
+		`{"id":"43","title":"valid two","status":"open"}`,
+	}, "\n"))
+	if err != nil {
+		t.Fatalf("expected recoverable parse warning, got error: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items len = %d, want 2", len(items))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warnings len = %d, want 1", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "parse backlog sync line 2") {
+		t.Fatalf("unexpected warning: %v", warnings[0])
+	}
+	if !strings.Contains(warnings[0], "invalid character") {
+		t.Fatalf("unexpected warning: %v", warnings[0])
+	}
+}

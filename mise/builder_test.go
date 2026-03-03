@@ -137,6 +137,40 @@ func TestBuilderMissingSyncScriptWarnsAndContinues(t *testing.T) {
 	}
 }
 
+func TestBuilderBacklogParseWarningsAreRecoverable(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".noodle"), 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Adapters = map[string]config.AdapterConfig{
+		"backlog": {
+			Scripts: map[string]string{
+				"sync": "printf '%s\\n' 'P0 repair adapter output' '{\"id\":\"42\",\"title\":\"Valid item\",\"status\":\"open\"}'",
+			},
+		},
+	}
+
+	builder := NewBuilder(projectDir, cfg)
+	brief, warnings, _, err := builder.Build(context.Background(), ActiveSummary{}, nil)
+	if err != nil {
+		t.Fatalf("build mise: %v", err)
+	}
+	if len(brief.Backlog) != 1 {
+		t.Fatalf("backlog count = %d, want 1", len(brief.Backlog))
+	}
+	if brief.Backlog[0].ID != "42" {
+		t.Fatalf("backlog id = %q, want 42", brief.Backlog[0].ID)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warnings len = %d, want 1", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "parse backlog sync line 1") {
+		t.Fatalf("unexpected warning: %q", warnings[0])
+	}
+}
+
 func TestReadRecentEventsWatermark(t *testing.T) {
 	dir := t.TempDir()
 	eventsPath := filepath.Join(dir, "loop-events.ndjson")

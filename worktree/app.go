@@ -134,6 +134,25 @@ func (a *App) gitRun(args ...string) error {
 	return cmd.Run()
 }
 
+// gitRunWithDetails runs a git command and includes stderr/stdout text in the
+// returned error when the command fails. This keeps user-facing logs actionable
+// even when App.Quiet is true.
+func (a *App) gitRunWithDetails(args ...string) error {
+	cmd := a.git(args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		details := strings.TrimSpace(string(out))
+		if details == "" {
+			return err
+		}
+		return fmt.Errorf("%w: %s", err, details)
+	}
+	if !a.Quiet && len(out) > 0 {
+		_, _ = a.stdout().Write(out)
+	}
+	return nil
+}
+
 // assertRootClean returns an error if the root checkout has uncommitted changes
 // (staged or unstaged). This prevents merges from incorporating unintended state.
 func (a *App) assertRootClean() error {
