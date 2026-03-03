@@ -146,45 +146,57 @@ func TestCompactParseRejectsUnknownFields(t *testing.T) {
 	}
 }
 
-func TestCompactParseRejectsStageWithoutWith(t *testing.T) {
+func TestCompactParseAcceptsStageWithoutProviderOrModel(t *testing.T) {
 	data := []byte(`{
 		"orders": [
 			{
 				"id": "1",
 				"stages": [
-					{"do": "execute", "with": "", "model": "gpt-5.3-codex"}
+					{"do": "execute"}
 				]
 			}
 		]
 	}`)
 
-	_, err := ParseCompactOrders(data)
-	if err == nil {
-		t.Fatalf("ParseCompactOrders succeeded with empty with")
+	got, err := ParseCompactOrders(data)
+	if err != nil {
+		t.Fatalf("ParseCompactOrders returned error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "provider is empty") {
-		t.Fatalf("error did not mention provider empty: %v", err)
+	if len(got.Orders) != 1 || len(got.Orders[0].Stages) != 1 {
+		t.Fatalf("unexpected parsed order shape: %#v", got)
+	}
+	stage := got.Orders[0].Stages[0]
+	if stage.With != "" {
+		t.Fatalf("With = %q, want empty", stage.With)
+	}
+	if stage.Model != "" {
+		t.Fatalf("Model = %q, want empty", stage.Model)
 	}
 }
 
-func TestCompactParseRejectsStageWithoutModel(t *testing.T) {
-	data := []byte(`{
-		"orders": [
+func TestCompactExpandTrimsWhitespaceDo(t *testing.T) {
+	compact := CompactOrdersFile{
+		Orders: []CompactOrder{
 			{
-				"id": "1",
-				"stages": [
-					{"do": "execute", "with": "codex", "model": ""}
-				]
-			}
-		]
-	}`)
-
-	_, err := ParseCompactOrders(data)
-	if err == nil {
-		t.Fatalf("ParseCompactOrders succeeded with empty model")
+				ID: "trim",
+				Stages: []CompactStage{
+					{Do: "  execute  ", With: "codex", Model: "gpt-5.3-codex"},
+				},
+			},
+		},
 	}
-	if !strings.Contains(err.Error(), "model is empty") {
-		t.Fatalf("error did not mention model empty: %v", err)
+
+	got, err := ExpandCompactOrders(compact)
+	if err != nil {
+		t.Fatalf("ExpandCompactOrders returned error: %v", err)
+	}
+
+	stage := got.Orders[0].Stages[0]
+	if stage.TaskKey != "execute" {
+		t.Fatalf("TaskKey = %q, want %q", stage.TaskKey, "execute")
+	}
+	if stage.Skill != "execute" {
+		t.Fatalf("Skill = %q, want %q", stage.Skill, "execute")
 	}
 }
 

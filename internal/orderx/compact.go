@@ -10,8 +10,8 @@ import (
 // CompactStage is the scheduler wire format for a stage.
 type CompactStage struct {
 	Do          string                     `json:"do,omitempty"`
-	With        string                     `json:"with"`
-	Model       string                     `json:"model"`
+	With        string                     `json:"with,omitempty"`
+	Model       string                     `json:"model,omitempty"`
 	Runtime     string                     `json:"runtime,omitempty"`
 	Prompt      string                     `json:"prompt,omitempty"`
 	ExtraPrompt string                     `json:"extra_prompt,omitempty"`
@@ -74,10 +74,11 @@ func ExpandCompactOrders(compact CompactOrdersFile) (OrdersFile, error) {
 			if err := validateCompactStage(stage, i, j); err != nil {
 				return OrdersFile{}, err
 			}
+			do := strings.TrimSpace(stage.Do)
 			stages = append(stages, Stage{
-				TaskKey:     stage.Do,
+				TaskKey:     do,
 				Prompt:      stage.Prompt,
-				Skill:       stage.Do,
+				Skill:       do,
 				Provider:    stage.With,
 				Model:       stage.Model,
 				Runtime:     stage.Runtime,
@@ -104,12 +105,6 @@ func ExpandCompactOrders(compact CompactOrdersFile) (OrdersFile, error) {
 }
 
 func validateCompactStage(stage CompactStage, orderIndex, stageIndex int) error {
-	if strings.TrimSpace(stage.With) == "" {
-		return fmt.Errorf("order %d stage %d provider is empty", orderIndex, stageIndex)
-	}
-	if strings.TrimSpace(stage.Model) == "" {
-		return fmt.Errorf("order %d stage %d model is empty", orderIndex, stageIndex)
-	}
 	if strings.TrimSpace(stage.Do) == "" && strings.TrimSpace(stage.Prompt) == "" {
 		return fmt.Errorf("order %d stage %d task key and prompt are both empty", orderIndex, stageIndex)
 	}
