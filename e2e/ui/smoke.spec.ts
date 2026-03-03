@@ -1,4 +1,31 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
+
+async function pollSnapshotForActiveWorktreeAgent(
+  request: APIRequestContext,
+): Promise<{ id: string }> {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const res = await request.get("/api/snapshot");
+    if (!res.ok()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      continue;
+    }
+    const snapshot = await res.json();
+    const sessions = Array.isArray(snapshot?.active) ? snapshot.active : [];
+    const match = sessions.find((session: unknown) => {
+      const record = (session ?? {}) as Record<string, unknown>;
+      const taskKey = String(record.task_key ?? "").trim().toLowerCase();
+      const worktree = String(record.worktree_name ?? "").trim();
+      const id = String(record.id ?? "").trim();
+      return taskKey !== "schedule" && worktree !== "" && id !== "";
+    }) as Record<string, unknown> | undefined;
+    if (match?.id) {
+      return { id: String(match.id) };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("no active non-schedule session with worktree_name found in snapshot within 30s");
+}
 
 test.describe("Noodle UI smoke", () => {
   test("channel layout loads with sidebar, feed, and context panel", async ({ page }) => {
@@ -106,5 +133,13 @@ test.describe("Noodle UI smoke", () => {
       });
     }, baseURL);
     expect(received).toBe(true);
+  });
+
+  test("active agent context shows worktree name", async ({ page, request }) => {
+    const agent = await pollSnapshotForActiveWorktreeAgent(request);
+    await page.goto(`/actor/${agent.id}`);
+
+    await expect(page.getByText("Worktree")).toBeVisible();
+    await expect(page.getByText("Not available", { exact: true })).not.toBeVisible();
   });
 });

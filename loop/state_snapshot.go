@@ -16,6 +16,7 @@ type CookSummary struct {
 	Runtime      string    `json:"runtime,omitempty"`
 	Provider     string    `json:"provider,omitempty"`
 	Model        string    `json:"model,omitempty"`
+	WorktreeName string    `json:"worktree_name,omitempty"`
 	StartedAt    time.Time `json:"started_at"`
 	DisplayName  string    `json:"display_name,omitempty"`
 	Status       string    `json:"status"`
@@ -77,6 +78,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 			Runtime:      runtime,
 			Provider:     cook.stage.Provider,
 			Model:        cook.stage.Model,
+			WorktreeName: cook.worktreeName,
 			StartedAt:    cook.startedAt,
 			DisplayName:  cook.displayName,
 			Status:       stringx.Normalize(cook.session.Status()),

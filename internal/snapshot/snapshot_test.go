@@ -461,14 +461,15 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 		Status: "running",
 		ActiveCooks: []loop.CookSummary{
 			{
-				SessionID:   "cook-a",
-				OrderID:     "order-1",
-				TaskKey:     "execute",
-				Runtime:     "claude-code",
-				Provider:    "claude",
-				Model:       "claude-sonnet-4-6",
-				DisplayName: "Cook Alpha",
-				Status:      "running",
+				SessionID:    "cook-a",
+				OrderID:      "order-1",
+				TaskKey:      "execute",
+				Runtime:      "claude-code",
+				Provider:     "claude",
+				Model:        "claude-sonnet-4-6",
+				WorktreeName: "order-1-0-execute",
+				DisplayName:  "Cook Alpha",
+				Status:       "running",
 			},
 		},
 		RecentHistory: []mise.HistoryItem{
@@ -514,6 +515,9 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 	}
 	if snap.Active[0].DisplayName != "Cook Alpha" {
 		t.Errorf("active[0] display_name = %q", snap.Active[0].DisplayName)
+	}
+	if snap.Active[0].WorktreeName != "order-1-0-execute" {
+		t.Errorf("active[0] worktree_name = %q, want order-1-0-execute", snap.Active[0].WorktreeName)
 	}
 	if len(snap.Recent) != 1 {
 		t.Fatalf("recent count = %d, want 1", len(snap.Recent))

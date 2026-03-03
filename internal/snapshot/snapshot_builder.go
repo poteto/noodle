@@ -41,6 +41,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			Provider:        cook.Provider,
 			Model:           cook.Model,
 			LastActivity:    now.UTC(),
+			WorktreeName:    cook.WorktreeName,
 			TaskKey:         cook.TaskKey,
 			TotalCostUSD:    cook.TotalCostUSD,
 			DurationSeconds: int64(now.Sub(cook.StartedAt).Seconds()),

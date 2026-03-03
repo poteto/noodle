@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -70,7 +71,7 @@ func TestSmokeAgentLoop(t *testing.T) {
 	t.Logf("noodle started (pid %d)", cmd.Process.Pid)
 
 	// Phased milestone polling.
-	milestones := []milestone{
+	preUISmokeMilestones := []milestone{
 		{
 			name:    "Phase A: orders.json appears",
 			timeout: 60 * time.Second,
@@ -85,6 +86,8 @@ func TestSmokeAgentLoop(t *testing.T) {
 				return sessionDirExists(dir)
 			},
 		},
+	}
+	postUISmokeMilestones := []milestone{
 		{
 			name:    "Phase C: session completed/merged",
 			timeout: 180 * time.Second,
@@ -94,7 +97,24 @@ func TestSmokeAgentLoop(t *testing.T) {
 		},
 	}
 
-	err := pollMilestones(t, milestones, projectDir)
+	const baseURL = "http://127.0.0.1:13737"
+	runSmokePhases := func() error {
+		if err := pollMilestones(t, preUISmokeMilestones, projectDir); err != nil {
+			return err
+		}
+		if err := waitForServer(t, baseURL, 15*time.Second); err != nil {
+			return fmt.Errorf("server not reachable: %w", err)
+		}
+		if err := runPlaywrightTests(t, baseURL); err != nil {
+			return fmt.Errorf("playwright UI smoke: %w", err)
+		}
+		if err := pollMilestones(t, postUISmokeMilestones, projectDir); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := runSmokePhases()
 	if err != nil {
 		// Dump session diagnostics before retrying.
 		dumpSessionDiagnostics(t, projectDir)
@@ -124,23 +144,14 @@ func TestSmokeAgentLoop(t *testing.T) {
 		}
 		t.Logf("noodle restarted (pid %d)", cmd.Process.Pid)
 
-		if retryErr := pollMilestones(t, milestones, projectDir); retryErr != nil {
-			t.Fatalf("milestones not reached after retry: %v", retryErr)
+		if retryErr := runSmokePhases(); retryErr != nil {
+			t.Fatalf("smoke flow not reached after retry: %v", retryErr)
 		}
 	}
 
 	// Assertions.
 	assertOrdersExist(t, projectDir)
 	assertSessionMeta(t, projectDir)
-
-	// UI smoke tests via Playwright.
-	const baseURL = "http://127.0.0.1:13737"
-	if err := waitForServer(t, baseURL, 15*time.Second); err != nil {
-		t.Fatalf("server not reachable: %v", err)
-	}
-	if err := runPlaywrightTests(t, baseURL); err != nil {
-		t.Errorf("playwright UI smoke: %v", err)
-	}
 }
 
 func TestSmokeProcessRuntimeDefault(t *testing.T) {

@@ -42,6 +42,7 @@
 - [[codebase/session-failure-classification-crash-only]]
 - [[codebase/steer-id-correlation-and-chat-visibility]]
 - [[codebase/skill-path-normalization-boundary]]
+- [[codebase/snapshot-active-session-worktree-name-omitted]]
 - [[codebase/snapshot-tygo-output-path]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
 - [[codebase/todo-needs-plan-tagging]]
