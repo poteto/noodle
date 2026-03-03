@@ -16,10 +16,9 @@ The brain is the foundation of the entire workflow — every agent, skill, and s
 Read `brain/index.md` first. Then read the relevant entrypoint for your topic:
 
 - `brain/principles.md` for principle updates
-- `brain/delegation.md` for delegation/orchestration learnings
 - `brain/plans/index.md` for plan-related notes
 
-For directories without a dedicated index file yet (`brain/codebase/`, `brain/audits/`, `brain/vision/`), scan nearby files directly and edit an existing note when possible.
+For directories without a dedicated index file yet (`brain/codebase/`, `brain/audits/`), scan nearby files directly and edit an existing note when possible.
 
 ## Structure
 
@@ -27,11 +26,10 @@ For directories without a dedicated index file yet (`brain/codebase/`, `brain/au
 brain/
 ├── index.md              ← root entry point, links to everything
 ├── principles.md         ← index for principles/
-├── delegation.md         ← index for delegation/
 ├── todos.md              ← product backlog
-├── vision/               ← product/system vision docs
+├── vision.md             ← elevator pitch + link to architecture
+├── architecture.md       ← full technical reference
 ├── principles/           ← engineering and design principles
-├── delegation/           ← delegation and orchestration learnings
 ├── codebase/             ← project-specific knowledge and gotchas
 ├── plans/                ← numbered feature plans (02-arrow-bindings/, etc.)
 └── audits/               ← design and quality audits (date-prefixed filenames, e.g. 2026-02-20-quality-audit.md)
@@ -40,7 +38,7 @@ brain/
 **Rules:**
 
 - One topic per file. `brain/codebase/noodle-spawn-gotchas.md`, not a mega-file.
-- Maintain existing index entrypoints: `brain/index.md`, `brain/principles.md`, `brain/delegation.md`, `brain/plans/index.md`.
+- Maintain existing index entrypoints: `brain/index.md`, `brain/principles.md`, `brain/plans/index.md`.
 - If you introduce a new top-level category, add an index-style entrypoint for it (links only, no inlined content).
 - `brain/index.md` is the root. Every brain file must be reachable from it.
 - File names: lowercase, hyphenated. `worktree-gotchas.md`.

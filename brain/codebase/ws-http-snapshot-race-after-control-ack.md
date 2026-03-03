@@ -15,4 +15,4 @@
   - Session turn-boundary detail: canonical `result` events are mapped into session `cost` events, so snapshot enrichment must clear stale `current_action` on `cost` to reflect interrupted-turn idle state.
 - Regression coverage: `ui/src/client/hooks.test.tsx` asserts connected WS path skips invalidation and disconnected path still invalidates.
 
-See also [[codebase/steer-id-correlation-and-chat-visibility]], [[principles/fix-root-causes]]
+See also [[principles/fix-root-causes]], [[principles/serialize-shared-state-mutations]]

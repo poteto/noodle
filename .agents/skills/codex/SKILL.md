@@ -67,7 +67,7 @@ This is a Go project. Use `go test`, `go build`, `go vet` in prompts. Codex work
 
 When other work exists in the same codebase, include explicit "DO NOT modify or delete" file lists in the prompt. The positive instruction ("only touch these files") is insufficient — Codex interprets "clean up" broadly.
 
-See `brain/delegation/codex-scope-violations` for documented incidents.
+Per [[principles/prove-it-works]]: trust artifacts, not self-reports.
 
 ## Worktree Usage
 

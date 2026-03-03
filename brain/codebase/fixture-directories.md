@@ -55,3 +55,5 @@ Loop fixtures map filesystem state keys directly to runtime dump keys:
 - `state-02` directory maps to `runtime_dump.states["state-02"]`
 
 No numeric index math is used for expectation lookup.
+
+See also [[principles/prove-it-works]]

@@ -14,3 +14,5 @@
   - replace live `orders.json` with a schedule repair order
   - inject the validation issue into the next scheduler prompt so it can regenerate valid output
 - Effect: compact scheduler output can omit status fields without crashing the loop cycle at `build.prepare_orders`.
+
+See also [[principles/boundary-discipline]], [[principles/make-operations-idempotent]]

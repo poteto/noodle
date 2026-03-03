@@ -7,3 +7,5 @@
 - Monitor status derivation should treat `alive=false + has_events=true` as `exited` when no explicit failure claim exists.
 - Avoid mapping canonical `error` directly to `state_change -> failed`; publish as action/error context instead.
 - Only true terminal canonical events (`complete`) should set monitor completion claims. Treating `result` as completed can trigger monitor repair kills of still-running sessions.
+
+See also [[principles/prove-it-works]], [[principles/boundary-discipline]]

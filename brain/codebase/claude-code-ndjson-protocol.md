@@ -56,4 +56,4 @@ Individual NDJSON lines can be very large — multi-MB — especially when:
 
 Noodle uses stdin/stdout pipes to spawn and communicate with Claude sessions. The `stamp` sidecar monitors the NDJSON stream for cost, tool use, and outcome data.
 
-See also [[principles/boundary-discipline]]
+See also [[principles/boundary-discipline]], [[codebase/claude-print-flag-gotchas]]

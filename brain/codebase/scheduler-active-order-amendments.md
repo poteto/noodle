@@ -9,4 +9,4 @@
   - if stage definitions no longer match (or the order disappeared), the cook is force-killed and worktree-cleaned
   - this prevents stale sessions from continuing after scheduler-amended pipelines
 
-See also [[codebase/scheduler-steer-alias-prefers-live-session]], [[principles/make-operations-idempotent]], [[principles/serialize-shared-state-mutations]]
+See also [[codebase/scheduler-steer-alias-prefers-live-session]], [[codebase/orders-lifecycle-defaults-on-promotion]], [[principles/make-operations-idempotent]], [[principles/serialize-shared-state-mutations]]

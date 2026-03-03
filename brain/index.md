@@ -1,6 +1,7 @@
 # Brain
 
-## Vision
+## Architecture
+- [[architecture]]
 - [[vision]]
 
 ## Principles
@@ -27,14 +28,11 @@
 - [[codebase/claude-code-ndjson-protocol]]
 - [[codebase/claude-print-flag-gotchas]]
 - [[codebase/claude-subprocess-spawn-patterns]]
-- [[codebase/control-api-snake-camel-compat]]
-- [[codebase/empty-repo-startup-no-orders-file]]
 - [[codebase/failed-target-auto-repair-for-requeued-orders]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
-- [[codebase/local-git-identity-integration-tests]]
-- [[codebase/mark-done-idempotent-archiving]]
 - [[codebase/orders-lifecycle-defaults-on-promotion]]
+- [[codebase/release-changelog-wrapper-script]]
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
 - [[codebase/schedule-bootstrap-hot-loop]]
@@ -42,15 +40,10 @@
 - [[codebase/scheduler-active-order-amendments]]
 - [[codebase/scheduler-steer-alias-prefers-live-session]]
 - [[codebase/session-failure-classification-crash-only]]
-- [[codebase/steer-id-correlation-and-chat-visibility]]
 - [[codebase/skill-path-normalization-boundary]]
-- [[codebase/snapshot-active-session-worktree-name-omitted]]
-- [[codebase/snapshot-tygo-output-path]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
-- [[codebase/todo-needs-plan-tagging]]
-- [[codebase/treeview-tooltip-cleanup-on-unmount]]
-- [[codebase/treeview-schedule-node-routes-to-live-feed]]
 - [[codebase/unix-process-liveness-eperm]]
+- [[codebase/windows-cross-build-needs-os-specific-process-control]]
 - [[codebase/worktree-gotchas]]
 - [[codebase/worktree-prune-patch-equivalence]]
 - [[codebase/worktree-skill-entrypoint]]

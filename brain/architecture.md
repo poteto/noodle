@@ -67,7 +67,7 @@ Order "implement-feature-29"
 
 **Stage statuses:** `pending`, `active`, `merging`, `completed`, `failed`, `cancelled`.
 
-If a stage fails, the loop forwards the failure to the active scheduler session via `controller.SendMessage`. The scheduler decides recovery — it can enqueue a new order with debugging/retry stages, or skip the work entirely. Failed orders are removed from `orders.json` and tracked in `failedTargets` so the scheduler doesn't recreate them.
+If a stage fails, the loop marks the order as `failed` in `orders.json` and forwards the failure to the active scheduler session via `controller.SendMessage`. The scheduler decides recovery — it can enqueue a new order with debugging/retry stages, or skip the work entirely. Failed orders stay in `orders.json` with `status: failed` so the scheduler sees them as context and dispatch skips them (only `active` orders are dispatchable).
 
 ### The Data Flow
 
@@ -170,222 +170,45 @@ React + TypeScript + TanStack Router. The Go server streams real-time updates vi
 
 ---
 
-## Design Deep-Dives
+## Design Essentials
 
-### Why files instead of a database or message queue?
+### Concurrency Model
 
-**The core argument:** Agents already know how to read and write files. Every LLM can do it natively — it's the one capability every agent shares regardless of provider. A database requires an SDK. A message queue requires a protocol. Files require nothing.
+Git worktrees for code isolation, busy-target tracking for coordination, merge locks for serialization.
 
-**Concrete benefits:**
+**Worktree lifecycle:** Create (dedicated branch + working directory) → Execute (agent works in worktree, never primary checkout) → Merge (PID-based file lock, rebase onto main, fast-forward) → Cleanup (remove worktree, delete branch, prune).
 
-- **Zero integration cost.** A new provider (Claude, Codex, Gemini, whatever) works immediately. No client library, no API adapter. If it can read a file, it can participate in Noodle.
-- **Composition is free.** One agent's output is another's input. The schedule agent writes `orders-next.json`, the loop merges it into `orders.json`, stages dispatch from there. No pub/sub, no consumer groups — just files.
-- **Trivially debuggable.** You can `cat .noodle/orders.json` and see exactly what's queued — every order, every stage, their statuses. You can `cat .noodle/sessions/{id}/canonical.ndjson` and replay an entire session. Try doing that with a Kafka topic.
-- **Crash-safe without transactions.** Every state mutation uses atomic rename — write to `.tmp`, `os.Rename()` to the real path. POSIX guarantees atomicity. Readers always see complete valid JSON or the previous version. No WAL, no fsync dance.
+**Busy-target tracking:** The loop maintains maps (`activeCooksByOrder`, `adoptedTargets`, `adoptedSessions`, `pendingReview`) plus stage-status and failed-order derivation. An order is skipped if its ID appears in any source.
 
-**But doesn't that have race conditions?**
+**Merge conflicts** surface during rebase and are forwarded to the scheduler, then parked for human review. Recoverable, not fatal.
 
-The key insight is **single-writer discipline**. The loop is the only process that writes `orders.json`. Schedule agents write to a separate file (`orders-next.json`) — a staging area. The loop merges incoming orders into the existing file, skipping duplicates by order ID for crash safety, then deletes `orders-next.json`. There's no TOCTOU window because the loop reads the bytes once, validates in-memory, then does a single atomic write.
+### Crash Safety
 
-Control commands use a different pattern — `control.ndjson` is append-only with file locking (`flock()`), and each command gets an ID tracked in a `processedIDs` map for idempotent replay. The loop truncates the file after consuming all commands and writes acknowledgments to a separate `control-ack.ndjson`. The web UI provides the same control via an HTTP API (`POST /api/control`) and WebSocket messages — both write to the same `control.ndjson` file, maintaining the append-only semantics.
+**Orders promotion:** Schedule writes to `orders-next.json` (staging area). The loop merges into `orders.json` by order ID — duplicates are skipped for crash safety. Stage status is persisted as `active` *before* spawning, so restart + adoption reconciles orphaned stages.
 
-**What about performance at scale?**
+**Session adoption:** On startup, scan sessions, check PID liveness, adopt anything still running. Loop crash loses zero work.
 
-The `.noodle/` directory is small. Orders file has maybe 10-20 orders. Session directories accumulate but events are per-session files, not a single growing log. The real bottleneck is agent execution time (minutes), not file I/O (microseconds). If you're running 20 agents in parallel, the files they read are tiny JSON blobs — this never becomes the bottleneck.
+**Control commands:** Append-only `control.ndjson` with `flock()`, idempotent replay via `processedIDs`, acknowledgments to `control-ack.ndjson`. Web UI provides the same via HTTP API and WebSocket.
 
-Also, fsnotify means the loop doesn't poll files blindly — it triggers cycles on specific file changes (`orders-next.json`, `control.ndjson`) and falls back to a ticker for reliability. It's event-driven with a polling safety net.
+### Cost and Runaway Protection
 
-**How does Noodle handle schema evolution?**
+- **Schedule-skip:** Only spawn scheduler when no orders and no sessions.
+- **Failed order tracking:** `status: failed` orders stay in `orders.json` as context; only `active` orders dispatch.
+- **Scheduler-driven recovery:** No automatic retry — the LLM decides recovery via `controller.SendMessage`.
+- **Health monitoring:** Stuck detection (>120s idle), context budget warnings (80% of 200K tokens).
+- **Mode dial:** `auto` / `supervised` / `manual` with monotonic epoch-stamped effects.
+- **Control commands:** `pause`, `resume`, `drain`, `stop-all`, `kill`, `steer`, `merge`, `reject`, `set-max-concurrency`, etc.
 
-Right now: you just change the struct and the JSON changes with it. No backward compatibility by default — that's a stated principle. No `omitempty` shims, no legacy fallbacks. This works because the loop is the single writer/reader of most files, and agents are stateless between sessions. A running agent reads `mise.json` once at the start. If the schema changes between sessions, the next agent gets the new schema. The `internal/statever` package tracks schema versions for state files, preventing an old binary from clobbering state written by a newer version.
+### Provider Integration
 
----
+Go doesn't talk to LLMs directly. Noodle spawns provider CLIs (`claude`, `codex`) as child processes. The `stamp` sidecar pipes stdout through `stamp.Processor` to produce `raw.ndjson` + `canonical.ndjson`. The `parse/` package normalizes provider-specific NDJSON formats to canonical events.
 
-### How does Noodle handle concurrency?
+Prompts are assembled at dispatch: preamble (Noodle context) + skill bundle (`SKILL.md` + `references/*.md`) + task prompt. For Claude: `--append-system-prompt` + `--input-format stream-json`. For Codex: inlined via stdin.
 
-**The short answer:** Git worktrees for code isolation, busy-target tracking for coordination, merge locks for serialization.
+Runtimes: `process` (default, local child processes), `sprites` (remote VMs), `cursor` (stub). Configured per-stage or via `.noodle.toml` routing defaults. `internal/rtcap` provides capability queries instead of runtime branching.
 
-**Worktree lifecycle:**
+### Skill Hot-Reload
 
-1. **Create** — `git worktree add .worktrees/<name> -b noodle/<name>`. Each cook gets a dedicated branch and working directory. Dependencies are installed in the worktree. Claude settings are symlinked for shared config.
-2. **Execute** — The agent works entirely within the worktree. It can't touch the primary checkout. The process's working directory is set to the worktree path.
-3. **Merge** — Acquire a PID-based file lock (`.worktrees/.merge-lock`). Rebase the worktree branch onto main. Fast-forward merge into main. Only one merge happens at a time.
-4. **Cleanup** — Remove the worktree directory, delete the branch, `git worktree prune`.
+Four-layer defense: (1) fsnotify watcher with debounce → registry rebuild, (2) belt-and-suspenders check at dispatch → force rebuild, (3) `NormalizeAndValidateOrders` strips unknown task types, (4) bootstrap fallback → spawn bootstrap agent if schedule skill is missing (3 attempts, then degrade).
 
-**Busy-target tracking is multi-layered:**
-
-The loop maintains five maps plus stage-status derivation that prevent duplicate work on the same order:
-
-| Source | Purpose |
-|--------|---------|
-| `activeCooksByOrder` | Currently dispatched orders (keyed by order ID) |
-| `adoptedTargets` | Sessions from a previous loop run that are still alive |
-| `adoptedSessions` | Session IDs for adopted sessions (reverse lookup) |
-| `pendingReview` | Completed stages parked for human approval or merge conflict resolution |
-| `failedTargets` | Permanently failed orders (blocks scheduler from recreating them) |
-| Active stages in orders.json | Crash-safe busy detection — stages marked "active" before dispatch block re-dispatch even after restart |
-
-When planning spawns, every order is checked against all sources. If its ID appears anywhere, it's skipped.
-
-**What happens if two agents edit the same file?**
-
-They can't. Each agent is in its own worktree — a full copy of the repo on its own branch. Git handles the merge. If there's a conflict, it surfaces during the rebase step of the merge flow. The loop catches the `MergeConflictError` and forwards the conflict to the scheduler, then parks the order for pending review — the human resolves the conflict via the web UI. This is a recoverable state, not a permanent failure.
-
-**What about the merge lock? Isn't that a bottleneck?**
-
-Merges are fast — rebase + fast-forward on a local repo is sub-second. The lock prevents interleaving, not parallelism. Agents work in parallel for minutes; the merge serialization point is milliseconds. It's like a checkout line at a grocery store — the shopping takes time, the checkout doesn't.
-
-**What happens when the loop crashes mid-cycle?**
-
-Session adoption. On startup, the loop scans `.noodle/sessions/` and checks which child processes are still alive via PID liveness checks. Any session that's still running but not tracked by the loop gets "adopted" into `adoptedTargets`. The loop monitors it until completion, then handles it normally. Sessions that were running but whose process died get their metadata updated to `exited`.
-
-The orders file is also crash-safe. The `consumeOrdersNext` function merges incoming orders by ID — if a crash happens after writing `orders.json` but before deleting `orders-next.json`, the next cycle sees the same orders and skips duplicates. No data is lost or double-dispatched.
-
-This means a loop crash loses zero work. Running agents keep running. The new loop picks them up.
-
----
-
-### What prevents infinite loops or runaway costs?
-
-**Three layers of protection:**
-
-**1. Structural guards in the loop:**
-
-- **Schedule-skip optimization.** The loop only spawns a schedule agent when there are no orders and no sessions running. If the loop restarts with orders already present, it dispatches their next stages directly — no redundant 60-120s scheduling pass.
-- **Failed target tracking.** Once an order is in `failedTargets`, it's never re-dispatched by the loop and the scheduler receives it as context to avoid recreating the same work. Persisted to disk, survives loop restarts.
-
-**2. Scheduler-driven recovery:**
-
-When a stage fails, the loop forwards the failure details to the active scheduler session via `controller.SendMessage`. The scheduler decides recovery — enqueue a debugging order, reschedule with different parameters, or skip the work. There's no automatic retry pipeline; the LLM makes the judgment call. If no scheduler is active, the failed order stays in the failed targets file for the next scheduling pass.
-
-**3. Health monitoring:**
-
-- **Stuck detection.** If a session is alive but idle for >120s (no new events, no file modifications), it's marked "stuck" with red health. The monitor checks every 5 seconds using dual observation — PID liveness AND heartbeat timestamps.
-- **Context budget warnings.** When token usage hits 80% of the context window (200K tokens), health goes yellow. This is observability, not a hard kill — but it surfaces to the UI so you can intervene.
-
-**4. Human control:**
-
-- **Mode dial.** Three modes: `auto` (full automation — schedule, dispatch, retry, merge all happen automatically), `supervised` (schedule and dispatch are automatic but retry and merge require human approval), `manual` (everything requires explicit human action). Mode changes take effect immediately via a monotonic epoch — in-flight effects stamped with a stale epoch are cancelled.
-- **Control commands.** `pause`, `resume`, `drain`, `stop-all`, `kill`, `steer`, `merge`, `reject`, `request-changes`, `mode`, `enqueue`, `requeue`, `stop`, `set-max-cooks`, `advance`, `add-stage`, `park-review`, and more — available via `control.ndjson`, the HTTP API (`POST /api/control`), or the WebSocket connection. `drain` finishes active sessions and exits. `stop-all` kills everything immediately.
-- **Dynamic concurrency.** `set-max-cooks` can be changed at runtime. Set it to 0 and nothing new spawns.
-
-**Why no global cost budget?**
-
-There's no hard global cost cap — intentionally. Per-session cost is tracked (every `result` event in the canonical NDJSON stream includes `cost_usd`, `tokens_in`, `tokens_out`, accumulated in `meta.json`), but a hard cap creates a worse failure mode than the problem it solves: your system stops working mid-task with no clean recovery. The mode dial and manual controls give you the same safety with more nuance. You can see costs in the UI and decide whether to continue.
-
----
-
-### Why Go?
-
-**The split is deliberate: Go handles mechanics, LLMs handle judgment.**
-
-Go's strengths map perfectly to what the framework needs:
-
-- **Fast startup.** `noodle start` is instant. No JVM warmup, no Python import chain. This matters when the loop runs cycles every few seconds.
-- **Single binary.** `go install github.com/poteto/noodle@latest`. No runtime dependencies. The web UI is embedded in the binary via `embed.FS`.
-- **Native concurrency.** Goroutines for monitoring sessions, watching files, processing events. Each session gets monitoring goroutines for PID health checks and canonical event parsing.
-- **Cross-platform.** macOS, Linux, Windows. No bash 4+ features in the codebase — that's a stated constraint.
-- **Process management.** `os/exec`, `os.Rename()`, `flock()` — Go is great at the things Noodle needs: spawn processes, watch files, shuffle JSON around.
-
-**What Go doesn't do:** Talk to LLMs. There's no Anthropic SDK, no OpenAI client, no HTTP calls to model APIs. Noodle spawns provider CLIs (`claude`, `codex`) as child processes via `exec.Command()`. The stamp processor runs in-process — provider stdout is piped through `stamp.Processor.Process()` which timestamps each line and emits canonical events to a sidecar file. No shell pipeline needed.
-
-```
-Provider process stdout → stamp.Processor (in-memory) → raw.ndjson + canonical.ndjson
-```
-
-**Why not use the API directly? Isn't shelling out fragile?**
-
-Three reasons:
-
-1. **Provider independence.** Adding a new provider means adding a new `buildXCommand()` function that constructs CLI args. No new HTTP client, no new auth flow, no new streaming parser. The `parse/` package detects the provider from the NDJSON line format and normalizes to canonical events.
-2. **The CLI tools handle auth, retries, rate limits, streaming.** That's code I don't have to write or maintain. Claude Code handles its own API key, retry logic, and connection management.
-3. **Permission model.** `--permission-mode bypassPermissions` lets the agent run autonomously. These are CLI features, not API features.
-
-**How are prompts composed without an SDK?**
-
-At dispatch time, the dispatcher assembles the prompt from three pieces:
-
-1. **Preamble** — standard Noodle context (state file locations, conventions)
-2. **Skill bundle** — the skill's `SKILL.md` (frontmatter stripped) plus all `references/*.md` files concatenated
-3. **User prompt** — the task-specific instructions from the stage's prompt field
-
-For Claude: preamble + skill go via `--append-system-prompt`. The task prompt is sent as a user message through a bidirectional streaming controller (`--input-format stream-json`), which also enables live steering of running sessions. For Codex: preamble is inlined into the prompt (Codex handles skills natively via its own config), delivered via stdin.
-
-Executing agents invoke domain skills directly via `Skill()` calls when they need codebase-specific guidance — there's no frontmatter declaration for domain skill bundling.
-
-**Runtimes:**
-
-Sessions can run on different runtimes: `process` (default — direct child processes with process group isolation), `sprites` (remote VMs via the Sprites service), or `cursor` (stub). The runtime is configured per-stage in the order or via routing defaults in `.noodle.toml`. The `internal/rtcap` package provides a capability contract — instead of branching on runtime name, the dispatcher queries typed capabilities (`CapSteerable`, `CapPolling`, `CapRemoteSync`, `CapHeartbeat`).
-
----
-
-### How is Noodle different from other agent frameworks?
-
-**Three differentiators:**
-
-**1. Files are the API, not tools.**
-
-Most frameworks (LangChain, CrewAI, AutoGen) build around tool-calling APIs or custom protocols. An agent calls `schedule_task(params)` and the framework routes it. In Noodle, an agent writes `orders-next.json` and the loop picks it up. There's no function call boundary — the agent is just writing a file it can already see and understand.
-
-This means agents can inspect and modify their own orchestration. The schedule agent can read `orders.json` and see active orders. A cook can read `mise.json` and see what other agents are doing. Transparency is the default.
-
-**2. LLM-powered scheduling, not rule-based.**
-
-Most frameworks use deterministic routing — "after task A, run task B" or "if condition X, dispatch Y." Noodle's schedule agent reads the full project context (backlog, plans, session history, capacity, task type registry) and makes a judgment call. It can synthesize follow-up tasks it's never seen before, prioritize based on recent failures, and route work to the right model.
-
-The scheduler creates full orders with all stages laid out upfront — `execute → quality → reflect` — and the loop advances them mechanically. The LLM decides *what* work to do and *how to structure the pipeline*; Go handles the stage-by-stage execution. The schedule skill has a situational awareness table: empty orders triggers a full survey; a quality rejection triggers a rescoped retry; all items blocked means schedule reflect or meditate to use the slot productively. This is judgment, not rules.
-
-When stages fail or merge conflicts occur, the loop forwards the event to the active scheduler via `controller.SendMessage`. The scheduler can enqueue recovery orders, reprioritize, or skip — it has full context and makes the call.
-
-**3. The brain creates a genuine learning loop.**
-
-After a cook session, the reflect skill captures learnings and routes them to the right place — brain notes for knowledge, skill updates for behavior changes, todos for follow-up work. The key principle is "encode lessons in structure": a lint rule, a frontmatter flag, or a runtime check beats a textual instruction that gets ignored.
-
-After several reflect cycles, meditate does a full vault audit — spawns subagents to find stale notes, extract cross-cutting principles, and update skills. This isn't a gimmick. The skills literally get better over time because agents rewrite them based on accumulated experience.
-
-**Does the learning loop actually work?**
-
-Look at the brain vault. `brain/codebase/` has 15+ files of operational knowledge — things like "tmux shutdown causes a race with the summary buffer" or "worktree prune is equivalent to the cleanup patch." These were written by reflect agents after real sessions.
-
-The backlog itself tells the story. 40+ completed items ranging from the initial architecture redesign through fixture framework redesign, hot-reload skill resolution, structured logging, web UI. Each one went through the cook -> quality -> reflect cycle.
-
----
-
-### Notable engineering challenges
-
-Three problems that required the most careful design:
-
-#### Session lifecycle and adoption
-
-The problem: the loop is a long-running process managing agent sessions as child processes. What happens when the loop crashes? When a process dies? When a session hangs?
-
-The solution required:
-
-- **Dual observation** — PID liveness checks AND heartbeat files. Either can fail independently.
-- **Session adoption** — on startup, scan sessions directory, check which processes are still alive, adopt anything still running. This means zero work is lost on loop restart.
-- **Stuck detection** — "alive but not making progress" is harder than "dead." The monitor tracks last activity time (max of last event timestamp and file modification time) and compares against a threshold.
-- **Exit status disambiguation** — a process exiting could mean success (agent finished) or failure (crash). The canonical NDJSON is parsed for an `exited` event with status. If there's no clean exit event, it's treated as a failure.
-- **Cancellation vs failure** — if the loop intentionally kills a session (steer command), that's not a failure and shouldn't trigger failure routing. The session state tracks whether the exit was expected.
-
-#### Orders promotion and crash safety
-
-The problem: schedule agents run for 60-120 seconds. During that time, the loop is still cycling — monitoring sessions, processing controls, stamping status. If the schedule agent writes to `orders.json` directly, it races with the loop's own state mutations. And the loop can crash at any point — between writing `orders.json` and deleting `orders-next.json`, between marking a stage active and spawning its session.
-
-The solution: **staging area + idempotent merge**. Schedule writes to `orders-next.json`. The loop merges incoming orders into the existing `orders.json` by order ID — duplicates are skipped, not rejected. Then it deletes `orders-next.json`. If the loop crashes after writing but before deleting, the next cycle sees the same orders and deduplicates them. No data is lost or double-dispatched.
-
-Stage status persistence adds another layer: `spawnCook()` sets `Stage.Status = "active"` and writes to `orders.json` *before* spawning the session. If the loop crashes after persisting but before spawning, the stage is marked active with no running session — session adoption reconciles this on restart.
-
-This pattern cascades: control commands use append-only NDJSON with acknowledgments. Status is written atomically after each cycle. Every state file has a clear ownership model.
-
-#### Skill hot-reload and graceful degradation
-
-The problem: skills are just files on disk. They can appear, disappear, or change at any time. An order might reference a skill that no longer exists. A scheduled task type might become unresolvable.
-
-The solution was a four-layer defense:
-
-1. **fsnotify watcher** with 200ms debounce detects skill directory changes and triggers registry rebuilds.
-2. **Belt-and-suspenders check** at dispatch time — if the skill isn't in the registry, force a rebuild before giving up.
-3. **Orders validation** — `NormalizeAndValidateOrders` strips stages with unknown task types and logs warnings to `ActionNeeded`.
-4. **Bootstrap fallback** — if the schedule skill itself is missing, spawn a bootstrap agent to create one. After 3 failures, give up (`bootstrapExhausted = true`) and keep running without scheduling.
-
-The key insight: a missing skill is degraded operation, not a crash. The loop continues with whatever it can resolve. Same principle applies to the backlog sync script — if it's missing or broken, the brief gets an empty backlog with a warning instead of crashing the cycle.
+A missing skill is degraded operation, not a crash.
