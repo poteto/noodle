@@ -68,6 +68,25 @@ func TestProcessLineUnknownTypeEmitsCanonicalErrorEvent(t *testing.T) {
 	}
 }
 
+func TestProcessLineRateLimitEventDoesNotEmitCanonicalRoutingError(t *testing.T) {
+	processor := NewProcessor()
+	processor.Now = func() time.Time {
+		return time.Date(2026, 3, 3, 22, 0, 28, 827715000, time.UTC)
+	}
+
+	line := []byte(`{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","rateLimitType":"seven_day","utilization":0.83}}`)
+	stamped, events, err := processor.ProcessLine(line)
+	if err != nil {
+		t.Fatalf("process line: %v", err)
+	}
+	if len(stamped) == 0 {
+		t.Fatal("expected stamped output")
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count mismatch: got %d want 0", len(events))
+	}
+}
+
 func TestProcessWritesStampedAndSidecarEvents(t *testing.T) {
 	processor := NewProcessor()
 	processor.Now = func() time.Time {

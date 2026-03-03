@@ -63,6 +63,11 @@ func TestDetectProvider(t *testing.T) {
 			expected: "codex",
 		},
 		{
+			name:     "claude_rate_limit_event",
+			line:     `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}}`,
+			expected: "claude",
+		},
+		{
 			name:    "unknown_type",
 			line:    `{"type":"tool_message"}`,
 			wantErr: true,
@@ -209,6 +214,33 @@ func TestClaudeAdapterSkipsInterruptNoticeUserText(t *testing.T) {
 	events, err := adapter.Parse([]byte(line))
 	if err != nil {
 		t.Fatalf("parse user text: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count: got %d want 0", len(events))
+	}
+}
+
+func TestClaudeAdapterSkipsRateLimitEvent(t *testing.T) {
+	adapter := ClaudeAdapter{}
+	line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","rateLimitType":"seven_day","utilization":0.83},"_ts":"2026-03-03T22:00:28.827715Z"}`
+	events, err := adapter.Parse([]byte(line))
+	if err != nil {
+		t.Fatalf("parse rate_limit_event: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count: got %d want 0", len(events))
+	}
+}
+
+func TestRegistryParsesRateLimitEventViaClaudeAdapter(t *testing.T) {
+	registry := NewRegistry()
+	line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"},"_ts":"2026-03-03T22:00:28.827715Z"}`
+	provider, events, err := registry.ParseLine([]byte(line))
+	if err != nil {
+		t.Fatalf("parse line: %v", err)
+	}
+	if provider != "claude" {
+		t.Fatalf("provider = %q, want claude", provider)
 	}
 	if len(events) != 0 {
 		t.Fatalf("event count: got %d want 0", len(events))

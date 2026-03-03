@@ -139,6 +139,10 @@ func (ClaudeAdapter) Parse(line []byte) ([]CanonicalEvent, error) {
 		return []CanonicalEvent{event}, nil
 	case "stream_event":
 		return parseClaudeStreamEvent(payload.Event, ts)
+	case "rate_limit_event":
+		// Informational transport event. Route as Claude so it doesn't surface
+		// as a canonical routing error, but don't emit canonical activity.
+		return nil, nil
 	case "user":
 		msg, ok := decodeClaudeMessage(payload.Message)
 		if !ok {

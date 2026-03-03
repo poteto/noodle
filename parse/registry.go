@@ -35,6 +35,7 @@ var claudeLineTypes = map[string]struct{}{
 	"result":       {},
 	"stream_event": {},
 	"user":         {},
+	"rate_limit_event": {},
 }
 
 func NewRegistry() *Registry {
