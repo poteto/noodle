@@ -1,3 +1,23 @@
+## [0.1.1](https://github.com/poteto/noodle/compare/v0.1.0...v0.1.1) (2026-03-03)
+
+### Features
+
+* **ui:** display worktree name in ContextPanel agent stats ([497a925](https://github.com/poteto/noodle/commit/497a9255a02fcf5cd48fa9e5d434d0942671db4e))
+
+### Bug Fixes
+
+* **loop:** populate active summary for adopted sessions on startup ([756eafd](https://github.com/poteto/noodle/commit/756eafdbd886c805862ca8c61a5b1548e7eb8ba3))
+* **loop:** recover from missing orders lifecycle fields ([5f53ff3](https://github.com/poteto/noodle/commit/5f53ff34de62c5cd3903531e50d521cddd1f8461))
+* **loop:** recover from orders validation failures ([f3809fd](https://github.com/poteto/noodle/commit/f3809fdd72ee7a1bad00d121562572d35ce71bbe))
+* **plans:** address adversarial review findings for [#97](https://github.com/poteto/noodle/issues/97) ([e079c98](https://github.com/poteto/noodle/commit/e079c981d6eea10fa2fa728b6df64f12ade21068))
+* **plans:** address review findings in adapter schema validator plan ([757b692](https://github.com/poteto/noodle/commit/757b69275a8983a3964407406c933e360df6b756))
+* **release:** publish homebrew formula under Formula/ ([418b4d4](https://github.com/poteto/noodle/commit/418b4d4b9752d775583a0b3ee5cb353be2201e5d))
+* **schedule:** correct schema rendering and remove hardcoded task type examples ([0da9aa0](https://github.com/poteto/noodle/commit/0da9aa05f0bcfb0dcde4f257f70badda27a9af20))
+* **schedule:** Parallel phases are stages within one order, not separate orders ([f8cbc98](https://github.com/poteto/noodle/commit/f8cbc98c8514c585cf24c7f1c444c4d606a55405))
+* **snapshot:** Surface active worktree name in context ([caeddeb](https://github.com/poteto/noodle/commit/caeddeb7a4b537f1ecaaae321e36100f3fa4aeff))
+* **startup:** remove first-run backlog source prompt ([387e180](https://github.com/poteto/noodle/commit/387e18097f9084e621795f4b7ec9d702f98e6f32))
+* **ui:** show Mark Complete button regardless of agent status ([ff96d42](https://github.com/poteto/noodle/commit/ff96d42b6d7165e51fa66b0bf82cb45145a0438b))
+
 ## [0.1.0](https://github.com/poteto/noodle/compare/2c09f8a521e42308d82bb04f0a3f10894375f23f...v0.1.0) (2026-03-02)
 
 ### Features
