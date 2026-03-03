@@ -104,11 +104,11 @@ Start by understanding how your human works. Read the conversation history in `~
 
 Then browse `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns. Use Noodle's own schedule and execute skills as starting points, but adapt them to this project. Don't copy. The noodle skill's reference docs (from step 2) cover the orders schema and CLI details.
 
-Skills describe process, not individual tasks. They should be reusable across every backlog item. Don't bake current task details (like "add JWT auth") into the skill. The order provides task specifics at runtime.
+Skills describe process, not individual tasks. The order tells the agent *what* to do. The skill tells it *how*. Everything in the skill should be reusable across every backlog item. Don't bake current task details into the skill, and don't use the current backlog item in examples. Use generic placeholders instead.
 
 **Schedule skill** (`schedule/SKILL.md`): Reads project state and writes orders. Reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter). Writes `orders-next.json`, not `orders.json` directly. Use `noodle schema orders` to get the schema. Routes to providers/models based on `routing.defaults` in `.noodle.toml`. Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
 
-**Execute skill** (`execute/SKILL.md`): Does the work. Scopes and decomposes assigned tasks into discrete changes. Works in worktrees, never on main (`noodle worktree create/merge`). Verifies with whatever build, test, and lint commands this project uses. Commits following this project's conventions. Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
+**Execute skill** (`execute/SKILL.md`): Describes how work gets done, not what work to do. The order's prompt provides task context at runtime. The skill covers: worktree workflow (`noodle worktree create/merge`, never on main), verification commands for this project's stack, commit conventions, and scope discipline. Don't include sections about specific features or domains (like "for auth work, do X"). Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
 
 ### 6. Seed the backlog
 
