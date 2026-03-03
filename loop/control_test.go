@@ -798,6 +798,38 @@ func TestProcessControlLineDerivesDeterministicIDWhenMissing(t *testing.T) {
 	}
 }
 
+func TestProcessControlLineDerivesDistinctIDsForDistinctTimestamps(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	first := l.processControlLine(`{"action":"pause","at":"2026-03-03T12:00:00Z"}`)
+	second := l.processControlLine(`{"action":"pause","at":"2026-03-03T12:00:01Z"}`)
+
+	if first.ID == "" || second.ID == "" {
+		t.Fatalf("expected derived IDs, got first=%q second=%q", first.ID, second.ID)
+	}
+	if first.ID == second.ID {
+		t.Fatalf("expected distinct IDs for distinct command timestamps: %q", first.ID)
+	}
+	if l.cmds.lastAppliedSeq != 2 {
+		t.Fatalf("lastAppliedSeq = %d, want 2", l.cmds.lastAppliedSeq)
+	}
+}
+
 func TestFlushStatePersistsLastAppliedSeq(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

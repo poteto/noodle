@@ -172,17 +172,23 @@ func (l *Loop) processControlLine(line string) ControlAck {
 func deterministicControlID(cmd ControlCommand) string {
 	normalized := cmd
 	normalized.ID = ""
-	normalized.At = time.Time{}
+	if !normalized.At.IsZero() {
+		normalized.At = normalized.At.UTC()
+	}
 	encoded, err := json.Marshal(normalized)
 	if err != nil {
 		// Fallback should still be deterministic for identical payloads.
+		at := ""
+		if !cmd.At.IsZero() {
+			at = cmd.At.UTC().Format(time.RFC3339Nano)
+		}
 		sum := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s:%s:%s",
 			cmd.Action,
 			cmd.OrderID,
 			cmd.Name,
 			cmd.Target,
 			cmd.TaskKey,
-			cmd.Prompt,
+			cmd.Prompt+":"+at,
 		)))
 		return "cmd-auto-" + hex.EncodeToString(sum[:8])
 	}
