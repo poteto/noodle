@@ -8,7 +8,7 @@ Wire the new agent canonical events through the full pipeline: event storage, se
 
 ## Changes
 
-**`dispatcher/session_helpers.go`** -- `eventFromCanonical()` already handles the existing event types. Two changes:
+**`dispatcher/session_helpers.go`** -- in the canonical-to-event mapping path (`eventFromCanonical()` and adjacent helpers), apply two changes:
 
 1. Add cases for the 3 new event types:
    - `parse.EventAgentSpawn` -> `event.EventAgentSpawned` with payload `{agent_id, parent_agent_id, agent_name, agent_type, team_name, steerable, message}`

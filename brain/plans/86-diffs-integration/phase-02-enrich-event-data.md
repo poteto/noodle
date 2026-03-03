@@ -14,7 +14,7 @@ Thread tool input through the event pipeline so `EventLine` carries a stable ind
 
 3. **`parse/codex_items.go`** — for `function_call`/`custom_tool_call` where name matches explicit edit tool names (`apply_patch`, `edit`, `write`, `edit_file`, `write_file`), set `CanonicalEvent.ToolInput` from `item.Arguments` or `item.Input`. No heuristic matching — explicit names only.
 
-4. **`dispatcher/session_helpers.go:eventFromCanonical()`** — in the `EventAction` case (lines 72-86):
+4. **`dispatcher/session_helpers.go:eventFromCanonical()`** — in the `EventAction` mapping path:
    - If `canonical.ToolInput` is non-nil, include it in the payload map: `payload["tool_input"] = json.RawMessage(canonical.ToolInput)`.
    - **Compute `diff_meta` here** (not in `formatAction`): extract `file_path` from `ToolInput`, count lines in `old_string`/`new_string`/`content`/`patch` to produce `additions`/`deletions`. Store as `payload["diff_meta"] = map[string]any{...}`. This ensures metadata is computed once at ingestion and persisted in the NDJSON.
 

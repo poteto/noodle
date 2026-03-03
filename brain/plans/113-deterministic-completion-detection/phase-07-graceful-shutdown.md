@@ -4,13 +4,14 @@ Back to [[plans/113-deterministic-completion-detection/overview]]
 
 ## Goal
 
-Raise the hard-coded 2-second shutdown deadline to 10 seconds, giving agents meaningful time to finish work.
+Raise the current 2-second shutdown deadline to 10 seconds, giving agents meaningful time to finish work.
 
 ## Changes
 
 **`loop/loop.go`**:
 - Change `shutdownDeadline` constant from `2 * time.Second` to `10 * time.Second`
 - Update `shutdownAndDrain()` watcher timeout accordingly (`shutdownDeadline + 1 second` → 11 seconds)
+- Keep the existing serialized shutdown sequence (terminate -> wait with deadline -> force kill -> wait with deadline) and only change timing bounds
 
 ## Data Structures
 
@@ -18,7 +19,7 @@ Raise the hard-coded 2-second shutdown deadline to 10 seconds, giving agents mea
 
 ## Design Notes
 
-10 seconds is generous enough for an agent to write final files, commit, and emit `stage_yield`, while still being bounded. No yield-based early kill branching — it adds complexity and can race with sprites sync-back. The uniform SIGTERM → 10s → SIGKILL flow is simpler and sufficient.
+10 seconds is generous enough for an agent to write final files, commit, and emit `stage_yield`, while still being bounded. No yield-based early kill branching — it adds complexity and can race with sprites sync-back. The serialized terminate/wait/escalate flow remains the same; only the deadline changes.
 
 No config knob — per subtract-before-you-add, add tunability only when a concrete second use case emerges.
 
@@ -30,6 +31,6 @@ The `stop-all` and `kill` commands remain immediate SIGKILL — they're explicit
 
 ## Verification
 
-- Unit test: shutdown waits full 10s deadline, then SIGKILL
+- Unit test: shutdown waits full 10s terminate deadline before escalating to force kill
 - Verify `shutdownAndDrain` watcher timeout is `shutdownDeadline + 1 second`
 - `go test ./loop/... -race`
