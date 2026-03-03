@@ -260,6 +260,9 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 			stage: Stage{
 				TaskKey: scheduleOrderID,
 				Skill:   "bootstrap",
+				Provider: provider,
+				Model:    model,
+				Runtime:  "process",
 			},
 		},
 		session:      session,

@@ -113,6 +113,12 @@ func TestMissingScheduleSkillTriggersBootstrap(t *testing.T) {
 	if l.bootstrapInFlight == nil {
 		t.Fatal("expected bootstrapInFlight to be set")
 	}
+	if got := l.bootstrapInFlight.stage.Provider; got != req.Provider {
+		t.Fatalf("bootstrap provider = %q, want %q", got, req.Provider)
+	}
+	if got := l.bootstrapInFlight.stage.Model; got != req.Model {
+		t.Fatalf("bootstrap model = %q, want %q", got, req.Model)
+	}
 	if len(l.cooks.activeCooksByOrder) != 0 {
 		t.Fatalf("bootstrap should not be in activeCooksByOrder, got %d entries", len(l.cooks.activeCooksByOrder))
 	}
