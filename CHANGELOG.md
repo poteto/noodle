@@ -1,3 +1,13 @@
+## [0.1.3](https://github.com/poteto/noodle/compare/v0.1.2...v0.1.3) (2026-03-03)
+
+### Bug Fixes
+
+* **bootstrap:** set provider/model on startup bootstrap stage ([5deec8d](https://github.com/poteto/noodle/commit/5deec8da9da2dfe42603c6178581241d8913d189))
+* **bootstrap:** unblock handoff and improve bootstrap UX ([e2ab952](https://github.com/poteto/noodle/commit/e2ab952deaadfcca02852040111158f6b26eab53))
+* **loop:** Preserve schedule bootstrap without task type ([143874c](https://github.com/poteto/noodle/commit/143874cc89e8640e9a4fbffc8675e8fbc229ef99))
+* **snapshot:** include bootstrap session in active cooks ([3e38b10](https://github.com/poteto/noodle/commit/3e38b10421de8b154c1049f89d512e555f2d5936))
+* **startup:** reduce bootstrap thrash and expose bootstrap UI state ([9e0172a](https://github.com/poteto/noodle/commit/9e0172a4616f7448eafee25e56b09c75138b523c))
+
 ## [0.1.2](https://github.com/poteto/noodle/compare/v0.1.1...v0.1.2) (2026-03-03)
 
 ### Features
