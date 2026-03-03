@@ -303,8 +303,8 @@ import { withBase } from "vitepress";
           <div class="quickstart-left">
             <p class="quickstart-label">Ask your agent</p>
             <code class="quickstart-cmd"
-              >Install Noodle and set up this project. Follow the instructions
-              at INSTALL.md</code
+              >Install Noodle and set up this project. Follow
+              https://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md</code
             >
           </div>
           <div class="quickstart-links">
