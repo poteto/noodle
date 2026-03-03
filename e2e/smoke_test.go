@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -644,6 +645,105 @@ func assertOrdersExist(t *testing.T, projectDir string) {
 		t.Errorf("parse orders.json: %v", err)
 	}
 	t.Logf("orders.json contains %d order(s)", len(orders.Orders))
+}
+
+// TestSmokeInstallMd validates the INSTALL.md onboarding flow end-to-end:
+// codex reads INSTALL.md, scaffolds the project, then noodle start --once
+// succeeds with a populated mise.json.
+func TestSmokeInstallMd(t *testing.T) {
+	preflight(t)
+
+	noodleBin := buildNoodle(t)
+	dir := newProjectTempDir(t)
+
+	// Bare git repo with dummy Go project files — codex does all noodle scaffolding.
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	writeFile(t, filepath.Join(dir, "go.mod"), "module example.com/e2e\n\ngo 1.23\n")
+	writeFile(t, filepath.Join(dir, "main.go"), "package main\n\nfunc main() {}\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "init project")
+
+	// Run codex to follow INSTALL.md — the actual onboarding flow.
+	root := repoRoot(t)
+	installMd := filepath.Join(root, "INSTALL.md")
+	prompt := fmt.Sprintf("Install Noodle and set up this project. Follow %s", installMd)
+
+	codexOut := filepath.Join(t.TempDir(), "codex-output.txt")
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	codexCmd := exec.CommandContext(ctx, "codex", "exec",
+		"--skip-git-repo-check",
+		"--dangerously-bypass-approvals-and-sandbox",
+		"--model", "gpt-5.3-codex-spark",
+		"-o", codexOut,
+		prompt,
+	)
+	codexCmd.Dir = dir
+	codexCmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+
+	codexOutput, codexErr := codexCmd.CombinedOutput()
+	t.Logf("codex output:\n%s", string(codexOutput))
+	if outData, err := os.ReadFile(codexOut); err == nil {
+		t.Logf("codex -o file:\n%s", string(outData))
+	}
+	if codexErr != nil {
+		t.Fatalf("codex exec failed: %v", codexErr)
+	}
+
+	// Commit everything codex wrote so noodle has clean git state.
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "codex install scaffolding")
+
+	// Run noodle start --once — validates the install produced a working setup.
+	startCmd := exec.Command(noodleBin, "start", "--once")
+	startCmd.Dir = dir
+	startCmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+
+	startOut, startErr := startCmd.CombinedOutput()
+	t.Logf("noodle start --once output:\n%s", string(startOut))
+	if startErr != nil {
+		t.Fatalf("noodle start --once failed: %v\noutput:\n%s", startErr, string(startOut))
+	}
+
+	// Assertion: .noodle/mise.json exists and parses as valid JSON.
+	misePath := filepath.Join(dir, ".noodle", "mise.json")
+	miseData, err := os.ReadFile(misePath)
+	if err != nil {
+		t.Fatalf("mise.json not found: %v", err)
+	}
+
+	var mise struct {
+		Backlog []struct {
+			ID     string `json:"id"`
+			Title  string `json:"title"`
+			Status string `json:"status"`
+		} `json:"backlog"`
+	}
+	if err := json.Unmarshal(miseData, &mise); err != nil {
+		t.Fatalf("mise.json invalid JSON: %v\nraw:\n%s", err, string(miseData))
+	}
+
+	// Assertion: backlog has at least 1 item.
+	if len(mise.Backlog) == 0 {
+		t.Fatalf("mise.json backlog is empty — expected at least 1 item\nraw:\n%s", string(miseData))
+	}
+
+	// Assertion: at least one backlog item has status "open".
+	hasOpen := false
+	for _, item := range mise.Backlog {
+		t.Logf("backlog item: id=%q title=%q status=%q", item.ID, item.Title, item.Status)
+		if item.Status == "open" {
+			hasOpen = true
+		}
+	}
+	if !hasOpen {
+		t.Fatalf("no backlog item with status=open")
+	}
 }
 
 // assertSessionMeta verifies at least one non-schedule session reached a
