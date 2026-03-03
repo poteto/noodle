@@ -13,3 +13,4 @@
 - [x] [[archive/plans/108-orders-dsl/overview]]
 - [ ] [[plans/97-adapter-schema-validator/overview]]
 - [ ] [[plans/90-interactive-sessions/overview]]
+- [ ] [[plans/113-deterministic-completion-detection/overview]]
