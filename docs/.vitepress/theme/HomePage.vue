@@ -1,5 +1,17 @@
 <script setup>
+import { ref } from "vue";
 import { withBase } from "vitepress";
+
+const copied = ref(false);
+const promptText =
+  "Install Noodle and set up this project. Follow\nhttps://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md";
+
+function copyPrompt() {
+  navigator.clipboard.writeText(promptText).then(() => {
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 2000);
+  });
+}
 </script>
 
 <template>
@@ -110,12 +122,15 @@ import { withBase } from "vitepress";
 
           <!-- Quick-start strip -->
           <div class="quickstart">
-            <div class="quickstart-left">
-              <p class="quickstart-label">Ask your agent</p>
-              <code class="quickstart-cmd"
-                >Install Noodle and set up this project. Follow
-                https://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md</code
-              >
+            <p class="quickstart-label">Ask your agent</p>
+            <div class="quickstart-block">
+              <pre
+                class="quickstart-pre"
+              ><code>Install Noodle and set up this project. Follow
+<a href="https://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md" target="_blank" rel="noopener" class="quickstart-url">https://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md</a></code></pre>
+              <button class="quickstart-copy" @click="copyPrompt">
+                {{ copied ? "Copied!" : "Copy" }}
+              </button>
             </div>
           </div>
         </section>
@@ -721,23 +736,7 @@ import { withBase } from "vitepress";
    ============================================================ */
 
 .quickstart {
-  margin-top: 64px;
-  padding: 24px;
-  background: #0a0a0a;
-  border: 1px solid #161616;
-  border-radius: 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-@media (min-width: 768px) {
-  .quickstart {
-    flex-direction: row;
-    align-items: center;
-  }
+  margin-top: 48px;
 }
 
 .quickstart-label {
@@ -745,34 +744,60 @@ import { withBase } from "vitepress";
   color: #6b6b6b;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
-.quickstart-cmd {
+.quickstart-block {
+  position: relative;
+  background: #0a0a0a;
+  border: 1px solid #161616;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.quickstart-pre {
+  margin: 0;
+  padding: 20px 24px;
   font-size: 14px;
+  line-height: 1.6;
   color: #d4d4d4;
+  overflow-x: auto;
 }
 
-.cmd-prompt {
-  color: #525252;
+.quickstart-pre code {
+  font-family: "JetBrains Mono", monospace;
 }
 
-.quickstart-links {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.quickstart-link {
-  font-size: 13px;
-  color: #8a8a8a;
+.quickstart-url {
+  color: rgba(250, 204, 21, 0.6);
   text-decoration: none;
   transition: color 0.2s;
-  letter-spacing: 0.05em;
 }
 
-.quickstart-link:hover {
+.quickstart-url:hover {
+  color: #facc15;
+}
+
+.quickstart-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 12px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 2px;
+  color: #8a8a8a;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.quickstart-copy:hover {
   color: #fff;
+  border-color: #333;
 }
 
 /* ============================================================
