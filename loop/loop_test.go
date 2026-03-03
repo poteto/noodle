@@ -769,7 +769,7 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	}
 	if !strings.Contains(
 		rt.calls[0].Prompt,
-		"You may synthesize orders for non-execute task types",
+		"You may synthesize orders for task types that don't require backlog items",
 	) {
 		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", rt.calls[0].Prompt)
 	}

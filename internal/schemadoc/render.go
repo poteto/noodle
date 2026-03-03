@@ -54,7 +54,17 @@ func RenderPromptJSON(targetName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s schema (JSON):\n```json\n%s\n```", target.Info.FileName, jsonSchema), nil
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s schema (JSON):\n```json\n%s\n```", target.Info.FileName, jsonSchema)
+	if len(target.Constraints) > 0 {
+		b.WriteString("\n\nConstraints:\n")
+		for _, constraint := range target.Constraints {
+			b.WriteString("- ")
+			b.WriteString(constraint)
+			b.WriteString("\n")
+		}
+	}
+	return strings.TrimRight(b.String(), "\n"), nil
 }
 
 func renderJSONSchema(target targetSpec) (string, error) {
@@ -109,7 +119,7 @@ func validateSpec(target targetSpec) error {
 
 func gatherLeafPaths(t reflect.Type, path string) (map[string]struct{}, error) {
 	t = derefType(t)
-	if isTimeType(t) {
+	if isTimeType(t) || isRawMessageType(t) {
 		return map[string]struct{}{path: {}}, nil
 	}
 
@@ -150,7 +160,7 @@ func describeType(t reflect.Type, path string, docs map[string]FieldDoc, optiona
 		optional = true
 	}
 
-	if isTimeType(t) {
+	if isTimeType(t) || isRawMessageType(t) {
 		return describeLeaf(path, t, docs, optional)
 	}
 
@@ -215,6 +225,9 @@ func inferTypeLabel(t reflect.Type) string {
 	if isTimeType(t) {
 		return "RFC3339 timestamp"
 	}
+	if isRawMessageType(t) {
+		return "JSON"
+	}
 	switch t.Kind() {
 	case reflect.Bool:
 		return "boolean"
@@ -245,6 +258,11 @@ func derefType(t reflect.Type) reflect.Type {
 func isTimeType(t reflect.Type) bool {
 	t = derefType(t)
 	return t.PkgPath() == "time" && t.Name() == "Time"
+}
+
+func isRawMessageType(t reflect.Type) bool {
+	t = derefType(t)
+	return t.PkgPath() == "encoding/json" && t.Name() == "RawMessage"
 }
 
 func joinPath(parent, child string) string {
