@@ -29,7 +29,7 @@ The welcome message is the first thing a new user sees. It should orient them wi
 2. What they need next (point agent at INSTALL.md or write skills manually)
 3. Where to look (web UI at localhost:3000, `noodle status` for CLI)
 
-This only fires on genuine first run (when files are created). Subsequent `noodle start` runs print nothing extra. The existing per-file "created X" messages stay — the welcome block follows them.
+This only fires on genuine first run (when files are created). Subsequent `noodle start` runs print nothing extra. Replace the existing per-file "created X" messages with just the welcome block — the user doesn't need to see every file individually.
 
 **Known limitation:** File creation is a proxy for "first run," not a true onboarding state tracker. This is an acceptable tradeoff — the edge case is rare and a dedicated onboarding state tracker costs more than the benefit.
 

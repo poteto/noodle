@@ -23,15 +23,14 @@ Concise explanation the agent needs to make good decisions:
 ### Part 2: Steps
 
 1. **Install binary** — detect platform, install via brew (macOS) or curl (Linux/Windows). Check: `noodle --version` succeeds → skip.
-2. **Install noodle skill** — fetch the noodle skill files from GitHub raw URLs into `.agents/skills/noodle/`. This skill teaches the agent how to use the CLI and write skills going forward. Check: `.agents/skills/noodle/SKILL.md` exists → skip.
+2. **Install noodle skill** — fetch the noodle skill files from GitHub raw URLs into `.agents/skills/noodle/`. This skill teaches the agent how to use the CLI and write skills going forward. Check: `.agents/skills/noodle/SKILL.md` AND `references/` files all exist → skip. If only SKILL.md exists but references are missing, re-fetch the missing files (handles interrupted installs).
 3. **Configure** — if `.noodle.toml` doesn't exist, ask the user which provider they use (Claude or Codex) and generate config. If it exists, skip.
 4. **Add .noodle/ to .gitignore** — grep first, append only if absent.
-5. **Seed the backlog** — if `todos.md` doesn't exist, create it with bootstrap tasks. These are tasks the loop itself will execute on first run to finish setting up the project:
+5. **Seed the backlog** — if `todos.md` doesn't exist, create it with bootstrap tasks. If `todos.md` exists but `.agents/skills/schedule/` doesn't, the agent should still guide the user through skill creation (skip the file write, proceed to step 6). The seeded tasks are ordered by priority — skills first, exploration second:
    - `[ ] Write a schedule skill and execute skill for this project` — the agent reads the user's past conversation logs (`.claude/`, `.codex/`) to understand the project, then writes skills adapted to their workflow, language, and tools.
-   - `[ ] Write a backlog adapter` — connect Noodle to the project's real task source (GitHub Issues, Linear, a markdown file, etc.)
    - `[ ] Browse github.com/poteto/noodle/.agents/skills/ and find skills that might be useful to adapt to this codebase`
    The seeded backlog is the onboarding — the loop bootstraps itself.
-6. **Ask about brainmaxxing** — use `AskUserQuestion` to ask if the user wants brainmaxxing installed. If yes, follow the brainmaxxing install instructions from https://github.com/poteto/brainmaxxing. This adds the `brain/` vault, reflect/meditate/ruminate skills, and persistent memory across sessions.
+6. **Ask about brainmaxxing** — ask the user if they want brainmaxxing installed. If yes, follow the brainmaxxing install instructions from https://github.com/poteto/brainmaxxing. This adds the `brain/` vault, reflect/meditate/ruminate skills, and persistent memory across sessions.
 7. **First run** — tell the user to run `noodle start`.
 
 ### Skill authoring guidance
@@ -55,6 +54,8 @@ This guidance lives in INSTALL.md so the bootstrap task ("write skills for this 
 
 Direct, imperative. Each step is a clear instruction with a skip condition. The context section teaches concepts; the steps section is mechanical except where the agent needs to make decisions (writing skills, asking about provider).
 
+**Agent interaction:** Where steps say "ask the user," use natural language — not specific tool names like `AskUserQuestion`. Different agents have different interaction primitives. The agent will use whatever it has.
+
 **Key principle:** The agent adapts, not copies. Reference implementations are for understanding, not for verbatim reproduction. The agent should ask itself: "what does this user's project need?" and write skills that fit.
 
 ## Data Structures
@@ -63,7 +64,9 @@ Direct, imperative. Each step is a clear instruction with a skip condition. The 
 
 ## Design Notes
 
-**Transport:** INSTALL.md provides raw GitHub URLs for reference skills (e.g., `https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/schedule/skill.md`). The agent fetches and reads these to understand the pattern, then writes its own version. The noodle skill (step 2) is the only file copied verbatim — it's a reference manual, not project-specific.
+**Transport:** INSTALL.md provides raw GitHub URLs for reference skills (e.g., `https://raw.githubusercontent.com/poteto/noodle/main/.agents/skills/schedule/SKILL.md`). The agent fetches and reads these to understand the pattern, then writes its own version. The noodle skill (step 2) is the only file copied verbatim — it's a reference manual, not project-specific.
+
+**Version pinning:** Raw GitHub URLs should reference a tagged release (e.g., `.../v1.2.0/...`) matching the installed binary version, not `main`. This prevents version skew where the binary expects one skill shape and the reference shows another. If the installed version can't be determined, fall back to `main`.
 
 **Idempotency:** Check-before-write for file copies (noodle skill) and config. Skills the agent writes are project-specific — if they already exist, the agent skips (the user may have customized them). `.gitignore` uses grep-before-append. `.noodle.toml` skipped if exists.
 

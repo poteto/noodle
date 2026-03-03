@@ -14,7 +14,7 @@ Create a dedicated `/onboarding` route in the web UI that explains what Noodle i
 - Content sections:
   1. **What is Noodle** — one paragraph: skill-based agent orchestration, kitchen brigade model
   2. **How the loop works** — visual diagram or step list: schedule → execute → quality → reflect → merge
-  3. **What you need** — checklist: skills (schedule + execute minimum), a backlog (brain/todos.md), at least one agent CLI (claude or codex)
+  3. **What you need** — checklist: skills (schedule + execute minimum), a backlog (`todos.md`), at least one agent CLI (claude or codex)
   4. **Next steps** — actionable links: "Go to dashboard" (→ /dashboard), "View the live feed" (→ /)
 - Design: clean, minimal, centered content. Use existing design tokens/theme. No illustrations needed — text + structure is enough.
 
