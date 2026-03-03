@@ -120,6 +120,8 @@ Create an empty `todos.md`:
 
 Ask the user what they want to work on and add it as the first task.
 
+Also ask if they want to sync backlog items from another source (GitHub Issues, Linear, Jira, a custom script, etc.). If yes, configure a backlog adapter in `.noodle.toml`. See the noodle skill's configuration reference for adapter options.
+
 ### 7. Ask about brainmaxxing
 
 Ask the user: "Do you want brainmaxxing? It adds a `brain/` vault for persistent memory across sessions, plus reflect, meditate, and ruminate skills."
