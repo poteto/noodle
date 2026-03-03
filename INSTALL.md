@@ -104,7 +104,9 @@ Start by understanding how your human works. Read the conversation history in `~
 
 Then browse `https://github.com/poteto/noodle/tree/main/.agents/skills/` for patterns. Use Noodle's own schedule and execute skills as starting points, but adapt them to this project. Don't copy. The noodle skill's reference docs (from step 2) cover the orders schema and CLI details.
 
-**Schedule skill** (`schedule/SKILL.md`): Reads project state and writes orders. Reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter). Writes `orders-next.json`, not `orders.json` directly. Routes to providers/models based on `routing.defaults` in `.noodle.toml`. Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
+Skills describe process, not individual tasks. They should be reusable across every backlog item. Don't bake current task details (like "add JWT auth") into the skill. The order provides task specifics at runtime.
+
+**Schedule skill** (`schedule/SKILL.md`): Reads project state and writes orders. Reads the backlog from `.noodle/mise.json` (synced from `todos.md` or the configured backlog adapter). Writes `orders-next.json`, not `orders.json` directly. Use `noodle schema orders` to get the schema. Routes to providers/models based on `routing.defaults` in `.noodle.toml`. Include a `schedule` frontmatter field, something like "when orders are empty, after backlog changes, or when session history suggests re-evaluation."
 
 **Execute skill** (`execute/SKILL.md`): Does the work. Scopes and decomposes assigned tasks into discrete changes. Works in worktrees, never on main (`noodle worktree create/merge`). Verifies with whatever build, test, and lint commands this project uses. Commits following this project's conventions. Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
 
