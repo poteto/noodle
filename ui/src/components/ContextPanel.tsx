@@ -144,6 +144,7 @@ function AgentContext({ session, snapshot }: { session: Session; snapshot: Snaps
   const totalStages = order ? order.stages.length : 0;
   const progressPct = totalStages > 0 ? (completedStages / totalStages) * 100 : 0;
   const cwPct = Math.round(session.context_window_usage_pct);
+  const worktreeName = session.worktree_name?.trim() || "Not available";
 
   return (
     <>
@@ -154,6 +155,13 @@ function AgentContext({ session, snapshot }: { session: Session; snapshot: Snaps
         <MetricCard label="Duration" value={formatDuration(session.duration_seconds)} />
         <MetricCard label="Context" value={`${cwPct}%`} />
         <MetricCard label="Model" value={session.model} />
+      </div>
+
+      <div className="ctx-inline-stat">
+        <span className="ctx-inline-stat-label">Worktree</span>
+        <span className="ctx-inline-stat-value" title={worktreeName}>
+          {worktreeName}
+        </span>
       </div>
 
       {/* Context window bar */}
