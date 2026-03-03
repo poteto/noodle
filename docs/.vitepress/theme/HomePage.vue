@@ -2,6 +2,9 @@
 import { ref } from "vue";
 import { withBase } from "vitepress";
 
+declare const __NOODLE_VERSION__: string;
+
+const version = __NOODLE_VERSION__;
 const copied = ref(false);
 const promptText =
   "Install Noodle and set up this project. Follow\nhttps://raw.githubusercontent.com/poteto/noodle/main/INSTALL.md";
@@ -62,7 +65,7 @@ function copyPrompt() {
       <div class="container">
         <!-- Version badge -->
         <div class="hero-line-1 badge-row">
-          <span class="tag">v0.1.0</span>
+          <span class="tag">{{ version }}</span>
           <span class="badge-label">— MIT License</span>
         </div>
 

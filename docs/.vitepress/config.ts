@@ -8,6 +8,11 @@ const vitepressDir = dirname(fileURLToPath(import.meta.url));
 const NOODLE_VERSION = readFileSync(resolve(vitepressDir, "..", "..", "VERSION"), "utf8").trim();
 
 export default defineConfig({
+  vite: {
+    define: {
+      __NOODLE_VERSION__: JSON.stringify(NOODLE_VERSION),
+    },
+  },
   base: "/noodle/",
   title: "Noodle",
   description:
