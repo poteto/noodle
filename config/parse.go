@@ -14,7 +14,7 @@ import (
 const (
 	defaultRoutingProvider = "claude"
 	defaultRoutingModel    = "claude-opus-4-6"
-	defaultMode            = string(state.RunModeAuto)
+	defaultMode            = string(state.RunModeSupervised)
 	defaultMaxConcurrency  = 4
 	defaultRuntimeName     = "process"
 	defaultServerPort      = 3000

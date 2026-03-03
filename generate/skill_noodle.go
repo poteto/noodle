@@ -58,7 +58,7 @@ For the full guide on writing skills, orders, and schedule fields, see [referenc
 Noodle reads ` + "`.noodle.toml`" + ` at project root. Scaffolded on first ` + "`noodle start`" + `. Most projects only need:
 
 ` + "```toml" + `
-mode = "auto"  # auto | supervised | manual
+mode = "supervised"  # auto | supervised | manual
 
 [routing.defaults]
 provider = "claude"

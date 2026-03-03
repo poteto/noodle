@@ -41,7 +41,7 @@ func EnsureProjectStructure(projectDir string, w io.Writer) error {
 		},
 		{
 			path: filepath.Join(projectDir, ".noodle.toml"),
-			content: `mode = "auto"
+			content: `mode = "supervised"
 
 [routing.defaults]
 provider = "claude"

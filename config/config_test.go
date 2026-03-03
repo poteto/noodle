@@ -19,8 +19,8 @@ func TestDefaultConfigValues(t *testing.T) {
 	if config.Routing.Defaults.Model != "claude-opus-4-6" {
 		t.Fatalf("routing.defaults.model default = %q", config.Routing.Defaults.Model)
 	}
-	if config.Mode != "auto" {
-		t.Fatalf("mode default = %q, want auto", config.Mode)
+	if config.Mode != "supervised" {
+		t.Fatalf("mode default = %q, want supervised", config.Mode)
 	}
 	if config.Concurrency.MaxConcurrency != 4 {
 		t.Fatalf("concurrency.max_concurrency default = %d", config.Concurrency.MaxConcurrency)
@@ -94,8 +94,8 @@ edit = "gh issue edit"
 	if config.Routing.Defaults.Provider != "codex" {
 		t.Fatalf("routing.defaults.provider = %q", config.Routing.Defaults.Provider)
 	}
-	if config.Mode != "auto" {
-		t.Fatalf("expected default mode=auto, got %q", config.Mode)
+	if config.Mode != "supervised" {
+		t.Fatalf("expected default mode=supervised, got %q", config.Mode)
 	}
 	if config.Concurrency.MaxConcurrency != 2 {
 		t.Fatalf("concurrency.max_concurrency = %d", config.Concurrency.MaxConcurrency)
@@ -112,8 +112,8 @@ model = "claude-sonnet-4-6"
 		t.Fatalf("Parse minimal config: %v", err)
 	}
 
-	if config.Mode != "auto" {
-		t.Fatalf("expected default mode=auto, got %q", config.Mode)
+	if config.Mode != "supervised" {
+		t.Fatalf("expected default mode=supervised, got %q", config.Mode)
 	}
 	if config.Adapters != nil {
 		t.Fatal("adapters should remain unset when omitted from an existing config file")
@@ -136,7 +136,7 @@ provider = ""
 model = "x"
 `,
 			wantProvider:       "claude",
-			wantMode:           "auto",
+			wantMode:           "supervised",
 			wantMaxConcurrency: 4,
 		},
 		{
@@ -148,7 +148,7 @@ mode = "yolo"
 provider = "claude"
 model = "x"
 `,
-			wantMode:           "auto",
+			wantMode:           "supervised",
 			wantProvider:       "claude",
 			wantMaxConcurrency: 4,
 		},
@@ -162,7 +162,7 @@ model = "x"
 [concurrency]
 max_concurrency = 0
 `,
-			wantMode:           "auto",
+			wantMode:           "supervised",
 			wantProvider:       "claude",
 			wantMaxConcurrency: 4,
 		},
@@ -434,8 +434,8 @@ model = "claude-sonnet-4-6"
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if cfg.Mode != "auto" {
-		t.Fatalf("mode = %q, want auto", cfg.Mode)
+	if cfg.Mode != "supervised" {
+		t.Fatalf("mode = %q, want supervised", cfg.Mode)
 	}
 }
 

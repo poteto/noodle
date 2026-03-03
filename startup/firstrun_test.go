@@ -34,7 +34,7 @@ func TestEnsureProjectStructureFreshDirectory(t *testing.T) {
 		"brain/index.md":      "# Brain",
 		"brain/todos.md":      "<!-- next-id: 1 -->",
 		"brain/principles.md": "# Principles",
-		".noodle.toml":        `mode = "auto"`,
+		".noodle.toml":        `mode = "supervised"`,
 	}
 	for relPath, wantContent := range wantFiles {
 		data, err := os.ReadFile(filepath.Join(dir, relPath))

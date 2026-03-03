@@ -23,10 +23,10 @@ Controls human oversight level.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `mode` | string | `"auto"` | Autonomy mode: `"auto"`, `"supervised"`, or `"manual"` |
+| `mode` | string | `"supervised"` | Autonomy mode: `"auto"`, `"supervised"`, or `"manual"` |
 
 ```toml
-mode = "auto"
+mode = "supervised"
 ```
 
 ---
@@ -209,7 +209,7 @@ Scripts are executed relative to the project root. Each script receives structur
 Minimal setup for a single developer using Claude as the Agent provider:
 
 ```toml
-mode = "auto"
+mode = "supervised"
 
 [routing.defaults]
 provider = "claude"

@@ -180,7 +180,7 @@ func DefaultConfig() Config {
 		Skills: SkillsConfig{
 			Paths: defaultSkillPaths(),
 		},
-		Mode: "auto",
+		Mode: defaultMode,
 		Concurrency: ConcurrencyConfig{
 			MaxConcurrency: 4,
 		},

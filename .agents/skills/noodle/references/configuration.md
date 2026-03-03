@@ -18,7 +18,7 @@ paths = [".agents/skills"]
 Controls human oversight level: `auto` (full automation), `supervised` (human approves merges), `manual` (human triggers everything).
 
 ```toml
-mode = "auto"
+mode = "supervised"
 ```
 
 ## `[routing.defaults]`

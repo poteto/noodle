@@ -29,6 +29,7 @@ paths = [".agents/skills"]
 ```
 
 `mode = "auto"` means Noodle runs the full noodle loop unattended. The scheduler reads the backlog, creates orders, spawns agents, merges results, and repeats until there's nothing left to do.
+This cookbook sets `mode = "auto"` on purpose for an unattended demo. If you omit `mode`, Noodle defaults to `supervised`.
 
 ## The schedule skill
 

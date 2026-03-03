@@ -25,6 +25,7 @@ max_concurrency = 2
 ```
 
 Two things are new here. Routing defaults define the baseline provider/model for generated stages, and `max_concurrency = 2` lets two agents work simultaneously in separate worktrees.
+This cookbook pins `mode = "auto"` so the pipeline can run end-to-end unattended. Omit `mode` to use the default `supervised` behavior.
 
 ## Additional skills
 

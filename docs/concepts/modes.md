@@ -27,7 +27,7 @@ Use manual mode for high-stakes changes: production deployments, database migrat
 Set the mode in `.noodle.toml`:
 
 ```toml
-mode = "auto"
+mode = "supervised"
 ```
 
 Valid values: `auto`, `supervised`, `manual`.
