@@ -1,6 +1,7 @@
 ---
-priority: [97, 95, 84, 88, 90, 96, 101, 100, 86, 108, 85, 69]
+priority: [108, 97, 95, 84, 88, 90, 96, 101, 100, 86, 85, 69]
 # Priority notes:
+#   108 compact wire format — simplify scheduler output
 #   97 adapter schema validator — surface broken adapters
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   84 sub-agent tracking — visibility into agent orchestration
@@ -9,7 +10,6 @@ priority: [97, 95, 84, 88, 90, 96, 101, 100, 86, 108, 85, 69]
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   100 runtime mode UI setting
 #   86 diffs integration — code-change review UX
-#   108 compact wire format — simplify scheduler output
 #   85 .noodle.toml live reload — convenience, restart works fine
 #   69 cursor dispatcher — extended runtime, process+sprites cover launch
 ---
