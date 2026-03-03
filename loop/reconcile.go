@@ -114,9 +114,11 @@ func (l *Loop) recoverAdoptedSessions(ctx context.Context) error {
 			if rs.OrderID != "" {
 				l.cooks.adoptedTargets[rs.OrderID] = rs.SessionHandle.ID()
 				stageIndex := 0
+				var activeStage *Stage
 				if order, ok := orderMap[rs.OrderID]; ok {
-					if idx, _ := activeStageForOrder(order); idx >= 0 {
+					if idx, s := activeStageForOrder(order); idx >= 0 {
 						stageIndex = idx
+						activeStage = s
 					}
 				}
 				l.emitEvent(ingest.EventSessionAdopted, map[string]any{
@@ -125,6 +127,7 @@ func (l *Loop) recoverAdoptedSessions(ctx context.Context) error {
 					"attempt_id":  "adopted-" + rs.SessionHandle.ID(),
 					"session_id":  rs.SessionHandle.ID(),
 				})
+				l.trackAdoptedInSummary(activeStage)
 			}
 			l.cooks.adoptedSessions = append(l.cooks.adoptedSessions, rs.SessionHandle.ID())
 		}

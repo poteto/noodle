@@ -16,6 +16,7 @@ source_hash: a795a420f7b4157955f55d36cf724b94f8d687652a34f0c5e41db8c4b4ee1881
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "plan-42-0-execute",
         "provider": "claude",

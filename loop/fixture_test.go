@@ -22,16 +22,17 @@ import (
 )
 
 type loopFixtureSetup struct {
-	DispatcherError          string                     `json:"dispatcher_error"`
-	WorktreeCreateError      string                     `json:"worktree_create_error"`
-	WorktreeCreateErrorNames []string                   `json:"worktree_create_error_names"`
-	WorktreeMergeError       string                     `json:"worktree_merge_error"`
-	ActiveSessions           []loopFixtureActiveSession `json:"active_sessions"`
-	AdoptedTargets           []loopFixtureAdoptedTarget `json:"adopted_targets"`
-	RunStartupReconcile      bool                       `json:"run_startup_reconcile"`
-	RecoveryMaxRetries       *int                       `json:"recovery_max_retries"`
-	BootstrapAttempts        int                        `json:"bootstrap_attempts"`
-	BootstrapExhausted       bool                       `json:"bootstrap_exhausted"`
+	DispatcherError          string                        `json:"dispatcher_error"`
+	WorktreeCreateError      string                        `json:"worktree_create_error"`
+	WorktreeCreateErrorNames []string                      `json:"worktree_create_error_names"`
+	WorktreeMergeError       string                        `json:"worktree_merge_error"`
+	ActiveSessions           []loopFixtureActiveSession    `json:"active_sessions"`
+	AdoptedTargets           []loopFixtureAdoptedTarget    `json:"adopted_targets"`
+	RecoveredSessions        []loopFixtureRecoveredSession `json:"recovered_sessions"`
+	RunStartupReconcile      bool                          `json:"run_startup_reconcile"`
+	RecoveryMaxRetries       *int                          `json:"recovery_max_retries"`
+	BootstrapAttempts        int                           `json:"bootstrap_attempts"`
+	BootstrapExhausted       bool                          `json:"bootstrap_exhausted"`
 }
 
 type loopFixtureActiveSession struct {
@@ -41,6 +42,11 @@ type loopFixtureActiveSession struct {
 
 type loopFixtureAdoptedTarget struct {
 	ID        string `json:"id"`
+	SessionID string `json:"session_id"`
+}
+
+type loopFixtureRecoveredSession struct {
+	OrderID   string `json:"order_id"`
 	SessionID string `json:"session_id"`
 }
 
@@ -65,6 +71,7 @@ type loopFixtureStateDump struct {
 	SpawnCalls          int                   `json:"spawn_calls"`
 	NormalSpawnCalls    int                   `json:"normal_spawn_calls"`
 	CreatedWorktrees    int                   `json:"created_worktrees"`
+	ActiveSummaryTotal  int                   `json:"active_summary_total"`
 	FirstSpawn          *loopFixtureSpawnDump `json:"first_spawn,omitempty"`
 }
 
@@ -124,6 +131,13 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 			}
 			miseResults := buildMiseResults(stateInputs)
 			rt := newMockRuntime()
+			for _, rs := range setup.RecoveredSessions {
+				rt.recovered = append(rt.recovered, loopruntime.RecoveredSession{
+					OrderID:       rs.OrderID,
+					SessionHandle: &mockSession{id: rs.SessionID, status: "running", done: make(chan struct{})},
+					RuntimeName:   "process",
+				})
+			}
 			if strings.TrimSpace(setup.DispatcherError) != "" {
 				rt.dispatchErr = errors.New(strings.TrimSpace(setup.DispatcherError))
 			}
@@ -199,6 +213,7 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 					SpawnCalls:          len(rt.calls),
 					NormalSpawnCalls:    len(rt.calls),
 					CreatedWorktrees:    len(wt.created),
+					ActiveSummaryTotal:  l.activeSummary.Total,
 				}
 				if len(rt.calls) > 0 {
 					stateDump.FirstSpawn = requestDump(rt.calls[0])

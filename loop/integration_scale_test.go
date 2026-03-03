@@ -235,6 +235,78 @@ func TestMockRuntimeRecoverBuildsAdoptedIndex(t *testing.T) {
 	}
 }
 
+func TestRecoverAdoptedSessionsUpdatesActiveSummary(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(filepath.Join(runtimeDir, "sessions"), 0o755); err != nil {
+		t.Fatalf("mkdir sessions: %v", err)
+	}
+
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{
+			{TaskKey: "execute", Runtime: "process", Provider: "claude", Model: "opus", Status: StageStatusActive},
+		}},
+		{ID: "99", Status: OrderStatusActive, Stages: []Stage{
+			{TaskKey: "quality", Runtime: "sprites", Provider: "codex", Model: "gpt-5", Status: StageStatusActive},
+		}},
+	}}); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	rt := newMockRuntime()
+	rt.recovered = []loopruntime.RecoveredSession{
+		{
+			OrderID:       "42",
+			SessionHandle: &mockSession{id: "sess-42", status: "running", done: make(chan struct{})},
+			RuntimeName:   "process",
+		},
+		{
+			OrderID:       "99",
+			SessionHandle: &mockSession{id: "sess-99", status: "running", done: make(chan struct{})},
+			RuntimeName:   "sprites",
+		},
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+
+	if err := l.loadOrdersState(); err != nil {
+		t.Fatalf("loadOrdersState: %v", err)
+	}
+	if err := l.reconcile(context.Background()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	snap := l.snapshotActiveSummary()
+	if snap.Total != 2 {
+		t.Fatalf("activeSummary.Total = %d, want 2", snap.Total)
+	}
+	if snap.ByTaskKey["execute"] != 1 {
+		t.Fatalf("ByTaskKey[execute] = %d, want 1", snap.ByTaskKey["execute"])
+	}
+	if snap.ByTaskKey["quality"] != 1 {
+		t.Fatalf("ByTaskKey[quality] = %d, want 1", snap.ByTaskKey["quality"])
+	}
+	if snap.ByRuntime["process"] != 1 {
+		t.Fatalf("ByRuntime[process] = %d, want 1", snap.ByRuntime["process"])
+	}
+	if snap.ByRuntime["sprites"] != 1 {
+		t.Fatalf("ByRuntime[sprites] = %d, want 1", snap.ByRuntime["sprites"])
+	}
+	if snap.ByStatus["active"] != 2 {
+		t.Fatalf("ByStatus[active] = %d, want 2", snap.ByStatus["active"])
+	}
+}
+
 func TestReconcileInjectsScheduleOrderOnStartup(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")

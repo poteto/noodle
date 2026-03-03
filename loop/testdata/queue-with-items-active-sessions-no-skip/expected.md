@@ -16,6 +16,7 @@ source_hash: 4b67d23a0eb82b36c418fda92c544ab49602e86360460c238d66670e18a9591b
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "42-0-execute",
         "provider": "codex",

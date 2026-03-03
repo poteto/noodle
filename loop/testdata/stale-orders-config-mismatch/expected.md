@@ -16,6 +16,7 @@ source_hash: 1a4f62a74af144652d0f7d18bd6837bdd7289fedb97cd0602d16d2109108c91c
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "stale-1-0-execute",
         "skill": "execute",

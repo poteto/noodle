@@ -16,6 +16,7 @@ source_hash: e5807ef99ea2a64f80aac7b2baab7ed68c8b53b534bcdc36e819f1df05168b0c
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "order-new-0-execute",
         "provider": "claude",
@@ -28,6 +29,7 @@ source_hash: e5807ef99ea2a64f80aac7b2baab7ed68c8b53b534bcdc36e819f1df05168b0c
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 1,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "order-new-0-execute",
         "provider": "claude",

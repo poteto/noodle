@@ -9,6 +9,36 @@ import (
 
 const recentHistoryLimit = 20
 
+// trackAdoptedInSummary updates activeSummary for a recovered adopted session
+// so mise.json reflects orders that survived a restart.
+func (l *Loop) trackAdoptedInSummary(stage *Stage) {
+	if l.activeSummary.ByTaskKey == nil {
+		l.activeSummary.ByTaskKey = map[string]int{}
+	}
+	if l.activeSummary.ByStatus == nil {
+		l.activeSummary.ByStatus = map[string]int{}
+	}
+	if l.activeSummary.ByRuntime == nil {
+		l.activeSummary.ByRuntime = map[string]int{}
+	}
+
+	taskKey := "unknown"
+	runtimeName := "process"
+	if stage != nil {
+		if tk := strings.TrimSpace(stage.TaskKey); tk != "" {
+			taskKey = tk
+		}
+		if rn := stringx.Normalize(stage.Runtime); rn != "" {
+			runtimeName = rn
+		}
+	}
+
+	l.activeSummary.Total++
+	l.activeSummary.ByTaskKey[taskKey]++
+	l.activeSummary.ByStatus["active"]++
+	l.activeSummary.ByRuntime[runtimeName]++
+}
+
 func (l *Loop) trackCookStarted(cook *cookHandle) {
 	if cook == nil {
 		return

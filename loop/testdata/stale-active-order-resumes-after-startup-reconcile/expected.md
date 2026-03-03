@@ -16,6 +16,7 @@ source_hash: d9bdd8cbe1a14d8a0606551517844b249c85bb7c94ca806fa9e5c6f0e4d8b2d1
       "spawn_calls": 2,
       "normal_spawn_calls": 2,
       "created_worktrees": 1,
+      "active_summary_total": 2,
       "first_spawn": {
         "name": "fix-uncommitted-ui-changes-0-oops",
         "skill": "oops",

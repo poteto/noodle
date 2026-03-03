@@ -16,6 +16,7 @@ source_hash: 119540380c54462d35aff866cc6793986ed06e19d87a5ae0862592fd5059738c
       "spawn_calls": 1,
       "normal_spawn_calls": 1,
       "created_worktrees": 0,
+      "active_summary_total": 1,
       "first_spawn": {
         "name": "schedule",
         "skill": "schedule",

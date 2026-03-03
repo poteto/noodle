@@ -1,0 +1,9 @@
+{
+  "run_startup_reconcile": true,
+  "recovered_sessions": [
+    {
+      "order_id": "108",
+      "session_id": "sess-108"
+    }
+  ]
+}
