@@ -116,7 +116,7 @@ func TestBuilderMissingSyncScriptWarnsAndContinues(t *testing.T) {
 	cfg.Adapters = map[string]config.AdapterConfig{
 		"backlog": {
 			Scripts: map[string]string{
-				"sync": ".noodle/adapters/backlog-sync",
+				"sync": "adapters/backlog-sync",
 			},
 		},
 	}

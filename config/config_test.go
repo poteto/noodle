@@ -45,7 +45,7 @@ func TestDefaultConfigValues(t *testing.T) {
 	if !ok {
 		t.Fatal("default backlog adapter missing")
 	}
-	if backlog.Scripts["sync"] != ".noodle/adapters/backlog-sync" {
+	if backlog.Scripts["sync"] != "adapters/backlog-sync" {
 		t.Fatalf("backlog sync default = %q", backlog.Scripts["sync"])
 	}
 
@@ -339,10 +339,10 @@ skill = "custom-backlog"
 	if backlog.Skill != "custom-backlog" {
 		t.Fatalf("backlog skill = %q", backlog.Skill)
 	}
-	if backlog.Scripts["sync"] != ".noodle/adapters/backlog-sync" {
+	if backlog.Scripts["sync"] != "adapters/backlog-sync" {
 		t.Fatalf("backlog sync default = %q", backlog.Scripts["sync"])
 	}
-	if backlog.Scripts["edit"] != ".noodle/adapters/backlog-edit" {
+	if backlog.Scripts["edit"] != "adapters/backlog-edit" {
 		t.Fatalf("backlog edit default = %q", backlog.Scripts["edit"])
 	}
 }

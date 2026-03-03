@@ -112,8 +112,8 @@ Adapters bridge external systems into the backlog. See https://poteto.github.io/
 skill = "backlog"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+add = "adapters/backlog-add"
+done = "adapters/backlog-done"
+edit = "adapters/backlog-edit"
 ```

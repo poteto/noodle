@@ -202,10 +202,10 @@ func defaultAdapters() map[string]AdapterConfig {
 		"backlog": {
 			Skill: "backlog",
 			Scripts: map[string]string{
-				"sync": ".noodle/adapters/backlog-sync",
-				"add":  ".noodle/adapters/backlog-add",
-				"done": ".noodle/adapters/backlog-done",
-				"edit": ".noodle/adapters/backlog-edit",
+				"sync": "adapters/backlog-sync",
+				"add":  "adapters/backlog-add",
+				"done": "adapters/backlog-done",
+				"edit": "adapters/backlog-edit",
 			},
 		},
 	}

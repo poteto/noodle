@@ -185,7 +185,7 @@ func TestSmokeProcessRuntimeDefault(t *testing.T) {
 	}
 
 	// Adapter scripts.
-	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	adapterDir := filepath.Join(dir, "adapters")
 	mkdirAll(t, adapterDir)
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho '{\"id\":\"1\",\"title\":\"hello\",\"status\":\"open\",\"tags\":[]}'\n")
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
@@ -213,10 +213,10 @@ path = "~/.codex"
 skill = "todo"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-done = ".noodle/adapters/backlog-done"
-add = ".noodle/adapters/backlog-add"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+done = "adapters/backlog-done"
+add = "adapters/backlog-add"
+edit = "adapters/backlog-edit"
 
 [concurrency]
 max_concurrency = 1
@@ -430,7 +430,7 @@ func TestSmokeStartOnceBacklogParseWarningIsRecoverable(t *testing.T) {
 	dstSkills := filepath.Join(dir, ".agents", "skills")
 	copyDir(t, filepath.Join(srcSkills, "execute"), filepath.Join(dstSkills, "execute"))
 
-	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	adapterDir := filepath.Join(dir, "adapters")
 	mkdirAll(t, adapterDir)
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho 'P0 malformed backlog line'\n")
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
@@ -454,10 +454,10 @@ paths = [".agents/skills"]
 skill = "todo"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-done = ".noodle/adapters/backlog-done"
-add = ".noodle/adapters/backlog-add"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+done = "adapters/backlog-done"
+add = "adapters/backlog-add"
+edit = "adapters/backlog-edit"
 
 [runtime]
 default = "process"
@@ -521,7 +521,7 @@ func TestSmokeScheduleOnlyNoTaskTypes(t *testing.T) {
 	copyDir(t, filepath.Join(srcSkills, "schedule"), filepath.Join(dstSkills, "schedule"))
 
 	// Adapter scripts.
-	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	adapterDir := filepath.Join(dir, "adapters")
 	mkdirAll(t, adapterDir)
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho '{\"id\":\"1\",\"title\":\"Create hello.txt\",\"status\":\"open\"}'\n")
 	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
@@ -549,10 +549,10 @@ path = "~/.codex"
 skill = "todo"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-done = ".noodle/adapters/backlog-done"
-add = ".noodle/adapters/backlog-add"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+done = "adapters/backlog-done"
+add = "adapters/backlog-add"
+edit = "adapters/backlog-edit"
 
 [concurrency]
 max_concurrency = 1

@@ -71,10 +71,10 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+add = "adapters/backlog-add"
+done = "adapters/backlog-done"
+edit = "adapters/backlog-edit"
 ```
 
 For **Codex**:
@@ -89,13 +89,13 @@ model = "gpt-5.3-codex"
 paths = [".agents/skills"]
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-add = ".noodle/adapters/backlog-add"
-done = ".noodle/adapters/backlog-done"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+add = "adapters/backlog-add"
+done = "adapters/backlog-done"
+edit = "adapters/backlog-edit"
 ```
 
-Then fetch the default adapter scripts from GitHub and write them to `.noodle/adapters/`:
+Then fetch the default adapter scripts from GitHub and write them to `adapters/`:
 
 ```
 https://raw.githubusercontent.com/poteto/noodle/main/defaults/adapters/backlog-sync
@@ -104,7 +104,7 @@ https://raw.githubusercontent.com/poteto/noodle/main/defaults/adapters/backlog-d
 https://raw.githubusercontent.com/poteto/noodle/main/defaults/adapters/backlog-edit
 ```
 
-Create `.noodle/adapters/` and write each file there. Make them executable (`chmod +x`).
+Create `adapters/` and write each file there. Make them executable (`chmod +x`).
 
 Minimal config. The user can expand it later. See [the configuration reference](https://poteto.github.io/noodle/reference/configuration) for all options.
 

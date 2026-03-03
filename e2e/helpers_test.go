@@ -159,7 +159,7 @@ func main() {
 	}
 
 	// Backlog adapter scripts — simple shell scripts for the E2E test.
-	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	adapterDir := filepath.Join(dir, "adapters")
 	mkdirAll(t, adapterDir)
 	// sync: emit one NDJSON line per open todo.
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), `#!/bin/sh
@@ -204,10 +204,10 @@ path = "~/.codex"
 skill = "todo"
 
 [adapters.backlog.scripts]
-sync = ".noodle/adapters/backlog-sync"
-done = ".noodle/adapters/backlog-done"
-add = ".noodle/adapters/backlog-add"
-edit = ".noodle/adapters/backlog-edit"
+sync = "adapters/backlog-sync"
+done = "adapters/backlog-done"
+add = "adapters/backlog-add"
+edit = "adapters/backlog-edit"
 
 [concurrency]
 max_concurrency = 1

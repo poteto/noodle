@@ -90,14 +90,14 @@ func TestReportConfigDiagnosticsGroupsMissingScripts(t *testing.T) {
 		Diagnostics: []config.ConfigDiagnostic{
 			{
 				FieldPath: "adapters.backlog.scripts.sync",
-				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
+				Message:   `script path "adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
-				Fix:       "Create .noodle/adapters/backlog-sync or update adapters.backlog.scripts.sync.",
+				Fix:       "Create adapters/backlog-sync or update adapters.backlog.scripts.sync.",
 				Code:      config.DiagnosticCodeAdapterScriptMissing,
 				Meta: map[string]string{
 					"adapter": "backlog",
 					"action":  "sync",
-					"path":    ".noodle/adapters/backlog-sync",
+					"path":    "adapters/backlog-sync",
 				},
 			},
 		},
@@ -136,13 +136,13 @@ func TestReportConfigDiagnosticsStartPromptsAndLaunchesRepair(t *testing.T) {
 		Diagnostics: []config.ConfigDiagnostic{
 			{
 				FieldPath: "adapters.backlog.scripts.sync",
-				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
+				Message:   `script path "adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
 				Code:      config.DiagnosticCodeAdapterScriptMissing,
 				Meta: map[string]string{
 					"adapter": "backlog",
 					"action":  "sync",
-					"path":    ".noodle/adapters/backlog-sync",
+					"path":    "adapters/backlog-sync",
 				},
 			},
 		},
@@ -223,13 +223,13 @@ func TestReportConfigDiagnosticsStartRepairLaunchFailure(t *testing.T) {
 		Diagnostics: []config.ConfigDiagnostic{
 			{
 				FieldPath: "adapters.backlog.scripts.sync",
-				Message:   `script path ".noodle/adapters/backlog-sync" not found`,
+				Message:   `script path "adapters/backlog-sync" not found`,
 				Severity:  config.DiagnosticSeverityRepairable,
 				Code:      config.DiagnosticCodeAdapterScriptMissing,
 				Meta: map[string]string{
 					"adapter": "backlog",
 					"action":  "sync",
-					"path":    ".noodle/adapters/backlog-sync",
+					"path":    "adapters/backlog-sync",
 				},
 			},
 		},
