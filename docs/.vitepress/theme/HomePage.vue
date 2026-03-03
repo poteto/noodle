@@ -740,7 +740,7 @@ function copyPrompt() {
 }
 
 .quickstart-label {
-  font-size: 10px;
+  font-size: 13px;
   color: #6b6b6b;
   letter-spacing: 0.2em;
   text-transform: uppercase;
