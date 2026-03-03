@@ -449,13 +449,10 @@ func TestLogOrdersNextPromoted(t *testing.T) {
 		o.brief = &brief
 	})
 
-	// Write a valid orders-next.json.
+	// Write a valid orders-next.json in compact wire format.
 	ordersNextPath := filepath.Join(tc.runtimeDir, "orders-next.json")
-	nextOrders := OrdersFile{Orders: []Order{{
-		ID: "from-schedule", Title: "from schedule", Status: OrderStatusActive,
-		Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusPending}},
-	}}}
-	if err := writeOrdersAtomic(ordersNextPath, nextOrders); err != nil {
+	compactJSON := []byte(`{"orders":[{"id":"from-schedule","title":"from schedule","stages":[{"do":"execute","with":"claude","model":"claude-opus-4-6"}]}]}`)
+	if err := os.WriteFile(ordersNextPath, compactJSON, 0o644); err != nil {
 		t.Fatalf("write orders-next: %v", err)
 	}
 	tc.loop.deps.OrdersNextFile = ordersNextPath

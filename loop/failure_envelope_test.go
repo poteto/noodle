@@ -111,7 +111,7 @@ func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testin
 		t.Fatalf("write orders: %v", err)
 	}
 	ordersNextPath := filepath.Join(runtimeDir, "orders-next.json")
-	if err := writeOrdersAtomic(ordersNextPath, OrdersFile{}); err != nil {
+	if err := os.WriteFile(ordersNextPath, []byte(`{"orders":[]}`), 0o644); err != nil {
 		t.Fatalf("write orders-next: %v", err)
 	}
 
