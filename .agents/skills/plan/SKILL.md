@@ -4,6 +4,7 @@ description: >-
   Systematic planning for medium-to-large tasks. Gathers context, identifies domain skills,
   writes phased plans to brain/plans/. Does NOT implement. Use for new features, multi-file
   refactors, or architectural changes — not small fixes. Triggers: "plan this", "break this down".
+schedule: "When backlog items are tagged #needs_plan and have no linked plan yet"
 ---
 
 # Plan
