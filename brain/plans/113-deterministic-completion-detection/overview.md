@@ -25,9 +25,9 @@ Additionally:
 **In scope:**
 - Replace `terminalStatus()` heuristic with incremental state tracking
 - Unified completion contract across processSession and spritesSession
-- Configurable shutdown deadline with stage_yield-aware graceful shutdown
-- Post-completion cleanup verification gate
-- Evaluate whether `session_meta_repair.go` (zombie repair) can be removed
+- Increased shutdown deadline (2s → 10s)
+- Fix claims-based zombie detection for Claude (EventResult, not just EventComplete)
+- Evaluate whether `session_meta_repair.go` (zombie repair) can be simplified
 
 **Out of scope:**
 - Agent steering/interrupt protocol changes (covered by sub-agent tracking #84)
@@ -36,7 +36,7 @@ Additionally:
 
 ## Constraints
 
-- Cross-platform (macOS/Windows/Linux) — signal handling differs per OS
+- Cross-platform (macOS/Windows/Linux) — signal detection must be platform-aware (Windows doesn't use negative exit codes)
 - No backward compatibility shims — clean migration, delete legacy code
 - Must handle providers that crash without emitting any completion event
 - Sprites SDK mirrors `os/exec.Cmd` — same interface guarantees apply
@@ -67,9 +67,8 @@ Additionally:
 5. [[plans/113-deterministic-completion-detection/phase-05-sprites-session-alignment]]
 6. [[plans/113-deterministic-completion-detection/phase-06-sprites-heartbeat]]
 7. [[plans/113-deterministic-completion-detection/phase-07-graceful-shutdown]]
-8. [[plans/113-deterministic-completion-detection/phase-08-cleanup-verification]]
-9. [[plans/113-deterministic-completion-detection/phase-09-evaluate-monitor-repair]]
-10. [[plans/113-deterministic-completion-detection/phase-10-delete-legacy]]
+8. [[plans/113-deterministic-completion-detection/phase-08-evaluate-monitor-repair]]
+9. [[plans/113-deterministic-completion-detection/phase-09-delete-legacy]]
 
 ## Verification
 

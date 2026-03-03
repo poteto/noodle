@@ -9,12 +9,12 @@ Replace the `terminalStatus()` heuristic in `processSession.waitForExit()` with 
 ## Changes
 
 **`dispatcher/process_session.go`**:
-- `waitForExit()`: instead of calling `terminalStatus(exitCode)`, call `s.tracker.Resolve(exitCode, ctx.Err() != nil)` and use the resulting `SessionOutcome.Status` string for `markDone()`
+- `waitForExit()`: instead of calling `terminalStatus(exitCode)` then `markDone()`, call `s.resolveAndMarkDone(exitCode, ctx.Err() != nil)` (from phase 3) which waits for stream completion, resolves the tracker, and marks done
 - Remove `terminalStatus()` method entirely
 - Remove the `readCanonicalEvents()` call from the exit path (the tracker already has the state)
 
 **`dispatcher/session_helpers.go`**:
-- Keep `readCanonicalEvents()` for now — it's still used by monitor claims and stage_yield reading. Will be evaluated in phase 9.
+- Keep `readCanonicalEvents()` for now — it's still used by monitor claims and stage_yield reading. Will be evaluated in phase 8.
 
 ## Data Structures
 

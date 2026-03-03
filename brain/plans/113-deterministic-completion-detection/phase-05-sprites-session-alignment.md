@@ -9,9 +9,9 @@ Update `spritesSession.waitAndSync()` to use the CompletionTracker instead of ex
 ## Changes
 
 **`dispatcher/sprites_session.go`**:
-- `waitAndSync()`: replace the manual exit-code → status mapping with `s.tracker.Resolve(exitCode, ctx.Err() != nil)`
+- `waitAndSync()`: replace the manual exit-code → status mapping. After sync-back completes, call `s.resolveAndMarkDone(exitCode, ctx.Err() != nil)` (from phase 3) which waits for stream completion, resolves the tracker, and marks done
 - The tracker already receives events through `sessionBase.consumeCanonicalLine()` (wired in phase 3), so sprites sessions get the same incremental tracking as process sessions
-- The sync-back logic (push changes from sprite to git remote) remains unchanged — it runs after `tracker.Resolve()` but before `markDone()`
+- The sync-back logic (push changes from sprite to git remote) remains unchanged — it runs before `resolveAndMarkDone()`
 
 ## Data Structures
 

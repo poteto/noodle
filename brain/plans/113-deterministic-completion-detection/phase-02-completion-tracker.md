@@ -23,9 +23,9 @@ Build the state machine that tracks session lifecycle incrementally from the can
 
 The tracker's `Resolve()` method encodes the decision logic that currently lives in `terminalStatus()`, but with richer input:
 
-1. Context cancelled → `StatusCancelled`
-2. Exit code < 0 (signal) AND no `sawComplete` → `StatusKilled`
-3. `sawComplete` or `sawResult` → `StatusCompleted` (explicit completion signal)
+1. `sawComplete` or `sawResult` → `StatusCompleted` (explicit completion signal) — **checked first, overrides all other conditions including context cancellation**
+2. Context cancelled AND no completion signal → `StatusCancelled`
+3. Signal termination (platform-aware, not just `exitCode < 0`) AND no completion signal → `StatusKilled`
 4. `sawAction` only (agent did work but no turn completed) → `StatusFailed` with reason "no turn completed" — this is the key behavior change vs the old heuristic, which marked any activity as success
 5. `sawInit` only (started but did nothing) → `StatusFailed` with reason "no work produced"
 6. No events at all → `StatusFailed` with reason "no events emitted"
@@ -33,6 +33,8 @@ The tracker's `Resolve()` method encodes the decision logic that currently lives
 **Important:** `sawAction` alone no longer maps to completed. The old `terminalStatus()` treated "any lifecycle event" as success, which was the root cause of false-positive classifications. Only `sawResult` or `sawComplete` provide deterministic evidence that a turn actually finished. Yield overrides are handled by the loop, not the tracker.
 
 `HasDeliverable` is true when `sawComplete` or `sawResult` — meaning at least one turn finished with output.
+
+**Platform-aware signal detection:** Don't use bare `exitCode < 0` for signal detection — Windows doesn't use negative exit codes for signal termination. Use a platform-specific helper (e.g., `isSignalExit(exitCode)`) that handles both Unix (negative codes from `syscall.WaitStatus`) and Windows (process termination codes).
 
 ## Routing
 
@@ -45,8 +47,9 @@ The tracker's `Resolve()` method encodes the decision logic that currently lives
   - Turn-based completion (EventResult but no EventComplete — Claude pattern)
   - Crash after work (EventAction but no Result/Complete)
   - Crash before any events
-  - Signal termination (exit code < 0)
-  - Context cancellation override
+  - Signal termination (platform-aware detection)
+  - Context cancellation with no prior completion (cancelled, not completed)
+  - Clean exit + context cancel race (completed wins — exit code checked first)
   - Action-only exit (sawAction but no Result/Complete → failed, not completed)
 - Verify thread safety: concurrent `Observe` + `Resolve` calls
 - `go test ./dispatcher/... -race`

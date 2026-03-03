@@ -1,6 +1,6 @@
 Back to [[plans/113-deterministic-completion-detection/overview]]
 
-# Phase 10: Delete Legacy Code
+# Phase 9: Delete Legacy Code
 
 ## Goal
 
@@ -17,7 +17,7 @@ Remove all legacy completion detection code that the CompletionTracker replaces.
 
 **`dispatcher/types.go`**:
 - Remove `Status() string` from `Session` interface (replaced by `Outcome()`)
-- Migrate all callers of `session.Status()` to use `session.Outcome().Status.String()`
+- **Grep all callers first:** `Status()` is used beyond the obvious paths — check `runtime.go`, `reconcile.go`, adopted session handling, and any other callers. Migrate ALL of them to `session.Outcome().Status.String()` before removing the interface method.
 
 **`loop/cook_watcher.go`**:
 - Update `stageResultStatus()` to accept `SessionOutcome` instead of raw string

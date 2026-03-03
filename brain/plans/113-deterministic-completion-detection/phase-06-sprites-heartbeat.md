@@ -25,9 +25,9 @@ The heartbeat mechanism writes `{timestamp, ttl_seconds}` to `heartbeat.json`. B
 
 **Throttling:** Write heartbeat at most once per 5 seconds to avoid write amplification during streaming deltas. Track `lastHeartbeatTime` in sessionBase and skip writes within the throttle window.
 
-**Periodic timer:** Add a background goroutine that writes heartbeat every 15 seconds regardless of event activity. This prevents heartbeat expiry during quiet workloads (e.g., sprites sessions running long tool executions with no stdout). The timer stops when the session's Done channel closes.
+**No periodic timer** — a single event-driven writer avoids concurrent write corruption (no serialization needed). If no events arrive for 30s, the heartbeat expires and the session appears dead. This is correct: a session producing no canonical events for 30 seconds is genuinely stuck. The monitor/repair layer handles this case.
 
-**TTL:** Increase heartbeat TTL to 30 seconds (matching the periodic timer + margin) to accommodate quiet periods.
+**Initial heartbeat:** Write one heartbeat immediately on session start (in the constructor or `start()` method) so that sessions are alive from the moment they're created, before any events arrive.
 
 This also simplifies processSession — one less responsibility in the session-type layer.
 
