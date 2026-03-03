@@ -25,7 +25,7 @@ priority: [112, 113, 97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 
 ## Onboarding & Getting Started
 
-114. [ ] Agent-native onboarding — create an `INSTALL.md` in the Noodle repo that any coding agent (Claude, Codex, etc.) can read to bootstrap a fully working Noodle loop tailored to the user's workflow. README links to INSTALL.md. INSTALL.md contains: binary installation, a starter skill pack (schedule + cook minimum), and instructions the agent follows to configure `.noodle.toml` based on the user's providers/project. Post-install: CLI prints a welcome message with "what just happened" + next steps; web UI first-load shows an onboarding landing page explaining what Noodle is, how the loop works, and what to do next. In-product experience only — no separate docs/guides in this scope. #needs_plan
+114. [ ] Agent-native onboarding — create an `INSTALL.md` in the Noodle repo that any coding agent (Claude, Codex, etc.) can read to bootstrap a fully working Noodle loop tailored to the user's workflow. README links to INSTALL.md. INSTALL.md contains: binary installation, a starter skill pack (schedule + cook minimum), and instructions the agent follows to configure `.noodle.toml` based on the user's providers/project. Post-install: CLI prints a welcome message with "what just happened" + next steps; web UI first-load shows an onboarding landing page explaining what Noodle is, how the loop works, and what to do next. In-product experience only — no separate docs/guides in this scope. [[plans/114-agent-native-onboarding/overview]]
 
 ## Remote Dispatchers
 
