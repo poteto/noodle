@@ -303,8 +303,8 @@ import { withBase } from "vitepress";
           <div class="quickstart-left">
             <p class="quickstart-label">Quick Install</p>
             <code class="quickstart-cmd"
-              ><span class="cmd-prompt">$</span> brew install
-              poteto/tap/noodle</code
+              >Install Noodle and set up this project. Follow the instructions
+              at INSTALL.md</code
             >
           </div>
           <div class="quickstart-links">

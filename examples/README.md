@@ -6,7 +6,7 @@ Working example projects demonstrating Noodle setups.
 
 - [tmux](https://github.com/tmux/tmux)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex CLI](https://github.com/openai/codex)
-- Noodle installed (`brew install poteto/tap/noodle`)
+- Noodle installed (see [INSTALL.md](../INSTALL.md))
 
 ## Projects
 
