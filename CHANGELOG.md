@@ -1,3 +1,13 @@
+## [0.1.2](https://github.com/poteto/noodle/compare/v0.1.1...v0.1.2) (2026-03-03)
+
+### Features
+
+* **release:** rename changelog flow to release ([c73628e](https://github.com/poteto/noodle/commit/c73628e8d9c0d7eb2fdb25d39a507fb698176470))
+
+### Bug Fixes
+
+* **loop:** bootstrap missing schedule skill on startup ([a5ef165](https://github.com/poteto/noodle/commit/a5ef1653226293332e5da8b84aee86c76d01b083))
+
 ## [0.1.1](https://github.com/poteto/noodle/compare/v0.1.0...v0.1.1) (2026-03-03)
 
 ### Features
