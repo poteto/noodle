@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/orderx"
 )
 
@@ -114,6 +115,57 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 	// orders-next.json should be gone.
 	if _, err := os.Stat(nextPath); !os.IsNotExist(err) {
 		t.Fatal("orders-next.json should be removed")
+	}
+}
+
+func TestConsumeOrdersNextDefaultsMissingLifecycleStatuses(t *testing.T) {
+	dir := t.TempDir()
+	ordersPath := filepath.Join(dir, "orders.json")
+	nextPath := filepath.Join(dir, "orders-next.json")
+
+	// Simulate compact scheduler output where order/stage status fields are omitted.
+	nextData := []byte(`{
+  "orders": [
+    {
+      "id": "108",
+      "title": "compact wire order",
+      "stages": [
+        {
+          "task_key": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6"
+        }
+      ]
+    }
+  ]
+}`)
+	if err := os.WriteFile(nextPath, nextData, 0o644); err != nil {
+		t.Fatalf("write orders-next: %v", err)
+	}
+
+	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
+	if err != nil {
+		t.Fatalf("consumeOrdersNext: %v", err)
+	}
+	if !promoted {
+		t.Fatal("expected promoted=true")
+	}
+
+	got, err := orderx.ReadOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read promoted orders: %v", err)
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders len = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].Status != orderx.OrderStatusActive {
+		t.Fatalf("order status = %q, want %q", got.Orders[0].Status, orderx.OrderStatusActive)
+	}
+	if len(got.Orders[0].Stages) != 1 {
+		t.Fatalf("stages len = %d, want 1", len(got.Orders[0].Stages))
+	}
+	if got.Orders[0].Stages[0].Status != orderx.StageStatusPending {
+		t.Fatalf("stage status = %q, want %q", got.Orders[0].Stages[0].Status, orderx.StageStatusPending)
 	}
 }
 
@@ -506,6 +558,53 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 	}
 	if len(got.Orders) != 1 || got.Orders[0].ID != "first" {
 		t.Fatalf("expected 1 order with ID first, got: %+v", got.Orders)
+	}
+}
+
+func TestNormalizeAndValidateOrdersDropsOrderWithMissingID(t *testing.T) {
+	input := OrdersFile{
+		Orders: []Order{
+			{
+				Title:  "missing id should be dropped",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "execute",
+						Skill:    "execute",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+			{
+				ID:     "keep-1",
+				Status: OrderStatusActive,
+				Stages: []Stage{
+					{
+						TaskKey:  "execute",
+						Skill:    "execute",
+						Provider: "claude",
+						Model:    "claude-opus-4-6",
+						Status:   StageStatusPending,
+					},
+				},
+			},
+		},
+	}
+
+	got, changed, err := NormalizeAndValidateOrders(input, testLoopRegistry(), config.DefaultConfig())
+	if err != nil {
+		t.Fatalf("NormalizeAndValidateOrders: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected normalization to report changed=true")
+	}
+	if len(got.Orders) != 1 {
+		t.Fatalf("orders len = %d, want 1", len(got.Orders))
+	}
+	if got.Orders[0].ID != "keep-1" {
+		t.Fatalf("remaining order ID = %q, want %q", got.Orders[0].ID, "keep-1")
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/failure"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
@@ -170,6 +171,65 @@ func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testin
 	}
 	if payload.Failure.Recoverability != failure.FailureRecoverabilityDegrade {
 		t.Fatalf("payload failure recoverability = %q, want %q", payload.Failure.Recoverability, failure.FailureRecoverabilityDegrade)
+	}
+}
+
+func TestCycleRepairsMissingLifecycleStatusesWithoutCrashing(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	ordersData := []byte(`{
+  "orders": [
+    {
+      "id": "108",
+      "title": "statusless order",
+      "stages": [
+        {
+          "task_key": "execute",
+          "skill": "execute",
+          "provider": "claude",
+          "model": "claude-opus-4-6"
+        }
+      ]
+    }
+  ]
+}`)
+	if err := os.WriteFile(ordersPath, ordersData, 0o644); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree: &fakeWorktree{},
+		Adapter:  &fakeAdapterRunner{},
+		Mise:     &fakeMise{},
+		Monitor:  fakeMonitor{},
+		Registry: testLoopRegistry(),
+		Now:      time.Now,
+	})
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("cycle should not fail on missing lifecycle statuses: %v", err)
+	}
+
+	repaired, err := orderx.ReadOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read repaired orders: %v", err)
+	}
+	if len(repaired.Orders) != 1 {
+		t.Fatalf("orders len = %d, want 1", len(repaired.Orders))
+	}
+	if err := orderx.ValidateOrderStatus(repaired.Orders[0].Status); err != nil {
+		t.Fatalf("order status should be valid after repair: %v", err)
+	}
+	if len(repaired.Orders[0].Stages) != 1 {
+		t.Fatalf("stages len = %d, want 1", len(repaired.Orders[0].Stages))
+	}
+	if err := orderx.ValidateStageStatus(repaired.Orders[0].Stages[0].Status); err != nil {
+		t.Fatalf("stage status should be valid after repair: %v", err)
 	}
 }
 

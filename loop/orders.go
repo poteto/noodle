@@ -312,6 +312,7 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
 		return false, false, ordersNextRejectedError{cause: cause}
 	}
+	incoming, _ = orderx.ApplyLifecycleDefaults(incoming)
 
 	emptyPromotion := len(incoming.Orders) == 0
 

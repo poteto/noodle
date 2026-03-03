@@ -98,9 +98,64 @@ func applyStageRoutingDefaults(stage *Stage, _ taskreg.Registry, cfg config.Conf
 	return changed
 }
 
+// ApplyLifecycleDefaults fills empty lifecycle statuses so scheduler output can
+// omit them:
+//   - Order.Status defaults to "active"
+//   - Stage.Status defaults to "pending"
+//
+// Returns a copied OrdersFile only when defaults were applied.
+func ApplyLifecycleDefaults(of OrdersFile) (OrdersFile, bool) {
+	orders := make([]Order, len(of.Orders))
+	copy(orders, of.Orders)
+
+	changed := false
+	for i := range orders {
+		if applyOrderLifecycleDefaults(&orders[i]) {
+			changed = true
+		}
+	}
+	if !changed {
+		return of, false
+	}
+	of.Orders = orders
+	return of, true
+}
+
+func applyOrderLifecycleDefaults(order *Order) bool {
+	changed := false
+
+	normalizedOrderStatus := OrderStatus(strings.TrimSpace(string(order.Status)))
+	switch normalizedOrderStatus {
+	case "":
+		order.Status = OrderStatusActive
+		changed = true
+	default:
+		if order.Status != normalizedOrderStatus {
+			order.Status = normalizedOrderStatus
+			changed = true
+		}
+	}
+
+	for i := range order.Stages {
+		normalizedStageStatus := StageStatus(strings.TrimSpace(string(order.Stages[i].Status)))
+		switch normalizedStageStatus {
+		case "":
+			order.Stages[i].Status = StageStatusPending
+			changed = true
+		default:
+			if order.Stages[i].Status != normalizedStageStatus {
+				order.Stages[i].Status = normalizedStageStatus
+				changed = true
+			}
+		}
+	}
+
+	return changed
+}
+
 // NormalizeAndValidateOrders validates stage task types against registry, drops
-// orders with no valid main stages, normalizes IDs, and rejects orders with
-// empty status.
+// orders with no valid main stages, normalizes IDs, and validates lifecycle
+// statuses.
 //
 // Duplicate order IDs within the same file are rejected as validation errors.
 // For cross-file duplicate handling during promotion, see consumeOrdersNext.
@@ -109,16 +164,24 @@ func NormalizeAndValidateOrders(
 	reg taskreg.Registry,
 	cfg config.Config,
 ) (OrdersFile, bool, error) {
+	defaulted, lifecycleChanged := ApplyLifecycleDefaults(of)
+	if lifecycleChanged {
+		of = defaulted
+	}
+
 	orders := make([]Order, len(of.Orders))
 	copy(orders, of.Orders)
-	changed := false
+	changed := lifecycleChanged
 	seenIDs := make(map[string]struct{}, len(orders))
 	kept := make([]Order, 0, len(orders))
 
 	for i := range orders {
 		id := strings.TrimSpace(orders[i].ID)
 		if id == "" {
-			return of, false, fmt.Errorf("order id is required")
+			// Missing identity cannot be repaired safely; drop the malformed order
+			// so one bad scheduler item does not crash the full cycle.
+			changed = true
+			continue
 		}
 		if _, exists := seenIDs[id]; exists {
 			return of, false, fmt.Errorf("order %q appears more than once", id)
