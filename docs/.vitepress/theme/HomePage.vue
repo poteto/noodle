@@ -608,7 +608,7 @@ function copyPrompt() {
    ============================================================ */
 
 .section-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #555555;
   letter-spacing: 0.2em;
   text-transform: uppercase;
