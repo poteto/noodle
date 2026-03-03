@@ -112,7 +112,11 @@ This is the real onboarding. The loop picks this up, reads the project (conversa
 
 If `todos.md` already exists but `.agents/skills/schedule/` doesn't, skip the file write but continue to step 6. The user still needs skills.
 
-### 6. Ask about brainmaxxing
+### 6. Browse Noodle's skills for inspiration
+
+Browse `https://github.com/poteto/noodle/tree/main/.agents/skills/` and read the skills there. Some may be worth adapting to this project. Don't copy them verbatim, but use them as patterns for writing your own.
+
+### 7. Ask about brainmaxxing
 
 Ask the user: "Do you want brainmaxxing? It adds a `brain/` vault for persistent memory across sessions, plus reflect, meditate, and ruminate skills."
 
@@ -120,7 +124,7 @@ If yes, follow the install instructions at `https://github.com/poteto/brainmaxxi
 
 If no, move on.
 
-### 7. First run
+### 8. First run
 
 Tell the user to start the loop:
 
@@ -148,6 +152,6 @@ The execute skill does the work. Scope and decompose the assigned task into disc
 
 Include a `schedule` frontmatter field, something like "when backlog items are ready for implementation."
 
-### Key principle
+### Understand your human's workflow first
 
-Read the project first. Look at existing code, test commands, CI config, past conversation logs. Write skills that match how this project works.
+Before writing skills, read the conversation history in `~/.claude/` and `~/.codex/` for this project. Look at what commands the human runs, how they test, how they review code, what they ask agents to do repeatedly. This is the ground truth for what the schedule and execute skills should encode. Existing code, CI config, and test commands fill in the rest.
