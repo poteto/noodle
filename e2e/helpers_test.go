@@ -140,7 +140,7 @@ func main() {
 	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
 
 	// Todos with a trivial item.
-	writeFile(t, filepath.Join(dir, "brain", "todos.md"), `# Todos
+	writeFile(t, filepath.Join(dir, "todos.md"), `# Todos
 
 <!-- next-id: 2 -->
 
@@ -164,7 +164,7 @@ func main() {
 	// sync: emit one NDJSON line per open todo.
 	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), `#!/bin/sh
 set -e
-TODOS="brain/todos.md"
+TODOS="todos.md"
 [ -f "$TODOS" ] || exit 0
 # Match "1. [ ] some title ~small" lines and emit NDJSON.
 sed -n 's/^\([0-9]*\)\. \[ \] \(.*\)/\1 \2/p' "$TODOS" | while read -r id rest; do

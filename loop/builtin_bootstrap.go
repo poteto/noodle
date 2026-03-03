@@ -19,7 +19,7 @@ Use Skill(skill-creator) to help write the skill file.
 1. Check if the file ` + "`.agents/skills/schedule/SKILL.md`" + ` already exists. If it does, exit immediately — nothing to do.
 
 2. Inspect the project to understand its shape:
-   - Read ` + "`brain/todos.md`" + ` if it exists (backlog items)
+   - Read ` + "`todos.md`" + ` if it exists (backlog items)
    - Read conversation history from {{history_dirs}} to understand what the project does
    - Read ` + "`.noodle.toml`" + ` for project configuration
    - Skim the top-level directory structure

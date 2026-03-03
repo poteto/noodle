@@ -64,7 +64,7 @@ func die(message string) {
 }
 
 func backlogSync() error {
-	todosFile := envOrDefault("NOODLE_TODOS_FILE", "brain/todos.md")
+	todosFile := envOrDefault("NOODLE_TODOS_FILE", "todos.md")
 	file, err := os.Open(todosFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -144,7 +144,7 @@ func backlogSync() error {
 }
 
 func backlogAdd() error {
-	todosFile := envOrDefault("NOODLE_TODOS_FILE", "brain/todos.md")
+	todosFile := envOrDefault("NOODLE_TODOS_FILE", "todos.md")
 	if err := ensureTodosFile(todosFile); err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func backlogDone(id string) error {
 	if id == "" {
 		return fmt.Errorf("id required")
 	}
-	todosFile := envOrDefault("NOODLE_TODOS_FILE", "brain/todos.md")
+	todosFile := envOrDefault("NOODLE_TODOS_FILE", "todos.md")
 	lines, err := readLines(todosFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -219,7 +219,7 @@ func backlogEdit(id string) error {
 		return fmt.Errorf("title required")
 	}
 
-	todosFile := envOrDefault("NOODLE_TODOS_FILE", "brain/todos.md")
+	todosFile := envOrDefault("NOODLE_TODOS_FILE", "todos.md")
 	lines, err := readLines(todosFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

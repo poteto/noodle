@@ -11,8 +11,7 @@ func TestBuildSessionPreamble(t *testing.T) {
 		t.Fatal("preamble should start with # Noodle Context")
 	}
 	for _, expected := range []string{
-		"brain/plans/",
-		"brain/todos.md",
+		"todos.md",
 		".noodle/",
 		"conventional commit",
 	} {

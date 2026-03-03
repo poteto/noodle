@@ -3,7 +3,7 @@ set -eu
 
 id=${1:-}
 [ -n "$id" ] || { echo "id required" >&2; exit 1; }
-TODOS_FILE="${NOODLE_TODOS_FILE:-brain/todos.md}"
+TODOS_FILE="${NOODLE_TODOS_FILE:-todos.md}"
 [ -f "$TODOS_FILE" ] || { echo "todos file not found" >&2; exit 1; }
 
 payload=$(cat)

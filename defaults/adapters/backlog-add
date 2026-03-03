@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-TODOS_FILE="${NOODLE_TODOS_FILE:-brain/todos.md}"
+TODOS_FILE="${NOODLE_TODOS_FILE:-todos.md}"
 mkdir -p "$(dirname "$TODOS_FILE")"
 [ -f "$TODOS_FILE" ] || {
   cat > "$TODOS_FILE" <<'INIT'
