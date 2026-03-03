@@ -192,7 +192,7 @@ echo "edit: $@" >&2
 
 [routing.defaults]
 provider = "codex"
-model = "gpt-5.3-codex"
+model = "gpt-5.3-codex-spark"
 
 [skills]
 paths = [".agents/skills"]

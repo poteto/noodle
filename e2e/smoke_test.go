@@ -200,7 +200,7 @@ func TestSmokeProcessRuntimeDefault(t *testing.T) {
 
 [routing.defaults]
 provider = "codex"
-model = "gpt-5.3-codex"
+model = "gpt-5.3-codex-spark"
 
 [skills]
 paths = [".agents/skills"]
@@ -343,6 +343,145 @@ func TestSmokeStartOnceWithoutSkillsInEmptyRepo(t *testing.T) {
 
 	if _, err := os.Stat(skillsDir); !os.IsNotExist(err) {
 		t.Fatalf("expected no skills directory after startup, got err=%v", err)
+	}
+}
+
+// TestSmokeScheduleOnlyNoTaskTypes verifies that noodle starts and the scheduler
+// produces orders when no non-schedule task types are registered. With only the
+// schedule skill present, the scheduler should create prompt-only (ad-hoc)
+// orders for backlog items since there are no task types to bind to.
+func TestSmokeScheduleOnlyNoTaskTypes(t *testing.T) {
+	preflight(t)
+
+	noodleBin := buildNoodle(t)
+	dir := newProjectTempDir(t)
+
+	// Scaffold a minimal project with ONLY the schedule skill.
+	run(t, dir, "git", "init", "-b", "main")
+	run(t, dir, "git", "config", "user.email", "test@noodle.dev")
+	run(t, dir, "git", "config", "user.name", "Noodle Test")
+	run(t, dir, "git", "commit", "--allow-empty", "-m", "initial commit")
+
+	writeFile(t, filepath.Join(dir, "go.mod"), "module example.com/e2e\n\ngo 1.23\n")
+	writeFile(t, filepath.Join(dir, "main.go"), "package main\n\nfunc main() {}\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "init")
+
+	// Brain scaffolding with a backlog item.
+	writeFile(t, filepath.Join(dir, "brain", "index.md"), "# Brain\n")
+	writeFile(t, filepath.Join(dir, "brain", "todos.md"), "# Todos\n\n<!-- next-id: 2 -->\n\n## Tasks\n\n1. [ ] Create hello.txt ~small\n")
+
+	// Only copy the schedule skill — no execute, quality, or reflect.
+	srcSkills := filepath.Join(repoRoot(t), ".agents", "skills")
+	dstSkills := filepath.Join(dir, ".agents", "skills")
+	copyDir(t, filepath.Join(srcSkills, "schedule"), filepath.Join(dstSkills, "schedule"))
+
+	// Adapter scripts.
+	adapterDir := filepath.Join(dir, ".noodle", "adapters")
+	mkdirAll(t, adapterDir)
+	writeFile(t, filepath.Join(adapterDir, "backlog-sync"), "#!/bin/sh\necho '{\"id\":\"1\",\"title\":\"Create hello.txt\",\"status\":\"open\"}'\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-done"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-add"), "#!/bin/sh\n")
+	writeFile(t, filepath.Join(adapterDir, "backlog-edit"), "#!/bin/sh\n")
+	chmodExec(t, filepath.Join(adapterDir, "backlog-sync"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-done"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-add"))
+	chmodExec(t, filepath.Join(adapterDir, "backlog-edit"))
+
+	// Config: schedule-only, codex-spark for speed.
+	writeFile(t, filepath.Join(dir, ".noodle.toml"), `mode = "auto"
+
+[routing.defaults]
+provider = "codex"
+model = "gpt-5.3-codex-spark"
+
+[skills]
+paths = [".agents/skills"]
+
+[agents.codex]
+path = "~/.codex"
+
+[adapters.backlog]
+skill = "todo"
+
+[adapters.backlog.scripts]
+sync = ".noodle/adapters/backlog-sync"
+done = ".noodle/adapters/backlog-done"
+add = ".noodle/adapters/backlog-add"
+edit = ".noodle/adapters/backlog-edit"
+
+[concurrency]
+max_concurrency = 1
+
+[runtime]
+default = "process"
+
+[server]
+enabled = true
+port = 13739
+`)
+
+	mkdirAll(t, filepath.Join(dir, ".noodle"))
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "scaffolding")
+
+	// Start noodle.
+	cmd := exec.Command(noodleBin, "start")
+	configureProcessGroup(cmd)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "NOODLE_NO_BROWSER=1")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	t.Cleanup(func() { cleanupNoodle(t, cmd, dir) })
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start noodle: %v", err)
+	}
+	t.Logf("noodle started (pid %d)", cmd.Process.Pid)
+
+	// The scheduler should produce orders even with no non-schedule task types.
+	milestones := []milestone{
+		{
+			name:    "orders.json appears",
+			timeout: 90 * time.Second,
+			check:   func(d string) (bool, error) { return ordersExist(d) },
+		},
+	}
+	if err := pollMilestones(t, milestones, dir); err != nil {
+		dumpSessionDiagnostics(t, dir)
+		t.Fatalf("milestone not reached: %v", err)
+	}
+
+	// Read orders and log structure for debugging.
+	ordersPath := filepath.Join(dir, ".noodle", "orders.json")
+	data, err := os.ReadFile(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders.json: %v", err)
+	}
+
+	var orders struct {
+		Orders []struct {
+			ID     string `json:"id"`
+			Stages []struct {
+				TaskKey string `json:"task_key"`
+				Prompt  string `json:"prompt"`
+			} `json:"stages"`
+		} `json:"orders"`
+	}
+	if err := json.Unmarshal(data, &orders); err != nil {
+		t.Fatalf("parse orders.json: %v", err)
+	}
+
+	t.Logf("orders.json: %d order(s)", len(orders.Orders))
+	for i, order := range orders.Orders {
+		for j, stage := range order.Stages {
+			t.Logf("  order[%d].stages[%d]: task_key=%q prompt_len=%d", i, j, stage.TaskKey, len(stage.Prompt))
+		}
+	}
+
+	if len(orders.Orders) == 0 {
+		t.Fatalf("expected at least one order, got 0")
 	}
 }
 
