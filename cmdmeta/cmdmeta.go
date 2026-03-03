@@ -26,6 +26,7 @@ func Commands() []Command {
 		{Name: "start", Short: "Run the scheduling loop", Flags: []Flag{
 			{Name: "once", Type: "bool", Desc: "Run one scheduling cycle and exit"},
 		}},
+		{Name: "version", Short: "Print noodle version"},
 		{Name: "status", Short: "Show compact runtime status"},
 		{Name: "skills", Short: "List resolved skills", Subcommands: []Command{
 			{Name: "list", Short: "List all resolved skills"},

@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
 import { buildEndGenerateOpenGraphImages } from "./plugins/og-image.mjs";
-import { NOODLE_DOCS_VERSION } from "./version";
+
+const vitepressDir = dirname(fileURLToPath(import.meta.url));
+const NOODLE_VERSION = readFileSync(resolve(vitepressDir, "..", "..", "VERSION"), "utf8").trim();
 
 export default defineConfig({
   base: "/noodle/",
@@ -59,7 +64,7 @@ export default defineConfig({
 
   themeConfig: {
     nav: [
-      { text: NOODLE_DOCS_VERSION, link: `https://github.com/poteto/noodle/releases/tag/${NOODLE_DOCS_VERSION}` },
+      { text: NOODLE_VERSION, link: `https://github.com/poteto/noodle/releases/tag/${NOODLE_VERSION}` },
       { text: "GitHub", link: "https://github.com/poteto/noodle" },
     ],
 

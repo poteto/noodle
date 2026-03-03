@@ -8,8 +8,8 @@ import { ConventionalChangelog } from "conventional-changelog";
 
 const usage = `Usage: node scripts/release.mjs <tag>
 
-Bumps docs version metadata, updates CHANGELOG.md for previous-tag..HEAD,
-commits docs version first, commits changelog second, and tags that commit.
+Bumps the canonical VERSION file, updates CHANGELOG.md for previous-tag..HEAD,
+commits VERSION first, commits changelog second, and tags that commit.
 If no prior semver tag exists, uses the repository's initial commit as the lower bound.`;
 
 function fail(message) {
@@ -86,20 +86,15 @@ function versionFromTag(tag) {
   return tag;
 }
 
-async function updateDocsVersionFile(targetTag) {
-  const docsVersionPath = path.join(process.cwd(), "docs", ".vitepress", "version.ts");
-  const source = await readFile(docsVersionPath, "utf8");
+async function updateVersionFile(targetTag) {
+  const versionPath = path.join(process.cwd(), "VERSION");
+  const source = await readFile(versionPath, "utf8");
   const nextTag = targetTag.trim();
-  const pattern = /(export const NOODLE_DOCS_VERSION = ")([^"]+)(";\s*)/;
-  const match = source.match(pattern);
-  if (!match) {
-    fail(`docs version marker not found in ${docsVersionPath}`);
-  }
-  if (match[2] === nextTag) {
+  const currentTag = source.trim();
+  if (currentTag === nextTag) {
     return false;
   }
-  const next = source.replace(pattern, `$1${nextTag}$3`);
-  await writeFile(docsVersionPath, next, "utf8");
+  await writeFile(versionPath, `${nextTag}\n`, "utf8");
   return true;
 }
 
@@ -185,17 +180,18 @@ async function main() {
 
   const previous = findPreviousBoundary(targetTag);
   const releaseSection = await generateReleaseSection(previous.ref, targetTag);
-  const docsVersionUpdated = await updateDocsVersionFile(targetTag);
-  if (docsVersionUpdated) {
-    git(["add", "--", "docs/.vitepress/version.ts"]);
-    git([
-      "commit",
-      "-m",
-      `docs(version): bump docs version to ${targetTag}`,
-      "--",
-      "docs/.vitepress/version.ts",
-    ]);
+  const versionUpdated = await updateVersionFile(targetTag);
+  if (!versionUpdated) {
+    fail(`VERSION is already ${targetTag}; expected a new version bump commit`);
   }
+  git(["add", "--", "VERSION"]);
+  git([
+    "commit",
+    "-m",
+    `chore(version): bump VERSION to ${targetTag}`,
+    "--",
+    "VERSION",
+  ]);
   await updateChangelogFile(releaseSection, targetTag);
 
   git(["add", "--", "CHANGELOG.md"]);
@@ -208,11 +204,7 @@ async function main() {
   ]);
   git(["tag", "-a", targetTag, "-m", `Release ${targetTag}`]);
 
-  if (docsVersionUpdated) {
-    console.log(`Docs version updated to ${targetTag} and committed`);
-  } else {
-    console.log(`Docs version already at ${targetTag}; skipped docs version commit`);
-  }
+  console.log(`VERSION updated to ${targetTag} and committed`);
   console.log(`CHANGELOG.md updated for ${previous.label}..${targetTag}`);
   console.log(`Committed CHANGELOG.md and created tag ${targetTag}`);
 }

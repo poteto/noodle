@@ -21,13 +21,23 @@ type App struct {
 func NewRootCmd() *cobra.Command {
 	var app App
 	var projectDirFlag string
+	var showVersion bool
 
 	root := &cobra.Command{
 		Use:           "noodle",
 		Short:         "Open-source AI coding framework",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if showVersion {
+				return runVersion()
+			}
+			return cmd.Help()
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if showVersion || rootSubcommandName(cmd) == "version" {
+				return nil
+			}
 			dir, err := resolveProjectDir(projectDirFlag)
 			if err != nil {
 				return err
@@ -54,9 +64,11 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 	root.PersistentFlags().StringVar(&projectDirFlag, "project-dir", "", "project directory (default: current directory, env: NOODLE_PROJECT_DIR)")
+	root.Flags().BoolVar(&showVersion, "version", false, "Print noodle version")
 
 	root.AddCommand(
 		newStartCmd(&app),
+		newVersionCmd(&app),
 		newSkillsCmd(&app),
 		newSchemaCmd(&app),
 		newStatusCmd(&app),
