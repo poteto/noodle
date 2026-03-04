@@ -33,6 +33,7 @@ type sessionBase struct {
 
 	mu       sync.Mutex
 	status   string
+	outcome  SessionOutcome
 	costUSD  float64
 	done     chan struct{}
 	doneOnce sync.Once
@@ -78,6 +79,12 @@ func (s *sessionBase) Status() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.status
+}
+
+func (s *sessionBase) Outcome() SessionOutcome {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.outcome
 }
 
 func (s *sessionBase) Events() <-chan SessionEvent { return s.events }
@@ -133,6 +140,7 @@ func (s *sessionBase) markDone(status string) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
 		s.status = status
+		s.outcome = SessionOutcome{Status: sessionStatusFromString(status)}
 		s.mu.Unlock()
 		close(s.done)
 	})

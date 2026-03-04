@@ -88,3 +88,34 @@ func TestDispatchRequestValidateAcceptsNonProcessProvider(t *testing.T) {
 		t.Fatalf("validate request: %v", err)
 	}
 }
+
+func TestSessionStatusIsTerminal(t *testing.T) {
+	cases := []struct {
+		name   string
+		status SessionStatus
+		want   bool
+	}{
+		{name: "zero value", status: "", want: false},
+		{name: "running string", status: SessionStatus("running"), want: false},
+		{name: "completed", status: StatusCompleted, want: true},
+		{name: "failed", status: StatusFailed, want: true},
+		{name: "cancelled", status: StatusCancelled, want: true},
+		{name: "killed", status: StatusKilled, want: true},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.status.IsTerminal(); got != tc.want {
+				t.Fatalf("IsTerminal() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSessionOutcomeZeroValueIsNonTerminal(t *testing.T) {
+	var outcome SessionOutcome
+	if outcome.Status.IsTerminal() {
+		t.Fatal("zero-value outcome status should be non-terminal")
+	}
+}

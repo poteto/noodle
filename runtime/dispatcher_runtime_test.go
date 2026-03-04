@@ -18,6 +18,7 @@ type fakeSession struct {
 
 func (s *fakeSession) ID() string                             { return s.id }
 func (s *fakeSession) Status() string                         { return "running" }
+func (s *fakeSession) Outcome() dispatcher.SessionOutcome     { return dispatcher.SessionOutcome{} }
 func (s *fakeSession) Done() <-chan struct{}                  { return s.done }
 func (s *fakeSession) TotalCost() float64                     { return 0 }
 func (s *fakeSession) Terminate() error                       { return s.closeDone() }

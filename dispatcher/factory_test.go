@@ -24,6 +24,7 @@ type factorySessionStub struct {
 
 func (s *factorySessionStub) ID() string                  { return s.id }
 func (s *factorySessionStub) Status() string              { return s.status }
+func (s *factorySessionStub) Outcome() SessionOutcome     { return SessionOutcome{} }
 func (s *factorySessionStub) Events() <-chan SessionEvent { return nil }
 func (s *factorySessionStub) Done() <-chan struct{}       { return nil }
 func (s *factorySessionStub) TotalCost() float64          { return 0 }

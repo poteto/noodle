@@ -80,10 +80,54 @@ type SessionEvent struct {
 	TokensOut int
 }
 
+// SessionStatus classifies how a session ended.
+type SessionStatus string
+
+const (
+	StatusCompleted SessionStatus = "completed"
+	StatusFailed    SessionStatus = "failed"
+	StatusCancelled SessionStatus = "cancelled"
+	StatusKilled    SessionStatus = "killed"
+)
+
+// IsTerminal reports whether the status represents a finished session.
+func (s SessionStatus) IsTerminal() bool {
+	switch s {
+	case StatusCompleted, StatusFailed, StatusCancelled, StatusKilled:
+		return true
+	default:
+		return false
+	}
+}
+
+// SessionOutcome captures terminal state classification and diagnostics.
+type SessionOutcome struct {
+	Status         SessionStatus
+	Reason         string
+	HasDeliverable bool
+	ExitCode       int
+}
+
+func sessionStatusFromString(status string) SessionStatus {
+	switch status {
+	case string(StatusCompleted):
+		return StatusCompleted
+	case string(StatusFailed):
+		return StatusFailed
+	case string(StatusCancelled):
+		return StatusCancelled
+	case string(StatusKilled):
+		return StatusKilled
+	default:
+		return ""
+	}
+}
+
 // Session is one dispatched agent session.
 type Session interface {
 	ID() string
 	Status() string
+	Outcome() SessionOutcome
 	Events() <-chan SessionEvent
 	Done() <-chan struct{}
 	TotalCost() float64
