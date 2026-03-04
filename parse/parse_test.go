@@ -73,6 +73,16 @@ func TestDetectProvider(t *testing.T) {
 			expected: "claude",
 		},
 		{
+			name:     "claude_ControlResponse",
+			line:     `{"type":"ControlResponse","request_id":"req-1","allow":true}`,
+			expected: "claude",
+		},
+		{
+			name:     "claude_control_response",
+			line:     `{"type":"control_response","request_id":"req-1","allow":true}`,
+			expected: "claude",
+		},
+		{
 			name:    "unknown_type",
 			line:    `{"type":"tool_message"}`,
 			wantErr: true,
@@ -267,6 +277,21 @@ func TestRegistryParsesRateLimitEventViaClaudeAdapter(t *testing.T) {
 func TestRegistryParsesControlResponseViaClaudeAdapter(t *testing.T) {
 	registry := NewRegistry()
 	line := `{"type":"controlresponse","request_id":"req-1","allow":true,"_ts":"2026-03-03T22:10:00.000000Z"}`
+	provider, events, err := registry.ParseLine([]byte(line))
+	if err != nil {
+		t.Fatalf("parse line: %v", err)
+	}
+	if provider != "claude" {
+		t.Fatalf("provider = %q, want claude", provider)
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count: got %d want 0", len(events))
+	}
+}
+
+func TestRegistryParsesControlResponseSnakeCaseViaClaudeAdapter(t *testing.T) {
+	registry := NewRegistry()
+	line := `{"type":"control_response","request_id":"req-1","allow":true,"_ts":"2026-03-03T22:10:00.000000Z"}`
 	provider, events, err := registry.ParseLine([]byte(line))
 	if err != nil {
 		t.Fatalf("parse line: %v", err)

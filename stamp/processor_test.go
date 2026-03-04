@@ -106,6 +106,25 @@ func TestProcessLineControlResponseDoesNotEmitCanonicalRoutingError(t *testing.T
 	}
 }
 
+func TestProcessLineControlResponseSnakeCaseDoesNotEmitCanonicalRoutingError(t *testing.T) {
+	processor := NewProcessor()
+	processor.Now = func() time.Time {
+		return time.Date(2026, 3, 3, 22, 10, 0, 0, time.UTC)
+	}
+
+	line := []byte(`{"type":"control_response","request_id":"req-1","allow":true}`)
+	stamped, events, err := processor.ProcessLine(line)
+	if err != nil {
+		t.Fatalf("process line: %v", err)
+	}
+	if len(stamped) == 0 {
+		t.Fatal("expected stamped output")
+	}
+	if len(events) != 0 {
+		t.Fatalf("event count mismatch: got %d want 0", len(events))
+	}
+}
+
 func TestProcessWritesStampedAndSidecarEvents(t *testing.T) {
 	processor := NewProcessor()
 	processor.Now = func() time.Time {

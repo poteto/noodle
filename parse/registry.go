@@ -99,5 +99,14 @@ func DetectProvider(line []byte) (string, error) {
 	if _, ok := claudeLineTypes[lineType]; ok {
 		return "claude", nil
 	}
+
+	// Claude transport control responses can appear with type variants across
+	// provider/runtime versions; route these variants to Claude and drop them
+	// in the adapter as non-canonical noise.
+	switch strings.ToLower(lineType) {
+	case "controlresponse", "control_response":
+		return "claude", nil
+	}
+
 	return "", fmt.Errorf("provider unresolved for line type %q", lineType)
 }
