@@ -26,7 +26,7 @@ import (
 
 const (
 	completionBufferSize = 1024
-	shutdownDeadline     = 2 * time.Second
+	shutdownDeadline     = 10 * time.Second
 )
 
 func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Loop {
