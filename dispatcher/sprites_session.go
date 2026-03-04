@@ -64,8 +64,9 @@ func (s *spritesSession) start(ctx context.Context) {
 
 	go func() {
 		defer s.wg.Done()
+		defer s.closeStreamDone()
 		interceptor := &canonicalLineInterceptor{onLine: func(line []byte) {
-			s.consumeCanonicalLine(line, nil)
+			s.consumeCanonicalLine(line, s.observeCanonicalEvent)
 		}}
 		s.processStream(ctx, s.stdout, interceptor)
 	}()
@@ -89,22 +90,22 @@ func (s *spritesSession) start(ctx context.Context) {
 func (s *spritesSession) waitAndSync(ctx context.Context) {
 	err := s.cmd.Wait()
 
-	terminalStatus := "completed"
+	exitCode := 0
+	shouldSyncBack := true
 	if err != nil {
 		var exitErr *sprites.ExitError
 		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() != 0 {
-				terminalStatus = "failed"
-			}
-		} else if ctx.Err() != nil {
-			terminalStatus = "cancelled"
+			exitCode = exitErr.ExitCode()
 		} else {
-			terminalStatus = "failed"
+			exitCode = 1
+			if ctx.Err() != nil {
+				shouldSyncBack = false
+			}
 		}
 	}
 
 	// Push changes from sprite back to git remote.
-	if s.remoteURL != "" && (terminalStatus == "completed" || terminalStatus == "failed") {
+	if s.remoteURL != "" && shouldSyncBack {
 		syncCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
@@ -126,7 +127,7 @@ func (s *spritesSession) waitAndSync(ctx context.Context) {
 		}
 	}
 
-	s.markDone(terminalStatus)
+	s.resolveAndMarkDone(exitCode, ctx.Err() != nil)
 }
 
 func (s *spritesSession) Terminate() error {

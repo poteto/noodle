@@ -31,20 +31,28 @@ type sessionBase struct {
 	stampedPath   string
 	canonicalPath string
 
-	mu       sync.Mutex
-	status   string
-	outcome  SessionOutcome
-	costUSD  float64
-	done     chan struct{}
-	doneOnce sync.Once
-	events   chan SessionEvent
-	eventsMu sync.Once
-	dropped  atomic.Uint64
-	wg       sync.WaitGroup
+	mu             sync.Mutex
+	status         string
+	outcome        SessionOutcome
+	costUSD        float64
+	done           chan struct{}
+	doneOnce       sync.Once
+	events         chan SessionEvent
+	eventsMu       sync.Once
+	dropped        atomic.Uint64
+	wg             sync.WaitGroup
+	streamDone     chan struct{}
+	streamDoneOnce sync.Once
 
 	prompt       string
 	promptLogged bool
 	sink         SessionEventSink
+
+	trackerMu   sync.Mutex
+	sawInit     bool
+	sawAction   bool
+	sawResult   bool
+	sawComplete bool
 }
 
 // sessionBaseConfig holds the common fields needed to initialize a sessionBase.
@@ -68,6 +76,7 @@ func newSessionBase(cfg sessionBaseConfig) sessionBase {
 		status:        "running",
 		done:          make(chan struct{}),
 		events:        make(chan SessionEvent, 32),
+		streamDone:    make(chan struct{}),
 	}
 }
 
@@ -144,6 +153,76 @@ func (s *sessionBase) markDone(status string) {
 		s.mu.Unlock()
 		close(s.done)
 	})
+}
+
+func (s *sessionBase) closeStreamDone() {
+	s.streamDoneOnce.Do(func() {
+		close(s.streamDone)
+	})
+}
+
+func (s *sessionBase) observeCanonicalEvent(ce parse.CanonicalEvent) {
+	s.trackerMu.Lock()
+	switch ce.Type {
+	case parse.EventInit:
+		s.sawInit = true
+	case parse.EventAction:
+		s.sawAction = true
+	case parse.EventResult:
+		s.sawResult = true
+	case parse.EventComplete:
+		s.sawComplete = true
+	}
+	s.trackerMu.Unlock()
+}
+
+func (s *sessionBase) resolveAndMarkDone(exitCode int, ctxCancelled bool) {
+	<-s.streamDone
+	outcome := s.resolveOutcome(exitCode, ctxCancelled)
+	s.doneOnce.Do(func() {
+		s.mu.Lock()
+		s.status = outcome.Status.String()
+		s.outcome = outcome
+		s.mu.Unlock()
+		close(s.done)
+	})
+}
+
+func (s *sessionBase) resolveOutcome(exitCode int, ctxCancelled bool) SessionOutcome {
+	s.trackerMu.Lock()
+	sawComplete := s.sawComplete
+	sawResult := s.sawResult
+	sawAction := s.sawAction
+	sawInit := s.sawInit
+	s.trackerMu.Unlock()
+
+	outcome := SessionOutcome{
+		ExitCode:       exitCode,
+		HasDeliverable: sawComplete || sawResult,
+	}
+
+	switch {
+	case sawComplete || sawResult:
+		outcome.Status = StatusCompleted
+		outcome.Reason = "completion event observed"
+	case ctxCancelled:
+		outcome.Status = StatusCancelled
+		outcome.Reason = "context cancelled before completion"
+	case exitCode < 0:
+		outcome.Status = StatusKilled
+		outcome.Reason = "process terminated by signal"
+	case sawAction:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no turn completed"
+	case sawInit:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no work produced"
+	default:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no events emitted"
+	}
+
+	return outcome
 }
 
 func (s *sessionBase) closeEventsWhenDone() {
