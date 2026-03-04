@@ -140,7 +140,7 @@ func TestCompositeObserverRoutesByRuntime(t *testing.T) {
 	}
 }
 
-func TestCompositeObserverCachesRoutingDecision(t *testing.T) {
+func TestCompositeObserverReReadsRuntimeEachCall(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-remote"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -158,6 +158,11 @@ func TestCompositeObserverCachesRoutingDecision(t *testing.T) {
 	if _, err := composite.Observe(sessionID); err != nil {
 		t.Fatalf("first observe: %v", err)
 	}
+	if len(remoteObserver.calls) != 1 {
+		t.Fatalf("remote observer calls after first = %d, want 1", len(remoteObserver.calls))
+	}
+
+	// Rewrite spawn.json to change runtime — observer should pick it up.
 	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(`{"runtime":"process"}`), 0o644); err != nil {
 		t.Fatalf("rewrite spawn: %v", err)
 	}
@@ -165,10 +170,42 @@ func TestCompositeObserverCachesRoutingDecision(t *testing.T) {
 		t.Fatalf("second observe: %v", err)
 	}
 
-	if len(remoteObserver.calls) != 2 {
-		t.Fatalf("remote observer calls = %#v, want 2", remoteObserver.calls)
+	if len(localObserver.calls) != 1 {
+		t.Fatalf("local observer calls = %d, want 1", len(localObserver.calls))
 	}
-	if len(localObserver.calls) != 0 {
-		t.Fatalf("local observer calls = %#v, want none", localObserver.calls)
+	if len(remoteObserver.calls) != 1 {
+		t.Fatalf("remote observer calls = %d, want 1 (should not have increased)", len(remoteObserver.calls))
+	}
+}
+
+func TestCompositeObserverDefaultsToLocalWhenSpawnMissing(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-no-spawn"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	localObserver := &countingObserver{}
+	remoteObserver := &countingObserver{}
+	composite := NewCompositeObserver(runtimeDir, localObserver, remoteObserver)
+
+	// First observe without spawn.json — should use local.
+	if _, err := composite.Observe(sessionID); err != nil {
+		t.Fatalf("first observe: %v", err)
+	}
+	if len(localObserver.calls) != 1 {
+		t.Fatalf("local observer calls = %d, want 1", len(localObserver.calls))
+	}
+
+	// Write spawn.json as sprites — should now use remote.
+	if err := os.WriteFile(filepath.Join(sessionPath, "spawn.json"), []byte(`{"runtime":"sprites"}`), 0o644); err != nil {
+		t.Fatalf("write spawn: %v", err)
+	}
+	if _, err := composite.Observe(sessionID); err != nil {
+		t.Fatalf("second observe: %v", err)
+	}
+	if len(remoteObserver.calls) != 1 {
+		t.Fatalf("remote observer calls = %d, want 1", len(remoteObserver.calls))
 	}
 }

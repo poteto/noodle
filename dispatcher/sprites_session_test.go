@@ -1,8 +1,11 @@
 package dispatcher
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/poteto/noodle/parse"
 )
@@ -30,6 +33,42 @@ func TestSpritesSessionResolveAndMarkDoneCompletedFromResult(t *testing.T) {
 	}
 	if outcome.ExitCode != 1 {
 		t.Fatalf("exit code = %d, want 1", outcome.ExitCode)
+	}
+}
+
+func TestSpritesSessionWritesHeartbeat(t *testing.T) {
+	sessionDir := t.TempDir()
+	canonicalPath := filepath.Join(sessionDir, "canonical.ndjson")
+
+	session := newSpritesSession(spritesSessionConfig{
+		id:            "session-a",
+		canonicalPath: canonicalPath,
+		stampedPath:   filepath.Join(sessionDir, "raw.ndjson"),
+	})
+
+	ts := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventAction,
+		Message:   "apply patch",
+		Timestamp: ts,
+	}), session.observeCanonicalEvent)
+
+	data, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
+	if err != nil {
+		t.Fatalf("read heartbeat: %v", err)
+	}
+	var heartbeat struct {
+		Timestamp  time.Time `json:"timestamp"`
+		TTLSeconds int       `json:"ttl_seconds"`
+	}
+	if err := json.Unmarshal(data, &heartbeat); err != nil {
+		t.Fatalf("parse heartbeat: %v", err)
+	}
+	if !heartbeat.Timestamp.Equal(ts) {
+		t.Fatalf("heartbeat timestamp = %s, want %s", heartbeat.Timestamp, ts)
+	}
+	if heartbeat.TTLSeconds != sessionHeartbeatTTLSeconds {
+		t.Fatalf("heartbeat ttl = %d, want %d", heartbeat.TTLSeconds, sessionHeartbeatTTLSeconds)
 	}
 }
 

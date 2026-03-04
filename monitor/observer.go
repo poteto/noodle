@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/poteto/noodle/dispatcher"
@@ -65,9 +64,6 @@ type CompositeObserver struct {
 	runtimeDir string
 	local      Observer
 	remote     Observer
-
-	mu    sync.RWMutex
-	cache map[string]Observer
 }
 
 func NewCompositeObserver(runtimeDir string, local Observer, remote Observer) *CompositeObserver {
@@ -75,7 +71,6 @@ func NewCompositeObserver(runtimeDir string, local Observer, remote Observer) *C
 		runtimeDir: strings.TrimSpace(runtimeDir),
 		local:      local,
 		remote:     remote,
-		cache:      map[string]Observer{},
 	}
 }
 
@@ -99,23 +94,12 @@ func (o *CompositeObserver) observerForSession(sessionID string) (Observer, erro
 		return nil, fmt.Errorf("composite observer not configured")
 	}
 
-	o.mu.RLock()
-	cached, ok := o.cache[sessionID]
-	o.mu.RUnlock()
-	if ok {
-		return cached, nil
-	}
-
 	selected := o.local
 	if runtime, err := readSessionRuntime(o.runtimeDir, sessionID); err == nil {
 		if runtime != "" && runtime != "process" && runtime != "tmux" {
 			selected = o.remote
 		}
 	}
-
-	o.mu.Lock()
-	o.cache[sessionID] = selected
-	o.mu.Unlock()
 	return selected, nil
 }
 

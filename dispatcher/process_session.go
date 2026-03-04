@@ -2,12 +2,6 @@ package dispatcher
 
 import (
 	"context"
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/parse"
@@ -21,15 +15,6 @@ type processSession struct {
 	process    *ProcessHandle
 	controller *claudeController // nil for non-steerable sessions
 	warnings   []string
-
-	streamDone     chan struct{}
-	streamDoneOnce sync.Once
-
-	trackerMu   sync.Mutex
-	sawInit     bool
-	sawAction   bool
-	sawResult   bool
-	sawComplete bool
 }
 
 type processSessionConfig struct {
@@ -57,12 +42,11 @@ func newProcessSession(cfg processSessionConfig) *processSession {
 		process:    cfg.process,
 		controller: cfg.controller,
 		warnings:   append([]string(nil), cfg.warnings...),
-		streamDone: make(chan struct{}),
 	}
 }
 
 func (s *processSession) start(ctx context.Context) {
-	s.writeHeartbeat(nowUTC())
+	s.writeInitialHeartbeat()
 	s.wg.Add(2)
 
 	go func() {
@@ -91,20 +75,7 @@ func (s *processSession) start(ctx context.Context) {
 }
 
 func (s *processSession) processHook(ce parse.CanonicalEvent) {
-	s.trackerMu.Lock()
-	switch ce.Type {
-	case parse.EventInit:
-		s.sawInit = true
-	case parse.EventAction:
-		s.sawAction = true
-	case parse.EventResult:
-		s.sawResult = true
-	case parse.EventComplete:
-		s.sawComplete = true
-	}
-	s.trackerMu.Unlock()
-
-	s.writeHeartbeat(ce.Timestamp)
+	s.observeCanonicalEvent(ce)
 	if s.controller != nil {
 		s.controller.NotifyEvent(string(ce.Type))
 	}
@@ -120,61 +91,6 @@ func (s *processSession) waitForExit(ctx context.Context) {
 
 	exitCode, _ := s.process.ExitCode()
 	s.resolveAndMarkDone(exitCode, ctx.Err() != nil)
-}
-
-func (s *processSession) closeStreamDone() {
-	s.streamDoneOnce.Do(func() {
-		close(s.streamDone)
-	})
-}
-
-func (s *processSession) resolveAndMarkDone(exitCode int, ctxCancelled bool) {
-	<-s.streamDone
-	outcome := s.resolveOutcome(exitCode, ctxCancelled)
-	s.doneOnce.Do(func() {
-		s.mu.Lock()
-		s.status = outcome.Status.String()
-		s.outcome = outcome
-		s.mu.Unlock()
-		close(s.done)
-	})
-}
-
-func (s *processSession) resolveOutcome(exitCode int, ctxCancelled bool) SessionOutcome {
-	s.trackerMu.Lock()
-	sawComplete := s.sawComplete
-	sawResult := s.sawResult
-	sawAction := s.sawAction
-	sawInit := s.sawInit
-	s.trackerMu.Unlock()
-
-	outcome := SessionOutcome{
-		ExitCode:       exitCode,
-		HasDeliverable: sawComplete || sawResult,
-	}
-
-	switch {
-	case sawComplete || sawResult:
-		outcome.Status = StatusCompleted
-		outcome.Reason = "completion event observed"
-	case ctxCancelled:
-		outcome.Status = StatusCancelled
-		outcome.Reason = "context cancelled before completion"
-	case exitCode < 0:
-		outcome.Status = StatusKilled
-		outcome.Reason = "process terminated by signal"
-	case sawAction:
-		outcome.Status = StatusFailed
-		outcome.Reason = "no turn completed"
-	case sawInit:
-		outcome.Status = StatusFailed
-		outcome.Reason = "no work produced"
-	default:
-		outcome.Status = StatusFailed
-		outcome.Reason = "no events emitted"
-	}
-
-	return outcome
 }
 
 func (s *processSession) Terminate() error {
@@ -195,27 +111,6 @@ func (s *processSession) Controller() AgentController {
 		return s.controller
 	}
 	return noopController{}
-}
-
-func (s *processSession) writeHeartbeat(timestamp time.Time) {
-	if strings.TrimSpace(s.canonicalPath) == "" {
-		return
-	}
-	if timestamp.IsZero() {
-		timestamp = nowUTC()
-	}
-	path := filepath.Join(filepath.Dir(s.canonicalPath), "heartbeat.json")
-	payload, err := json.Marshal(struct {
-		Timestamp  time.Time `json:"timestamp"`
-		TTLSeconds int       `json:"ttl_seconds"`
-	}{
-		Timestamp:  timestamp.UTC(),
-		TTLSeconds: sessionHeartbeatTTLSeconds,
-	})
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(path, payload, 0o644)
 }
 
 var _ Session = (*processSession)(nil)

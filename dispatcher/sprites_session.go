@@ -60,6 +60,7 @@ func newSpritesSession(cfg spritesSessionConfig) *spritesSession {
 }
 
 func (s *spritesSession) start(ctx context.Context) {
+	s.writeInitialHeartbeat()
 	s.wg.Add(2)
 
 	go func() {

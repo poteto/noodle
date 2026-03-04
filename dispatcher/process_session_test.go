@@ -508,6 +508,91 @@ func TestProcessSessionDroppedEventSummary(t *testing.T) {
 	}
 }
 
+func TestHeartbeatThrottling(t *testing.T) {
+	sessionDir := t.TempDir()
+	canonicalPath := filepath.Join(sessionDir, "canonical.ndjson")
+
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		canonicalPath: canonicalPath,
+		stampedPath:   filepath.Join(sessionDir, "raw.ndjson"),
+	})
+
+	ts1 := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventAction,
+		Message:   "first action",
+		Timestamp: ts1,
+	}), session.processHook)
+
+	// Read heartbeat after first event.
+	data1, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
+	if err != nil {
+		t.Fatalf("read first heartbeat: %v", err)
+	}
+	var hb1 struct {
+		Timestamp time.Time `json:"timestamp"`
+	}
+	if err := json.Unmarshal(data1, &hb1); err != nil {
+		t.Fatalf("parse first heartbeat: %v", err)
+	}
+	if !hb1.Timestamp.Equal(ts1) {
+		t.Fatalf("first heartbeat timestamp = %s, want %s", hb1.Timestamp, ts1)
+	}
+
+	// Second event within 5s — heartbeat should NOT be updated.
+	ts2 := ts1.Add(2 * time.Second)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventAction,
+		Message:   "second action",
+		Timestamp: ts2,
+	}), session.processHook)
+
+	data2, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
+	if err != nil {
+		t.Fatalf("read second heartbeat: %v", err)
+	}
+	var hb2 struct {
+		Timestamp time.Time `json:"timestamp"`
+	}
+	if err := json.Unmarshal(data2, &hb2); err != nil {
+		t.Fatalf("parse second heartbeat: %v", err)
+	}
+	if !hb2.Timestamp.Equal(ts1) {
+		t.Fatalf("heartbeat should not have updated: got %s, want %s", hb2.Timestamp, ts1)
+	}
+
+	// Third event after 5s — heartbeat SHOULD be updated.
+	ts3 := ts1.Add(6 * time.Second)
+	session.consumeCanonicalLine(marshalCanonical(t, parse.CanonicalEvent{
+		Type:      parse.EventAction,
+		Message:   "third action",
+		Timestamp: ts3,
+	}), session.processHook)
+
+	data3, err := os.ReadFile(filepath.Join(sessionDir, "heartbeat.json"))
+	if err != nil {
+		t.Fatalf("read third heartbeat: %v", err)
+	}
+	var hb3 struct {
+		Timestamp time.Time `json:"timestamp"`
+	}
+	if err := json.Unmarshal(data3, &hb3); err != nil {
+		t.Fatalf("parse third heartbeat: %v", err)
+	}
+	if !hb3.Timestamp.Equal(ts3) {
+		t.Fatalf("heartbeat should have updated: got %s, want %s", hb3.Timestamp, ts3)
+	}
+}
+
 func marshalCanonical(t *testing.T, ce parse.CanonicalEvent) []byte {
 	t.Helper()
 	data, err := json.Marshal(ce)

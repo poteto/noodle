@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,8 +18,9 @@ import (
 )
 
 const (
-	scannerInitialBuffer = 64 * 1024
-	scannerMaxBuffer     = 64 << 20
+	scannerInitialBuffer       = 64 * 1024
+	scannerMaxBuffer           = 64 << 20
+	heartbeatThrottleInterval  = 5 * time.Second
 )
 
 // sessionBase contains the shared fields and methods for processSession and
@@ -53,6 +55,8 @@ type sessionBase struct {
 	sawAction   bool
 	sawResult   bool
 	sawComplete bool
+
+	lastHeartbeat time.Time
 }
 
 // sessionBaseConfig holds the common fields needed to initialize a sessionBase.
@@ -174,6 +178,40 @@ func (s *sessionBase) observeCanonicalEvent(ce parse.CanonicalEvent) {
 		s.sawComplete = true
 	}
 	s.trackerMu.Unlock()
+}
+
+func (s *sessionBase) writeHeartbeat(timestamp time.Time) {
+	if strings.TrimSpace(s.canonicalPath) == "" {
+		return
+	}
+	if timestamp.IsZero() {
+		timestamp = nowUTC()
+	}
+
+	s.trackerMu.Lock()
+	if !s.lastHeartbeat.IsZero() && timestamp.Sub(s.lastHeartbeat) < heartbeatThrottleInterval {
+		s.trackerMu.Unlock()
+		return
+	}
+	s.lastHeartbeat = timestamp
+	s.trackerMu.Unlock()
+
+	path := filepath.Join(filepath.Dir(s.canonicalPath), "heartbeat.json")
+	payload, err := json.Marshal(struct {
+		Timestamp  time.Time `json:"timestamp"`
+		TTLSeconds int       `json:"ttl_seconds"`
+	}{
+		Timestamp:  timestamp.UTC(),
+		TTLSeconds: sessionHeartbeatTTLSeconds,
+	})
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(path, payload, 0o644)
+}
+
+func (s *sessionBase) writeInitialHeartbeat() {
+	s.writeHeartbeat(nowUTC())
 }
 
 func (s *sessionBase) resolveAndMarkDone(exitCode int, ctxCancelled bool) {
@@ -303,6 +341,8 @@ func (s *sessionBase) consumeCanonicalLine(line []byte, hook canonicalLineHook) 
 		}
 		return
 	}
+
+	s.writeHeartbeat(ce.Timestamp)
 
 	if hook != nil {
 		hook(ce)
