@@ -1,10 +1,7 @@
 package dispatcher
 
 import (
-	"bufio"
 	"encoding/json"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/poteto/noodle/event"
@@ -16,36 +13,6 @@ func nowUTC() time.Time {
 }
 
 const sessionHeartbeatTTLSeconds = 30
-
-func readCanonicalEvents(path string) ([]parse.CanonicalEvent, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, scannerInitialBuffer), scannerMaxBuffer)
-	events := make([]parse.CanonicalEvent, 0, 32)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		var event parse.CanonicalEvent
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			continue
-		}
-		events = append(events, event)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return events, nil
-}
 
 func eventFromCanonical(sessionID string, canonical parse.CanonicalEvent) (event.Event, bool) {
 	timestamp := canonical.Timestamp

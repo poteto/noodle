@@ -114,7 +114,7 @@ func (l *Loop) handleBootstrapResult(result StageResult) {
 func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultStatus StageResultStatus, rawStatus string) error {
 	status := stringx.Normalize(rawStatus)
 	if status == "" {
-		status = stringx.Normalize(cook.session.Status())
+		status = stringx.Normalize(cook.session.Outcome().Status.String())
 	}
 
 	if resultStatus == StageResultCompleted {
@@ -389,7 +389,8 @@ func (l *Loop) collectAdoptedCompletions(ctx context.Context) error {
 			continue
 		}
 		l.logger.Info("adopted session completed", "order", targetID, "session", sessionID, "status", status)
-		if err := l.handleCompletion(ctx, cook, stageResultStatus(status), status); err != nil {
+		resultStatus, _ := stageResultFromSessionMetaStatus(status)
+		if err := l.handleCompletion(ctx, cook, resultStatus, status); err != nil {
 			if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
 				return conflictErr
 			}

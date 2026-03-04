@@ -130,7 +130,6 @@ func sessionStatusFromString(status string) SessionStatus {
 // Session is one dispatched agent session.
 type Session interface {
 	ID() string
-	Status() string
 	Outcome() SessionOutcome
 	Events() <-chan SessionEvent
 	Done() <-chan struct{}

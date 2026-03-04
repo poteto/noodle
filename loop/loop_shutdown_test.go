@@ -24,9 +24,10 @@ func newShutdownTestSession(id string) *shutdownTestSession {
 	}
 }
 
-func (s *shutdownTestSession) ID() string            { return s.id }
-func (s *shutdownTestSession) Status() string        { return "running" }
-func (s *shutdownTestSession) Done() <-chan struct{} { return s.done }
+func (s *shutdownTestSession) ID() string                          { return s.id }
+func (s *shutdownTestSession) Status() string                      { return "running" }
+func (s *shutdownTestSession) Outcome() loopruntime.SessionOutcome { return loopruntime.SessionOutcome{} }
+func (s *shutdownTestSession) Done() <-chan struct{}               { return s.done }
 func (s *shutdownTestSession) TotalCost() float64    { return 0 }
 func (s *shutdownTestSession) VerdictPath() string   { return "" }
 func (s *shutdownTestSession) Controller() loopruntime.AgentController {

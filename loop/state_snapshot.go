@@ -6,6 +6,7 @@ import (
 
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 type CookSummary struct {
@@ -141,7 +142,7 @@ func (l *Loop) appendActiveCookSummary(activeCooks *[]CookSummary, totalCost *fl
 		WorktreeName: cook.worktreeName,
 		StartedAt:    cook.startedAt,
 		DisplayName:  cook.displayName,
-		Status:       stringx.Normalize(cook.session.Status()),
+		Status:       sessionStatusForSnapshot(cook.session.Outcome()),
 		TotalCostUSD: sessionCost,
 	})
 }
@@ -177,4 +178,11 @@ func cloneLoopState(state LoopState) LoopState {
 		cloned.ActiveSummary.ByRuntime[k] = v
 	}
 	return cloned
+}
+
+func sessionStatusForSnapshot(outcome loopruntime.SessionOutcome) string {
+	if outcome.Status == "" {
+		return "running"
+	}
+	return stringx.Normalize(outcome.Status.String())
 }

@@ -85,9 +85,10 @@ type recoveredSessionHandle struct {
 	status string
 }
 
-func (s *recoveredSessionHandle) ID() string          { return s.id }
-func (s *recoveredSessionHandle) Status() string      { return s.status }
-func (s *recoveredSessionHandle) TotalCost() float64  { return 0 }
+func (s *recoveredSessionHandle) ID() string              { return s.id }
+func (s *recoveredSessionHandle) Status() string          { return s.status }
+func (s *recoveredSessionHandle) Outcome() SessionOutcome { return SessionOutcome{} }
+func (s *recoveredSessionHandle) TotalCost() float64      { return 0 }
 func (s *recoveredSessionHandle) Terminate() error    { return nil }
 func (s *recoveredSessionHandle) ForceKill() error    { return nil }
 func (s *recoveredSessionHandle) VerdictPath() string { return "" }

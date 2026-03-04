@@ -3,7 +3,7 @@ package loop
 import (
 	"context"
 
-	"github.com/poteto/noodle/internal/stringx"
+	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func (l *Loop) nextDispatchGeneration() uint64 {
@@ -29,7 +29,7 @@ func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBoot
 			OrderID:      handle.orderID,
 			StageIndex:   handle.stageIndex,
 			Attempt:      handle.attempt,
-			Status:       stageResultStatus(handle.session.Status()),
+			Status:       stageResultFromOutcome(handle.session.Outcome()),
 			SessionID:    sessionID,
 			Generation:   handle.generation,
 			IsSchedule:   isScheduleStage(handle.stage),
@@ -42,11 +42,11 @@ func (l *Loop) startSessionWatcher(ctx context.Context, cook *cookHandle, isBoot
 	}(cook.session.ID(), cook, ctx)
 }
 
-func stageResultStatus(raw string) StageResultStatus {
-	switch stringx.Normalize(raw) {
-	case "completed", "exited":
+func stageResultFromOutcome(outcome loopruntime.SessionOutcome) StageResultStatus {
+	switch outcome.Status {
+	case loopruntime.StatusCompleted:
 		return StageResultCompleted
-	case "killed", "cancelled", "canceled", "stopped":
+	case loopruntime.StatusKilled, loopruntime.StatusCancelled:
 		return StageResultCancelled
 	default:
 		return StageResultFailed

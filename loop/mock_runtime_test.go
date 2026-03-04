@@ -76,9 +76,12 @@ type mockSession struct {
 	cost   float64
 }
 
-func (s *mockSession) ID() string                              { return s.id }
-func (s *mockSession) Status() string                          { return s.status }
-func (s *mockSession) Done() <-chan struct{}                   { return s.done }
+func (s *mockSession) ID() string     { return s.id }
+func (s *mockSession) Status() string { return s.status }
+func (s *mockSession) Outcome() loopruntime.SessionOutcome {
+	return loopruntime.SessionOutcome{Status: loopruntime.SessionStatus(s.status)}
+}
+func (s *mockSession) Done() <-chan struct{} { return s.done }
 func (s *mockSession) TotalCost() float64                      { return s.cost }
 func (s *mockSession) VerdictPath() string                     { return "" }
 func (s *mockSession) Controller() loopruntime.AgentController { return loopruntime.NoopController() }

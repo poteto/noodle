@@ -20,16 +20,30 @@ var NoopController = dispatcher.NoopController
 // SyncResult aliases dispatcher.SyncResult so loop/ doesn't import dispatcher.
 type SyncResult = dispatcher.SyncResult
 
+// SessionOutcome aliases dispatcher.SessionOutcome so loop/ doesn't import dispatcher.
+type SessionOutcome = dispatcher.SessionOutcome
+
+// SessionStatus aliases dispatcher.SessionStatus so loop/ doesn't import dispatcher.
+type SessionStatus = dispatcher.SessionStatus
+
 // Sync result type constants.
 const (
 	SyncResultTypeNone   = dispatcher.SyncResultTypeNone
 	SyncResultTypeBranch = dispatcher.SyncResultTypeBranch
 )
 
+// Session status constants re-exported for loop/.
+const (
+	StatusCompleted = dispatcher.StatusCompleted
+	StatusFailed    = dispatcher.StatusFailed
+	StatusCancelled = dispatcher.StatusCancelled
+	StatusKilled    = dispatcher.StatusKilled
+)
+
 // SessionHandle is a runtime-agnostic session contract.
 type SessionHandle interface {
 	ID() string
-	Status() string
+	Outcome() SessionOutcome
 	Done() <-chan struct{}
 	TotalCost() float64
 	Terminate() error
@@ -59,9 +73,9 @@ type dispatcherSessionHandle struct {
 	runtimeDir string
 }
 
-func (s dispatcherSessionHandle) ID() string            { return s.session.ID() }
-func (s dispatcherSessionHandle) Status() string        { return s.session.Status() }
-func (s dispatcherSessionHandle) Done() <-chan struct{} { return s.session.Done() }
+func (s dispatcherSessionHandle) ID() string                  { return s.session.ID() }
+func (s dispatcherSessionHandle) Outcome() SessionOutcome     { return s.session.Outcome() }
+func (s dispatcherSessionHandle) Done() <-chan struct{}        { return s.session.Done() }
 func (s dispatcherSessionHandle) TotalCost() float64    { return s.session.TotalCost() }
 func (s dispatcherSessionHandle) Terminate() error      { return s.session.Terminate() }
 func (s dispatcherSessionHandle) ForceKill() error      { return s.session.ForceKill() }
