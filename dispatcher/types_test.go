@@ -113,6 +113,12 @@ func TestSessionStatusIsTerminal(t *testing.T) {
 	}
 }
 
+func TestSessionStatusString(t *testing.T) {
+	if got := StatusCompleted.String(); got != "completed" {
+		t.Fatalf("String() = %q, want completed", got)
+	}
+}
+
 func TestSessionOutcomeZeroValueIsNonTerminal(t *testing.T) {
 	var outcome SessionOutcome
 	if outcome.Status.IsTerminal() {

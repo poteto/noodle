@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/poteto/noodle/event"
@@ -20,6 +21,15 @@ type processSession struct {
 	process    *ProcessHandle
 	controller *claudeController // nil for non-steerable sessions
 	warnings   []string
+
+	streamDone     chan struct{}
+	streamDoneOnce sync.Once
+
+	trackerMu   sync.Mutex
+	sawInit     bool
+	sawAction   bool
+	sawResult   bool
+	sawComplete bool
 }
 
 type processSessionConfig struct {
@@ -47,6 +57,7 @@ func newProcessSession(cfg processSessionConfig) *processSession {
 		process:    cfg.process,
 		controller: cfg.controller,
 		warnings:   append([]string(nil), cfg.warnings...),
+		streamDone: make(chan struct{}),
 	}
 }
 
@@ -56,6 +67,7 @@ func (s *processSession) start(ctx context.Context) {
 
 	go func() {
 		defer s.wg.Done()
+		defer s.closeStreamDone()
 		interceptor := &canonicalLineInterceptor{onLine: func(line []byte) {
 			s.consumeCanonicalLine(line, s.processHook)
 		}}
@@ -79,6 +91,19 @@ func (s *processSession) start(ctx context.Context) {
 }
 
 func (s *processSession) processHook(ce parse.CanonicalEvent) {
+	s.trackerMu.Lock()
+	switch ce.Type {
+	case parse.EventInit:
+		s.sawInit = true
+	case parse.EventAction:
+		s.sawAction = true
+	case parse.EventResult:
+		s.sawResult = true
+	case parse.EventComplete:
+		s.sawComplete = true
+	}
+	s.trackerMu.Unlock()
+
 	s.writeHeartbeat(ce.Timestamp)
 	if s.controller != nil {
 		s.controller.NotifyEvent(string(ce.Type))
@@ -94,39 +119,62 @@ func (s *processSession) waitForExit(ctx context.Context) {
 	}
 
 	exitCode, _ := s.process.ExitCode()
-	status := "completed"
-	if exitCode != 0 {
-		status = s.terminalStatus(exitCode)
-	}
-	if ctx.Err() != nil {
-		status = "cancelled"
-	}
-	s.markDone(status)
+	s.resolveAndMarkDone(exitCode, ctx.Err() != nil)
 }
 
-func (s *processSession) terminalStatus(exitCode int) string {
-	// Negative exit codes represent signal-based termination.
-	// Treat these as runtime crashes.
-	if exitCode < 0 {
-		return "failed"
+func (s *processSession) closeStreamDone() {
+	s.streamDoneOnce.Do(func() {
+		close(s.streamDone)
+	})
+}
+
+func (s *processSession) resolveAndMarkDone(exitCode int, ctxCancelled bool) {
+	<-s.streamDone
+	outcome := s.resolveOutcome(exitCode, ctxCancelled)
+	s.doneOnce.Do(func() {
+		s.mu.Lock()
+		s.status = outcome.Status.String()
+		s.outcome = outcome
+		s.mu.Unlock()
+		close(s.done)
+	})
+}
+
+func (s *processSession) resolveOutcome(exitCode int, ctxCancelled bool) SessionOutcome {
+	s.trackerMu.Lock()
+	sawComplete := s.sawComplete
+	sawResult := s.sawResult
+	sawAction := s.sawAction
+	sawInit := s.sawInit
+	s.trackerMu.Unlock()
+
+	outcome := SessionOutcome{
+		ExitCode:       exitCode,
+		HasDeliverable: sawComplete || sawResult,
 	}
-	events, err := readCanonicalEvents(s.canonicalPath)
-	if err != nil {
-		return "failed"
+
+	switch {
+	case sawComplete || sawResult:
+		outcome.Status = StatusCompleted
+		outcome.Reason = "completion event observed"
+	case ctxCancelled:
+		outcome.Status = StatusCancelled
+		outcome.Reason = "context cancelled before completion"
+	case exitCode < 0:
+		outcome.Status = StatusKilled
+		outcome.Reason = "process terminated by signal"
+	case sawAction:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no turn completed"
+	case sawInit:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no work produced"
+	default:
+		outcome.Status = StatusFailed
+		outcome.Reason = "no events emitted"
 	}
-	sawLifecycleEvent := false
-	for _, ev := range events {
-		switch ev.Type {
-		case parse.EventComplete, parse.EventResult:
-			return "completed"
-		case parse.EventInit, parse.EventAction, parse.EventError, parse.EventDelta:
-			sawLifecycleEvent = true
-		}
-	}
-	if sawLifecycleEvent {
-		return "completed"
-	}
-	return "failed"
+
+	return outcome
 }
 
 func (s *processSession) Terminate() error {

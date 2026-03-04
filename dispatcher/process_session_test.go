@@ -176,34 +176,7 @@ func TestProcessSessionKillMarksKilled(t *testing.T) {
 	}
 }
 
-func TestProcessSessionTerminalStatusCompleted(t *testing.T) {
-	dir := t.TempDir()
-	canonicalPath := filepath.Join(dir, "canonical.ndjson")
-	line := `{"type":"complete","message":"done","timestamp":"2026-02-27T01:00:00Z"}`
-	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
-		t.Fatalf("write canonical: %v", err)
-	}
-
-	cmd := exec.Command("echo", "noop")
-	process, err := StartProcess(cmd)
-	if err != nil {
-		t.Fatalf("StartProcess: %v", err)
-	}
-	<-process.Done()
-
-	session := newProcessSession(processSessionConfig{
-		id:            "session-a",
-		process:       process,
-		canonicalPath: canonicalPath,
-		stampedPath:   filepath.Join(dir, "raw.ndjson"),
-	})
-
-	if got := session.terminalStatus(1); got != "completed" {
-		t.Fatalf("terminal status = %q, want completed", got)
-	}
-}
-
-func TestProcessSessionTerminalStatusFailed(t *testing.T) {
+func TestProcessSessionResolveAndMarkDoneCompletedFromResult(t *testing.T) {
 	cmd := exec.Command("echo", "noop")
 	process, err := StartProcess(cmd)
 	if err != nil {
@@ -218,19 +191,26 @@ func TestProcessSessionTerminalStatusFailed(t *testing.T) {
 		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
 	})
 
-	if got := session.terminalStatus(1); got != "failed" {
-		t.Fatalf("terminal status = %q, want failed", got)
+	session.processHook(parse.CanonicalEvent{Type: parse.EventResult, Timestamp: nowUTC()})
+	session.closeStreamDone()
+	session.resolveAndMarkDone(1, false)
+
+	if got := session.Status(); got != "completed" {
+		t.Fatalf("status = %q, want completed", got)
+	}
+	outcome := session.Outcome()
+	if outcome.Status != StatusCompleted {
+		t.Fatalf("outcome status = %q, want %q", outcome.Status, StatusCompleted)
+	}
+	if !outcome.HasDeliverable {
+		t.Fatal("HasDeliverable = false, want true")
+	}
+	if outcome.ExitCode != 1 {
+		t.Fatalf("exit code = %d, want 1", outcome.ExitCode)
 	}
 }
 
-func TestProcessSessionTerminalStatusCompletedWithLifecycleEvents(t *testing.T) {
-	dir := t.TempDir()
-	canonicalPath := filepath.Join(dir, "canonical.ndjson")
-	line := `{"type":"action","message":"$ npm test","timestamp":"2026-02-27T01:00:00Z"}`
-	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
-		t.Fatalf("write canonical: %v", err)
-	}
-
+func TestProcessSessionResolveAndMarkDoneCancellationWithoutCompletion(t *testing.T) {
 	cmd := exec.Command("echo", "noop")
 	process, err := StartProcess(cmd)
 	if err != nil {
@@ -241,23 +221,23 @@ func TestProcessSessionTerminalStatusCompletedWithLifecycleEvents(t *testing.T) 
 	session := newProcessSession(processSessionConfig{
 		id:            "session-a",
 		process:       process,
-		canonicalPath: canonicalPath,
-		stampedPath:   filepath.Join(dir, "raw.ndjson"),
+		canonicalPath: filepath.Join(t.TempDir(), "canonical.ndjson"),
+		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
 	})
 
-	if got := session.terminalStatus(1); got != "completed" {
-		t.Fatalf("terminal status = %q, want completed", got)
+	session.closeStreamDone()
+	session.resolveAndMarkDone(1, true)
+
+	if got := session.Status(); got != "cancelled" {
+		t.Fatalf("status = %q, want cancelled", got)
+	}
+	outcome := session.Outcome()
+	if outcome.Status != StatusCancelled {
+		t.Fatalf("outcome status = %q, want %q", outcome.Status, StatusCancelled)
 	}
 }
 
-func TestProcessSessionTerminalStatusSignalExitFails(t *testing.T) {
-	dir := t.TempDir()
-	canonicalPath := filepath.Join(dir, "canonical.ndjson")
-	line := `{"type":"action","message":"$ npm test","timestamp":"2026-02-27T01:00:00Z"}`
-	if err := os.WriteFile(canonicalPath, []byte(line+"\n"), 0o644); err != nil {
-		t.Fatalf("write canonical: %v", err)
-	}
-
+func TestProcessSessionResolveAndMarkDoneCompletionWinsOverCancellation(t *testing.T) {
 	cmd := exec.Command("echo", "noop")
 	process, err := StartProcess(cmd)
 	if err != nil {
@@ -268,12 +248,77 @@ func TestProcessSessionTerminalStatusSignalExitFails(t *testing.T) {
 	session := newProcessSession(processSessionConfig{
 		id:            "session-a",
 		process:       process,
-		canonicalPath: canonicalPath,
-		stampedPath:   filepath.Join(dir, "raw.ndjson"),
+		canonicalPath: filepath.Join(t.TempDir(), "canonical.ndjson"),
+		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
 	})
 
-	if got := session.terminalStatus(-1); got != "failed" {
-		t.Fatalf("terminal status = %q, want failed", got)
+	session.processHook(parse.CanonicalEvent{Type: parse.EventResult, Timestamp: nowUTC()})
+	session.closeStreamDone()
+	session.resolveAndMarkDone(1, true)
+
+	if got := session.Status(); got != "completed" {
+		t.Fatalf("status = %q, want completed", got)
+	}
+	outcome := session.Outcome()
+	if outcome.Status != StatusCompleted {
+		t.Fatalf("outcome status = %q, want %q", outcome.Status, StatusCompleted)
+	}
+}
+
+func TestProcessSessionResolveAndMarkDoneActionWithoutCompletionFails(t *testing.T) {
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		canonicalPath: filepath.Join(t.TempDir(), "canonical.ndjson"),
+		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
+	})
+
+	session.processHook(parse.CanonicalEvent{Type: parse.EventAction, Timestamp: nowUTC()})
+	session.closeStreamDone()
+	session.resolveAndMarkDone(1, false)
+
+	if got := session.Status(); got != "failed" {
+		t.Fatalf("status = %q, want failed", got)
+	}
+	outcome := session.Outcome()
+	if outcome.Status != StatusFailed {
+		t.Fatalf("outcome status = %q, want %q", outcome.Status, StatusFailed)
+	}
+	if outcome.Reason != "no turn completed" {
+		t.Fatalf("outcome reason = %q, want no turn completed", outcome.Reason)
+	}
+}
+
+func TestProcessSessionResolveAndMarkDoneSignalExitKilled(t *testing.T) {
+	cmd := exec.Command("echo", "noop")
+	process, err := StartProcess(cmd)
+	if err != nil {
+		t.Fatalf("StartProcess: %v", err)
+	}
+	<-process.Done()
+
+	session := newProcessSession(processSessionConfig{
+		id:            "session-a",
+		process:       process,
+		canonicalPath: filepath.Join(t.TempDir(), "canonical.ndjson"),
+		stampedPath:   filepath.Join(t.TempDir(), "raw.ndjson"),
+	})
+
+	session.closeStreamDone()
+	session.resolveAndMarkDone(-1, false)
+
+	if got := session.Status(); got != "killed" {
+		t.Fatalf("status = %q, want killed", got)
+	}
+	if got := session.Outcome().Status; got != StatusKilled {
+		t.Fatalf("outcome status = %q, want %q", got, StatusKilled)
 	}
 }
 

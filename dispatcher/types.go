@@ -100,6 +100,10 @@ func (s SessionStatus) IsTerminal() bool {
 	}
 }
 
+func (s SessionStatus) String() string {
+	return string(s)
+}
+
 // SessionOutcome captures terminal state classification and diagnostics.
 type SessionOutcome struct {
 	Status         SessionStatus

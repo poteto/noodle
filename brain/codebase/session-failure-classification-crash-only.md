@@ -1,11 +1,11 @@
-# Session Failure Classification: Crash Only
+# Session Failure Classification
 
-- Canonical `error` events are telemetry, not terminal status signals.
-- Canonical `result`/`turn.completed` events are per-turn telemetry, not terminal status signals.
-- Session status should only be `failed` when runtime evidence suggests a crash (for process runtime: signal exit or no canonical lifecycle evidence before non-zero exit).
-- Non-zero exits with canonical lifecycle events (`init`/`action`/`error`/`delta`) should resolve to `completed` unless a terminal completion event already exists.
-- Monitor status derivation should treat `alive=false + has_events=true` as `exited` when no explicit failure claim exists.
-- Avoid mapping canonical `error` directly to `state_change -> failed`; publish as action/error context instead.
-- Only true terminal canonical events (`complete`) should set monitor completion claims. Treating `result` as completed can trigger monitor repair kills of still-running sessions.
+- `processSession.waitForExit()` must resolve status from in-memory canonical signals, not by re-reading `canonical.ndjson` after process exit.
+- Resolution must wait for stream drain first; otherwise final `result`/`complete` events can be missed.
+- Canonical `result` or `complete` is deterministic completion evidence and should resolve to `completed` even when exit code is non-zero or context cancellation races.
+- Cancellation applies only when no completion signal was observed.
+- Signal exits with no completion signal should resolve to `killed`.
+- `init`/`action` without `result`/`complete` should resolve to `failed` ("no work produced"/"no turn completed"), not `completed`.
+- `error` remains telemetry context and should not directly force terminal failure.
 
 See also [[principles/prove-it-works]], [[principles/boundary-discipline]]
