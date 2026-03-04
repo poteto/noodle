@@ -86,6 +86,9 @@ func (r *CanonicalClaimsReader) ReadSession(sessionID string) (SessionClaims, er
 			claims.TotalCostUSD += event.CostUSD
 			claims.TokensIn += event.TokensIn
 			claims.TokensOut += event.TokensOut
+			claims.Completed = true
+		case parse.EventError:
+			claims.Failed = true
 		case parse.EventComplete:
 			claims.Completed = true
 		}

@@ -41,7 +41,6 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 		if resultStatus == StageResultCompleted && !isScheduleStage(cook.stage) {
 			l.forwardToScheduler(cook, "session_repaired", "session emitted terminal result but stayed alive; auto-closing and advancing", nil)
 		}
-		_ = cook.session.ForceKill()
 		l.enqueueCompletion(ctx, StageResult{
 			OrderID:      cook.orderID,
 			StageIndex:   cook.stageIndex,
@@ -54,6 +53,7 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 			WorktreePath: cook.worktreePath,
 			CompletedAt:  l.deps.Now(),
 		})
+		_ = cook.session.ForceKill()
 	}
 	if l.bootstrapInFlight != nil {
 		cook := l.bootstrapInFlight
@@ -68,7 +68,6 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 					"session", cook.session.ID(),
 					"status", metaStatus,
 				)
-				_ = cook.session.ForceKill()
 				l.enqueueCompletion(ctx, StageResult{
 					OrderID:      cook.orderID,
 					StageIndex:   cook.stageIndex,
@@ -82,6 +81,7 @@ func (l *Loop) enqueueTerminalActiveCompletions(ctx context.Context) error {
 					WorktreePath: cook.worktreePath,
 					CompletedAt:  l.deps.Now(),
 				})
+				_ = cook.session.ForceKill()
 			}
 		}
 	}

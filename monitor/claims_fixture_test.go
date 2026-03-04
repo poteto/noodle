@@ -131,7 +131,7 @@ func TestReadSessionIgnoresMalformedSpawnMetadata(t *testing.T) {
 	}
 }
 
-func TestReadSessionResultDoesNotMarkCompleted(t *testing.T) {
+func TestReadSessionResultMarksCompleted(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -153,15 +153,45 @@ func TestReadSessionResultDoesNotMarkCompleted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if claims.Completed {
-		t.Fatal("expected completed=false when only result event is present")
+	if !claims.Completed {
+		t.Fatal("expected completed=true when result event is present")
 	}
 	if claims.Failed {
 		t.Fatal("expected failed=false when no error event is present")
 	}
 }
 
-func TestReadSessionErrorDoesNotMarkFailedWithResult(t *testing.T) {
+func TestReadSessionErrorMarksFailed(t *testing.T) {
+	runtimeDir := t.TempDir()
+	sessionID := "cook-a"
+	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+
+	canonical := strings.Join([]string{
+		`{"provider":"claude","type":"init","message":"started","timestamp":"2026-02-22T15:00:00Z"}`,
+		`{"provider":"claude","type":"error","message":"boom","timestamp":"2026-02-22T15:00:01Z"}`,
+		"",
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(sessionPath, "canonical.ndjson"), []byte(canonical), 0o644); err != nil {
+		t.Fatalf("write canonical events: %v", err)
+	}
+
+	reader := NewCanonicalClaimsReader(runtimeDir)
+	claims, err := reader.ReadSession(sessionID)
+	if err != nil {
+		t.Fatalf("read session claims: %v", err)
+	}
+	if !claims.Failed {
+		t.Fatal("expected failed=true when error event is present")
+	}
+	if claims.Completed {
+		t.Fatal("expected completed=false when no result event is present")
+	}
+}
+
+func TestReadSessionErrorAndResultSetBothFlags(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -184,7 +214,10 @@ func TestReadSessionErrorDoesNotMarkFailedWithResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if claims.Failed {
-		t.Fatal("expected failed=false when error event is present")
+	if !claims.Failed {
+		t.Fatal("expected failed=true when error event is present")
+	}
+	if !claims.Completed {
+		t.Fatal("expected completed=true when result event is present")
 	}
 }
