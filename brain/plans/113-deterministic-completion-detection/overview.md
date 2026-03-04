@@ -1,7 +1,7 @@
 ---
 id: 113
 created: 2026-03-03
-status: active
+status: done
 ---
 
 # Plan 113: Deterministic Agent Completion Detection
