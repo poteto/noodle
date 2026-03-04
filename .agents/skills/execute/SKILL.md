@@ -80,13 +80,17 @@ Foundational phases that later phases depend on: execute first, commit in lead w
 
 Every change must pass before committing. Fix and re-verify on failure. Never commit failing code.
 
-**Unit & static analysis** — after each change:
+**Full test suite** — after each change, run the complete suite:
+- `pnpm build` — compiles UI and Go binary; catches type errors in both
 - `go test ./...` (or scoped to changed packages)
 - `go vet ./...`
+- `pnpm --filter noodle-ui test` — UI unit tests (vitest)
 - `sh scripts/lint-arch.sh` — if present
 
-**E2E smoke tests** — after integrating changes, before merging to main:
-- `pnpm test:smoke`
+Or equivalently: `pnpm check` (runs build, Go tests, vet, arch lint, and fixture tests).
+
+**E2E smoke test** — after integrating changes, before merging to main:
+- `pnpm test:smoke` — Go e2e tests with `-tags e2e`
 - In a worktree: `noodle worktree exec <name> pnpm test:smoke`
 - When UI changes: write NEW test cases covering the changed interface
 
