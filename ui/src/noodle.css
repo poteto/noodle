@@ -334,14 +334,13 @@
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition:
-    max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.14s ease-out;
+  transition: opacity 0.14s ease-out;
   padding-left: 26px;
   margin-left: 8px;
 }
 .tree-stages.open {
-  max-height: 260px;
+  max-height: none;
+  overflow-y: auto;
   opacity: 1;
 }
 .tree-stages::before {
@@ -408,11 +407,12 @@
   transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tree-stage.stage-active::before {
+  width: 2px;
   transform: scaleY(1);
 }
 .tree-icon {
   flex-shrink: 0;
-  width: 10px;
+  width: 12px;
   text-align: center;
   opacity: 0.9;
 }
@@ -421,11 +421,20 @@
 }
 .tree-stage.stage-active .tree-icon {
   color: var(--color-accent);
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(251, 219, 36, 0.35));
 }
 .tree-stage.stage-active {
-  color: var(--color-text-secondary);
-  background: rgba(251, 219, 36, 0.05);
-  border-left-color: rgba(251, 219, 36, 0.45);
+  color: var(--color-accent);
+  font-weight: 700;
+  background: rgba(251, 219, 36, 0.12);
+  border-left-color: rgba(251, 219, 36, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(251, 219, 36, 0.28);
+}
+.tree-stage.stage-active.stage-clickable:hover {
+  color: var(--color-accent);
+  background: rgba(251, 219, 36, 0.16);
+  border-left-color: var(--color-accent);
 }
 .tree-stage.stage-pending .tree-icon {
   color: var(--color-text-tertiary);

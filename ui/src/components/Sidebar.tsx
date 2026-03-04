@@ -16,12 +16,12 @@ import {
 import { OverflowTooltip } from "./OverflowTooltip";
 
 const stageStatusIcon: Record<StageStatus, { icon: React.ReactNode; cls: string }> = {
-  active: { icon: <Play size={10} />, cls: "stage-active" },
-  merging: { icon: <Play size={10} />, cls: "stage-active" },
-  pending: { icon: <Square size={10} />, cls: "stage-pending" },
-  completed: { icon: <Check size={10} />, cls: "stage-done" },
-  failed: { icon: <X size={10} />, cls: "stage-done" },
-  cancelled: { icon: <Square size={10} />, cls: "stage-pending" },
+  active: { icon: <Play size={12} strokeWidth={2.25} />, cls: "stage-active" },
+  merging: { icon: <Play size={12} strokeWidth={2.25} />, cls: "stage-active" },
+  pending: { icon: <Square size={11} />, cls: "stage-pending" },
+  completed: { icon: <Check size={11} />, cls: "stage-done" },
+  failed: { icon: <X size={11} />, cls: "stage-done" },
+  cancelled: { icon: <Square size={11} />, cls: "stage-pending" },
 };
 
 function ConnectionDot() {
@@ -278,7 +278,8 @@ export function Sidebar() {
                     ? { type: "agent", sessionId: stageSessionID }
                     : null;
                   const info = stageStatusIcon[stage.status] || stageStatusIcon.pending;
-                  const stageLabel = stage.task_key || stage.skill || `Stage ${i + 1}`;
+                  const stageBaseLabel = stage.task_key || stage.skill || "Stage";
+                  const stageLabel = `${stageBaseLabel} ${i + 1}`;
 
                   return (
                     <button

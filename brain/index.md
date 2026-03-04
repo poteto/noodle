@@ -42,6 +42,7 @@
 - [[codebase/scheduler-active-order-amendments]]
 - [[codebase/scheduler-steer-alias-prefers-live-session]]
 - [[codebase/session-failure-classification-crash-only]]
+- [[codebase/sidebar-stage-list-labels-and-visibility]]
 - [[codebase/skill-path-normalization-boundary]]
 - [[codebase/startup-auto-init-config-omits-backlog-adapter]]
 - [[codebase/tmux-shutdown-summary-buffer-race]]
