@@ -165,12 +165,13 @@ func (s *Server) Addr() string {
 func (s *Server) WaitReady() { <-s.ready }
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
-	snap, err := s.loadSnapshot()
+	loopState := s.provider.State()
+	snap, err := snapshot.LoadSnapshot(s.runtimeDir, s.now(), loopState)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	snap.Warnings = s.warnings
+	snap.Warnings = mergeWarnings(s.warnings, loopState.Warnings)
 	writeJSON(w, http.StatusOK, snap)
 }
 
@@ -205,10 +206,6 @@ func (s *Server) handleSessionEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, events)
-}
-
-func (s *Server) loadSnapshot() (snapshot.Snapshot, error) {
-	return snapshot.LoadSnapshot(s.runtimeDir, s.now(), s.provider.State())
 }
 
 // controlRequest is the JSON body for POST /api/control.

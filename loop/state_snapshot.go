@@ -39,6 +39,7 @@ type LoopState struct {
 	Mode               string              `json:"mode"`
 	ModeEpoch          uint64              `json:"mode_epoch"`
 	ActionNeeded       []string            `json:"action_needed"`
+	Warnings           []string            `json:"warnings"`
 }
 
 func (l *Loop) publishState() {
@@ -118,6 +119,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		Mode:               mode,
 		ModeEpoch:          uint64(l.canonical.ModeEpoch),
 		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
+		Warnings:           append([]string(nil), l.lastMiseWarnings...),
 	}
 }
 
@@ -162,6 +164,7 @@ func cloneLoopState(state LoopState) LoopState {
 	cloned.RecentHistory = append([]mise.HistoryItem(nil), state.RecentHistory...)
 	cloned.ActiveOrderIDs = append([]string(nil), state.ActiveOrderIDs...)
 	cloned.ActionNeeded = append([]string(nil), state.ActionNeeded...)
+	cloned.Warnings = append([]string(nil), state.Warnings...)
 	cloned.ActiveSummary = mise.ActiveSummary{
 		Total:     state.ActiveSummary.Total,
 		ByTaskKey: make(map[string]int, len(state.ActiveSummary.ByTaskKey)),

@@ -428,6 +428,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return nil
 	}
 
+	l.lastMiseWarnings = nil
 	brief, warnings, running, miseChanged, err := l.buildCycleBrief(ctx)
 	if err != nil {
 		return l.classifySystemHard(
@@ -436,6 +437,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 			err,
 		)
 	}
+	l.lastMiseWarnings = warnings
 	if !running {
 		if err := l.stampStatus(); err != nil {
 			return l.classifySystemHard(

@@ -28,13 +28,15 @@ func (l *Loop) stampStatus() error {
 		LoopState:      string(l.state),
 		Mode:           mode,
 		MaxConcurrency: l.config.Concurrency.MaxConcurrency,
+		Warnings:       l.lastMiseWarnings,
 	}
 
 	// Skip write if nothing changed.
 	if slices.Equal(l.lastStatus.Active, status.Active) &&
 		l.lastStatus.LoopState == status.LoopState &&
 		l.lastStatus.Mode == status.Mode &&
-		l.lastStatus.MaxConcurrency == status.MaxConcurrency {
+		l.lastStatus.MaxConcurrency == status.MaxConcurrency &&
+		slices.Equal(l.lastStatus.Warnings, status.Warnings) {
 		l.publishState()
 		return nil
 	}

@@ -209,6 +209,7 @@ type Loop struct {
 	eventCounter atomic.Uint64
 
 	reconciledFailures []reconciledFailure
+	lastMiseWarnings   []string
 
 	lastLoopFailure *LoopFailureEnvelope
 

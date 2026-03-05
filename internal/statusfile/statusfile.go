@@ -15,6 +15,7 @@ type Status struct {
 	LoopState      string   `json:"loop_state,omitempty"`
 	Mode           string   `json:"mode,omitempty"`
 	MaxConcurrency int      `json:"max_concurrency,omitempty"`
+	Warnings       []string `json:"warnings,omitempty"`
 }
 
 // Read parses status.json at path. Returns zero-value Status if the file
