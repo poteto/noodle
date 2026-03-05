@@ -137,13 +137,18 @@ Skills describe process, not individual tasks. The order tells the agent *what* 
 
 **Skip if:** `todos.md` exists at the project root.
 
-Create an empty `todos.md`:
+Create `todos.md` in the default backlog-adapter format:
 
 ```markdown
-# Backlog
+# Todos
+
+<!-- next-id: 1 -->
+
+## Inbox
+1. [ ] <first task>
 ```
 
-Ask the user what they want to work on and add it as the first task.
+Ask the user what they want to work on and set that as the first task line (`1. [ ] ...`).
 
 Also ask if they want to sync backlog items from another source (GitHub Issues, Linear, Jira, a custom script, etc.). If yes, configure a backlog adapter in `.noodle.toml`. See the noodle skill's configuration reference for adapter options.
 

@@ -670,7 +670,15 @@ func TestSmokeInstallMd(t *testing.T) {
 	// Run codex to follow INSTALL.md — the actual onboarding flow.
 	root := repoRoot(t)
 	installMd := filepath.Join(root, "INSTALL.md")
-	prompt := fmt.Sprintf("Install Noodle and set up this project. Follow %s", installMd)
+	prompt := fmt.Sprintf(`Install Noodle and set up this project. Follow %s.
+
+This run is non-interactive. Do not ask follow-up questions.
+If INSTALL.md says to ask the user, choose these defaults and continue:
+- provider: Codex
+- first backlog item in todos.md: "Initial smoke test task"
+- brainmaxxing: no
+
+Complete the setup end-to-end and then report completion.`, installMd)
 
 	codexOut := filepath.Join(t.TempDir(), "codex-output.txt")
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
