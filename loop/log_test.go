@@ -116,6 +116,9 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 	}
 
 	cfg := config.DefaultConfig()
+	if mode := strings.TrimSpace(o.mode); mode != "" {
+		cfg.Mode = mode
+	}
 
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
@@ -142,6 +145,7 @@ func newTestLoop(t *testing.T, logger *slog.Logger, opts ...func(*testLoopOpts))
 
 type testLoopOpts struct {
 	brief *mise.Brief
+	mode  string
 }
 
 type testLoopContext struct {
@@ -202,6 +206,7 @@ func TestLogCompletionMerge(t *testing.T) {
 	brief := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
 	tc := newTestLoop(t, logger, func(o *testLoopOpts) {
 		o.brief = &brief
+		o.mode = "auto"
 	})
 
 	orders := OrdersFile{Orders: []Order{testOrder("item-1", "execute", "execute", "claude", "claude-opus-4-6")}}

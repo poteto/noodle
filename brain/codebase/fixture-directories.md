@@ -56,4 +56,15 @@ Loop fixtures map filesystem state keys directly to runtime dump keys:
 
 No numeric index math is used for expectation lookup.
 
+## Loop Fixture Capture Flags
+
+Loop `state-01/setup.json` supports opt-in dump capture fields for richer
+assertions without affecting legacy fixtures:
+
+- `capture_pending_review`: includes `pending_review` order->reason in runtime dump
+- `capture_orders`: includes normalized `orders` snapshot (order + stage statuses)
+
+Loop fixture `.noodle.toml` can also set top-level `mode` (for example,
+`mode = "supervised"`), and the fixture harness applies it to loop config.
+
 See also [[principles/prove-it-works]]

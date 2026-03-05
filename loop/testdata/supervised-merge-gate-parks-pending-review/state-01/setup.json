@@ -1,0 +1,7 @@
+{
+  "adopted_targets": [
+    {"id": "42", "session_id": "adopted-sess-1"}
+  ],
+  "capture_pending_review": true,
+  "capture_orders": true
+}

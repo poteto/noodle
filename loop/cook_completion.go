@@ -11,6 +11,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/mode"
 	"github.com/poteto/noodle/internal/stringx"
 )
 
@@ -129,12 +130,22 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 		if err != nil {
 			return l.failStage(ctx, cook, fmt.Sprintf("merge check: %v", err))
 		}
+		gate := mode.ModeGate{}
+		canAutoMerge := gate.CanAutoMerge(l.canonical.Mode)
+		if canMerge && !canAutoMerge {
+			reason := gate.BlockedReason(l.canonical.Mode, mode.ActionAutoMerge)
+			if reason == "" {
+				reason = "merge requires review"
+			}
+			return l.parkPendingReview(cook, reason)
+		}
+		mergeable := canMerge && canAutoMerge
 		l.emitEvent(ingest.EventStageCompleted, map[string]any{
 			"order_id":    cook.orderID,
 			"stage_index": cook.stageIndex,
-			"mergeable":   canMerge,
+			"mergeable":   mergeable,
 		})
-		if canMerge {
+		if mergeable {
 			return l.completeWithMerge(ctx, cook, msg)
 		}
 		return l.completeWithoutMerge(ctx, cook, msg)
