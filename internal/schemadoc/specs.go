@@ -121,6 +121,7 @@ var schemaTargets = []targetSpec{
 			"loop_state":      {Description: "current loop state (running, paused, draining, idle)"},
 			"mode":            {Type: "string (auto|supervised|manual)", Description: "current run mode governing schedule, dispatch, and merge gates"},
 			"max_concurrency": {Type: "number", Description: "current max concurrency (may differ from config if overridden at runtime)"},
+			"warnings[]":      {Description: "operational warning message"},
 		},
 	},
 }
