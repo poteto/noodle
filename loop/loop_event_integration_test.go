@@ -65,7 +65,9 @@ func TestEventIntegrationStageCompleted(t *testing.T) {
 		},
 	}
 
-	env := newIntegrationEnv(t, orders)
+	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
+		ic.cfg.Mode = "auto"
+	})
 	eventsPath := filepath.Join(env.runtimeDir, "loop-events.ndjson")
 
 	// Cycle 1: dispatch stage 0.

@@ -486,7 +486,9 @@ func TestCycleCompletesCookAndMarksDone(t *testing.T) {
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
 	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": rt},
 		Worktree: wt,
 		Adapter:  ar,
@@ -537,7 +539,9 @@ func TestCycleMergeFailureForwardsToSchedulerWithoutCrashing(t *testing.T) {
 	wt := &fakeWorktree{
 		mergeErr: errors.New("merge 20-0-execute: root checkout has uncommitted changes — commit or stash before merging"),
 	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": rt},
 		Worktree: wt,
 		Adapter:  &fakeAdapterRunner{},
@@ -1209,7 +1213,9 @@ func TestCycleCompletesAdoptedCookFromMetaState(t *testing.T) {
 	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "42", Title: "test", Status: "open"}}}
 	wt := &fakeWorktree{}
 	ar := &fakeAdapterRunner{}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": newMockRuntime()},
 		Worktree: wt,
 		Adapter:  ar,

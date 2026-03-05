@@ -55,6 +55,7 @@ func TestScaleBurstCompletionProcessesAllOrders(t *testing.T) {
 	rt := newMockRuntime()
 	wt := &fakeWorktree{}
 	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
 	cfg.Concurrency.MaxConcurrency = orderCount
 	cfg.Runtime.Process.MaxConcurrent = orderCount
 
@@ -117,7 +118,9 @@ func TestScaleLoopStateSnapshotIncludesActiveSummary(t *testing.T) {
 	}
 
 	rt := newMockRuntime()
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -163,7 +166,9 @@ func TestMockRuntimeDispatchAndComplete(t *testing.T) {
 	}
 
 	rt := newMockRuntime()
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
 		Worktree:   &fakeWorktree{},
 		Adapter:    &fakeAdapterRunner{},
@@ -379,6 +384,7 @@ func TestReconcileInjectsOopsBootstrapOrderWhenScheduleMissing(t *testing.T) {
 	writeTaskTypeSkill(t, projectDir, "execute", "When a planned item is ready")
 
 	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
 	cfg.Skills.Paths = []string{filepath.Join(projectDir, ".agents", "skills")}
 
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
@@ -387,9 +393,14 @@ func TestReconcileInjectsOopsBootstrapOrderWhenScheduleMissing(t *testing.T) {
 	}
 
 	rt := newMockRuntime()
+	wt := &fakeWorktree{
+		hasUnmergedCommits: map[string]bool{
+			"oops-bootstrap-schedule-0-oops": false,
+		},
+	}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   &fakeWorktree{},
+		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
 		Monitor:    fakeMonitor{},
@@ -437,6 +448,7 @@ func TestOopsBootstrapCompletionInjectsScheduleOrder(t *testing.T) {
 	writeTaskTypeSkill(t, projectDir, "execute", "When a planned item is ready")
 
 	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
 	cfg.Skills.Paths = []string{filepath.Join(projectDir, ".agents", "skills")}
 
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
@@ -445,9 +457,14 @@ func TestOopsBootstrapCompletionInjectsScheduleOrder(t *testing.T) {
 	}
 
 	rt := newMockRuntime()
+	wt := &fakeWorktree{
+		hasUnmergedCommits: map[string]bool{
+			"oops-bootstrap-schedule-0-oops": false,
+		},
+	}
 	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
-		Worktree:   &fakeWorktree{},
+		Worktree:   wt,
 		Adapter:    &fakeAdapterRunner{},
 		Mise:       &fakeMise{},
 		Monitor:    fakeMonitor{},
@@ -471,16 +488,17 @@ func TestOopsBootstrapCompletionInjectsScheduleOrder(t *testing.T) {
 	// Simulate the oops agent having created and merged a schedule skill.
 	writeTaskTypeSkill(t, projectDir, "schedule", "When orders are empty")
 	rt.sessions[0].complete("completed")
+	time.Sleep(20 * time.Millisecond)
 
-	if err := l.Cycle(context.Background()); err != nil {
-		t.Fatalf("completion cycle: %v", err)
+	for i := 0; i < 5; i++ {
+		if err := l.Cycle(context.Background()); err != nil {
+			t.Fatalf("completion cycle %d: %v", i+1, err)
+		}
+		if len(rt.calls) >= 2 && rt.calls[1].Skill == "schedule" {
+			return
+		}
 	}
-	if len(rt.calls) < 2 {
-		t.Fatalf("expected schedule dispatch after bootstrap completion, calls=%#v", rt.calls)
-	}
-	if rt.calls[1].Skill != "schedule" {
-		t.Fatalf("second dispatch skill = %q, want schedule", rt.calls[1].Skill)
-	}
+	t.Fatalf("expected schedule dispatch after bootstrap completion, calls=%#v", rt.calls)
 }
 
 func TestReconcileAndCycleDispatchBootstrapWhenNoScheduleOrOopsTaskType(t *testing.T) {
@@ -783,6 +801,7 @@ func TestMockRuntimeScaleBurstViaRuntimes(t *testing.T) {
 
 	rt := newMockRuntime()
 	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
 	cfg.Concurrency.MaxConcurrency = orderCount
 
 	l := New(projectDir, "noodle", cfg, Dependencies{

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +34,8 @@ type loopFixtureSetup struct {
 	RecoveryMaxRetries       *int                          `json:"recovery_max_retries"`
 	BootstrapAttempts        int                           `json:"bootstrap_attempts"`
 	BootstrapExhausted       bool                          `json:"bootstrap_exhausted"`
+	CapturePendingReview     bool                          `json:"capture_pending_review"`
+	CaptureOrders            bool                          `json:"capture_orders"`
 }
 
 type loopFixtureActiveSession struct {
@@ -73,6 +76,19 @@ type loopFixtureStateDump struct {
 	CreatedWorktrees    int                   `json:"created_worktrees"`
 	ActiveSummaryTotal  int                   `json:"active_summary_total"`
 	FirstSpawn          *loopFixtureSpawnDump `json:"first_spawn,omitempty"`
+	PendingReview       map[string]string     `json:"pending_review,omitempty"`
+	Orders              []loopFixtureOrder    `json:"orders,omitempty"`
+}
+
+type loopFixtureOrder struct {
+	ID     string                  `json:"id"`
+	Status string                  `json:"status,omitempty"`
+	Stages []loopFixtureOrderStage `json:"stages,omitempty"`
+}
+
+type loopFixtureOrderStage struct {
+	TaskKey string `json:"task_key,omitempty"`
+	Status  string `json:"status,omitempty"`
 }
 
 type loopFixtureSpawnDump struct {
@@ -83,6 +99,7 @@ type loopFixtureSpawnDump struct {
 }
 
 type fixtureConfigOverride struct {
+	Mode    string `toml:"mode"`
 	Routing struct {
 		Defaults struct {
 			Provider string `toml:"provider"`
@@ -218,6 +235,12 @@ func TestLoopDirectoryFixtures(t *testing.T) {
 				if len(rt.calls) > 0 {
 					stateDump.FirstSpawn = requestDump(rt.calls[0])
 				}
+				if setup.CapturePendingReview {
+					stateDump.PendingReview = pendingReviewDump(l.cooks.pendingReview)
+				}
+				if setup.CaptureOrders {
+					stateDump.Orders = readOrdersDump(t, l.deps.OrdersFile)
+				}
 
 				observed.States[state.ID] = stateDump
 			}
@@ -326,6 +349,9 @@ func applyConfigOverride(t *testing.T, cfg *config.Config, overridePath string) 
 	if model := strings.TrimSpace(override.Routing.Defaults.Model); model != "" {
 		cfg.Routing.Defaults.Model = model
 	}
+	if mode := strings.TrimSpace(override.Mode); mode != "" {
+		cfg.Mode = mode
+	}
 }
 
 func cloneConfig(in config.Config) config.Config {
@@ -366,6 +392,55 @@ func requestDump(request loopruntime.DispatchRequest) *loopFixtureSpawnDump {
 		Model:    strings.TrimSpace(request.Model),
 	}
 	return dump
+}
+
+func pendingReviewDump(pending map[string]*pendingReviewCook) map[string]string {
+	if len(pending) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(pending))
+	for orderID, item := range pending {
+		if item == nil {
+			continue
+		}
+		out[strings.TrimSpace(orderID)] = strings.TrimSpace(item.reason)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func readOrdersDump(t *testing.T, ordersPath string) []loopFixtureOrder {
+	t.Helper()
+	orders, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders dump %s: %v", ordersPath, err)
+	}
+	if len(orders.Orders) == 0 {
+		return nil
+	}
+	out := make([]loopFixtureOrder, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		dump := loopFixtureOrder{
+			ID:     strings.TrimSpace(order.ID),
+			Status: strings.TrimSpace(string(order.Status)),
+		}
+		if len(order.Stages) > 0 {
+			dump.Stages = make([]loopFixtureOrderStage, 0, len(order.Stages))
+			for _, stage := range order.Stages {
+				dump.Stages = append(dump.Stages, loopFixtureOrderStage{
+					TaskKey: strings.TrimSpace(stage.TaskKey),
+					Status:  strings.TrimSpace(string(stage.Status)),
+				})
+			}
+		}
+		out = append(out, dump)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].ID < out[j].ID
+	})
+	return out
 }
 
 func normalizeDynamicText(input string) string {

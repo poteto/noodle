@@ -121,7 +121,9 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 		},
 	}
 
-	env := newIntegrationEnv(t, orders)
+	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
+		ic.cfg.Mode = "auto"
+	})
 	l, deps := env.loop, env
 
 	// Cycle 1: dispatch stage 0 (execute).
@@ -226,6 +228,7 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	}
 
 	env := newIntegrationEnv(t, orders, func(ic *integrationCfg) {
+		ic.cfg.Mode = "auto"
 		ic.mergeErr = &worktree.MergeConflictError{Branch: "noodle/conflict-session"}
 	})
 	l := env.loop
@@ -375,9 +378,9 @@ func TestIntegrationLoopFilesReadableForSnapshot(t *testing.T) {
 
 // snapshotMinimal is a minimal representation for the integration test.
 type snapshotMinimal struct {
-	Orders             []Order                  `json:"orders"`
-	PendingReviews     []PendingReviewItem      `json:"pending_reviews"`
-	PendingReviewCount int                      `json:"pending_review_count"`
+	Orders             []Order             `json:"orders"`
+	PendingReviews     []PendingReviewItem `json:"pending_reviews"`
+	PendingReviewCount int                 `json:"pending_review_count"`
 }
 
 // loadTestSnapshot calls the real snapshot loader and returns the minimal

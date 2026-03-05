@@ -110,7 +110,9 @@ func TestCycleMergeConflictMarksFailedAndSkips(t *testing.T) {
 	wt := &fakeWorktree{
 		remoteMergeErr: &worktree.MergeConflictError{Branch: "origin/noodle/session-a"},
 	}
-	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+	cfg := config.DefaultConfig()
+	cfg.Mode = "auto"
+	l := New(projectDir, "noodle", cfg, Dependencies{
 		Runtimes: map[string]loopruntime.Runtime{"process": rt},
 		Worktree: wt,
 		Adapter:  &fakeAdapterRunner{},
@@ -199,6 +201,68 @@ func TestAutoMergeWithLocalChanges(t *testing.T) {
 	}
 	if len(l.cooks.pendingReview) != 0 {
 		t.Fatalf("pendingReview should be empty, got %d item(s)", len(l.cooks.pendingReview))
+	}
+}
+
+func TestSupervisedMergeWithLocalChangesParksPendingReview(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	orders := OrdersFile{Orders: []Order{testOrder("42", "execute", "execute", "claude", "claude-opus-4-6")}}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Mode = "supervised"
+
+	rt := newMockRuntime()
+	wt := &fakeWorktree{}
+	briefWithPlans := mise.Brief{Backlog: []adapter.BacklogItem{{ID: "1", Title: "test", Status: "open"}}}
+	l := New(projectDir, "noodle", cfg, Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": rt},
+		Worktree:   wt,
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{brief: briefWithPlans},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("spawn cycle: %v", err)
+	}
+	if len(rt.sessions) != 1 {
+		t.Fatalf("sessions = %d", len(rt.sessions))
+	}
+	rt.sessions[0].complete("completed")
+
+	if err := l.Cycle(context.Background()); err != nil {
+		t.Fatalf("completion cycle: %v", err)
+	}
+	if len(wt.merged) != 0 {
+		t.Fatalf("worktree merges = %d, want 0 (supervised mode requires review)", len(wt.merged))
+	}
+	pending, ok := l.cooks.pendingReview["42"]
+	if !ok {
+		t.Fatal("expected order 42 in pending review")
+	}
+	if pending.reason != "supervised mode requires merge approval" {
+		t.Fatalf("pending review reason = %q, want %q", pending.reason, "supervised mode requires merge approval")
+	}
+
+	updatedOrders, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(updatedOrders.Orders) != 1 {
+		t.Fatalf("orders count = %d, want 1", len(updatedOrders.Orders))
+	}
+	if updatedOrders.Orders[0].Stages[0].Status != StageStatusActive {
+		t.Fatalf("stage status = %q, want %q", updatedOrders.Orders[0].Stages[0].Status, StageStatusActive)
 	}
 }
 
