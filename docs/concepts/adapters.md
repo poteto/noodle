@@ -88,6 +88,32 @@ Not yet called by the noodle loop. When implemented, your `add` command will rec
 
 Not yet called by the noodle loop. When implemented, your `edit` command will receive the item ID as the first argument and JSON on stdin with the new values.
 
+## Validation
+
+Noodle validates each NDJSON line from the sync command individually. Invalid items are skipped — they don't block the rest of the backlog from processing.
+
+**What gets validated:**
+- Each line must be valid JSON
+- `id` must be a non-empty string
+- `title` must be a non-empty string
+
+**What happens on failure:**
+- Invalid items are skipped and a warning is generated for each one
+- Valid items from the same sync still process normally
+- If every item is invalid, the backlog is empty but no error is raised
+
+**Where warnings surface:**
+- **Web UI** — warnings appear in the dashboard warnings panel alongside config warnings
+- **Backend logs** — logged as a `sync.degraded` event
+- **Scheduler prompt** — the scheduler sees an `ADAPTER WARNINGS` section and may create a fix task
+
+**Example warnings:**
+```
+backlog sync line 3: invalid JSON: unexpected end of JSON input
+backlog sync line 5: missing required field title
+backlog sync line 12: missing required field id
+```
+
 ## Writing an adapter
 
 A minimal GitHub Issues adapter might use `gh` CLI to list open issues tagged with a label, format them as backlog items, and print NDJSON to stdout. The commands are simple enough that an agent can write them for you. Point it at your issue tracker and the schema above and it'll produce the scripts.
