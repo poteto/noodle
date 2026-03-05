@@ -335,14 +335,14 @@ func (s *sessionBase) consumeCanonicalLine(line []byte, hook canonicalLineHook) 
 		return
 	}
 
+	s.writeHeartbeat(ce.Timestamp)
+
 	if ce.Type == parse.EventDelta {
 		if s.sink != nil {
 			s.sink.PublishSessionDelta(s.id, ce.Message, ce.Timestamp)
 		}
 		return
 	}
-
-	s.writeHeartbeat(ce.Timestamp)
 
 	if hook != nil {
 		hook(ce)

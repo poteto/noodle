@@ -161,7 +161,7 @@ func TestReadSessionResultMarksCompleted(t *testing.T) {
 	}
 }
 
-func TestReadSessionErrorMarksFailed(t *testing.T) {
+func TestReadSessionErrorDoesNotMarkFailed(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -183,15 +183,15 @@ func TestReadSessionErrorMarksFailed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if !claims.Failed {
-		t.Fatal("expected failed=true when error event is present")
+	if claims.Failed {
+		t.Fatal("error events are transient; failed should not be set")
 	}
 	if claims.Completed {
 		t.Fatal("expected completed=false when no result event is present")
 	}
 }
 
-func TestReadSessionErrorAndResultSetBothFlags(t *testing.T) {
+func TestReadSessionErrorWithResultSetsCompleted(t *testing.T) {
 	runtimeDir := t.TempDir()
 	sessionID := "cook-a"
 	sessionPath := filepath.Join(runtimeDir, "sessions", sessionID)
@@ -214,8 +214,8 @@ func TestReadSessionErrorAndResultSetBothFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read session claims: %v", err)
 	}
-	if !claims.Failed {
-		t.Fatal("expected failed=true when error event is present")
+	if claims.Failed {
+		t.Fatal("error events are transient; failed should not be set")
 	}
 	if !claims.Completed {
 		t.Fatal("expected completed=true when result event is present")
