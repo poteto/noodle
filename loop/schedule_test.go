@@ -3,6 +3,7 @@ package loop
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,7 +120,7 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt([]TaskType{
 		{Key: "execute", Schedule: "When ready"},
 	})
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 
 	if !strings.Contains(prompt, "/tmp/test/.noodle/orders-next.json") {
 		t.Fatal("prompt should reference absolute path to orders-next.json")
@@ -142,7 +143,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
 	}
 	taskTypes := buildOrderTaskTypesPrompt(nil)
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil)
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil, nil)
 
 	if !strings.Contains(prompt, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should include rejection header when promotion error is set")
@@ -152,7 +153,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 	}
 
 	// No error — should not include rejection header.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 	if strings.Contains(promptClean, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should not include rejection header when no promotion error")
 	}
@@ -169,7 +170,7 @@ func TestBuildSchedulePromptIncludesReconciledFailures(t *testing.T) {
 		{OrderID: "abc-123", Title: "fix auth bug", TaskKey: "execute", Reason: "stage execute failed"},
 		{OrderID: "def-456", Title: "add logging", TaskKey: "quality", Reason: "stage quality failed"},
 	}
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", failures)
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", failures, nil)
 
 	if !strings.Contains(prompt, "Orders failed in a previous session") {
 		t.Fatal("prompt should mention archived failures")
@@ -185,7 +186,7 @@ func TestBuildSchedulePromptIncludesReconciledFailures(t *testing.T) {
 	}
 
 	// No failures — specific failures section should be absent.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil)
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 	if strings.Contains(promptClean, "Orders failed in a previous session") {
 		t.Fatal("prompt should not include failures section when none exist")
 	}
@@ -295,5 +296,60 @@ func TestSpawnScheduleDispatchFailureMarksStageFailed(t *testing.T) {
 	}
 	if updated.Orders[0].Stages[0].Status != StageStatusFailed {
 		t.Fatalf("schedule stage status = %q, want %q", updated.Orders[0].Stages[0].Status, StageStatusFailed)
+	}
+}
+
+func TestBuildSchedulePromptIncludesMiseWarnings(t *testing.T) {
+	order := Order{
+		ID:     "schedule",
+		Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
+	}
+	taskTypes := buildOrderTaskTypesPrompt(nil)
+	warnings := []string{
+		"backlog sync line 3: invalid JSON: unexpected end of JSON input",
+		"backlog sync line 5: missing required field title",
+	}
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
+
+	if !strings.Contains(prompt, "ADAPTER WARNINGS") {
+		t.Fatal("prompt should contain ADAPTER WARNINGS header when warnings present")
+	}
+	if !strings.Contains(prompt, `"backlog sync line 3: invalid JSON: unexpected end of JSON input"`) {
+		t.Fatal("prompt should contain quoted warning")
+	}
+	if !strings.Contains(prompt, `"backlog sync line 5: missing required field title"`) {
+		t.Fatal("prompt should contain second warning")
+	}
+
+	// No warnings — section should be absent.
+	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
+	if strings.Contains(promptClean, "ADAPTER WARNINGS") {
+		t.Fatal("prompt should not contain ADAPTER WARNINGS when no warnings")
+	}
+}
+
+func TestBuildSchedulePromptCapsWarningsAt20(t *testing.T) {
+	order := Order{
+		ID:     "schedule",
+		Status: OrderStatusActive,
+		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
+	}
+	taskTypes := buildOrderTaskTypesPrompt(nil)
+	warnings := make([]string, 25)
+	for i := range warnings {
+		warnings[i] = fmt.Sprintf("backlog sync line %d: missing required field id", i+1)
+	}
+	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
+
+	if !strings.Contains(prompt, "ADAPTER WARNINGS") {
+		t.Fatal("prompt should contain ADAPTER WARNINGS header")
+	}
+	if !strings.Contains(prompt, "and 5 more warnings") {
+		t.Fatal("prompt should contain overflow message for 25 warnings (25-20=5)")
+	}
+	// Warning 20 should be present, warning 21 should not be directly listed
+	if !strings.Contains(prompt, `"backlog sync line 20: missing required field id"`) {
+		t.Fatal("prompt should contain the 20th warning")
 	}
 }

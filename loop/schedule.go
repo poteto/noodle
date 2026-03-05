@@ -156,7 +156,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	failures := l.reconciledFailures
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures),
+		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures, l.lastMiseWarnings),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -275,7 +275,7 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure) string {
+func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure, miseWarnings []string) string {
 	miseFile := filepath.Join(runtimeDir, "mise.json")
 	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
 	parts := []string{
@@ -311,6 +311,21 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 			}
 		}
 		parts = append(parts, fb.String())
+	}
+	if len(miseWarnings) > 0 {
+		var wb strings.Builder
+		wb.WriteString("ADAPTER WARNINGS: The backlog sync produced validation warnings. Items with errors were skipped. Consider creating a task to fix the adapter:")
+		limit := 20
+		if len(miseWarnings) < limit {
+			limit = len(miseWarnings)
+		}
+		for _, w := range miseWarnings[:limit] {
+			wb.WriteString("\n- " + fmt.Sprintf("%q", w))
+		}
+		if len(miseWarnings) > 20 {
+			wb.WriteString(fmt.Sprintf("\n... and %d more warnings", len(miseWarnings)-20))
+		}
+		parts = append(parts, wb.String())
 	}
 	if resume := strings.TrimSpace(resumePrompt); resume != "" {
 		parts = append(parts, resume)
