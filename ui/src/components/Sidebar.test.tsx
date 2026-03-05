@@ -81,6 +81,31 @@ describe("Sidebar", () => {
     expect(screen.getByText("Fix auth bug")).toBeInTheDocument();
   });
 
+  it("renders repeated stage signatures as distinct indexed labels", async () => {
+    mockSnapshot = buildSnapshot({
+      orders: [
+        buildOrder({
+          id: "order-dup",
+          title: "Duplicate signature order",
+          status: "active",
+          stages: [
+            buildStage({ status: "completed", task_key: "execute" }),
+            buildStage({ status: "completed", task_key: "execute" }),
+            buildStage({ status: "pending", task_key: "execute" }),
+            buildStage({ status: "pending", task_key: "execute" }),
+          ],
+        }),
+      ],
+    });
+    render(<Sidebar />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Duplicate signature order"));
+    expect(screen.getByText("execute 1")).toBeInTheDocument();
+    expect(screen.getByText("execute 2")).toBeInTheDocument();
+    expect(screen.getByText("execute 3")).toBeInTheDocument();
+    expect(screen.getByText("execute 4")).toBeInTheDocument();
+  });
+
   it("shows schedule bootstrap order in sidebar during bootstrap session", () => {
     mockSnapshot = buildSnapshot({
       sessions: [
@@ -145,7 +170,7 @@ describe("Sidebar", () => {
     const user = userEvent.setup();
     // Click to expand the order first
     await user.click(screen.getByText("Test order"));
-    await user.click(screen.getByText("execute"));
+    await user.click(screen.getByText("execute 1"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
   });
 
@@ -171,7 +196,7 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     const user = userEvent.setup();
     await user.click(screen.getByText("Bootstrapping schedule skill"));
-    await user.click(screen.getByText("schedule"));
+    await user.click(screen.getByText("schedule 1"));
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/actor/$id",
       params: { id: "bootstrap-schedule-123" },
@@ -207,7 +232,7 @@ describe("Sidebar", () => {
     const user = userEvent.setup();
     // Click to expand the order first
     await user.click(screen.getByText("Test order"));
-    await user.click(screen.getByText("execute"));
+    await user.click(screen.getByText("execute 1"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/actor/$id", params: { id: "s1" } });
   });
 

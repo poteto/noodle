@@ -78,15 +78,8 @@ function statusLabel(status: ReturnType<typeof useWSStatus>): string {
   return "offline";
 }
 
-function stageNodeKey(stage: {
-  task_key?: string;
-  skill?: string;
-  session_id?: string;
-  status: string;
-}): string {
-  return [stage.task_key || stage.skill || "stage", stage.session_id || "none", stage.status].join(
-    ":",
-  );
+function stageNodeKey(orderID: string, stageIndex: number): string {
+  return `${orderID}:${stageIndex}`;
 }
 
 function isScheduleOnlyOrder(order: { stages: { task_key?: string }[] }): boolean {
@@ -284,7 +277,7 @@ export function Sidebar() {
                   return (
                     <button
                       type="button"
-                      key={stageNodeKey(stage)}
+                      key={stageNodeKey(order.id, i)}
                       className={`tree-stage ${info.cls} ${agentChannel ? "stage-clickable" : ""}`}
                       onClick={(event) => {
                         event.stopPropagation();
