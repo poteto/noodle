@@ -45,7 +45,7 @@ This mirrors the existing two-path merge in `mergeCookWorktree` (local vs `Merge
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

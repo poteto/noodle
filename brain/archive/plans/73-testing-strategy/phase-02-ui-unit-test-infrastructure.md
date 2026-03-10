@@ -32,7 +32,7 @@ Set up Vitest + React Testing Library so UI components and utility functions can
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Boilerplate config + straightforward tests |
+| `codex` | `gpt-5.4` | Boilerplate config + straightforward tests |
 
 ## Verification
 

@@ -39,7 +39,7 @@ Three subcommands:
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical CLI commands, clear spec |
+| `codex` | `gpt-5.4` | Mechanical CLI commands, clear spec |
 
 ## Verification
 

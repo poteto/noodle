@@ -22,7 +22,7 @@ Remove dead/vestigial paths early and establish process/schema fencing before re
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
 | Architecture / judgment | `claude` | `claude-opus-4-6` | Early sequencing and cutover fencing decisions |
-| Implementation | `codex` | `gpt-5.3-codex` | Mechanical dead-path deletion |
+| Implementation | `codex` | `gpt-5.4` | Mechanical dead-path deletion |
 
 ## Verification
 

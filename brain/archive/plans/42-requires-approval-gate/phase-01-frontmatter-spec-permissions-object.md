@@ -81,7 +81,7 @@ Skills to update (all in `.agents/skills/`):
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — struct changes and mechanical deletions.
+Provider: `codex` | Model: `gpt-5.4` — struct changes and mechanical deletions.
 
 ## Verification
 

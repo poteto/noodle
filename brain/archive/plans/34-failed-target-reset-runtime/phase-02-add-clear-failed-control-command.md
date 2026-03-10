@@ -26,7 +26,7 @@ Add an explicit control command that clears all failed-target blocks in one acti
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Why: mostly mechanical control-path extension with tests.
 
 ## Verification

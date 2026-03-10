@@ -2,7 +2,7 @@ Back to [[plans/69-cursor-dispatcher/overview]]
 
 # Phase 6: CursorRuntime and Factory Wiring
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical wiring following existing patterns
+**Routing:** `codex` / `gpt-5.4` — mechanical wiring following existing patterns
 
 ## Goal
 

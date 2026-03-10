@@ -42,7 +42,7 @@ Dual-purpose UI — creates new tasks (`n` from any tab) and edits existing ones
 
 - **Title** — text input (`bubbles/textinput`)
 - **Type** — cycle through task types (Execute, Plan, Quality, Reflect, Prioritize, etc.)
-- **Model** — cycle through available models (reads routing config for options, e.g. `claude-opus-4-6`, `claude-sonnet-4-6`, `gpt-5.3-codex`)
+- **Model** — cycle through available models (reads routing config for options, e.g. `claude-opus-4-6`, `claude-sonnet-4-6`, `gpt-5.4`)
 - **Provider** — cycle through providers (`claude`, `codex`). Auto-set when model changes.
 - **Skill** — text input for skill name override (optional, defaults from task type)
 - **Priority** — cycle (high/normal/low), hint for prioritize agent

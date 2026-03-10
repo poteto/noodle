@@ -19,7 +19,7 @@ Wire the server into `noodle start` so it runs alongside the loop and opens the 
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex`
+Provider: `codex` | Model: `gpt-5.4`
 
 ## Verification
 

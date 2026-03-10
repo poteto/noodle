@@ -36,7 +36,7 @@ No new types. Reads `ExtraPrompt` from the `orderx.Stage` struct added in phase 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Single function change with clear spec — add one conditional block |
+| `codex` | `gpt-5.4` | Single function change with clear spec — add one conditional block |
 
 ## Verification
 

@@ -79,7 +79,7 @@ model = "claude-sonnet"          # cheaper model for prioritization
 
 [routing.defaults]                  # example: route to Codex by default
 provider = "codex"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 
 [routing.tags]
 frontend = { provider = "claude", model = "opus" }

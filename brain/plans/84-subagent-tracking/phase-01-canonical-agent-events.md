@@ -42,7 +42,7 @@ Add optional fields to `CanonicalEvent`:
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical type additions with clear spec.
+Provider: `codex`, Model: `gpt-5.4` -- mechanical type additions with clear spec.
 
 ## Verification
 

@@ -42,7 +42,7 @@ Back to [[archive/plans/15-bootstrap-onboarding/overview]]
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical directory/file creation with clear spec |
+| `codex` | `gpt-5.4` | Mechanical directory/file creation with clear spec |
 
 ## Verification
 

@@ -36,7 +36,7 @@ Add a FieldDoc entry for `orders[].stages[].extra_prompt` in the orders target's
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical field addition to one struct, one validation clause |
+| `codex` | `gpt-5.4` | Mechanical field addition to one struct, one validation clause |
 
 ## Verification
 

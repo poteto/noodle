@@ -23,7 +23,7 @@ No new types — reuses `EventWriter` and `LoopEvent` from phase 1. External eve
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

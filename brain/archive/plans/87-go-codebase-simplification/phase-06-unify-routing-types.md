@@ -19,7 +19,7 @@ No types deleted. Conversion made explicit rather than implicit.
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Small, focused change.
 
 ## Verification

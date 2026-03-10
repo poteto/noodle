@@ -26,7 +26,7 @@ The hand-rolled `slicesEqual` function at ~line 43 duplicates `slices.Equal` fro
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical deletions with clear specs.
+Provider: `codex` | Model: `gpt-5.4` — mechanical deletions with clear specs.
 
 ## Verification
 

@@ -33,7 +33,7 @@ Remove the plans adapter infrastructure from Noodle's own adapter and clean up s
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

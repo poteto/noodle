@@ -23,7 +23,7 @@ Add event emission at control command paths and crash-recovery paths. These cove
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

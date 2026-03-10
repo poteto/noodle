@@ -36,7 +36,7 @@ Prove the full onboarding flow works end-to-end: `noodle start` in a fresh direc
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Test writing against a clear spec |
+| `codex` | `gpt-5.4` | Test writing against a clear spec |
 
 ## Verification
 

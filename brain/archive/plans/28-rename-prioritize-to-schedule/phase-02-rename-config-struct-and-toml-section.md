@@ -29,7 +29,7 @@ Rename the config type, struct field, TOML section, and all metadata/validation 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical rename of type, field, TOML tags, and string literals |
+| `codex` | `gpt-5.4` | Mechanical rename of type, field, TOML tags, and string literals |
 
 ## Verification
 

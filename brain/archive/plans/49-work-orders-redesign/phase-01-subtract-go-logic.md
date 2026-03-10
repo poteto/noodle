@@ -57,10 +57,10 @@ DomainSkill string `yaml:"domain_skill,omitempty"`
 
 | Subsection | Provider | Model | Rationale |
 |------------|----------|-------|-----------|
-| Domain skill type | `codex` | `gpt-5.3-codex` | Mechanical type addition |
+| Domain skill type | `codex` | `gpt-5.4` | Mechanical type addition |
 | Bootstrap skill file | `claude` | `claude-opus-4-6` | Skill writing — prompt quality matters |
-| Bootstrap wiring | `codex` | `gpt-5.3-codex` | Mechanical wiring with clear spec |
-| Sync degradation | `codex` | `gpt-5.3-codex` | Small behavioral change |
+| Bootstrap wiring | `codex` | `gpt-5.4` | Mechanical wiring with clear spec |
+| Sync degradation | `codex` | `gpt-5.4` | Small behavioral change |
 
 ## Verification
 

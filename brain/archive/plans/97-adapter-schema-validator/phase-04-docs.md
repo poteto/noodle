@@ -23,7 +23,7 @@ Keep it short — the existing schema table already defines the contract. The va
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Prose update, clear spec |
+| `codex` | `gpt-5.4` | Prose update, clear spec |
 
 ## Verification
 

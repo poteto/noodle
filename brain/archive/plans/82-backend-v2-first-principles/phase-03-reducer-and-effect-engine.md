@@ -41,7 +41,7 @@ Split pure state transitions from side effects so loop behavior becomes determin
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Deterministic reducer/effect migration |
+| Implementation | `codex` | `gpt-5.4` | Deterministic reducer/effect migration |
 
 ## Verification
 

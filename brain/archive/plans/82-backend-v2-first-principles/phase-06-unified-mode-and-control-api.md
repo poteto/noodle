@@ -43,7 +43,7 @@ Chosen: **(2)** for operator clarity and deterministic gate evaluation.
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
 | Architecture / judgment | `claude` | `claude-opus-4-6` | Decide `mode_epoch` comparison semantics and cancellation invariants |
-| Implementation | `codex` | `gpt-5.3-codex` | Config/control wiring based on finalized semantics |
+| Implementation | `codex` | `gpt-5.4` | Config/control wiring based on finalized semantics |
 
 ## Verification
 

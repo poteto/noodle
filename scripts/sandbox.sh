@@ -73,7 +73,7 @@ autonomy = "auto"
 
 [routing.defaults]
 provider = "codex"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 
 [skills]
 paths = [".agents/skills"]
@@ -144,7 +144,7 @@ Back to [[plans/01-user-auth/overview]]
 
 # Phase 1: User model and session store
 
-**Routing:** `codex` / `gpt-5.3-codex` — clear spec, mechanical types
+**Routing:** `codex` / `gpt-5.4` — clear spec, mechanical types
 
 ## Goal
 
@@ -168,7 +168,7 @@ Back to [[plans/01-user-auth/overview]]
 
 # Phase 2: OAuth2 flow
 
-**Routing:** `codex` / `gpt-5.3-codex` — integration work, provider-specific quirks
+**Routing:** `codex` / `gpt-5.4` — integration work, provider-specific quirks
 
 ## Goal
 
@@ -191,7 +191,7 @@ Back to [[plans/01-user-auth/overview]]
 
 # Phase 3: Session middleware
 
-**Routing:** `codex` / `gpt-5.3-codex` — straightforward middleware pattern
+**Routing:** `codex` / `gpt-5.4` — straightforward middleware pattern
 
 ## Goal
 
@@ -304,7 +304,7 @@ cat > .noodle/orders.json <<'EOF'
         {
           "task_key": "execute",
           "provider": "codex",
-          "model": "gpt-5.3-codex",
+          "model": "gpt-5.4",
           "runtime": "tmux",
           "status": "pending"
         }

@@ -41,7 +41,7 @@ No new types. Pure file reorganization within same packages.
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical file splits. No logic changes.
 
 ## Verification

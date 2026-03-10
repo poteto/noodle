@@ -27,7 +27,7 @@ The `stop-all` and `kill` commands remain immediate SIGKILL — they're explicit
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex` (simple constant change)
+- Provider: `codex`, Model: `gpt-5.4` (simple constant change)
 
 ## Verification
 

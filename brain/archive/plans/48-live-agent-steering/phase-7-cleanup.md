@@ -44,7 +44,7 @@ No new types. Deletion only.
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` — mechanical deletion and test updates.
+Provider: `codex`, Model: `gpt-5.4` — mechanical deletion and test updates.
 
 ## Verification
 

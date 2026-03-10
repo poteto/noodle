@@ -2,7 +2,7 @@ Back to [[archive/plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 4: Phase 4 - Bubbles component API migration
 
-**Routing:** `codex` / `gpt-5.3-codex` — focused component migration with limited surface area
+**Routing:** `codex` / `gpt-5.4` — focused component migration with limited surface area
 
 ## Goal
 

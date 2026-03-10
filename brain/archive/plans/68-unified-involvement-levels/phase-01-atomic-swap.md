@@ -73,7 +73,7 @@ In a single phase, define the `Mode` type and constants, delete `autonomy` / `sc
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical, high-volume find-and-replace with clear spec
+Provider: `codex` | Model: `gpt-5.4` — mechanical, high-volume find-and-replace with clear spec
 
 ## Verification
 

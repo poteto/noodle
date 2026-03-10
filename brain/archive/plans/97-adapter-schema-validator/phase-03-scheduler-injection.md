@@ -43,7 +43,7 @@ No new types. `buildSchedulePrompt` gains one parameter.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Follows existing pattern exactly, mechanical addition |
+| `codex` | `gpt-5.4` | Follows existing pattern exactly, mechanical addition |
 
 ## Verification
 

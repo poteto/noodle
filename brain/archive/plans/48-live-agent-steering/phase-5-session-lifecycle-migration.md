@@ -46,7 +46,7 @@ Register `ProcessDispatcher` as the handler for runtime `"tmux"` (backward compa
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` — mechanical migration with clear before/after.
+Provider: `codex`, Model: `gpt-5.4` — mechanical migration with clear before/after.
 
 ## Verification
 

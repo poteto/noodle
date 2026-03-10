@@ -23,7 +23,7 @@ without requiring string parsing.
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | File/event projection changes are mechanical |
+| Implementation | `codex` | `gpt-5.4` | File/event projection changes are mechanical |
 
 ## Verification
 

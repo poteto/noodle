@@ -17,7 +17,7 @@ Remove the Bubble Tea TUI skill — no TUI means no need for TUI development gui
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

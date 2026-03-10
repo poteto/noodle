@@ -31,7 +31,7 @@ Update brain files, skills, and Go comments to reflect that the TUI is gone. Mar
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

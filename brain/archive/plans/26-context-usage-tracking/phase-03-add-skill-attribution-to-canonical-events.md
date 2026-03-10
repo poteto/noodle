@@ -32,7 +32,7 @@ Attribute each session's context usage to the skill/task-type that spawned it. T
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Field threading from spawn → meta |
+| `codex` | `gpt-5.4` | Field threading from spawn → meta |
 
 ## Verification
 

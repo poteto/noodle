@@ -24,7 +24,7 @@ Note: Todo 69 (Cursor dispatcher) will redesign these from first principles when
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical deletion with no judgment calls.
 
 ## Verification

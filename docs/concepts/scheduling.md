@@ -85,7 +85,7 @@ Stages run sequentially by default. The first stage finishes before the second s
     {
       "do": "execute",
       "with": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "runtime": "sprites"
     },
     {
@@ -114,13 +114,13 @@ Groups are how the scheduling agent expresses a dependency graph. Stages with th
     {
       "do": "execute",
       "with": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "group": 0
     },
     {
       "do": "execute",
       "with": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "group": 0
     },
     {

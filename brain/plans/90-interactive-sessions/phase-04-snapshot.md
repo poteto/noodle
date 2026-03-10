@@ -26,7 +26,7 @@ Include interactive sessions in the snapshot so the UI can discover and display 
 ## Routing
 
 - **Provider:** `codex`
-- **Model:** `gpt-5.3-codex`
+- **Model:** `gpt-5.4`
 
 ## Verification
 

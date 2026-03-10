@@ -2,7 +2,7 @@ Back to [[plans/69-cursor-dispatcher/overview]]
 
 # Phase 1: Enrich PollingBackend with PollResult
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical interface migration, clear spec
+**Routing:** `codex` / `gpt-5.4` — mechanical interface migration, clear spec
 
 ## Goal
 

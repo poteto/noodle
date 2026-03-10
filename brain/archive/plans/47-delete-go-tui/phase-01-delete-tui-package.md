@@ -17,7 +17,7 @@ The build will break after this phase — `cmd_start.go` imports `tui` and `bubb
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

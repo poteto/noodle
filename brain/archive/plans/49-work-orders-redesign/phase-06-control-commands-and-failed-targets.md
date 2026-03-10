@@ -38,7 +38,7 @@ Migrate all control commands and the failed targets system to operate on orders 
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 Mechanical migration — same patterns, new types.
 

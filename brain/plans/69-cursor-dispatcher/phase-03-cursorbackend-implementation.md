@@ -2,7 +2,7 @@ Back to [[plans/69-cursor-dispatcher/overview]]
 
 # Phase 3: CursorBackend Implementation
 
-**Routing:** `codex` / `gpt-5.3-codex` — mapping between two typed APIs
+**Routing:** `codex` / `gpt-5.4` — mapping between two typed APIs
 
 ## Goal
 

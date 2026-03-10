@@ -24,7 +24,7 @@ classes and wire those classes through dispatch/spawn boundaries.
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Dispatcher/runtime mapping is mostly mechanical |
+| Implementation | `codex` | `gpt-5.4` | Dispatcher/runtime mapping is mostly mechanical |
 
 ## Verification
 

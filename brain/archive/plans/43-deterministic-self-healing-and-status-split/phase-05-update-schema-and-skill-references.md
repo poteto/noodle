@@ -37,7 +37,7 @@ Update all schema documentation, skill prompts, and injected references to refle
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical doc/string updates across known files |
+| `codex` | `gpt-5.4` | Mechanical doc/string updates across known files |
 
 ## Verification
 

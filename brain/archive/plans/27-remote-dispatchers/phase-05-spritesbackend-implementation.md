@@ -8,7 +8,7 @@ Back to [[archive/plans/27-remote-dispatchers/overview]]
 - Replacement shipped: runtime wrapper approach that executes provider commands via Sprite and reuses tmux dispatcher/session paths.
 - Follow-up trigger: implement SDK backend if/when full remote lifecycle ownership (for example richer sync-back) is required.
 
-**Routing:** `codex` / `gpt-5.3-codex` — coding against a clear spec (sprites-go SDK)
+**Routing:** `codex` / `gpt-5.4` — coding against a clear spec (sprites-go SDK)
 
 ## References
 

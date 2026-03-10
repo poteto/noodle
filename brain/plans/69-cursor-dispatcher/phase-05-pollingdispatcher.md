@@ -2,7 +2,7 @@ Back to [[plans/69-cursor-dispatcher/overview]]
 
 # Phase 5: PollingDispatcher
 
-**Routing:** `codex` / `gpt-5.3-codex` — wiring against established patterns
+**Routing:** `codex` / `gpt-5.4` — wiring against established patterns
 
 ## Goal
 

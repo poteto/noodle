@@ -2,7 +2,7 @@ Back to [[archive/plans/27-remote-dispatchers/overview]]
 
 # Phase 6: CursorBackend stub
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical stub implementation
+**Routing:** `codex` / `gpt-5.4` — mechanical stub implementation
 
 ## References
 

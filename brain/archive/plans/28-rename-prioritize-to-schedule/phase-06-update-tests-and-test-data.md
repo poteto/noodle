@@ -54,7 +54,7 @@ No new types. Test assertions update to match renamed constants, types, and func
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical find-and-replace across test files and fixtures |
+| `codex` | `gpt-5.4` | Mechanical find-and-replace across test files and fixtures |
 
 ## Verification
 

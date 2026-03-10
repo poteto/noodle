@@ -2,7 +2,7 @@ Back to [[archive/plans/27-remote-dispatchers/overview]]
 
 # Phase 7: Monitor observer abstraction
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical refactor with clear target
+**Routing:** `codex` / `gpt-5.4` — mechanical refactor with clear target
 
 ## Goal
 

@@ -33,7 +33,7 @@ Project all external views from canonical state so files, snapshot API, and webs
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Projection and stream wiring is mechanical |
+| Implementation | `codex` | `gpt-5.4` | Projection and stream wiring is mechanical |
 
 ## Verification
 

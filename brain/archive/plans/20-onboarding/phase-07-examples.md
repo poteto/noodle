@@ -26,7 +26,7 @@ None — config files and skill markdown only.
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical file creation against a clear spec |
+| `codex` | `gpt-5.4` | Mechanical file creation against a clear spec |
 
 ## Verification
 

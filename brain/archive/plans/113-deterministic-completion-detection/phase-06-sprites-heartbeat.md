@@ -35,7 +35,7 @@ This also simplifies processSession — one less responsibility in the session-t
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

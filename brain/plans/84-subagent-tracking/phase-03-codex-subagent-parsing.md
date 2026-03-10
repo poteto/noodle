@@ -47,7 +47,7 @@ v1 behavior note: until out-of-band ingestion is enabled, Codex child nodes may 
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical parsing with clear field mappings.
+Provider: `codex`, Model: `gpt-5.4` -- mechanical parsing with clear field mappings.
 
 ## Verification
 

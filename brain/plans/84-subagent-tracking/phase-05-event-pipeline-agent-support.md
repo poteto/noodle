@@ -56,7 +56,7 @@ v1 fallback contract for Codex child visibility (explicit):
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical wiring with clear mappings.
+Provider: `codex`, Model: `gpt-5.4` -- mechanical wiring with clear mappings.
 
 ## Verification
 

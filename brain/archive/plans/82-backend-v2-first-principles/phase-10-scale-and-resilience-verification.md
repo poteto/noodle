@@ -23,7 +23,7 @@ Prove at runtime that the redesign holds under scale, crashes, retries, and cont
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Test scaffolding and fixture expansion |
+| Implementation | `codex` | `gpt-5.4` | Test scaffolding and fixture expansion |
 
 ## Verification
 

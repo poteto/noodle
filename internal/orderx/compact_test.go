@@ -14,7 +14,7 @@ func TestCompactParseSimpleThreeStageOrder(t *testing.T) {
 				"id": "49",
 				"title": "test order",
 				"stages": [
-					{"do": "execute", "with": "codex", "model": "gpt-5.3-codex"},
+					{"do": "execute", "with": "codex", "model": "gpt-5.4"},
 					{"do": "quality", "with": "claude", "model": "claude-opus-4-6"},
 					{"do": "reflect", "with": "claude", "model": "claude-opus-4-6"}
 				]
@@ -33,7 +33,7 @@ func TestCompactParseSimpleThreeStageOrder(t *testing.T) {
 				ID:    "49",
 				Title: "test order",
 				Stages: []CompactStage{
-					{Do: "execute", With: "codex", Model: "gpt-5.3-codex"},
+					{Do: "execute", With: "codex", Model: "gpt-5.4"},
 					{Do: "quality", With: "claude", Model: "claude-opus-4-6"},
 					{Do: "reflect", With: "claude", Model: "claude-opus-4-6"},
 				},
@@ -54,7 +54,7 @@ func TestCompactParseWithOptionalFields(t *testing.T) {
 					{
 						"do": "execute",
 						"with": "codex",
-						"model": "gpt-5.3-codex",
+						"model": "gpt-5.4",
 						"runtime": "sprites",
 						"prompt": "Run implementation",
 						"extra_prompt": "Focus on tests",
@@ -81,8 +81,8 @@ func TestCompactParseWithOptionalFields(t *testing.T) {
 	if stage.With != "codex" {
 		t.Fatalf("With = %q, want %q", stage.With, "codex")
 	}
-	if stage.Model != "gpt-5.3-codex" {
-		t.Fatalf("Model = %q, want %q", stage.Model, "gpt-5.3-codex")
+	if stage.Model != "gpt-5.4" {
+		t.Fatalf("Model = %q, want %q", stage.Model, "gpt-5.4")
 	}
 	if stage.Runtime != "sprites" {
 		t.Fatalf("Runtime = %q, want %q", stage.Runtime, "sprites")
@@ -107,7 +107,7 @@ func TestCompactParseWithActionNeeded(t *testing.T) {
 			{
 				"id": "1",
 				"stages": [
-					{"do": "execute", "with": "codex", "model": "gpt-5.3-codex"}
+					{"do": "execute", "with": "codex", "model": "gpt-5.4"}
 				]
 			}
 		],
@@ -131,7 +131,7 @@ func TestCompactParseRejectsUnknownFields(t *testing.T) {
 			{
 				"id": "1",
 				"stages": [
-					{"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "unknown": true}
+					{"do": "execute", "with": "codex", "model": "gpt-5.4", "unknown": true}
 				]
 			}
 		]
@@ -180,7 +180,7 @@ func TestCompactExpandTrimsWhitespaceDo(t *testing.T) {
 			{
 				ID: "trim",
 				Stages: []CompactStage{
-					{Do: "  execute  ", With: "codex", Model: "gpt-5.3-codex"},
+					{Do: "  execute  ", With: "codex", Model: "gpt-5.4"},
 				},
 			},
 		},
@@ -232,7 +232,7 @@ func TestCompactParseRejectsStageWithNeitherDoNorPrompt(t *testing.T) {
 			{
 				"id": "1",
 				"stages": [
-					{"with": "codex", "model": "gpt-5.3-codex"}
+					{"with": "codex", "model": "gpt-5.4"}
 				]
 			}
 		]
@@ -253,7 +253,7 @@ func TestCompactExpandSimpleOrderStatuses(t *testing.T) {
 			{
 				ID: "49",
 				Stages: []CompactStage{
-					{Do: "execute", With: "codex", Model: "gpt-5.3-codex"},
+					{Do: "execute", With: "codex", Model: "gpt-5.4"},
 					{Do: "quality", With: "claude", Model: "claude-opus-4-6"},
 					{Do: "reflect", With: "claude", Model: "claude-opus-4-6"},
 				},
@@ -291,7 +291,7 @@ func TestCompactExpandPreservesPassThroughFields(t *testing.T) {
 					{
 						Do:          "execute",
 						With:        "codex",
-						Model:       "gpt-5.3-codex",
+						Model:       "gpt-5.4",
 						Prompt:      "build it",
 						ExtraPrompt: "plus tests",
 						Extra: map[string]json.RawMessage{
@@ -341,7 +341,7 @@ func TestCompactExpandSetsSkillFromDo(t *testing.T) {
 			{
 				ID: "skill",
 				Stages: []CompactStage{
-					{Do: "execute", With: "codex", Model: "gpt-5.3-codex"},
+					{Do: "execute", With: "codex", Model: "gpt-5.4"},
 				},
 			},
 		},
@@ -393,7 +393,7 @@ func TestCompactExpandOrderWithoutRuntimeLeavesRuntimeEmpty(t *testing.T) {
 			{
 				ID: "runtime",
 				Stages: []CompactStage{
-					{Do: "execute", With: "codex", Model: "gpt-5.3-codex"},
+					{Do: "execute", With: "codex", Model: "gpt-5.4"},
 				},
 			},
 		},

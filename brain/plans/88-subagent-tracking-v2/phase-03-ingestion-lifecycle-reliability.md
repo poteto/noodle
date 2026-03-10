@@ -25,7 +25,7 @@ Poller operating envelope:
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Lifecycle scaffolding and concurrency correctness.
 
 ## Verification

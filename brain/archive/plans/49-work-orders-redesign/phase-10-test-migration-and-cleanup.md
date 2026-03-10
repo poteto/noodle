@@ -70,7 +70,7 @@ Migrate all test fixtures from queue format to orders format, delete old types a
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 Mechanical migration and deletion. Clear spec from prior phases.
 

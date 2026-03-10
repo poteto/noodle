@@ -2,7 +2,7 @@ Back to [[archive/plans/27-remote-dispatchers/overview]]
 
 # Phase 1: Backend interfaces and shared types
 
-**Routing:** `codex` / `gpt-5.3-codex` — clear spec, mechanical types
+**Routing:** `codex` / `gpt-5.4` — clear spec, mechanical types
 
 ## Goal
 

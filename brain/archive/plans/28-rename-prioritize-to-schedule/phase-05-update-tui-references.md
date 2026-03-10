@@ -41,7 +41,7 @@ Update all TUI color fields, type maps, string literals, and task type lists fro
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical field and string renames across 5 files |
+| `codex` | `gpt-5.4` | Mechanical field and string renames across 5 files |
 
 ## Verification
 

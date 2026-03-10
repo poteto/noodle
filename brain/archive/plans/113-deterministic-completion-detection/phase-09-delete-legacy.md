@@ -32,7 +32,7 @@ Remove all legacy completion detection code that the CompletionTracker replaces.
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

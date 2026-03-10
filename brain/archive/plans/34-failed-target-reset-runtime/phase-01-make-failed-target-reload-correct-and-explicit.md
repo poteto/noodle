@@ -25,7 +25,7 @@ Make runtime failed-target state reflect disk truth during loop execution, inclu
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Why: clear implementation against existing loop/state architecture.
 
 ## Verification

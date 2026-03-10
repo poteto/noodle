@@ -8,7 +8,7 @@ Replace the `ParseOrdersStrict` call in `consumeOrdersNext` with `ParseCompactOr
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex`
+Provider: `codex` | Model: `gpt-5.4`
 
 ## Changes
 

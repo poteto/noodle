@@ -37,7 +37,7 @@ Bridge a plugin's JSON-RPC dispatch + NDJSON event stream into Noodle's internal
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical bridge — clear contract on both sides |
+| `codex` | `gpt-5.4` | Mechanical bridge — clear contract on both sides |
 
 ## Verification
 

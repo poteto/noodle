@@ -38,7 +38,7 @@ Rename test functions and update comments across these files. Use `replace_all` 
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical find-and-replace across test files.
+Provider: `codex` | Model: `gpt-5.4` — mechanical find-and-replace across test files.
 
 ## Verification
 

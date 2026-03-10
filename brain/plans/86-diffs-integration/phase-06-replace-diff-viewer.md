@@ -22,7 +22,7 @@ No new types — reuses existing `DiffViewerProps` interface.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical replacement — swap one component implementation for another |
+| `codex` | `gpt-5.4` | Mechanical replacement — swap one component implementation for another |
 
 ## Verification
 

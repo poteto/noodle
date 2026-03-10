@@ -38,7 +38,7 @@ Eliminate the manually-mirrored `ui/src/client/types.ts` by generating TypeScrip
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical codegen setup, clear spec |
+| `codex` | `gpt-5.4` | Mechanical codegen setup, clear spec |
 
 ## Verification
 

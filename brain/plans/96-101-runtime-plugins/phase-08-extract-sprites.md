@@ -66,7 +66,7 @@ The plugin reads skill bundles via the dispatch request params (skill content is
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical extraction — moving code between modules |
+| `codex` | `gpt-5.4` | Mechanical extraction — moving code between modules |
 
 ## Verification
 

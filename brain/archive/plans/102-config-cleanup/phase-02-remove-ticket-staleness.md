@@ -44,7 +44,7 @@ Remove `TicketStatusStale` from any ticket status enum. The `Ticket` type may lo
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Targeted deletion with clear spec |
+| `codex` | `gpt-5.4` | Targeted deletion with clear spec |
 
 ## Verification
 

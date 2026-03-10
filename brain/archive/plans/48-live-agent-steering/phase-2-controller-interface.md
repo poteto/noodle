@@ -37,7 +37,7 @@ This is an interface migration. Every implementation must be updated in this pha
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` — mechanical interface propagation.
+Provider: `codex`, Model: `gpt-5.4` — mechanical interface propagation.
 
 ## Verification
 

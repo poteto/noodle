@@ -88,7 +88,7 @@ l.logger.Warn("control command failed", "action", cmd.Action, "message", ack.Mes
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical log insertions and a small helper method |
+| `codex` | `gpt-5.4` | Mechanical log insertions and a small helper method |
 
 ## Verification
 

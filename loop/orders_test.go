@@ -324,7 +324,7 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsPendingTail(t *testing.T) {
 				Title:  "existing order",
 				Status: orderx.OrderStatusActive,
 				Stages: []orderx.Stage{
-					{TaskKey: "execute", Skill: "execute", Prompt: "ship this", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusActive},
+					{TaskKey: "execute", Skill: "execute", Prompt: "ship this", Provider: "codex", Model: "gpt-5.4", Status: orderx.StageStatusActive},
 					{TaskKey: "quality", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
 					{TaskKey: "reflect", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
 				},
@@ -338,7 +338,7 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsPendingTail(t *testing.T) {
 	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
 		Orders: []orderx.CompactOrder{
 			{ID: "dup", Title: "amended order", Stages: []orderx.CompactStage{
-				{Do: "execute", With: "codex", Model: "gpt-5.3-codex", Prompt: "ship this"},
+				{Do: "execute", With: "codex", Model: "gpt-5.4", Prompt: "ship this"},
 				{Do: "adversarial-review", With: "claude", Model: "claude-opus-4-6"},
 			}},
 		},
@@ -383,7 +383,7 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsCurrentStage(t *testing.T) {
 				Title:  "existing order",
 				Status: orderx.OrderStatusActive,
 				Stages: []orderx.Stage{
-					{TaskKey: "execute", Prompt: "old prompt", Provider: "codex", Model: "gpt-5.3-codex", Status: orderx.StageStatusActive},
+					{TaskKey: "execute", Prompt: "old prompt", Provider: "codex", Model: "gpt-5.4", Status: orderx.StageStatusActive},
 					{TaskKey: "quality", Provider: "claude", Model: "claude-opus-4-6", Status: orderx.StageStatusPending},
 				},
 			},
@@ -396,7 +396,7 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsCurrentStage(t *testing.T) {
 	writeCompactOrders(t, nextPath, orderx.CompactOrdersFile{
 		Orders: []orderx.CompactOrder{
 			{ID: "dup", Title: "amended order", Stages: []orderx.CompactStage{
-				{Do: "execute", With: "codex", Model: "gpt-5.3-codex", Prompt: "new prompt"},
+				{Do: "execute", With: "codex", Model: "gpt-5.4", Prompt: "new prompt"},
 				{Do: "adversarial-review", With: "claude", Model: "claude-opus-4-6"},
 			}},
 		},

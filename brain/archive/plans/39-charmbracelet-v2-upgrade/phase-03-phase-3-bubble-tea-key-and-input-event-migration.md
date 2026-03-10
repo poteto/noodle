@@ -2,7 +2,7 @@ Back to [[archive/plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 3: Phase 3 - Bubble Tea key and input event migration
 
-**Routing:** `codex` / `gpt-5.3-codex` — broad but deterministic event/message rewrites
+**Routing:** `codex` / `gpt-5.4` — broad but deterministic event/message rewrites
 
 ## Goal
 

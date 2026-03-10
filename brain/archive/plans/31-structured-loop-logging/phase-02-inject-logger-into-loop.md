@@ -49,7 +49,7 @@ No new types. Signature change: `defaultDependencies(projectDir, runtimeDir, noo
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Three mechanical replacements |
+| `codex` | `gpt-5.4` | Three mechanical replacements |
 
 ## Verification
 

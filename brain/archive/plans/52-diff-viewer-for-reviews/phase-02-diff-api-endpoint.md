@@ -27,7 +27,7 @@ Add `GET /api/reviews/{id}/diff` to the server. This endpoint resolves the revie
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical endpoint following existing server patterns |
+| `codex` | `gpt-5.4` | Mechanical endpoint following existing server patterns |
 
 ## Verification
 

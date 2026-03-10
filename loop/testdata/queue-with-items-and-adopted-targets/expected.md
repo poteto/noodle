@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 11ddfb90277bd9b048d7bbb93d23e02d34e3b52e3542bb790bb00eec6fecd807
+source_hash: 2aa34c8689ecab900dde2acd532a84a191507174210671cee4e2c79ccdc9a40e
 ---
 
 ## Runtime Dump
@@ -20,7 +20,7 @@ source_hash: 11ddfb90277bd9b048d7bbb93d23e02d34e3b52e3542bb790bb00eec6fecd807
       "first_spawn": {
         "name": "42-0-execute",
         "provider": "codex",
-        "model": "gpt-5.3-codex"
+        "model": "gpt-5.4"
       }
     }
   }

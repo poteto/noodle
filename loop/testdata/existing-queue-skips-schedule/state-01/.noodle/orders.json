@@ -7,7 +7,7 @@
         {
           "task_key": "execute",
           "provider": "codex",
-          "model": "gpt-5.3-codex",
+          "model": "gpt-5.4",
           "status": "pending"
         }
       ],
@@ -20,7 +20,7 @@
         {
           "task_key": "execute",
           "provider": "codex",
-          "model": "gpt-5.3-codex",
+          "model": "gpt-5.4",
           "status": "pending"
         }
       ],

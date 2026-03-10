@@ -27,7 +27,7 @@ Unify runtime handling under one capability contract so process/sprites/cursor b
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
 | Architecture / judgment | `claude` | `claude-opus-4-6` | Runtime contract and behavior semantics |
-| Implementation | `codex` | `gpt-5.3-codex` | Mechanical adapter migration |
+| Implementation | `codex` | `gpt-5.4` | Mechanical adapter migration |
 
 ## Verification
 

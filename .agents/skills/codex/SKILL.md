@@ -19,7 +19,7 @@ For complex tasks, add `--config model_reasoning_effort="xhigh"`.
 
 ## Model Selection
 
-Default to the project model in `.codex/config.toml` (`gpt-5.3-codex`).
+Default to the project model in `.codex/config.toml` (`gpt-5.4`).
 
 Use `--model gpt-5.3-codex-spark` for speed-first interactive work:
 
@@ -28,7 +28,7 @@ Use `--model gpt-5.3-codex-spark` for speed-first interactive work:
 - small-to-medium refactors or UI tweaks
 - rapid prototyping where frequent redirect/interrupt is expected
 
-Stay on default `gpt-5.3-codex` for depth-first work:
+Stay on default `gpt-5.4` for depth-first work:
 
 - long autonomous runs
 - broad multi-file changes with heavy reasoning

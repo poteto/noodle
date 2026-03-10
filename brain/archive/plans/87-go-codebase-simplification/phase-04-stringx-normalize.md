@@ -23,7 +23,7 @@ Add the helper and migrate the first ~20 call sites (packages `config/`, `intern
 ### Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical replacement.
 
 ### Verification
@@ -45,7 +45,7 @@ Complete the migration across remaining packages (`loop/`, `monitor/`, `dispatch
 ### Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 
 ### Verification
 
@@ -66,7 +66,7 @@ Replace `worktree/lock.go:isProcessAlive()` with `procx.IsPIDAlive()`. The imple
 ### Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 
 ### Verification
 

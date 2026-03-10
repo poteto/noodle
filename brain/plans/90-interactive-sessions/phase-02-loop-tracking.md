@@ -29,7 +29,7 @@ Track active interactive sessions in the loop alongside order sessions. Handle l
 ## Routing
 
 - **Provider:** `codex`
-- **Model:** `gpt-5.3-codex`
+- **Model:** `gpt-5.4`
 
 ## Verification
 

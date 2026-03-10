@@ -10,7 +10,7 @@ Define the `SessionEventSink` interface and a helper to convert canonical events
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| codex | gpt-5.3-codex | Mechanical type + function extraction |
+| codex | gpt-5.4 | Mechanical type + function extraction |
 
 ## Changes
 

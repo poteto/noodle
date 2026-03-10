@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: ee591e74094e4001f51839ba57603e198fbfe09c310fd37918e82ed79be3c4c9
+source_hash: be46c3e0e20121045469973ed99577771a006f14a5b6ee8b2946cb19f579b56f
 ---
 
 ## Runtime Dump
@@ -21,7 +21,7 @@ source_hash: ee591e74094e4001f51839ba57603e198fbfe09c310fd37918e82ed79be3c4c9
         "name": "schedule",
         "skill": "schedule",
         "provider": "codex",
-        "model": "gpt-5.3-codex"
+        "model": "gpt-5.4"
       }
     }
   }

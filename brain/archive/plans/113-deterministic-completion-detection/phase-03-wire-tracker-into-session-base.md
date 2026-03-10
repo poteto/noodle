@@ -35,7 +35,7 @@ The key insight: the canonical event interceptor (`io.MultiWriter(canonicalFile,
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

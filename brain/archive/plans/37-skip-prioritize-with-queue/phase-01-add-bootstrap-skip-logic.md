@@ -80,7 +80,7 @@ No new types. `Queue` and `QueueItem` are unchanged.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Small, mechanical Go changes with clear spec |
+| `codex` | `gpt-5.4` | Small, mechanical Go changes with clear spec |
 
 ## Verification
 

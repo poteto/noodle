@@ -10,7 +10,7 @@ Update hooks to use WebSocket and update all components that reference SSE statu
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| codex | gpt-5.3-codex | Mechanical renames and hook updates |
+| codex | gpt-5.4 | Mechanical renames and hook updates |
 
 ## Changes
 

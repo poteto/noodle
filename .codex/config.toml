@@ -1,7 +1,7 @@
 # Noodle — Codex project configuration
 # Mirrors Claude Code setup. See CLAUDE.md for detailed project instructions.
 
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 
 # Fully autonomous — no approval prompts

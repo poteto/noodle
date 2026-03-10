@@ -21,7 +21,7 @@ The `EventWriter` must be wired into the `Loop` struct (field or dependency). Th
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

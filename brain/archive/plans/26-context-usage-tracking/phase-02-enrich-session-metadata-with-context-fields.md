@@ -40,7 +40,7 @@ Aggregate per-turn context metrics from canonical events into session-level meta
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical aggregation logic |
+| `codex` | `gpt-5.4` | Mechanical aggregation logic |
 
 ## Verification
 

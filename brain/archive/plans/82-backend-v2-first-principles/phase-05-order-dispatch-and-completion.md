@@ -31,7 +31,7 @@ Drive dispatch, completion, retry, and failure routing entirely from canonical o
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Dispatch and completion transition migration |
+| Implementation | `codex` | `gpt-5.4` | Dispatch and completion transition migration |
 
 ## Verification
 

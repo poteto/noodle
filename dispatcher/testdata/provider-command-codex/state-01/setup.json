@@ -3,7 +3,7 @@
     "name": "cook-b",
     "prompt": "Say ok",
     "provider": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "worktreepath": ".worktrees/phase-06-spawner"
   },
   "prompt_file": "/tmp/prompt.txt",

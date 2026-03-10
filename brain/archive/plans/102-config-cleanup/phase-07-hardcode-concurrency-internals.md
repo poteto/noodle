@@ -51,7 +51,7 @@ Remove `max_completion_overflow` and `merge_backpressure_threshold` from user-fa
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical deletion + constant extraction |
+| `codex` | `gpt-5.4` | Mechanical deletion + constant extraction |
 
 ## Verification
 

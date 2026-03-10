@@ -26,7 +26,7 @@ The README should remain short. It's not documentation — it's a signpost. INST
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex` (simple markdown edit)
+- Provider: `codex`, Model: `gpt-5.4` (simple markdown edit)
 
 ## Verification
 

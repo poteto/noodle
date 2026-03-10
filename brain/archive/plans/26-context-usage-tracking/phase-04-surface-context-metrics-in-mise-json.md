@@ -32,7 +32,7 @@ Expose context metrics in `mise.json` so skills (prioritize, quality, meditate) 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical aggregation and type additions |
+| `codex` | `gpt-5.4` | Mechanical aggregation and type additions |
 
 ## Verification
 

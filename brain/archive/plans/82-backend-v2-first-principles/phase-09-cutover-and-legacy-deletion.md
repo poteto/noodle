@@ -30,7 +30,7 @@ Perform a hard backend cutover to V2 contracts and remove old paths without comp
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Deletion and cutover hardening |
+| Implementation | `codex` | `gpt-5.4` | Deletion and cutover hardening |
 
 ## Verification
 

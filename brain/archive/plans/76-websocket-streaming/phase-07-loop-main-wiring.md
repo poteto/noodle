@@ -10,7 +10,7 @@ Thread the event sink from server's broker through the loop dependencies to the 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| codex | gpt-5.3-codex | Mechanical wiring through config structs |
+| codex | gpt-5.4 | Mechanical wiring through config structs |
 
 ## Changes
 

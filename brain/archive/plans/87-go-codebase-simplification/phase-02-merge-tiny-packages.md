@@ -19,7 +19,7 @@ No new types. Existing types move packages — update import paths.
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical moves with import updates.
 
 ## Verification

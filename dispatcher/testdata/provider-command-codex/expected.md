@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: 8a23ac679d95241dbd61e8665fe929bdfecb907fd6c13a8c797af6262dc1a4b3
+source_hash: ed08fa5878490d2c62aee1c3261b25224e99da681b52ceb0d4f32435d2a57aef
 ---
 
 ## Expected
@@ -14,7 +14,7 @@ source_hash: 8a23ac679d95241dbd61e8665fe929bdfecb907fd6c13a8c797af6262dc1a4b3
     "'--dangerously-bypass-approvals-and-sandbox'",
     "'--skip-git-repo-check'",
     "'--json'",
-    "'--model' 'gpt-5.3-codex'",
+    "'--model' 'gpt-5.4'",
     "< '/tmp/prompt.txt'",
     "2> '/tmp/stderr.log'"
   ],

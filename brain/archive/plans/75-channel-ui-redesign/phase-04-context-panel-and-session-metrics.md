@@ -12,7 +12,7 @@ Invoke `react-best-practices`, `ts-best-practices`, `interaction-design` before 
 
 ## Routing
 
-- **Provider:** `codex` | **Model:** `gpt-5.3-codex`
+- **Provider:** `codex` | **Model:** `gpt-5.4`
 - Rendering metrics from snapshot data is mechanical
 
 ## Changes

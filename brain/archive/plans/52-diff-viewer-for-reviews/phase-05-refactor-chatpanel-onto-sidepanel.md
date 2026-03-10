@@ -24,7 +24,7 @@ No new types.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical refactor with clear before/after |
+| `codex` | `gpt-5.4` | Mechanical refactor with clear before/after |
 
 ## Verification
 

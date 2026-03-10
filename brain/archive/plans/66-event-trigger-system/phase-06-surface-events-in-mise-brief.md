@@ -35,7 +35,7 @@ Currently the schedule agent only spawns when there are no active cooks, no adop
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

@@ -59,7 +59,7 @@ With `Permissions` unused (phase 2) and `DomainSkill` deleted (phase 3), `Noodle
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

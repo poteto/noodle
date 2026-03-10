@@ -35,7 +35,7 @@ Add a `logger *slog.Logger` field to the `Loop` struct. Set it from `deps.Logger
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Single field addition, mechanical wiring |
+| `codex` | `gpt-5.4` | Single field addition, mechanical wiring |
 
 ## Verification
 

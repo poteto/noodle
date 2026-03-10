@@ -31,7 +31,7 @@ Style the stat header distinctly from the diff body — lighter background, slig
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | UI component with clear spec, uses existing HighlightedCode |
+| `codex` | `gpt-5.4` | UI component with clear spec, uses existing HighlightedCode |
 
 Invoke `frontend-design` skill for styling the diff viewer.
 

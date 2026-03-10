@@ -2,7 +2,7 @@ Back to [[archive/plans/38-resilient-skill-resolution/overview]]
 
 # Phase 8: TUI feed events for skill lifecycle
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical TUI integration, clear patterns to follow
+**Routing:** `codex` / `gpt-5.4` — mechanical TUI integration, clear patterns to follow
 
 ## Goal
 

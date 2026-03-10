@@ -2,7 +2,7 @@ Back to [[archive/plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 1: Phase 1 - Baseline and module path migration
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical import and module rewrites
+**Routing:** `codex` / `gpt-5.4` — mechanical import and module rewrites
 
 ## Goal
 

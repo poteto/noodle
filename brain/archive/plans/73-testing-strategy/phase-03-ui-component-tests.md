@@ -40,7 +40,7 @@ Test the critical component logic paths that agents are most likely to break whe
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical test writing against clear component contracts |
+| `codex` | `gpt-5.4` | Mechanical test writing against clear component contracts |
 
 ## Verification
 

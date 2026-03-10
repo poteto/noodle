@@ -24,7 +24,7 @@ Define the foundational data type that replaces string-based session status. `Se
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

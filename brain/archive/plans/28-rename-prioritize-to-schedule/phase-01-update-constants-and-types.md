@@ -31,7 +31,7 @@ No struct changes. Only constant values and function names.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical find-and-replace across 3 files |
+| `codex` | `gpt-5.4` | Mechanical find-and-replace across 3 files |
 
 ## Verification
 

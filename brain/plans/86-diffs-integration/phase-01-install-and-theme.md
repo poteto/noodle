@@ -20,7 +20,7 @@ Install the library and create a theme configuration that matches Noodle's dark 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical setup — install dep, create wrapper component |
+| `codex` | `gpt-5.4` | Mechanical setup — install dep, create wrapper component |
 
 ## Verification
 

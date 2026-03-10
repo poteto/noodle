@@ -25,7 +25,7 @@ Interactive sessions survive loop restarts. If the loop crashes and restarts whi
 ## Routing
 
 - **Provider:** `codex`
-- **Model:** `gpt-5.3-codex`
+- **Model:** `gpt-5.4`
 
 ## Verification
 

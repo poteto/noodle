@@ -31,7 +31,7 @@ Build the file I/O layer for `orders.json` and `orders-next.json`. Same atomic w
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 Mechanical — clear spec, mirrors existing queue I/O patterns.
 

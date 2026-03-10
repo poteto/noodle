@@ -8,7 +8,7 @@ Define the compact JSON types the scheduler emits and the expansion function tha
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex`
+Provider: `codex` | Model: `gpt-5.4`
 
 ## Changes
 

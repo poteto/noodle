@@ -47,7 +47,7 @@ The scheduler LLM emits `orders-next.json`, which the loop promotes into `orders
       "rationale": "foundation-before-feature",
       "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
+        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.4", "runtime": "sprites", "status": "pending"},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
         {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
@@ -67,7 +67,7 @@ The scheduler LLM emits `orders-next.json`, which the loop promotes into `orders
       "plan": ["plans/49-work-orders-redesign/overview"],
       "rationale": "foundation-before-feature",
       "stages": [
-        {"do": "execute", "with": "codex", "model": "gpt-5.3-codex", "runtime": "sprites"},
+        {"do": "execute", "with": "codex", "model": "gpt-5.4", "runtime": "sprites"},
         {"do": "quality", "with": "claude", "model": "claude-opus-4-6"},
         {"do": "reflect", "with": "claude", "model": "claude-opus-4-6"}
       ]

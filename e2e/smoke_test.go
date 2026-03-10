@@ -377,7 +377,7 @@ func TestSmokeStartOnceWorktreeCreateFailureShowsGitError(t *testing.T) {
           "task_key": "execute",
           "skill": "execute",
           "provider": "codex",
-          "model": "gpt-5.3-codex",
+          "model": "gpt-5.4",
           "status": "pending"
         }
       ],

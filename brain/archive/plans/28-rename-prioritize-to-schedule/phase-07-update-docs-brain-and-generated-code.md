@@ -52,7 +52,7 @@ No struct changes. Only string content in docs and templates.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical string replacements in docs and templates |
+| `codex` | `gpt-5.4` | Mechanical string replacements in docs and templates |
 
 ## Verification
 

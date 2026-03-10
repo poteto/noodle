@@ -23,7 +23,7 @@ None — CI/CD configuration only.
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical CI config against a clear spec |
+| `codex` | `gpt-5.4` | Mechanical CI config against a clear spec |
 
 ## Verification
 

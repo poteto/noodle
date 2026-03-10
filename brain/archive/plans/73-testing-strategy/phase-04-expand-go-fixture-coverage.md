@@ -76,7 +76,7 @@ Note: `worktree-create-name-collision` already covered by `branch-exists-worktre
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Fixture creation is mechanical — write state files, run in record mode, verify output |
+| `codex` | `gpt-5.4` | Fixture creation is mechanical — write state files, run in record mode, verify output |
 
 ## Verification
 

@@ -65,7 +65,7 @@ This ensures a warning-only change triggers a file write → watcher → `loadAn
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical field plumbing and merge helper extraction, follows existing patterns |
+| `codex` | `gpt-5.4` | Mechanical field plumbing and merge helper extraction, follows existing patterns |
 
 ## Verification
 

@@ -26,7 +26,7 @@ No new types. Updates documentation for the existing `ExtraPrompt` field.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Documentation-only change to one file with clear spec |
+| `codex` | `gpt-5.4` | Documentation-only change to one file with clear spec |
 
 ## Verification
 

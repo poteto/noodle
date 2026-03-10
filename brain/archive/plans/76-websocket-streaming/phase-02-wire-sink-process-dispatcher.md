@@ -10,7 +10,7 @@ Thread the `SessionEventSink` through `ProcessDispatcherConfig` → `processSess
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| codex | gpt-5.3-codex | Mechanical wiring, clear spec |
+| codex | gpt-5.4 | Mechanical wiring, clear spec |
 
 ## Changes
 

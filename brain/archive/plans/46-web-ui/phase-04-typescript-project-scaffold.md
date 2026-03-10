@@ -23,7 +23,7 @@ None — this is project scaffolding.
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical scaffolding.
+Provider: `codex` | Model: `gpt-5.4` — mechanical scaffolding.
 
 ## Verification
 

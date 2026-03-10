@@ -49,7 +49,7 @@ Delete `MonitorConfig` entirely — no replacement.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical deletion + one hardcoded constant |
+| `codex` | `gpt-5.4` | Mechanical deletion + one hardcoded constant |
 
 ## Verification
 

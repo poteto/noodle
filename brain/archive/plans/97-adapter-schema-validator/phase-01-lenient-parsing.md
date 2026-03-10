@@ -70,7 +70,7 @@ No new types. The return signature `([]BacklogItem, []string, error)` mirrors `B
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Clear spec, mechanical changes to existing code |
+| `codex` | `gpt-5.4` | Clear spec, mechanical changes to existing code |
 
 ## Verification
 

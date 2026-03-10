@@ -2,7 +2,7 @@ Back to [[plans/69-cursor-dispatcher/overview]]
 
 # Phase 2: Cursor HTTP Client
 
-**Routing:** `codex` / `gpt-5.3-codex` — HTTP client against a documented REST API
+**Routing:** `codex` / `gpt-5.4` — HTTP client against a documented REST API
 
 ## Goal
 

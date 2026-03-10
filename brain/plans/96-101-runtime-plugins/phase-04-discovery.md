@@ -44,7 +44,7 @@ Process runtime remains hardcoded (it's the kernel). Plugin runtimes are additiv
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Straightforward path scanning and registration |
+| `codex` | `gpt-5.4` | Straightforward path scanning and registration |
 
 ## Verification
 

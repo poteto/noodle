@@ -29,7 +29,7 @@ Upgrade-path slices (required):
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical fixture/test authoring from clear scenarios.
 
 ## Verification

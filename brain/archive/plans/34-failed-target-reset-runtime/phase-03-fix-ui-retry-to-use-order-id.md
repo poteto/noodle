@@ -27,7 +27,7 @@ Ensure failed-item retry sends a true order ID so `requeue` succeeds reliably.
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Why: cross-language but still deterministic plumbing work.
 
 ## Verification

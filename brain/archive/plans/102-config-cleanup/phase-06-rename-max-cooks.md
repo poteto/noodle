@@ -110,7 +110,7 @@ Rename the concurrency limit from the internal term "max_cooks" to the user-faci
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical rename, many files but no judgment needed |
+| `codex` | `gpt-5.4` | Mechanical rename, many files but no judgment needed |
 
 ## Verification
 

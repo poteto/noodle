@@ -26,7 +26,7 @@ Add a function to compute the unified diff and stat summary for a worktree branc
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Straightforward Go function wrapping git commands |
+| `codex` | `gpt-5.4` | Straightforward Go function wrapping git commands |
 
 ## Verification
 

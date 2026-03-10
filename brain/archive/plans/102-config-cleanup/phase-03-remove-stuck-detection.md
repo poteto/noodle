@@ -48,7 +48,7 @@ Remove `SessionStatusStuck` from session status enum. Sessions are either alive,
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Deletion with clear spec, touches monitor internals |
+| `codex` | `gpt-5.4` | Deletion with clear spec, touches monitor internals |
 
 ## Verification
 

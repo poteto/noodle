@@ -25,7 +25,7 @@ This means a Sprites session that does work but exits non-zero (e.g., remote OOM
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

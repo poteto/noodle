@@ -2,7 +2,7 @@
 schema_version: 1
 expected_failure: false
 bug: false
-source_hash: d9bdd8cbe1a14d8a0606551517844b249c85bb7c94ca806fa9e5c6f0e4d8b2d1
+source_hash: 569641aa4c368f9a419dd522528b69d0fcdd8d6cc24675fc5e6da394e0d4984d
 ---
 
 ## Runtime Dump
@@ -21,7 +21,7 @@ source_hash: d9bdd8cbe1a14d8a0606551517844b249c85bb7c94ca806fa9e5c6f0e4d8b2d1
         "name": "fix-uncommitted-ui-changes-0-oops",
         "skill": "oops",
         "provider": "codex",
-        "model": "gpt-5.3-codex"
+        "model": "gpt-5.4"
       }
     }
   }

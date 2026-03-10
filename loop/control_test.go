@@ -372,7 +372,7 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 		Prompt:   "new prompt",
 		TaskKey:  "quality",
 		Provider: "codex",
-		Model:    "gpt-5.3-codex",
+		Model:    "gpt-5.4",
 		Skill:    "new-skill",
 	}
 	if err := l.controlEditItem(cmd); err != nil {
@@ -396,8 +396,8 @@ func TestControlEditItemModifiesStageFields(t *testing.T) {
 	if s.Provider != "codex" {
 		t.Fatalf("provider = %q, want codex", s.Provider)
 	}
-	if s.Model != "gpt-5.3-codex" {
-		t.Fatalf("model = %q, want gpt-5.3-codex", s.Model)
+	if s.Model != "gpt-5.4" {
+		t.Fatalf("model = %q, want gpt-5.4", s.Model)
 	}
 	if s.Skill != "new-skill" {
 		t.Fatalf("skill = %q, want new-skill", s.Skill)

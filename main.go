@@ -324,7 +324,7 @@ func repairModelForProvider(provider string, loaded config.Config) string {
 	}
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "codex":
-		return "gpt-5.3-codex"
+		return "gpt-5.4"
 	default:
 		return "claude-opus-4-6"
 	}

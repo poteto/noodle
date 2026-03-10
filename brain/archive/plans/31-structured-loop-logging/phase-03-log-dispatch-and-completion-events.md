@@ -63,7 +63,7 @@ No new types.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Adding log lines at known call sites |
+| `codex` | `gpt-5.4` | Adding log lines at known call sites |
 
 ## Verification
 

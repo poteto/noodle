@@ -60,7 +60,7 @@ Sites that need read-only access or do complex multi-step mutations that don't f
 ### Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical migration against a clear API contract.
 
 ### Verification

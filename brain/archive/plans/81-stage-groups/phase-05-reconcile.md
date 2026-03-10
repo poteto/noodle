@@ -2,7 +2,7 @@ Back to [[plans/81-stage-groups/overview]]
 
 # Phase 5 — Crash recovery with parallel groups
 
-**Routing:** codex / gpt-5.3-codex
+**Routing:** codex / gpt-5.4
 
 ## Goal
 

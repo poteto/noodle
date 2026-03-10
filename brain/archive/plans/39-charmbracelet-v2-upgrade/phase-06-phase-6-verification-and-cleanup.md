@@ -2,7 +2,7 @@ Back to [[archive/plans/39-charmbracelet-v2-upgrade/overview]]
 
 # Phase 6: Phase 6 - Verification and cleanup
 
-**Routing:** `codex` / `gpt-5.3-codex` — verification-heavy execution with mechanical cleanup
+**Routing:** `codex` / `gpt-5.4` — verification-heavy execution with mechanical cleanup
 
 ## Goal
 

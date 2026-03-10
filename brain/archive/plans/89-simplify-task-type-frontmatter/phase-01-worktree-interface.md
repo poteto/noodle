@@ -34,7 +34,7 @@ Expose the existing `countUnmergedCommits` logic through the `WorktreeManager` i
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

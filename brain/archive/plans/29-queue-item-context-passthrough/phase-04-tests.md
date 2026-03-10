@@ -39,7 +39,7 @@ No new types. Tests exercise the `ExtraPrompt` field on `orderx.Stage`.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Table-driven tests with clear input/output specs |
+| `codex` | `gpt-5.4` | Table-driven tests with clear input/output specs |
 
 ## Verification
 

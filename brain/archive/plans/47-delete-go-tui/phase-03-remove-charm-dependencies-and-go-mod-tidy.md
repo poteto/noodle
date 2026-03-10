@@ -20,7 +20,7 @@ Clean up `go.mod` and `go.sum` — remove all Charm/Bubble Tea dependencies that
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

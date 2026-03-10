@@ -19,7 +19,7 @@ Test flow:
 2. Build `noodle` binary via `go build`
 3. Create temp project directory with full scaffolding (modeled on `sandbox.sh` "wip" stage):
    - Git repo with initial commit on `main` branch
-   - `.noodle.toml` configured for Codex (`routing.defaults.provider = "codex"`, `routing.defaults.model = "gpt-5.3-codex"`, `autonomy = "auto"`, `concurrency.max_cooks = 1`)
+   - `.noodle.toml` configured for Codex (`routing.defaults.provider = "codex"`, `routing.defaults.model = "gpt-5.4"`, `autonomy = "auto"`, `concurrency.max_cooks = 1`)
    - `brain/todos.md` with a single trivial todo
    - `brain/plans/index.md`
    - Backlog adapter script that outputs the todo as a backlog item

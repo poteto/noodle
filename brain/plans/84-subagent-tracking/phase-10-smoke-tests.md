@@ -56,7 +56,7 @@ End-to-end tests using fixture NDJSON files that exercise the full agent trackin
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` -- mechanical test writing from clear fixture specs.
+Provider: `codex`, Model: `gpt-5.4` -- mechanical test writing from clear fixture specs.
 
 ## Verification
 

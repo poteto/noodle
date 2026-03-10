@@ -35,7 +35,7 @@ Compression/compacted events are separate NDJSON lines from result events. Claud
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical field additions and adapter logic |
+| `codex` | `gpt-5.4` | Mechanical field additions and adapter logic |
 
 ## Verification
 

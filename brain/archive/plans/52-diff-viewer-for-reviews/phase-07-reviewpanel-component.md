@@ -29,7 +29,7 @@ Create the ReviewPanel that composes SidePanel, DiffViewer, and ReviewActions in
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Composition of existing components with clear layout spec |
+| `codex` | `gpt-5.4` | Composition of existing components with clear layout spec |
 
 ## Verification
 

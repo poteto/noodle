@@ -33,7 +33,7 @@ A typical 3-stage order:
       "rationale": "foundation-before-feature: core infra needed by all other work",
       "status": "active",
       "stages": [
-        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites", "status": "pending"},
+        {"task_key": "execute", "skill": "execute", "provider": "codex", "model": "gpt-5.4", "runtime": "sprites", "status": "pending"},
         {"task_key": "quality", "skill": "quality", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"},
         {"task_key": "reflect", "skill": "reflect", "provider": "claude", "model": "claude-opus-4-6", "runtime": "process", "status": "pending"}
       ]
@@ -237,7 +237,7 @@ Stay with JSON but address the three pain points through schema changes:
 
 Key changes:
 - **`status` dropped from scheduler output.** Loop sets all incoming stages to `pending`. Removes the most-repeated boilerplate field.
-- **`do` + `with` shorthand.** `"do": "execute"` replaces `"task_key": "execute", "skill": "execute"`. `"with": "codex/sprites"` replaces `"provider": "codex", "model": "gpt-5.3-codex", "runtime": "sprites"`. The loop expands shorthands using routing defaults.
+- **`do` + `with` shorthand.** `"do": "execute"` replaces `"task_key": "execute", "skill": "execute"`. `"with": "codex/sprites"` replaces `"provider": "codex", "model": "gpt-5.4", "runtime": "sprites"`. The loop expands shorthands using routing defaults.
 - **`parallel` arrays** replace group integers:
 
 ```json

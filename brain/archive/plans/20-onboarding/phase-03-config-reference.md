@@ -23,7 +23,7 @@ Write the `.noodle.toml` configuration reference page. This ships early because 
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Mechanical extraction from Go struct definitions |
+| `codex` | `gpt-5.4` | Mechanical extraction from Go struct definitions |
 
 ## Verification
 

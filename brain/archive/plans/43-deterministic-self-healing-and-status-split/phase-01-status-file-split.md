@@ -38,7 +38,7 @@ New package with a `Status` struct and read/write functions:
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical struct changes, file read/write boilerplate |
+| `codex` | `gpt-5.4` | Mechanical struct changes, file read/write boilerplate |
 
 ## Verification
 

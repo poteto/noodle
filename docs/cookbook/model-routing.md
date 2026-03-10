@@ -30,7 +30,7 @@ The scheduler can set `provider` and `model` directly per stage:
           "skill": "execute",
           "status": "pending",
           "provider": "codex",
-          "model": "gpt-5.3-codex"
+          "model": "gpt-5.4"
         },
         {
           "skill": "test",

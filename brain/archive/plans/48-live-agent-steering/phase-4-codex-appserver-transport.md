@@ -67,7 +67,7 @@ Add a file-tailing mode: read from a growing file instead of stdin. The processo
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` — implementation with conformance spike first.
+Provider: `codex`, Model: `gpt-5.4` — implementation with conformance spike first.
 
 ## Verification
 

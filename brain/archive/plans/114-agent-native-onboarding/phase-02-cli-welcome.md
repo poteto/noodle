@@ -35,7 +35,7 @@ This only fires on genuine first run (when files are created). Subsequent `noodl
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex` (simple Go changes against clear spec)
+- Provider: `codex`, Model: `gpt-5.4` (simple Go changes against clear spec)
 
 ## Verification
 

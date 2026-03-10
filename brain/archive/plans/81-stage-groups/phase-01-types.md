@@ -2,7 +2,7 @@ Back to [[plans/81-stage-groups/overview]]
 
 # Phase 1 — Add Group field to Stage
 
-**Routing:** codex / gpt-5.3-codex
+**Routing:** codex / gpt-5.4
 
 ## Goal
 

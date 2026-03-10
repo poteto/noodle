@@ -21,7 +21,7 @@ The full event vocabulary is declared here even though emission happens in later
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

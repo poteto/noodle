@@ -26,7 +26,7 @@ Design the drag handle to be subtle — a thin line that highlights on hover, no
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | UI component with clear spec |
+| `codex` | `gpt-5.4` | UI component with clear spec |
 
 Invoke `interaction-design` skill for the resize handle interaction pattern.
 

@@ -42,10 +42,10 @@ Light amendments to the debugging utility skill, and update the plan skill for n
 
 | Phase type | Provider | Model | When |
 |------------|----------|-------|------|
-| Implementation | `codex` | `gpt-5.3-codex` | Coding against a clear spec |
+| Implementation | `codex` | `gpt-5.4` | Coding against a clear spec |
 | Architecture / judgment | `claude` | `claude-opus-4-6` | Design decisions, complex refactoring |
 | Skill creation | `claude` | `claude-opus-4-6` | Writing skills, brain notes |
-| Scaffolding | `codex` | `gpt-5.3-codex` | Boilerplate, mechanical transforms |
+| Scaffolding | `codex` | `gpt-5.4` | Boilerplate, mechanical transforms |
 
 - Update backlog item link-back via configured adapter after plan creation
 - No `noodle:` frontmatter — planning is user-invoked, not Noodle-scheduled

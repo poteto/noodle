@@ -18,7 +18,7 @@ Update the sole consumer of `queue-events.ndjson` — `internal/snapshot` — to
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex`
+Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

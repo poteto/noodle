@@ -23,7 +23,7 @@ Add a "Changes" tab to the agent session view that shows all code-change events 
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Data contract and component pattern established by phases 2-4; this is assembly |
+| `codex` | `gpt-5.4` | Data contract and component pattern established by phases 2-4; this is assembly |
 
 ## Verification
 

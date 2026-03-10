@@ -45,7 +45,7 @@ Remove the mechanical domain skill bundling from the dispatch pipeline. The exec
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 ## Verification
 

@@ -28,7 +28,7 @@ The `stageResultStatus()` function in `loop/cook_watcher.go` continues to map st
 
 ## Routing
 
-- Provider: `codex`, Model: `gpt-5.3-codex`
+- Provider: `codex`, Model: `gpt-5.4`
 
 ## Verification
 

@@ -37,7 +37,7 @@ Update the snapshot layer and SSE API to expose orders instead of flat queue ite
 
 | Provider | Model |
 |----------|-------|
-| `codex` | `gpt-5.3-codex` |
+| `codex` | `gpt-5.4` |
 
 Mechanical type migration. Clear spec from phase 2 types.
 

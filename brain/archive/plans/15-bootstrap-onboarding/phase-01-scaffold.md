@@ -15,7 +15,7 @@ Remove the stale Plan 1 Phase 14 bootstrap plan artifact. That design (bootstrap
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical file deletion |
+| `codex` | `gpt-5.4` | Mechanical file deletion |
 
 ## Verification
 

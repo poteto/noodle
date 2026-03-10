@@ -32,7 +32,7 @@ git mv internal/orderx/queue.go internal/orderx/types.go
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — three `git mv` commands, no code changes.
+Provider: `codex` | Model: `gpt-5.4` — three `git mv` commands, no code changes.
 
 ## Verification
 

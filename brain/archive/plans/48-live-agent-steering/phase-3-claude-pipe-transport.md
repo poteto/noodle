@@ -51,7 +51,7 @@ Accept an `AgentController` at construction. `Controller()` returns it instead o
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` — implementation against well-documented NDJSON protocol.
+Provider: `codex`, Model: `gpt-5.4` — implementation against well-documented NDJSON protocol.
 
 ## Verification
 

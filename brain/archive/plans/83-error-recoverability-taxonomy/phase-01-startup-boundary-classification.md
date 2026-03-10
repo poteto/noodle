@@ -23,7 +23,7 @@ or `warning-only`.
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Mechanical boundary wiring in start/config paths |
+| Implementation | `codex` | `gpt-5.4` | Mechanical boundary wiring in start/config paths |
 
 ## Verification
 

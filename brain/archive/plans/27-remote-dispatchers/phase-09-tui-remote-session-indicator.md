@@ -2,7 +2,7 @@ Back to [[archive/plans/27-remote-dispatchers/overview]]
 
 # Phase 9: TUI remote session indicator
 
-**Routing:** `codex` / `gpt-5.3-codex` — small UI change, clear spec
+**Routing:** `codex` / `gpt-5.4` — small UI change, clear spec
 
 ## Goal
 

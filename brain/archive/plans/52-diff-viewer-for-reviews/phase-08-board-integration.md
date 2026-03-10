@@ -33,7 +33,7 @@ Wire ReviewCard clicks to open the ReviewPanel in the Board component. This is t
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | State wiring with clear spec, follows existing Board patterns |
+| `codex` | `gpt-5.4` | State wiring with clear spec, follows existing Board patterns |
 
 ## Verification
 

@@ -34,7 +34,7 @@ Normalize all external inputs into canonical events with deterministic idempoten
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Mechanical boundary consolidation and dedup plumbing |
+| Implementation | `codex` | `gpt-5.4` | Mechanical boundary consolidation and dedup plumbing |
 
 ## Verification
 

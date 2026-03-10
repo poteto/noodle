@@ -10,7 +10,7 @@ Same wiring as Phase 2 but for the sprites dispatcher path. Identical pattern.
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| codex | gpt-5.3-codex | Mechanical, same pattern as Phase 2 |
+| codex | gpt-5.4 | Mechanical, same pattern as Phase 2 |
 
 ## Changes
 

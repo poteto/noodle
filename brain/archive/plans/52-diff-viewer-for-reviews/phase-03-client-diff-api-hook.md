@@ -27,7 +27,7 @@ Add TypeScript types and a React Query hook for fetching the diff from the new A
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical TypeScript, follows existing hook patterns |
+| `codex` | `gpt-5.4` | Mechanical TypeScript, follows existing hook patterns |
 
 ## Verification
 

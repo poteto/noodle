@@ -50,7 +50,7 @@ No struct changes. Only function renames, constant value changes, and one file r
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Mechanical renames across 6 files, no judgment needed |
+| `codex` | `gpt-5.4` | Mechanical renames across 6 files, no judgment needed |
 
 ## Verification
 

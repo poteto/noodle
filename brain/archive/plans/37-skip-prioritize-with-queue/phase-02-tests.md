@@ -74,7 +74,7 @@ No new types. Test fixtures use existing `loopFixtureStateInput`, `loopFixtureSe
 
 | Provider | Model | Rationale |
 |----------|-------|-----------|
-| `codex` | `gpt-5.3-codex` | Fixture scaffolding and table-driven tests |
+| `codex` | `gpt-5.4` | Fixture scaffolding and table-driven tests |
 
 ## Verification
 

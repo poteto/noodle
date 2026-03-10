@@ -23,7 +23,7 @@ without changing core orchestration semantics.
 
 | Phase type | Provider | Model | Why |
 |------------|----------|-------|-----|
-| Implementation | `codex` | `gpt-5.3-codex` | Focused loop plumbing and tests |
+| Implementation | `codex` | `gpt-5.4` | Focused loop plumbing and tests |
 
 ## Verification
 

@@ -2,7 +2,7 @@ Back to [[archive/plans/38-resilient-skill-resolution/overview]]
 
 # Phase 6: Dispatch-time re-scan fallback
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical change, clear spec
+**Routing:** `codex` / `gpt-5.4` — mechanical change, clear spec
 
 ## Goal
 

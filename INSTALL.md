@@ -83,7 +83,7 @@ mode = "supervised"
 
 [routing.defaults]
 provider = "codex"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 
 [skills]
 paths = [".agents/skills"]

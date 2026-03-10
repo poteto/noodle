@@ -182,7 +182,7 @@ The mise gathers state from all adapters plus internal Noodle state and writes i
   "active_cooks": [
     {
       "id": "fix-css-layout", "target": "41",
-      "provider": "codex", "model": "gpt-5.3-codex",
+      "provider": "codex", "model": "gpt-5.4",
       "status": "running", "cost": 0.45, "duration_s": 342
     }
   ],
@@ -203,7 +203,7 @@ The mise gathers state from all adapters plus internal Noodle state and writes i
     }
   ],
   "routing": {
-    "defaults": {"provider": "codex", "model": "gpt-5.3-codex"},
+    "defaults": {"provider": "codex", "model": "gpt-5.4"},
     "tags": {
       "frontend": {"provider": "claude", "model": "opus"},
       "tests": {"provider": "codex", "model": "spark"}
@@ -247,7 +247,7 @@ The sous chef reads `mise.json` and writes `queue.json`. This is the complete tr
     {
       "id": "43",
       "provider": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "review": false,
       "rationale": "Simple README update, no review needed. Codex handles docs well."
     }
@@ -261,7 +261,7 @@ The sous chef reads `mise.json` and writes `queue.json`. This is the complete tr
 |-------|------|----------|-------------|
 | `id` | string | yes | BacklogItem ID to work on |
 | `provider` | string | yes | `"claude"` or `"codex"` |
-| `model` | string | yes | Specific model ID (e.g., `"claude-opus-4-6"`, `"gpt-5.3-codex"`) |
+| `model` | string | yes | Specific model ID (e.g., `"claude-opus-4-6"`, `"gpt-5.4"`) |
 | `skill` | string | no | Skill to load for this cook (default: none, cook uses its own judgment) |
 | `review` | bool | no | Whether to run the taster after completion (default: from `review.enabled` config) |
 | `rationale` | string | no | Why the sous chef chose this priority/routing. Visible in queue view. |

@@ -37,7 +37,7 @@ Checkpoint persistence rules:
 ## Routing
 
 - Provider: `codex`
-- Model: `gpt-5.3-codex`
+- Model: `gpt-5.4`
 - Mechanical ingestion scaffolding with clear boundary contracts.
 
 ## Verification

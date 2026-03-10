@@ -48,7 +48,7 @@ Delete all Sprites-specific code from the Noodle core binary. After this phase, 
 
 | Provider | Model | Why |
 |----------|-------|-----|
-| `codex` | `gpt-5.3-codex` | Pure deletion — mechanical, no judgment needed |
+| `codex` | `gpt-5.4` | Pure deletion — mechanical, no judgment needed |
 
 ## Verification
 

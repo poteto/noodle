@@ -2,7 +2,7 @@ Back to [[archive/plans/38-resilient-skill-resolution/overview]]
 
 # Phase 1: Remove dead skill config fields
 
-**Routing:** `codex` / `gpt-5.3-codex` — mechanical deletion, clear scope
+**Routing:** `codex` / `gpt-5.4` — mechanical deletion, clear scope
 
 ## Goal
 

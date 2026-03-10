@@ -57,7 +57,7 @@ Remove merge/reject/merge-all hints from the Feed keybar. Feed keybar should onl
 
 ## Routing
 
-Provider: `codex` | Model: `gpt-5.3-codex` — mechanical string replacements and deletions.
+Provider: `codex` | Model: `gpt-5.4` — mechanical string replacements and deletions.
 
 ## Verification
 

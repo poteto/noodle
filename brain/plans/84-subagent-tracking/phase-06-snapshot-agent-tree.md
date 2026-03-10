@@ -42,7 +42,7 @@ The agent tree is built from the event log on each snapshot rebuild (same patter
 
 ## Routing
 
-Provider: `codex`, Model: `gpt-5.3-codex` -- straightforward struct additions and event log scanning.
+Provider: `codex`, Model: `gpt-5.4` -- straightforward struct additions and event log scanning.
 
 ## Verification
 

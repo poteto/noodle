@@ -70,11 +70,11 @@ Each active cook displays a colored health dot:
 │  ── Active Cooks ──────────────────────────────────────────────────────  │
 │  Updated  Cook                    Model              Now              ●   │
 │  2s ago   fix-auth-bug            claude-opus-4.6    Edit token.ts    ●   │
-│  5s ago   add-user-tests          gpt-5.3-codex      Bash pnpm test  ●   │
+│  5s ago   add-user-tests          gpt-5.4      Bash pnpm test  ●   │
 │                                                                          │
 │  ── Recent ────────────────────────────────────────────────────────────  │
 │  ✓  refactor-middleware  claude-sonnet-4.6   8m 02s    $1.45   ab3f     │
-│  ✓  update-readme        gpt-5.3-codex       2m 11s    $0.00   c7d2     │
+│  ✓  update-readme        gpt-5.4       2m 11s    $0.00   c7d2     │
 │  ✗  fix-css-layout       claude-sonnet-4.6   6m 44s    $2.10   9b1f     │
 │                                                                          │
 │  ── Up Next ───────────────────────────────────────────────────────────  │
@@ -261,8 +261,8 @@ The visible footer on each view shows only the 4-5 most common keys. `?` reveals
 
   #   Item                    Provider       Model            Review
   1.  add-pagination          claude         sonnet-4.6       ✓
-  2.  fix-mobile-nav          codex          gpt-5.3-codex    ✓
-  3.  update-api-docs         codex          gpt-5.3-codex    ✗
+  2.  fix-mobile-nav          codex          gpt-5.4    ✓
+  3.  update-api-docs         codex          gpt-5.4    ✗
   4.  refactor-db-queries     claude         opus-4.6         ✓
 
   Sous chef last ran 34s ago · next run after current cook completes
