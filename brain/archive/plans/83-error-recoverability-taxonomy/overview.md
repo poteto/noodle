@@ -1,7 +1,7 @@
 ---
 id: 83
 created: 2026-02-28
-status: active
+status: archived
 ---
 
 # Error Recoverability Taxonomy

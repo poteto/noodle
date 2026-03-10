@@ -4,7 +4,7 @@ Back to [[plans/84-subagent-tracking/overview]]
 
 ## Goal
 
-Parse Claude team lifecycle (TeamCreate, SendMessage, teammate inbox messages) into canonical agent events so Noodle can track team members and their communication.
+Parse Claude team lifecycle from the parent session's in-band NDJSON stream so Noodle can track team members and their communication without depending on inbox-file ingestion.
 
 ## Changes
 
@@ -28,19 +28,19 @@ Parse Claude team lifecycle (TeamCreate, SendMessage, teammate inbox messages) i
    - `TeamName` from `input.team_name`
    - `Steerable` = `true`
 
-4. **Teammate messages in NDJSON**: Team inbox traffic appears in the parent's NDJSON as `type: "user"` messages with `teamName` field and `<teammate-message teammate_id="..." color="..." summary="...">` XML wrappers in `message.content`. Parse the wrapper attributes to extract teammate identity and summary, then emit `EventAgentProgress`.
+4. **Teammate messages in NDJSON**: Team activity appears in the parent's NDJSON as `type: "user"` messages with `teamName` field and `<teammate-message teammate_id="..." color="..." summary="...">` XML wrappers in `message.content`. Parse the wrapper attributes to extract teammate identity and summary, then emit `EventAgentProgress`.
 
    Note: `input.agent_type` on TeamCreate is typically null in practice — fall back to `"team_lead"` when absent.
-   Fallback rule: if wrapper parsing fails or wrapper format drifts, emit a plain `EventAgentProgress` with raw summary text and a parse-warning action event (do not silently drop).
+   Fallback rule: if wrapper parsing fails or wrapper format drifts, emit a plain `EventAgentProgress` with raw summary text and a parse-warning action event (do not silently drop). That warning must remain visible in the session event stream so protocol drift is operator-visible, not parser-local.
 
 **Note on teams and steerability:** Claude team members spawned via `Agent` with `team_name` are steerable (`Steerable: true`). Regular Claude sub-agents (no team) are non-steerable.
 
-**Out-of-band ingestion (follow-up):** Team inbox files (`~/.claude/teams/{name}/inboxes/{agent}.json`) live outside the NDJSON stream. For v1, ship in-band NDJSON team visibility first; out-of-band ingestion is follow-up work behind a bounded poller and explicit watcher cleanup/lifecycle tests.
+**Out-of-band ingestion (follow-up):** Team inbox files (`~/.claude/teams/{name}/inboxes/{agent}.json`) stay out of scope for plan 84. V1 only consumes in-band NDJSON team visibility; inbox-file polling/ingestion belongs to [[plans/88-subagent-tracking-v2/overview]].
 
 ## Data Structures
 
-- Team inbox message: `{From, Text, Summary string, Timestamp time.Time, Read bool, Color string}` — the `Text` field may contain nested JSON (e.g., `idle_notification`, `shutdown_request`, `task_assignment`) that should be parsed for display
 - Reuse existing `claudeContent` for tool_use input parsing
+- Teammate NDJSON wrapper fields: `{teammate_id, color, summary}` extracted from the in-band XML wrapper before emitting canonical events
 
 ## Routing
 
@@ -60,4 +60,4 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about what tea
 
 ### Runtime
 - Round-trip: construct fixture NDJSON, parse, verify events
-- Inbox file parsing is follow-up work (not required for v1 in-band delivery)
+- Verify v1 does not depend on inbox-file polling or reads

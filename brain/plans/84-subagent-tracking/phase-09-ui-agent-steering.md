@@ -4,14 +4,14 @@ Back to [[plans/84-subagent-tracking/overview]]
 
 ## Goal
 
-Let users send messages to steerable agents (Claude team members, Codex collab agents). Non-steerable agents (Claude sub-agents via Agent tool) show chat read-only.
+Let users send messages to currently steerable sub-agents from the existing actor feed input. In v1, that means Claude team members; Codex child-agent steering stays disabled until the runtime exposes a live control path.
 
 ## Steerable vs Non-Steerable
 
 | Agent Type | Steerable | Mechanism |
 |---|---|---|
 | Claude team member (TeamCreate + Agent with team_name) | Yes | Write to inbox file |
-| Codex sub-agent (collab spawn_agent) | Yes | `codex exec resume` on parent session with prompt to `send_input` to child thread ID |
+| Codex sub-agent (collab spawn_agent) | No in v1 | Current process runtime closes stdin after launch; steering deferred until runtime/controller support exists |
 | Claude sub-agent (Agent tool, no team) | No | Runs to completion, no input channel |
 | Claude sub-agent (background, no team) | No | Same as above |
 
@@ -24,24 +24,24 @@ The `AgentNode.Steerable` field is set by the parser during parse (Phase 2/3/4) 
 Server/loop changes:
 1. Extend control request/command schema with optional `agent_id`
 2. Add control action `steer-agent`
-3. Handle provider-specific steering in the existing control queue path (same validation, retries, and auditability as other control actions)
+3. Handle provider-specific steering in the existing control queue path (same validation, retries, and auditability as other control actions); v1 implementation only succeeds for Claude team members
 4. Validate delivery preconditions at execution time (agent still exists, steerable, running, and parent session active) to avoid stale-race sends
-5. v1 response contract is terminal and single-path: reuse existing control ack (`status: ok|error`) with typed failure payload (`code`, `message`, `retryable`) for validation/execution failures
+5. Reuse the existing typed failure taxonomy for steering failures (`not found`, `not steerable`, `already completed`, backend dispatch failure) instead of inventing a parallel error contract
 
-**`ui/src/components/AgentChat.tsx`** -- The message input (from phase 8):
-- Enabled when `agent.steerable === true` and `agent.status === "running"`
-- Disabled with tooltip "This agent cannot receive messages" for non-steerable
-- Disabled with tooltip "Agent has completed" for completed steerable agents
-- On send: POST to `/api/control` with `{action: "steer-agent", target: sessionId, agent_id, prompt}`
-- Optimistically add sent message to the feed as a user message
-- On error: show inline error, remove optimistic message
+**`ui/src/components/AgentFeed.tsx`** -- Reuse the existing input area:
+- When no sub-agent is selected, preserve current session-level `steer` behavior
+- When a steerable sub-agent is selected and running, send `/api/control` with `{action: "steer-agent", target: sessionId, agent_id, prompt}`
+- When a selected agent is non-steerable or completed, disable the input with explicit copy explaining why
+- Show optimistic user rows in the scoped feed, then reconcile with either later in-band team activity or a typed control failure
+
+V1 feedback-loop note: there is no inbox-delivery acknowledgment path in plan 84. A steer request is considered observable only when later in-band team activity appears in the parent session stream; inbox ingestion/ack semantics are deferred to [[plans/88-subagent-tracking-v2/overview]]. Until that activity arrives, the optimistic row remains visibly pending and must not be auto-upgraded to success by timeout or absence of errors.
 
 ## Data Structures
 
 - `ControlCommand` extension: optional `agent_id string`
 - New control action: `steer-agent`
 - Claude inbox entry: `{from, text, summary string, timestamp time.Time, read bool}`
-- Reuse existing control ack failure shape for steer errors (`code`, `message`, `retryable`) rather than introducing a parallel response contract
+- Reuse existing control ack failure projection metadata rather than introducing a parallel response contract
 
 ## Routing
 
@@ -55,13 +55,13 @@ Provider: `claude`, Model: `claude-opus-4-6` -- requires judgment about error ha
 - `cd ui && pnpm tsc --noEmit && pnpm test`
 - Control action returns error for non-steerable agents
 - Control action succeeds for steerable agents
-- UI disables input for non-steerable agents
+- UI disables input for non-steerable or completed selected agents
+- Typed failure metadata is preserved on steer-agent acks
 
 ### Runtime
-- Send message to Claude team member via UI, verify inbox file updated
-- Send message to completed agent, verify disabled state
-- Visual: message input enabled/disabled based on agent type
-- Integration: send message, verify it shows in agent chat feed
+- Select a Claude team member in `/actor/$id`, send a message, and verify the inbox file is updated
+- Select a completed or non-steerable agent and verify the input stays disabled with the correct explanation
+- Integration: send message to a steerable agent and verify it shows in the scoped feed
 - Steering race test: agent completes between submit and execution -> deterministic typed failure, no write side effects
-- Codex steer integration test: after steer request, observe target-agent `send_input` progress in session events
+- Codex child agent selection test: verify the input is disabled with copy explaining that steering is not available for this provider/runtime yet
 - Claude inbox write test uses atomic write (temp file + rename) to avoid partial JSON on concurrent reads

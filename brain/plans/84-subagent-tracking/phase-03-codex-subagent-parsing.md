@@ -16,7 +16,7 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
    - `ParentAgentID` from `source.subagent.thread_spawn.parent_thread_id`
    - `AgentName` from `payload.agent_nickname` (e.g., "Feynman", "Planck")
    - `AgentType` from `payload.agent_role` (e.g., "awaiter", "worker", "explorer")
-   - `Steerable` = `true` (Codex collab agents accept `send_input`)
+   - `Steerable` = `false` in v1 (tracking only)
 
    When `source` is a string (`"cli"`, `"exec"`), this is a root session -- emit the existing `EventInit` as before (no agent metadata).
 
@@ -32,11 +32,13 @@ Parse Codex sub-agent metadata from `session_meta` and `function_call` items int
 
    Preserve the existing error handling for failed/error/cancelled status in `parseCodexItem()`.
 
-**Codex file discovery:** Codex sub-agents live in separate JSONL files at `~/.codex/sessions/YYYY/MM/DD/`. The parent session's `function_call` events reference child thread IDs, but the child's NDJSON is a separate file that must be discovered and ingested. Phase 5 addresses how the session manager discovers and consumes these out-of-band files.
+**Codex file discovery:** Codex sub-agents live in separate JSONL files at `~/.codex/sessions/YYYY/MM/DD/`. The parent session's `function_call` events reference child thread IDs, but the child's NDJSON is a separate file that must be discovered and ingested. Phase 5 addresses how the runtime ingest path discovers and consumes these out-of-band files.
 
 v1 behavior note: until out-of-band ingestion is enabled, Codex child nodes may be represented by orchestration-only activity (spawn/send_input/close) without full child transcript. Contract:
 - parser emits agent-scoped orchestration events with stable `agent_id` when child thread ID is known
 - event summary includes `"orchestration-only: child transcript pending ingestion"` so UI can distinguish this from "no activity"
+
+Steering note: current process-dispatch Codex sessions are not live-steerable because stdin is closed after the initial prompt and there is no controller path for per-child `send_input`. Plan 84 should surface Codex child visibility in v1 and reserve Codex child steering for a future runtime/control-plane change.
 
 ## Data Structures
 
@@ -66,3 +68,4 @@ Provider: `codex`, Model: `gpt-5.4` -- mechanical parsing with clear field mappi
 ### Runtime
 - Feed fixture lines through `CodexAdapter.Parse()`, verify correct event types and agent metadata
 - Verify existing codex tests still pass (backward compat)
+- Assert Codex child nodes materialize as non-steerable in v1

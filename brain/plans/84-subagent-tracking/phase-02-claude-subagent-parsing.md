@@ -51,6 +51,8 @@ Do not fall back to `tool_use_id` as canonical `AgentID`; keep provisional IDs i
 
 All Claude sub-agents are non-steerable (`Steerable: false`) — they run to completion with no input channel.
 
+**`parse/registry.go`** -- Update provider detection allowlists so Claude `progress` / `agent_progress` lines continue to route to the Claude adapter instead of falling through provider detection as unknown transport shapes.
+
 ## Data Structures
 
 - `claudeProgressData` struct: `{Type string, AgentID string, Prompt string, Message json.RawMessage}`

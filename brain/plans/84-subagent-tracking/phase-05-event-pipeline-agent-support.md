@@ -19,9 +19,9 @@ Wire the new agent canonical events through the full pipeline: event storage, se
 
 **`dispatcher/session_base.go`** -- No changes needed. The existing pipeline handles new event types automatically.
 
-**`server/session_broker.go`** -- No changes needed. The broker fans out all `event.Event` objects regardless of type.
+**`server/session_broker.go`** -- No broker-specific branching changes are expected. Verification in this phase must confirm that the expanded `EventLine` payload shape survives `session_event` serialization unchanged once `agent_id` / `agent_name` / `agent_type` fields are added.
 
-**`server/ws_hub.go`** -- Use `session_event` with agent fields in the data payload. The UI filters by `agent_id`. No new WebSocket message type needed.
+**`server/ws_hub.go`** -- Keep using `session_event` with the expanded `EventLine` payload. The UI filters by `agent_id`. No new WebSocket message type needed.
 
 **`internal/snapshot/types.go`** -- Extend Go `EventLine` struct with optional agent fields:
 - `AgentID string json:"agent_id,omitempty"`
@@ -34,13 +34,7 @@ This is the source of truth — `ui/src/client/generated-types.ts` is generated 
 
 Without these changes, agent metadata is lost at the Go -> JSON -> WebSocket boundary. The UI needs `agent_id` on every EventLine to filter events per-agent in Phase 8.
 
-**Out-of-band file discovery:** Two agent sources live outside the parent's NDJSON stream:
-1. **Codex sub-agent session files** — when the parent parser sees a `spawn_agent` function_call with a child thread ID, the session manager starts tailing the corresponding child NDJSON file at `~/.codex/sessions/YYYY/MM/DD/{thread_id}.jsonl`. Child events are tagged with the agent's ID and fed into the same event pipeline.
-2. **Claude team inbox files** — polled/watched by the session manager. New messages converted to agent events via the Phase 4 parser.
-
-The session manager needs a method like `discoverSubAgentFiles(parentSessionID)` that maps known child agent IDs to their file paths and starts ingestion.
-
-Scope gate: this out-of-band discovery work is follow-up after v1. Phase 5 v1 scope is in-band pipeline wiring only. Follow-up implementation must use bounded polling (not unbounded watchers) and include explicit session lifecycle cleanup tests (startup, shutdown, restart, orphan cleanup).
+**Deferred follow-up:** Out-of-band discovery for Codex child session files and Claude team inbox files is intentionally excluded from phase 5. V1 ends at in-band pipeline wiring plus explicit orchestration-only fallback rows; plan 88 owns discovery, bounded polling, lifecycle cleanup, and replay behavior for external child streams.
 
 v1 fallback contract for Codex child visibility (explicit):
 - retain parent-stream orchestration events (`spawn_agent`, `send_input`, `close_agent`) as normal session events
@@ -70,4 +64,4 @@ Provider: `codex`, Model: `gpt-5.4` -- mechanical wiring with clear mappings.
 
 ### Runtime
 - Integration test: feed agent NDJSON through stamp processor -> session_base -> capture WebSocket output, verify agent events arrive with agent metadata
-- Follow-up tests (out-of-band phase): verify bounded poller lifecycle and cleanup on session stop/restart
+- Out-of-band ingest tests belong to plan 88, not this phase
