@@ -1,7 +1,7 @@
 ---
 id: 97
 created: 2026-03-02
-status: active
+status: done
 ---
 
 # Adapter Schema Validator

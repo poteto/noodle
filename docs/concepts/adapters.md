@@ -104,7 +104,7 @@ Noodle validates each NDJSON line from the sync command individually. Invalid it
 
 **Where warnings surface:**
 - **Web UI** — warnings appear in the dashboard warnings panel alongside config warnings
-- **Backend logs** — logged as a `sync.degraded` event
+- **Backend logs** — logged at warn level during the build cycle
 - **Scheduler prompt** — the scheduler sees an `ADAPTER WARNINGS` section and may create a fix task
 
 **Example warnings:**

@@ -1,5 +1,5 @@
 ---
-priority: [97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
+priority: [95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 # Priority notes:
 #    codebase simplification program — root-cause-first execution of full audit
 #    deterministic completion detection — replace fragile completion heuristics
@@ -39,7 +39,7 @@ priority: [97, 95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 
 ## Backend
 
-97. [ ] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior. [[plans/97-adapter-schema-validator/overview]]
+97. [x] Adapter schema validator: validate adapter output against the expected schema. If invalid, raise a warning that surfaces in the UI and backend logs, and inject the warning into the scheduler prompt so it can create a task to fix the broken adapter. Update adapters docs page with validation behavior. [[archive/plans/97-adapter-schema-validator/overview]]
 95. [ ] Backend should exclusively own `orders.json` — prevent agents from writing to it directly. The loop promotes `orders-next.json` into `orders.json`, and this should be enforced at the backend level (e.g. file permissions, validation gate) rather than relying on skill instructions. #needs_plan
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[archive/plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads). #needs_plan

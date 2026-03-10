@@ -11,7 +11,7 @@
 - [x] [[archive/plans/102-config-cleanup/overview]]
 - [ ] [[plans/96-101-runtime-plugins/overview]]
 - [x] [[archive/plans/108-orders-dsl/overview]]
-- [ ] [[plans/97-adapter-schema-validator/overview]]
+- [x] [[archive/plans/97-adapter-schema-validator/overview]]
 - [ ] [[plans/90-interactive-sessions/overview]]
 - [x] [[archive/plans/113-deterministic-completion-detection/overview]]
 - [x] [[archive/plans/114-agent-native-onboarding/overview]]
