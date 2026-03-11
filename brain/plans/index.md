@@ -15,3 +15,4 @@
 - [ ] [[plans/90-interactive-sessions/overview]]
 - [x] [[archive/plans/113-deterministic-completion-detection/overview]]
 - [x] [[archive/plans/114-agent-native-onboarding/overview]]
+- [ ] [[plans/95-orders-json-ownership/overview]]
