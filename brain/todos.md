@@ -1,12 +1,16 @@
 ---
-priority: [95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
+priority: [115, 95, 84, 88, 90, 118, 116, 117, 110, 96, 101, 100, 86, 111, 85, 69]
 # Priority notes:
 #    codebase simplification program — root-cause-first execution of full audit
 #    deterministic completion detection — replace fragile completion heuristics
+#   115 canonical-state convergence — finish the migration and delete duplicated loop lifecycle logic
 #   95 orders.json ownership — correctness, agents shouldn't write orders
 #   84 sub-agent tracking — visibility into agent orchestration
 #   88 sub-agent tracking v2 — hardening, depends on 84
 #   90 interactive sessions — collaborative mode, key differentiator
+#   118 unified launch surface — make Noodle a real operator cockpit, not just a monitor
+#   116 projection-driven live protocol — move UI/server off filesystem-churn coupling
+#   117 typed control plane — explicit operator API before more surface area lands
 #   110 chat input enhancements — polish interactive sessions UX
 #   96,101 split out Sprites — delete built-in runtime, plugin interface
 #   100 runtime mode UI setting
@@ -18,7 +22,7 @@ priority: [95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 
 # Todos
 
-<!-- next-id: 115 -->
+<!-- next-id: 119 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -35,6 +39,7 @@ priority: [95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 110. [ ] Chat input enhancements — drag-to-add images, copy/paste images, and `@` autocomplete for files (and possibly actors). #needs_plan
 86. [ ] Integrate diffs.com diff-rendering component into the web UI — add a bundled JS diff component (from https://diffs.com/) that renders code changes as inline diffs. Show diffs in two places: (1) inline in the session activity feed alongside each code-change event, collapsed by default with a click-to-expand interaction (avoid noise in the feed), and (2) in a dedicated diff tab/panel that collects all code changes from a session (expanded by default). Ship-ready: fully integrated, styled, and tested. [[plans/86-diffs-integration/overview]]
 111. [ ] Allow viewing backlog items in the UI. #needs_plan
+118. [ ] Unify Noodle's launch surface so operators can start both interactive sessions and structured work from one place with explicit provider/model/runtime selection, instead of scattering spawn controls across scheduler-only UI affordances. #needs_plan
 
 ## Backend
 
@@ -42,6 +47,9 @@ priority: [95, 84, 88, 90, 110, 96, 101, 100, 86, 111, 85, 69]
 84. [ ] Sub-agent tracking — parse Claude/Codex sub-agent lifecycle into canonical events, build agent tree in snapshots, stream activity to UI, and enable user steering. [[plans/84-subagent-tracking/overview]] — define canonical backend failure classes (hard invariant, recoverable backend, scheduler/cook agent mistake, agent-start unrecoverable vs retryable), map loop/start/dispatcher boundaries, and surface typed recoverability metadata for operators. [[archive/plans/83-error-recoverability-taxonomy/overview]]
 85. [ ] Add `.noodle.toml` fsnotify live reload in the running loop with safe apply semantics (debounce, parse/validation gate, partial-apply vs restart-required classification, and observability for rejected reloads). #needs_plan
 88. [ ] Sub-agent tracking v2 — add out-of-band ingestion (Codex child sessions + Claude team inbox), harden canonical identity reconciliation, lifecycle-safe bounded pollers, robust `steer-agent` control behavior, and expanded hardening tests. [[plans/88-subagent-tracking-v2/overview]]
+115. [ ] Make canonical state + projection the authoritative execution path — route dispatch planning, completion handling, merge advancement, and UI snapshots through `internal/{ingest,reducer,dispatch,projection,snapshot}`; then delete duplicated lifecycle logic that still lives in `loop/`. #needs_plan
+116. [ ] Replace filesystem-watch-driven snapshot rebroadcasting with a typed projection/delta stream from the canonical backend so the UI consumes domain state changes rather than raw `.noodle/` file churn. #needs_plan
+117. [ ] Introduce a typed operator control plane for HTTP/WebSocket actions (launch, steer, review, mode changes, runtime selection) so server and UI stop depending on generic stringly control payloads. #needs_plan
 
 ## Extensibility
 
