@@ -11,7 +11,7 @@ Move `/api/snapshot` and websocket `snapshot` delivery onto projection-backed fu
 - **`internal/projection/projection.go`** — become the sole owner of structural snapshot topology, including projected review state and projected order/state output
 - **`internal/snapshot/snapshot_builder.go`** — reduce to runtime enrichment over `projection.SnapshotView` instead of rebuilding topology from `LoopState`
 - **`server/server.go` + `server/ws_hub.go`** — keep the existing full-snapshot API/WS contract, but source it from projection-backed snapshots rather than `LoopStateProvider`
-- **`loop/state_snapshot.go` + projection file writers** — make the authority cutover explicit: `orders.json` / `state.json` become pure projection output in this phase, and legacy workflow mutation of those files is deleted
+- **`loop/state_snapshot.go` + projection file writers** — make the authority cutover explicit: `orders.json` / `state.json` become pure projection output in this phase, legacy workflow mutation of those files is deleted, and any temporary `orders.json` integrity/stamping bridge from the pre-cutover phases is removed
 
 ## Data structures
 

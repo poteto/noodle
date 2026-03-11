@@ -12,7 +12,8 @@ Make canonical state observable and durable on the production path before any ca
 - **legacy startup import path** — when no canonical checkpoint exists yet, import `orders.json` plus `pending-review.json` once, persist the canonical checkpoint immediately, and mark the bootstrap complete before normal loop execution continues
 - **`loop/loop.go` + canonical startup path** — restore the next event identity from the durable checkpoint so event IDs, effect IDs, and projection versions remain monotonic across restart
 - **`internal/reducer/snapshot.go`** — become the production checkpoint format, not just a test helper
-- **`loop/loop_cycle_pipeline.go`** — route `orders-next.json` promotion through canonical order creation and explicitly preserve cooldown/bootstrap/amendment behavior
+- **`loop/loop_cycle_pipeline.go`** — route `orders-next.json` promotion through canonical order creation, merge against in-memory order state rather than re-reading disk `orders.json`, and explicitly preserve cooldown/bootstrap/amendment behavior
+- **`loop/loop.go` + `loop/state_orders.go`** — remove per-cycle `orders.json` reload/watch behavior so normal operation stops treating disk `orders.json` as authoritative once canonical startup state is loaded
 - **`loop/state_orders.go` + `loop/pending_review.go`** — restrict legacy reads/writes to the temporary bootstrap boundary only, with explicit deletion of bootstrap-only authority once later phases cut over
 
 ## Data structures
@@ -41,4 +42,5 @@ Make canonical state observable and durable on the production path before any ca
 - prove restart can load that checkpoint without relying on a fresh in-memory canonical rebuild
 - prove post-restart event IDs, effect IDs, and projection versions always advance past the durable checkpoint
 - prove schedule promotion now creates canonical orders while preserving empty-promotion cooldown, bootstrap schedule insertion, and active-order amendment behavior
+- prove external `orders.json` writes during normal operation are no longer ingested through per-cycle reloads or fsnotify triggers
 - rerun `pnpm test:smoke` after the foundation cutover and treat unexpected failures as blockers

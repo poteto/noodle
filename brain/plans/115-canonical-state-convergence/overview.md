@@ -14,6 +14,8 @@ Noodle now has two architectures at once. The cleaner one lives in `internal/{in
 
 Todo `115` exists to finish that migration. The goal is not to add a third hybrid. The goal is to make canonical state plus projection authoritative for dispatch planning, completion routing, merge advancement, recovery, and snapshots, then delete the duplicated lifecycle logic that still lives in `loop/`.
 
+Former plan `95` ([[archive/plans/95-orders-json-ownership/overview]]) is folded into this migration rather than executed separately. While legacy `orders.json` still exists as a bridge artifact, `115` also owns the work to stop treating disk `orders.json` as live workflow authority: promotion should merge against in-memory state, normal operation should stop reloading or watching `orders.json`, any temporary integrity stamping belongs to this migration only, and the final projection cutover should retire the remaining `orders.json`-authority instructions and shims.
+
 ## Scope
 
 **In scope:**

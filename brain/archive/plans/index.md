@@ -22,3 +22,4 @@
 - [x] [[archive/plans/73-testing-strategy/overview]]
 - [x] [[archive/plans/66-event-trigger-system/overview]]
 - [x] [[archive/plans/74-vestigial-queue-cleanup/overview]]
+- [x] [[archive/plans/95-orders-json-ownership/overview]]

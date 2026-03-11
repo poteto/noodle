@@ -16,4 +16,4 @@
 - [x] [[archive/plans/113-deterministic-completion-detection/overview]]
 - [x] [[archive/plans/114-agent-native-onboarding/overview]]
 - [ ] [[plans/115-canonical-state-convergence/overview]]
-- [ ] [[plans/95-orders-json-ownership/overview]]
+- [x] [[archive/plans/95-orders-json-ownership/overview]]
