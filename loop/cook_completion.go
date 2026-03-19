@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/internal/mode"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/stringx"
 )
 
@@ -140,11 +141,13 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 			return l.parkPendingReview(cook, reason)
 		}
 		mergeable := canMerge && canAutoMerge
-		l.emitEvent(ingest.EventStageCompleted, map[string]any{
+		if err := l.emitEventChecked(ingest.EventStageCompleted, map[string]any{
 			"order_id":    cook.orderID,
 			"stage_index": cook.stageIndex,
 			"mergeable":   mergeable,
-		})
+		}); err != nil {
+			return err
+		}
 		if mergeable {
 			return l.completeWithMerge(ctx, cook, msg)
 		}
@@ -203,10 +206,12 @@ func (l *Loop) completeWithMerge(ctx context.Context, cook *cookHandle, msg *str
 	if err := l.mergeCookWorktree(ctx, cook); err != nil {
 		return err
 	}
-	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+	if err := l.emitEventChecked(ingest.EventMergeCompleted, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
-	})
+	}); err != nil {
+		return err
+	}
 	return l.advanceAndPersist(ctx, cook, msg)
 }
 
@@ -248,23 +253,25 @@ func (l *Loop) handleStageFailure(ctx context.Context, cook *cookHandle, resultS
 }
 
 func (l *Loop) failStage(_ context.Context, cook *cookHandle, reason string) error {
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, err := failStage(*orders, cook.orderID, reason)
-		if err != nil {
-			return false, err
-		}
-		*orders = updated
-		return true, nil
-	}); err != nil {
+	if err := l.ensureCanonicalOrderFromOrders(cook.orderID); err != nil {
 		return err
 	}
-	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
-
-	l.emitEvent(ingest.EventStageFailed, map[string]any{
+	if err := l.emitEventChecked(ingest.EventStageFailed, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
 		"error":       reason,
-	})
+		"attempt_id":  dispatchAttemptID(cook.orderID, cook.stageIndex, cook.attempt),
+		"session_id":  sessionIDPtr(cook),
+	}); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(cook.orderID); err != nil {
+		return err
+	}
+	if err := l.syncPendingReviewProjection(); err != nil {
+		return err
+	}
+	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 	l.classifyOrderHard(
 		"cycle.stage_terminal",
 		OrderFailureClassStageTerminal,
@@ -282,16 +289,17 @@ func (l *Loop) failStage(_ context.Context, cook *cookHandle, reason string) err
 // advanceAndPersist advances the order stage and persists the result.
 // The optional message is included in the stage.completed event payload.
 func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message ...*string) error {
-	removed := false
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, orderRemoved, err := advanceOrder(*orders, cook.orderID)
-		if err != nil {
-			return false, err
-		}
-		*orders = updated
-		removed = orderRemoved
-		return true, nil
-	}); err != nil {
+	if err := l.ensureCanonicalOrderFromOrders(cook.orderID); err != nil {
+		return err
+	}
+	orderStatus := state.OrderLifecycleStatus("")
+	if order, ok := l.canonical.Orders[cook.orderID]; ok {
+		orderStatus = order.Status
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(cook.orderID); err != nil {
+		return err
+	}
+	if err := l.syncPendingReviewProjection(); err != nil {
 		return err
 	}
 	var msg *string
@@ -306,7 +314,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 		Message:    msg,
 	})
 
-	if removed {
+	if orderStatus == state.OrderCompleted {
 		_ = l.events.Emit(LoopEventOrderCompleted, OrderCompletedPayload{
 			OrderID: cook.orderID,
 		})

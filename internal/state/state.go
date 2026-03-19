@@ -78,12 +78,13 @@ const MaxModeTransitionHistory = 50
 // State is the top-level canonical backend state. All loop scheduling
 // decisions derive from this single model.
 type State struct {
-	Orders          map[string]OrderNode       `json:"orders"`
-	Mode            RunMode                    `json:"mode"`
-	ModeEpoch       ModeEpoch                  `json:"mode_epoch"`
-	ModeTransitions []ModeTransitionRecord     `json:"mode_transitions"`
-	SchemaVersion   statever.SchemaVersion     `json:"schema_version"`
-	LastEventID     string                     `json:"last_event_id"`
+	Orders          map[string]OrderNode         `json:"orders"`
+	PendingReviews  map[string]PendingReviewNode `json:"pending_reviews"`
+	Mode            RunMode                      `json:"mode"`
+	ModeEpoch       ModeEpoch                    `json:"mode_epoch"`
+	ModeTransitions []ModeTransitionRecord       `json:"mode_transitions"`
+	SchemaVersion   statever.SchemaVersion       `json:"schema_version"`
+	LastEventID     string                       `json:"last_event_id"`
 }
 
 // OrderNode represents an order's canonical state.
@@ -116,6 +117,23 @@ type AttemptNode struct {
 	ExitCode     *int          `json:"exit_code"`
 	WorktreeName string        `json:"worktree_name"`
 	Error        string        `json:"error"`
+}
+
+// PendingReviewNode records a stage parked for human review.
+type PendingReviewNode struct {
+	OrderID      string   `json:"order_id"`
+	StageIndex   int      `json:"stage_index"`
+	TaskKey      string   `json:"task_key"`
+	Prompt       string   `json:"prompt"`
+	Provider     string   `json:"provider"`
+	Model        string   `json:"model"`
+	Runtime      string   `json:"runtime"`
+	Skill        string   `json:"skill"`
+	Plan         []string `json:"plan"`
+	WorktreeName string   `json:"worktree_name"`
+	WorktreePath string   `json:"worktree_path"`
+	SessionID    string   `json:"session_id"`
+	Reason       string   `json:"reason"`
 }
 
 // IsTerminal reports whether the order status is terminal
@@ -158,6 +176,20 @@ func (s State) Clone() State {
 		transitionsCopy := make([]ModeTransitionRecord, len(s.ModeTransitions))
 		copy(transitionsCopy, s.ModeTransitions)
 		out.ModeTransitions = transitionsCopy
+	}
+
+	if s.PendingReviews != nil {
+		reviewsCopy := make(map[string]PendingReviewNode, len(s.PendingReviews))
+		for orderID, review := range s.PendingReviews {
+			reviewCopy := review
+			if review.Plan != nil {
+				planCopy := make([]string, len(review.Plan))
+				copy(planCopy, review.Plan)
+				reviewCopy.Plan = planCopy
+			}
+			reviewsCopy[orderID] = reviewCopy
+		}
+		out.PendingReviews = reviewsCopy
 	}
 
 	if s.Orders == nil {

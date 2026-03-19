@@ -3,6 +3,7 @@ package reducer
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -14,18 +15,22 @@ import (
 type reduceHandler func(state.State, ingest.StateEvent) (state.State, []Effect, error)
 
 var reduceHandlers = map[ingest.EventType]reduceHandler{
-	ingest.EventDispatchRequested: reduceDispatchRequested,
-	ingest.EventDispatchCompleted: reduceDispatchCompleted,
-	ingest.EventStageCompleted:    reduceStageCompleted,
-	ingest.EventStageFailed:       reduceStageFailed,
-	ingest.EventOrderCompleted:    reduceOrderCompleted,
-	ingest.EventOrderFailed:       reduceOrderFailed,
-	ingest.EventModeChanged:       reduceModeChanged,
-	ingest.EventMergeCompleted:    reduceMergeCompleted,
-	ingest.EventMergeFailed:       reduceMergeFailed,
-	ingest.EventControlReceived:   reduceControlReceived,
-	ingest.EventSchedulePromoted:  reduceSchedulePromoted,
-	ingest.EventSessionAdopted:    reduceSessionAdopted,
+	ingest.EventDispatchRequested:           reduceDispatchRequested,
+	ingest.EventDispatchCompleted:           reduceDispatchCompleted,
+	ingest.EventStageCompleted:              reduceStageCompleted,
+	ingest.EventStageFailed:                 reduceStageFailed,
+	ingest.EventStageReviewParked:           reduceStageReviewParked,
+	ingest.EventStageReviewApproved:         reduceStageReviewApproved,
+	ingest.EventStageReviewChangesRequested: reduceStageReviewChangesRequested,
+	ingest.EventStageReviewRejected:         reduceStageReviewRejected,
+	ingest.EventOrderCompleted:              reduceOrderCompleted,
+	ingest.EventOrderFailed:                 reduceOrderFailed,
+	ingest.EventModeChanged:                 reduceModeChanged,
+	ingest.EventMergeCompleted:              reduceMergeCompleted,
+	ingest.EventMergeFailed:                 reduceMergeFailed,
+	ingest.EventControlReceived:             reduceControlReceived,
+	ingest.EventSchedulePromoted:            reduceSchedulePromoted,
+	ingest.EventSessionAdopted:              reduceSessionAdopted,
 }
 
 // Reduce is the default reducer implementation.
@@ -55,6 +60,23 @@ type orderStagePayload struct {
 	Error        string `json:"error"`
 	Mergeable    *bool  `json:"mergeable"`
 	ExitCode     *int   `json:"exit_code"`
+}
+
+type reviewPayload struct {
+	OrderID      string   `json:"order_id"`
+	StageIndex   int      `json:"stage_index"`
+	AttemptID    string   `json:"attempt_id"`
+	SessionID    string   `json:"session_id"`
+	WorktreeName string   `json:"worktree_name"`
+	WorktreePath string   `json:"worktree_path"`
+	Reason       string   `json:"reason"`
+	TaskKey      string   `json:"task_key"`
+	Prompt       string   `json:"prompt"`
+	Provider     string   `json:"provider"`
+	Model        string   `json:"model"`
+	Runtime      string   `json:"runtime"`
+	Skill        string   `json:"skill"`
+	Plan         []string `json:"plan"`
 }
 
 type orderPayload struct {
@@ -103,6 +125,7 @@ func reduceDispatchRequested(current state.State, event ingest.StateEvent) (stat
 	order.UpdatedAt = event.Timestamp
 	order.Stages[payload.StageIndex] = stage
 	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
 	effect, err := makeEffect(event, 0, EffectDispatch, map[string]any{
@@ -155,6 +178,7 @@ func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (stat
 
 	order.Stages[payload.StageIndex] = stage
 	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 	return next, nil, nil
 }
@@ -234,6 +258,7 @@ func reduceStageFailed(current state.State, event ingest.StateEvent) (state.Stat
 	order.UpdatedAt = event.Timestamp
 	finalizeAttempt(&stage, payload, event, state.AttemptFailed)
 	order.Stages[payload.StageIndex] = stage
+	order.Status = state.OrderFailed
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
@@ -263,6 +288,7 @@ func reduceOrderCompleted(current state.State, event ingest.StateEvent) (state.S
 	order.Status = state.OrderCompleted
 	order.UpdatedAt = event.Timestamp
 	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
 	e0, err := makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID})
@@ -291,6 +317,7 @@ func reduceOrderFailed(current state.State, event ingest.StateEvent) (state.Stat
 	order.Status = state.OrderFailed
 	order.UpdatedAt = event.Timestamp
 	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 
 	e0, err := makeEffect(event, 0, EffectWriteProjection, map[string]any{"order_id": payload.OrderID})
@@ -496,6 +523,7 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 	}
 
 	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 	return next, nil, nil
 }
@@ -532,6 +560,115 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 	return next, []Effect{effect}, nil
 }
 
+func reduceStageReviewParked(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload reviewPayload
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_review_parked: %w", err)
+	}
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() {
+		return current, nil, nil
+	}
+
+	next := current.Clone()
+	if next.PendingReviews == nil {
+		next.PendingReviews = make(map[string]state.PendingReviewNode)
+	}
+	order = next.Orders[payload.OrderID]
+	stage = order.Stages[payload.StageIndex]
+	stage.Status = state.StageReview
+	order.Status = state.OrderActive
+	order.UpdatedAt = event.Timestamp
+	recordReviewAttempt(&stage, payload, event)
+	order.Stages[payload.StageIndex] = stage
+	next.Orders[payload.OrderID] = order
+	next.PendingReviews[payload.OrderID] = state.PendingReviewNode{
+		OrderID:      payload.OrderID,
+		StageIndex:   payload.StageIndex,
+		TaskKey:      strings.TrimSpace(payload.TaskKey),
+		Prompt:       strings.TrimSpace(payload.Prompt),
+		Provider:     strings.TrimSpace(payload.Provider),
+		Model:        strings.TrimSpace(payload.Model),
+		Runtime:      strings.TrimSpace(payload.Runtime),
+		Skill:        strings.TrimSpace(payload.Skill),
+		Plan:         slices.Clone(payload.Plan),
+		WorktreeName: strings.TrimSpace(payload.WorktreeName),
+		WorktreePath: strings.TrimSpace(payload.WorktreePath),
+		SessionID:    strings.TrimSpace(payload.SessionID),
+		Reason:       strings.TrimSpace(payload.Reason),
+	}
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
+func reduceStageReviewApproved(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload reviewPayload
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_review_approved: %w", err)
+	}
+	if _, ok := current.PendingReviews[payload.OrderID]; !ok {
+		return current, nil, nil
+	}
+	next := current.Clone()
+	delete(next.PendingReviews, payload.OrderID)
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
+func reduceStageReviewChangesRequested(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload reviewPayload
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_review_changes_requested: %w", err)
+	}
+	order, stage, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() {
+		return current, nil, nil
+	}
+
+	next := current.Clone()
+	order = next.Orders[payload.OrderID]
+	stage = order.Stages[payload.StageIndex]
+	stage.Status = state.StageFailed
+	if len(stage.Attempts) > 0 {
+		last := len(stage.Attempts) - 1
+		stage.Attempts[last].Status = state.AttemptFailed
+		stage.Attempts[last].Error = strings.TrimSpace(payload.Reason)
+	}
+	order.Stages[payload.StageIndex] = stage
+	order.Status = state.OrderFailed
+	order.UpdatedAt = event.Timestamp
+	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
+func reduceStageReviewRejected(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {
+	var payload reviewPayload
+	if err := decodeEventPayload(event, &payload); err != nil {
+		return current, nil, fmt.Errorf("reduce stage_review_rejected: %w", err)
+	}
+	order, _, ok := current.LookupStage(payload.OrderID, payload.StageIndex)
+	if !ok || order.Status.IsTerminal() {
+		return current, nil, nil
+	}
+
+	next := current.Clone()
+	order = next.Orders[payload.OrderID]
+	for i := range order.Stages {
+		if order.Stages[i].Status.IsTerminal() {
+			continue
+		}
+		order.Stages[i].Status = state.StageCancelled
+	}
+	order.Status = state.OrderCancelled
+	order.UpdatedAt = event.Timestamp
+	next.Orders[payload.OrderID] = order
+	delete(next.PendingReviews, payload.OrderID)
+	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
+	return next, nil, nil
+}
+
 func decodeEventPayload(event ingest.StateEvent, out any) error {
 	if len(event.Payload) == 0 {
 		return fmt.Errorf("event payload unavailable for type %q", event.Type)
@@ -558,6 +695,30 @@ func normalizedAttemptID(raw string, event ingest.StateEvent) string {
 		return id
 	}
 	return fmt.Sprintf("attempt-%d", event.ID)
+}
+
+func recordReviewAttempt(stage *state.StageNode, payload reviewPayload, event ingest.StateEvent) {
+	attemptID := strings.TrimSpace(payload.AttemptID)
+	if attemptID == "" {
+		attemptID = fmt.Sprintf("review-%d", event.ID)
+	}
+	if idx, found := attemptIndexByID(stage.Attempts, attemptID); found {
+		stage.Attempts[idx].SessionID = strings.TrimSpace(payload.SessionID)
+		stage.Attempts[idx].Status = state.AttemptCompleted
+		stage.Attempts[idx].CompletedAt = event.Timestamp
+		if stage.Attempts[idx].WorktreeName == "" {
+			stage.Attempts[idx].WorktreeName = strings.TrimSpace(payload.WorktreeName)
+		}
+		return
+	}
+	stage.Attempts = append(stage.Attempts, state.AttemptNode{
+		AttemptID:    attemptID,
+		SessionID:    strings.TrimSpace(payload.SessionID),
+		Status:       state.AttemptCompleted,
+		StartedAt:    event.Timestamp,
+		CompletedAt:  event.Timestamp,
+		WorktreeName: strings.TrimSpace(payload.WorktreeName),
+	})
 }
 
 func attemptIndexByID(attempts []state.AttemptNode, attemptID string) (int, bool) {

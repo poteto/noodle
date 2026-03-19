@@ -19,7 +19,9 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}}},
+	}}); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 

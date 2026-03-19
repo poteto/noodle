@@ -115,6 +115,7 @@ func synthesizeCanonicalState(
 	}
 
 	canonicalOrders := make(map[string]state.OrderNode, len(orders.Orders))
+	canonicalReviews := make(map[string]state.PendingReviewNode, len(pendingReview))
 	for _, order := range orders.Orders {
 		stageNodes := make([]state.StageNode, 0, len(order.Stages))
 		reviewItem, hasReview := reviewByOrder[order.ID]
@@ -145,6 +146,27 @@ func synthesizeCanonicalState(
 			}
 			stageNodes = append(stageNodes, stageNode)
 		}
+		if hasReview {
+			stage := Stage{}
+			if reviewItem.StageIndex >= 0 && reviewItem.StageIndex < len(order.Stages) {
+				stage = order.Stages[reviewItem.StageIndex]
+			}
+			canonicalReviews[order.ID] = state.PendingReviewNode{
+				OrderID:      strings.TrimSpace(reviewItem.OrderID),
+				StageIndex:   reviewItem.StageIndex,
+				TaskKey:      strings.TrimSpace(stage.TaskKey),
+				Prompt:       strings.TrimSpace(stage.Prompt),
+				Provider:     strings.TrimSpace(stage.Provider),
+				Model:        strings.TrimSpace(stage.Model),
+				Runtime:      strings.TrimSpace(stage.Runtime),
+				Skill:        strings.TrimSpace(stage.Skill),
+				Plan:         slices.Clone(order.Plan),
+				WorktreeName: strings.TrimSpace(reviewItem.WorktreeName),
+				WorktreePath: strings.TrimSpace(reviewItem.WorktreePath),
+				SessionID:    strings.TrimSpace(reviewItem.SessionID),
+				Reason:       strings.TrimSpace(reviewItem.Reason),
+			}
+		}
 		canonicalOrders[order.ID] = state.OrderNode{
 			OrderID:   strings.TrimSpace(order.ID),
 			Status:    legacyOrderStatusToCanonical(order.Status),
@@ -155,10 +177,11 @@ func synthesizeCanonicalState(
 	}
 
 	return state.State{
-		Orders:        canonicalOrders,
-		Mode:          mode,
-		SchemaVersion: statever.Current,
-		LastEventID:   "0",
+		Orders:         canonicalOrders,
+		PendingReviews: canonicalReviews,
+		Mode:           mode,
+		SchemaVersion:  statever.Current,
+		LastEventID:    "0",
 	}
 }
 

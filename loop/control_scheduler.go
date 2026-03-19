@@ -52,12 +52,16 @@ func (l *Loop) controlAdvance(orderID string) error {
 			orderStatus: o.Status,
 			session:     &adoptedSession{id: "", status: "completed"},
 		}
-		// Emit V2 canonical stage completion (non-mergeable manual advance).
-		l.emitEvent(ingest.EventStageCompleted, map[string]any{
+		if err := l.ensureCanonicalOrderFromOrders(orderID); err != nil {
+			return err
+		}
+		if err := l.emitEventChecked(ingest.EventStageCompleted, map[string]any{
 			"order_id":    orderID,
 			"stage_index": stageIdx,
 			"mergeable":   false,
-		})
+		}); err != nil {
+			return err
+		}
 		return l.advanceAndPersist(context.Background(), cook)
 	}
 	return fmt.Errorf("order %q not found", orderID)
@@ -154,18 +158,29 @@ func (l *Loop) controlParkReview(orderID, reason string) error {
 		worktreeName = cook.worktreeName
 		worktreePath = cook.worktreePath
 	}
-
-	l.cooks.pendingReview[orderID] = &pendingReviewCook{
-		cookIdentity: cookIdentity{
-			orderID:    orderID,
-			stageIndex: stageIdx,
-			stage:      *stage,
-			plan:       order.Plan,
-		},
-		worktreeName: worktreeName,
-		worktreePath: worktreePath,
-		sessionID:    sessionID,
-		reason:       reason,
+	if err := l.ensureCanonicalOrderFromOrders(orderID); err != nil {
+		return err
 	}
-	return l.writePendingReview()
+
+	if err := l.emitEventChecked(ingest.EventStageReviewParked, map[string]any{
+		"order_id":      orderID,
+		"stage_index":   stageIdx,
+		"session_id":    sessionID,
+		"worktree_name": worktreeName,
+		"worktree_path": worktreePath,
+		"reason":        reason,
+		"task_key":      stage.TaskKey,
+		"prompt":        stage.Prompt,
+		"provider":      stage.Provider,
+		"model":         stage.Model,
+		"runtime":       stage.Runtime,
+		"skill":         stage.Skill,
+		"plan":          append([]string(nil), order.Plan...),
+	}); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(orderID); err != nil {
+		return err
+	}
+	return l.syncPendingReviewProjection()
 }

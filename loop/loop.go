@@ -571,11 +571,16 @@ func (l *Loop) shutdownAndDrain() {
 // reducer. Effects are logged but not executed — the loop already handles
 // execution via its existing paths.
 func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
+	if err := l.emitEventChecked(eventType, payload); err != nil {
+		l.logger.Warn("canonical event apply failed", "type", string(eventType), "error", err)
+	}
+}
+
+func (l *Loop) emitEventChecked(eventType ingest.EventType, payload any) error {
 	id := l.eventCounter.Add(1)
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		l.logger.Warn("canonical event payload encoding failed", "type", string(eventType), "error", err)
-		return
+		return fmt.Errorf("canonical event payload encoding failed: %w", err)
 	}
 	evt := ingest.StateEvent{
 		ID:        ingest.EventID(id),
@@ -586,8 +591,7 @@ func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
 	}
 	next, effects, err := reducer.Reduce(l.canonical, evt)
 	if err != nil {
-		l.logger.Warn("canonical reducer failed", "type", string(eventType), "error", err)
-		return
+		return fmt.Errorf("canonical reducer failed: %w", err)
 	}
 	l.canonical = next
 	if l.effectLedger == nil {
@@ -597,9 +601,10 @@ func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
 		l.effectLedger.Record(effect)
 	}
 	if err := l.persistCanonicalCheckpoint(); err != nil {
-		l.logger.Warn("canonical checkpoint persistence failed", "type", string(eventType), "error", err)
+		return fmt.Errorf("canonical checkpoint persistence failed: %w", err)
 	}
 	if len(effects) > 0 {
 		l.logger.Debug("canonical effects emitted", "type", string(eventType), "count", len(effects))
 	}
+	return nil
 }
