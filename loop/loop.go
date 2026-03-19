@@ -356,6 +356,9 @@ func (l *Loop) Run(ctx context.Context) error {
 
 	ticker := time.NewTicker(l.pollInterval())
 	defer ticker.Stop()
+	cycleTrigger := make(chan struct{}, 1)
+	watchErr := make(chan error, 1)
+	go l.forwardRuntimeWatcher(ctx, watcher.Events, watcher.Errors, cycleTrigger, watchErr)
 
 	for {
 		select {
@@ -363,33 +366,86 @@ func (l *Loop) Run(ctx context.Context) error {
 			l.shutdownAndDrain()
 			return nil
 		case <-ticker.C:
-			if err := l.Cycle(ctx); err != nil {
+			enqueueRuntimeCycle(cycleTrigger)
+		case <-cycleTrigger:
+			if err := l.runOnce(ctx); err != nil {
 				return err
 			}
-			mergeSettled := true
-			if l.mergeQueue != nil {
-				mergeSettled = l.mergeQueue.Pending() == 0 && l.mergeQueue.InFlight() == 0
-			}
-			if l.state == StateDraining && l.watcherCount.Load() == 0 && mergeSettled {
-				if err := l.drainCompletions(context.Background()); err != nil {
-					return err
-				}
-				if err := l.drainMergeResults(context.Background()); err != nil {
-					return err
-				}
-				return nil
-			}
-		case ev := <-watcher.Events:
-			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
-				if err := l.Cycle(ctx); err != nil {
-					return err
-				}
-			}
-		case err := <-watcher.Errors:
+		case err := <-watchErr:
 			if err != nil {
-				return fmt.Errorf("watch runtime directory: %w", err)
+				return err
 			}
 		}
+	}
+}
+
+func (l *Loop) runOnce(ctx context.Context) error {
+	if err := l.Cycle(ctx); err != nil {
+		return err
+	}
+	mergeSettled := true
+	if l.mergeQueue != nil {
+		mergeSettled = l.mergeQueue.Pending() == 0 && l.mergeQueue.InFlight() == 0
+	}
+	if l.state != StateDraining || l.watcherCount.Load() != 0 || !mergeSettled {
+		return nil
+	}
+	if err := l.drainCompletions(context.Background()); err != nil {
+		return err
+	}
+	if err := l.drainMergeResults(context.Background()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Loop) forwardRuntimeWatcher(
+	ctx context.Context,
+	events <-chan fsnotify.Event,
+	errors <-chan error,
+	cycleTrigger chan<- struct{},
+	watchErr chan<- error,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev, ok := <-events:
+			if !ok {
+				return
+			}
+			if shouldTriggerRuntimeCycle(ev.Name) {
+				enqueueRuntimeCycle(cycleTrigger)
+			}
+		case err, ok := <-errors:
+			if !ok {
+				return
+			}
+			if err == nil {
+				continue
+			}
+			select {
+			case watchErr <- fmt.Errorf("watch runtime directory: %w", err):
+			default:
+			}
+			return
+		}
+	}
+}
+
+func enqueueRuntimeCycle(ch chan<- struct{}) {
+	select {
+	case ch <- struct{}{}:
+	default:
+	}
+}
+
+func shouldTriggerRuntimeCycle(path string) bool {
+	switch filepath.Base(path) {
+	case "orders.json", "orders-next.json", "control.ndjson":
+		return true
+	default:
+		return false
 	}
 }
 
