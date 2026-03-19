@@ -262,11 +262,23 @@ func RouteFailure(s state.State, orderID string, stageIndex int, reason string) 
 }
 
 func sortedOrderIDs(orders map[string]state.OrderNode) []string {
-	ids := make([]string, 0, len(orders))
-	for orderID := range orders {
-		ids = append(ids, orderID)
+	nodes := make([]state.OrderNode, 0, len(orders))
+	for _, order := range orders {
+		nodes = append(nodes, order)
 	}
-	slices.Sort(ids)
+	slices.SortFunc(nodes, func(a, b state.OrderNode) int {
+		if a.Sequence == b.Sequence {
+			return strings.Compare(a.OrderID, b.OrderID)
+		}
+		if a.Sequence < b.Sequence {
+			return -1
+		}
+		return 1
+	})
+	ids := make([]string, 0, len(nodes))
+	for _, order := range nodes {
+		ids = append(ids, order.OrderID)
+	}
 	return ids
 }
 

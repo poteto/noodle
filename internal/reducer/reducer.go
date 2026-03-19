@@ -449,6 +449,10 @@ func reduceSchedulePromoted(current state.State, event ingest.StateEvent) (state
 
 	next.Orders[orderID] = state.OrderNode{
 		OrderID:   orderID,
+		Sequence:  len(next.Orders),
+		Title:     strings.TrimSpace(payload.Metadata["title"]),
+		Plan:      splitMetadataLines(payload.Metadata["plan"]),
+		Rationale: strings.TrimSpace(payload.Metadata["rationale"]),
 		Status:    state.OrderPending,
 		Stages:    stages,
 		CreatedAt: event.Timestamp,
@@ -503,6 +507,26 @@ func reduceSessionAdopted(current state.State, event ingest.StateEvent) (state.S
 	next.Orders[payload.OrderID] = order
 	next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
 	return next, nil, nil
+}
+
+func splitMetadataLines(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, "\n")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		out = append(out, part)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.State, []Effect, error) {

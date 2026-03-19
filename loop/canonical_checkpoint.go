@@ -117,7 +117,7 @@ func synthesizeCanonicalState(
 
 	canonicalOrders := make(map[string]state.OrderNode, len(orders.Orders))
 	canonicalReviews := make(map[string]state.PendingReviewNode, len(pendingReview))
-	for _, order := range orders.Orders {
+	for orderIndex, order := range orders.Orders {
 		stageNodes := make([]state.StageNode, 0, len(order.Stages))
 		reviewItem, hasReview := reviewByOrder[order.ID]
 		for i, stage := range order.Stages {
@@ -127,10 +127,17 @@ func synthesizeCanonicalState(
 			}
 
 			stageNode := state.StageNode{
-				StageIndex: i,
-				Status:     stageStatus,
-				Skill:      strings.TrimSpace(stage.Skill),
-				Runtime:    strings.TrimSpace(stage.Runtime),
+				StageIndex:  i,
+				TaskKey:     strings.TrimSpace(stage.TaskKey),
+				Prompt:      strings.TrimSpace(stage.Prompt),
+				Status:      stageStatus,
+				Skill:       strings.TrimSpace(stage.Skill),
+				Provider:    strings.TrimSpace(stage.Provider),
+				Model:       strings.TrimSpace(stage.Model),
+				Runtime:     strings.TrimSpace(stage.Runtime),
+				Group:       stage.Group,
+				Extra:       cloneLegacyExtra(stage.Extra),
+				ExtraPrompt: strings.TrimSpace(stage.ExtraPrompt),
 			}
 			stageNode.Merge = canonicalMergeRecoveryFromLegacyStage(stage, stageStatus)
 			if stageNode.Runtime == "" {
@@ -171,6 +178,10 @@ func synthesizeCanonicalState(
 		}
 		canonicalOrders[order.ID] = state.OrderNode{
 			OrderID:   strings.TrimSpace(order.ID),
+			Sequence:  orderIndex,
+			Title:     strings.TrimSpace(order.Title),
+			Plan:      slices.Clone(order.Plan),
+			Rationale: strings.TrimSpace(order.Rationale),
 			Status:    legacyOrderStatusToCanonical(order.Status),
 			Stages:    stageNodes,
 			CreatedAt: now,
@@ -181,6 +192,7 @@ func synthesizeCanonicalState(
 	return state.State{
 		Orders:         canonicalOrders,
 		PendingReviews: canonicalReviews,
+		ActionNeeded:   slices.Clone(orders.ActionNeeded),
 		Mode:           mode,
 		SchemaVersion:  statever.Current,
 		LastEventID:    "0",
@@ -261,24 +273,44 @@ func (l *Loop) trackCanonicalOrder(order Order) {
 }
 
 func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
+	l.syncCanonicalOrderFromLegacyAt(order, -1)
+}
+
+func (l *Loop) syncCanonicalOrderFromLegacyAt(order Order, sequence int) {
 	if _, exists := l.canonical.Orders[order.ID]; !exists {
 		stages := make([]map[string]any, 0, len(order.Stages))
 		for i, stage := range order.Stages {
 			stages = append(stages, map[string]any{
 				"stage_index": i,
 				"status":      legacyStageStatusToCanonical(stage.Status),
+				"task_key":    strings.TrimSpace(stage.TaskKey),
+				"prompt":      strings.TrimSpace(stage.Prompt),
 				"skill":       stage.Skill,
+				"provider":    strings.TrimSpace(stage.Provider),
+				"model":       strings.TrimSpace(stage.Model),
 				"runtime":     nonEmpty(stage.Runtime, "process"),
+				"group":       stage.Group,
 			})
 		}
 		l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
 			"order_id": order.ID,
 			"stages":   stages,
+			"metadata": map[string]string{
+				"title":     strings.TrimSpace(order.Title),
+				"plan":      strings.Join(order.Plan, "\n"),
+				"rationale": strings.TrimSpace(order.Rationale),
+			},
 		})
 	}
 
 	node := l.canonical.Orders[order.ID]
 	node.OrderID = strings.TrimSpace(order.ID)
+	if sequence >= 0 {
+		node.Sequence = sequence
+	}
+	node.Title = strings.TrimSpace(order.Title)
+	node.Plan = slices.Clone(order.Plan)
+	node.Rationale = strings.TrimSpace(order.Rationale)
 	node.Status = legacyOrderStatusToCanonical(order.Status)
 	now := timeNowUTC(l.deps.Now)
 	node.UpdatedAt = now
@@ -286,10 +318,17 @@ func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
 	stages := make([]state.StageNode, 0, len(order.Stages))
 	for i, stage := range order.Stages {
 		stageNode := state.StageNode{
-			StageIndex: i,
-			Status:     legacyStageStatusToCanonical(stage.Status),
-			Skill:      strings.TrimSpace(stage.Skill),
-			Runtime:    nonEmpty(stage.Runtime, "process"),
+			StageIndex:  i,
+			TaskKey:     strings.TrimSpace(stage.TaskKey),
+			Prompt:      strings.TrimSpace(stage.Prompt),
+			Status:      legacyStageStatusToCanonical(stage.Status),
+			Skill:       strings.TrimSpace(stage.Skill),
+			Provider:    strings.TrimSpace(stage.Provider),
+			Model:       strings.TrimSpace(stage.Model),
+			Runtime:     nonEmpty(stage.Runtime, "process"),
+			Group:       stage.Group,
+			Extra:       cloneLegacyExtra(stage.Extra),
+			ExtraPrompt: strings.TrimSpace(stage.ExtraPrompt),
 		}
 		if i < len(node.Stages) {
 			stageNode.Attempts = slices.Clone(node.Stages[i].Attempts)
@@ -305,6 +344,25 @@ func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
 	}
 	node.Stages = stages
 	l.canonical.Orders[order.ID] = node
+}
+
+func (l *Loop) syncCanonicalStateFromOrders(orders OrdersFile) {
+	if l.canonical.Orders == nil {
+		l.canonical.Orders = make(map[string]state.OrderNode)
+	}
+	present := make(map[string]struct{}, len(orders.Orders))
+	for index, order := range orders.Orders {
+		present[order.ID] = struct{}{}
+		l.syncCanonicalOrderFromLegacyAt(order, index)
+	}
+	for orderID := range l.canonical.Orders {
+		if _, ok := present[orderID]; ok {
+			continue
+		}
+		delete(l.canonical.Orders, orderID)
+		delete(l.canonical.PendingReviews, orderID)
+	}
+	l.canonical.ActionNeeded = slices.Clone(orders.ActionNeeded)
 }
 
 func canonicalMergeRecoveryFromLegacyStage(stage Stage, status state.StageLifecycleStatus) *state.MergeRecoveryNode {
@@ -353,4 +411,15 @@ func legacyExtraString(extra map[string]json.RawMessage, key string) string {
 		return ""
 	}
 	return value
+}
+
+func cloneLegacyExtra(src map[string]json.RawMessage) map[string]json.RawMessage {
+	if len(src) == 0 {
+		return nil
+	}
+	cloned := make(map[string]json.RawMessage, len(src))
+	for key, value := range src {
+		cloned[key] = append(json.RawMessage(nil), value...)
+	}
+	return cloned
 }

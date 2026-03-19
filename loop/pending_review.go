@@ -179,6 +179,9 @@ func (l *Loop) syncPendingReviewProjection() error {
 }
 
 func (l *Loop) ensureCanonicalOrderFromOrders(orderID string) error {
+	if err := l.ensureCanonicalLoadedFromBridge(); err != nil {
+		return err
+	}
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {
 		return fmt.Errorf("canonical sync requires order_id")
@@ -265,7 +268,7 @@ func (l *Loop) mirrorLegacyOrderFromCanonical(orderID string) error {
 	if !exists {
 		remove = true
 	}
-	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+	return l.mutateProjectedMirrorState(func(orders *OrdersFile) (bool, error) {
 		for i := range orders.Orders {
 			if orders.Orders[i].ID != orderID {
 				continue

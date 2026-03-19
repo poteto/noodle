@@ -29,7 +29,7 @@ func fullState() State {
 						Status:     StageCompleted,
 						Skill:      "lint",
 						Runtime:    "node",
-						Group:      "a",
+						Group:      1,
 						Attempts: []AttemptNode{
 							{
 								AttemptID:    "att-1",
@@ -47,7 +47,7 @@ func fullState() State {
 						Status:     StageRunning,
 						Skill:      "test",
 						Runtime:    "go",
-						Group:      "b",
+						Group:      2,
 						Attempts: []AttemptNode{
 							{
 								AttemptID:    "att-2",

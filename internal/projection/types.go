@@ -36,27 +36,57 @@ type ProjectionBundle struct {
 
 // OrderProjection is the projected view of an order in orders.json format.
 type OrderProjection struct {
-	ID     string            `json:"id"`
-	Status string            `json:"status"`
-	Stages []StageProjection `json:"stages"`
+	ID        string            `json:"id"`
+	Title     string            `json:"title,omitempty"`
+	Plan      []string          `json:"plan,omitempty"`
+	Rationale string            `json:"rationale,omitempty"`
+	Stages    []StageProjection `json:"stages"`
+	Status    string            `json:"status"`
 }
 
 // StageProjection is the projected view of a stage.
 type StageProjection struct {
-	Skill   string `json:"skill"`
-	Runtime string `json:"runtime"`
-	Status  string `json:"status"`
-	Group   string `json:"group"`
+	TaskKey     string                     `json:"task_key,omitempty"`
+	Prompt      string                     `json:"prompt,omitempty"`
+	Skill       string                     `json:"skill,omitempty"`
+	Provider    string                     `json:"provider"`
+	Model       string                     `json:"model"`
+	Runtime     string                     `json:"runtime,omitempty"`
+	Group       int                        `json:"group,omitempty"`
+	Status      string                     `json:"status"`
+	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
+	ExtraPrompt string                     `json:"extra_prompt,omitempty"`
 }
 
 // SnapshotView is the projected payload used by the snapshot API.
 type SnapshotView struct {
-	Orders        []OrderProjection `json:"orders"`
-	Mode          string            `json:"mode"`
-	ModeEpoch     uint64            `json:"mode_epoch"`
-	SchemaVersion int               `json:"schema_version"`
-	LastEventID   string            `json:"last_event_id"`
-	GeneratedAt   time.Time         `json:"generated_at"`
+	Orders             []OrderProjection         `json:"orders"`
+	ActiveOrderIDs     []string                  `json:"active_order_ids"`
+	ActionNeeded       []string                  `json:"action_needed"`
+	PendingReviews     []PendingReviewProjection `json:"pending_reviews"`
+	PendingReviewCount int                       `json:"pending_review_count"`
+	Mode               string                    `json:"mode"`
+	ModeEpoch          uint64                    `json:"mode_epoch"`
+	SchemaVersion      int                       `json:"schema_version"`
+	LastEventID        string                    `json:"last_event_id"`
+	GeneratedAt        time.Time                 `json:"generated_at"`
+}
+
+// PendingReviewProjection is the projected view of a pending review item.
+type PendingReviewProjection struct {
+	OrderID      string   `json:"order_id"`
+	StageIndex   int      `json:"stage_index"`
+	TaskKey      string   `json:"task_key,omitempty"`
+	Prompt       string   `json:"prompt,omitempty"`
+	Provider     string   `json:"provider,omitempty"`
+	Model        string   `json:"model,omitempty"`
+	Runtime      string   `json:"runtime,omitempty"`
+	Skill        string   `json:"skill,omitempty"`
+	Plan         []string `json:"plan,omitempty"`
+	WorktreeName string   `json:"worktree_name,omitempty"`
+	WorktreePath string   `json:"worktree_path,omitempty"`
+	SessionID    string   `json:"session_id,omitempty"`
+	Reason       string   `json:"reason,omitempty"`
 }
 
 // ProjectionDelta is an incremental websocket update between projection versions.

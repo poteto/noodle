@@ -30,9 +30,9 @@ func TestPlanDispatches(t *testing.T) {
 						OrderID: "order-a",
 						Status:  state.OrderPending,
 						Stages: []state.StageNode{
-							{StageIndex: 0, Status: state.StageCompleted, Group: "g1"},
-							{StageIndex: 1, Status: state.StagePending, Runtime: "", Group: "g2"},
-							{StageIndex: 2, Status: state.StagePending, Runtime: "cursor", Group: "g2"},
+							{StageIndex: 0, Status: state.StageCompleted, Group: 1},
+							{StageIndex: 1, Status: state.StagePending, Runtime: "", Group: 2},
+							{StageIndex: 2, Status: state.StagePending, Runtime: "cursor", Group: 2},
 						},
 					},
 					"order-b": {
@@ -594,9 +594,9 @@ func TestEdgeCases(t *testing.T) {
 					OrderID: "grouped",
 					Status:  state.OrderActive,
 					Stages: []state.StageNode{
-						{StageIndex: 0, Status: state.StageCompleted, Group: "1"},
-						{StageIndex: 1, Status: state.StagePending, Group: "2"},
-						{StageIndex: 2, Status: state.StagePending, Group: "2"},
+						{StageIndex: 0, Status: state.StageCompleted, Group: 1},
+						{StageIndex: 1, Status: state.StagePending, Group: 2},
+						{StageIndex: 2, Status: state.StagePending, Group: 2},
 					},
 				},
 			},

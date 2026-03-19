@@ -1,9 +1,12 @@
 package loop
 
 import (
+	"encoding/json"
 	"sort"
 	"time"
 
+	"github.com/poteto/noodle/internal/mode"
+	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -25,21 +28,22 @@ type CookSummary struct {
 }
 
 type LoopState struct {
-	UpdatedAt          time.Time           `json:"updated_at"`
-	Orders             []Order             `json:"orders"`
-	ActiveCooks        []CookSummary       `json:"active_cooks"`
-	PendingReviews     []PendingReviewItem `json:"pending_reviews"`
-	PendingReviewCount int                 `json:"pending_review_count"`
-	RecentHistory      []mise.HistoryItem  `json:"recent_history"`
-	Status             string              `json:"status"`
-	ActiveSummary      mise.ActiveSummary  `json:"active_summary"`
-	ActiveOrderIDs     []string            `json:"active_order_ids"`
-	TotalCostUSD       float64             `json:"total_cost_usd"`
-	MaxConcurrency     int                 `json:"max_concurrency"`
-	Mode               string              `json:"mode"`
-	ModeEpoch          uint64              `json:"mode_epoch"`
-	ActionNeeded       []string            `json:"action_needed"`
-	Warnings           []string            `json:"warnings"`
+	UpdatedAt          time.Time               `json:"updated_at"`
+	Projection         projection.SnapshotView `json:"projection"`
+	Orders             []Order                 `json:"orders"`
+	ActiveCooks        []CookSummary           `json:"active_cooks"`
+	PendingReviews     []PendingReviewItem     `json:"pending_reviews"`
+	PendingReviewCount int                     `json:"pending_review_count"`
+	RecentHistory      []mise.HistoryItem      `json:"recent_history"`
+	Status             string                  `json:"status"`
+	ActiveSummary      mise.ActiveSummary      `json:"active_summary"`
+	ActiveOrderIDs     []string                `json:"active_order_ids"`
+	TotalCostUSD       float64                 `json:"total_cost_usd"`
+	MaxConcurrency     int                     `json:"max_concurrency"`
+	Mode               string                  `json:"mode"`
+	ModeEpoch          uint64                  `json:"mode_epoch"`
+	ActionNeeded       []string                `json:"action_needed"`
+	Warnings           []string                `json:"warnings"`
 }
 
 func (l *Loop) publishState() {
@@ -56,6 +60,13 @@ func (l *Loop) State() LoopState {
 }
 
 func (l *Loop) buildLoopStateSnapshot() *LoopState {
+	projected := projection.SnapshotView{}
+	if bundle, err := projection.Project(l.canonical, mode.ModeState{
+		EffectiveMode: l.canonical.Mode,
+		Epoch:         l.canonical.ModeEpoch,
+	}); err == nil {
+		projected = bundle.SnapshotView
+	}
 	ordersFile := OrdersFile{}
 	if l.ordersLoaded {
 		ordersFile = cloneOrdersFile(l.orders)
@@ -109,6 +120,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 
 	return &LoopState{
 		UpdatedAt:          l.deps.Now().UTC(),
+		Projection:         projected,
 		Orders:             ordersCopy,
 		ActiveCooks:        activeCooks,
 		PendingReviews:     pendingReviews,
@@ -121,7 +133,7 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		MaxConcurrency:     l.config.Concurrency.MaxConcurrency,
 		Mode:               mode,
 		ModeEpoch:          uint64(l.canonical.ModeEpoch),
-		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
+		ActionNeeded:       append([]string(nil), projected.ActionNeeded...),
 		Warnings:           append([]string(nil), l.lastMiseWarnings...),
 	}
 }
@@ -154,6 +166,44 @@ func (l *Loop) appendActiveCookSummary(activeCooks *[]CookSummary, totalCost *fl
 
 func cloneLoopState(state LoopState) LoopState {
 	cloned := state
+	cloned.Projection = projection.SnapshotView{
+		Orders:             make([]projection.OrderProjection, 0, len(state.Projection.Orders)),
+		ActiveOrderIDs:     append([]string(nil), state.Projection.ActiveOrderIDs...),
+		ActionNeeded:       append([]string(nil), state.Projection.ActionNeeded...),
+		PendingReviews:     make([]projection.PendingReviewProjection, 0, len(state.Projection.PendingReviews)),
+		PendingReviewCount: state.Projection.PendingReviewCount,
+		Mode:               state.Projection.Mode,
+		ModeEpoch:          state.Projection.ModeEpoch,
+		SchemaVersion:      state.Projection.SchemaVersion,
+		LastEventID:        state.Projection.LastEventID,
+		GeneratedAt:        state.Projection.GeneratedAt,
+	}
+	for _, order := range state.Projection.Orders {
+		stageCopy := make([]projection.StageProjection, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			stageClone := stage
+			if stage.Extra != nil {
+				stageClone.Extra = make(map[string]json.RawMessage, len(stage.Extra))
+				for key, value := range stage.Extra {
+					stageClone.Extra[key] = append(json.RawMessage(nil), value...)
+				}
+			}
+			stageCopy = append(stageCopy, stageClone)
+		}
+		cloned.Projection.Orders = append(cloned.Projection.Orders, projection.OrderProjection{
+			ID:        order.ID,
+			Title:     order.Title,
+			Plan:      append([]string(nil), order.Plan...),
+			Rationale: order.Rationale,
+			Status:    order.Status,
+			Stages:    stageCopy,
+		})
+	}
+	for _, review := range state.Projection.PendingReviews {
+		reviewCopy := review
+		reviewCopy.Plan = append([]string(nil), review.Plan...)
+		cloned.Projection.PendingReviews = append(cloned.Projection.PendingReviews, reviewCopy)
+	}
 	cloned.Orders = make([]Order, 0, len(state.Orders))
 	for _, order := range state.Orders {
 		cloned.Orders = append(cloned.Orders, cloneOrder(order))

@@ -80,6 +80,7 @@ const MaxModeTransitionHistory = 50
 type State struct {
 	Orders          map[string]OrderNode         `json:"orders"`
 	PendingReviews  map[string]PendingReviewNode `json:"pending_reviews"`
+	ActionNeeded    []string                     `json:"action_needed"`
 	Mode            RunMode                      `json:"mode"`
 	ModeEpoch       ModeEpoch                    `json:"mode_epoch"`
 	ModeTransitions []ModeTransitionRecord       `json:"mode_transitions"`
@@ -90,6 +91,10 @@ type State struct {
 // OrderNode represents an order's canonical state.
 type OrderNode struct {
 	OrderID   string               `json:"order_id"`
+	Sequence  int                  `json:"sequence"`
+	Title     string               `json:"title"`
+	Plan      []string             `json:"plan"`
+	Rationale string               `json:"rationale"`
 	Status    OrderLifecycleStatus `json:"status"`
 	Stages    []StageNode          `json:"stages"`
 	CreatedAt time.Time            `json:"created_at"`
@@ -99,13 +104,19 @@ type OrderNode struct {
 
 // StageNode represents a stage within an order.
 type StageNode struct {
-	StageIndex int                  `json:"stage_index"`
-	Status     StageLifecycleStatus `json:"status"`
-	Skill      string               `json:"skill"`
-	Runtime    string               `json:"runtime"`
-	Attempts   []AttemptNode        `json:"attempts"`
-	Merge      *MergeRecoveryNode   `json:"merge,omitempty"`
-	Group      string               `json:"group"`
+	StageIndex  int                        `json:"stage_index"`
+	TaskKey     string                     `json:"task_key"`
+	Prompt      string                     `json:"prompt"`
+	Skill       string                     `json:"skill"`
+	Provider    string                     `json:"provider"`
+	Model       string                     `json:"model"`
+	Runtime     string                     `json:"runtime"`
+	Group       int                        `json:"group"`
+	Status      StageLifecycleStatus       `json:"status"`
+	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
+	ExtraPrompt string                     `json:"extra_prompt"`
+	Attempts    []AttemptNode              `json:"attempts"`
+	Merge       *MergeRecoveryNode         `json:"merge,omitempty"`
 }
 
 // AttemptNode represents a dispatch attempt for a stage.
@@ -201,6 +212,12 @@ func (s State) Clone() State {
 		out.PendingReviews = reviewsCopy
 	}
 
+	if s.ActionNeeded != nil {
+		actionNeededCopy := make([]string, len(s.ActionNeeded))
+		copy(actionNeededCopy, s.ActionNeeded)
+		out.ActionNeeded = actionNeededCopy
+	}
+
 	if s.Orders == nil {
 		out.Orders = nil
 		return out
@@ -222,6 +239,13 @@ func (s State) Clone() State {
 			stagesCopy := make([]StageNode, len(order.Stages))
 			for i := range order.Stages {
 				stageCopy := order.Stages[i]
+				if order.Stages[i].Extra != nil {
+					extraCopy := make(map[string]json.RawMessage, len(order.Stages[i].Extra))
+					for key, value := range order.Stages[i].Extra {
+						extraCopy[key] = append(json.RawMessage(nil), value...)
+					}
+					stageCopy.Extra = extraCopy
+				}
 				if order.Stages[i].Merge != nil {
 					mergeCopy := *order.Stages[i].Merge
 					stageCopy.Merge = &mergeCopy

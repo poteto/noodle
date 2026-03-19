@@ -11,7 +11,6 @@ func (l *Loop) drainMergeResults(ctx context.Context) error {
 	if l.mergeQueue == nil {
 		return nil
 	}
-	deadline := time.Now().Add(20 * time.Millisecond)
 	for {
 		results := l.mergeQueue.DrainResults()
 		for _, result := range results {
@@ -38,9 +37,6 @@ func (l *Loop) drainMergeResults(ctx context.Context) error {
 		}
 
 		if l.mergeQueue.Pending() == 0 && l.mergeQueue.InFlight() == 0 {
-			return nil
-		}
-		if time.Now().After(deadline) {
 			return nil
 		}
 		select {
