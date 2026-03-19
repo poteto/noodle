@@ -38,9 +38,9 @@ Tell the user this task doesn't need a plan and suggest implementing directly wi
 
 ## Step 1 — Load Principles
 
-Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked principle file. These principles govern all plan decisions — refer back to them throughout.
+Read `brain/principles.md`. Follow every `[[wikilink]]` and read each linked principle file. These principles govern all plan decisions — cite them by name in the plan overview and phase files.
 
-**Do NOT skip this. Do NOT use memorized principle content — always read fresh.**
+**Do NOT skip this. Do NOT use memorized principle content — always read fresh.** The self-check in Step 5b will verify citations exist.
 
 ## Step 2 — Define Scope and Constraints
 
@@ -101,6 +101,16 @@ New todo: read `<!-- next-id: N -->`, append `N. [ ] description [[plans/NN-plan
 ### Archiving completed plans
 
 Move directory to `brain/archive/plans/`, update `brain/plans/index.md`, mark todo done via the `todo` skill.
+
+## Step 5b — Self-Check
+
+After writing all plan files, verify these three constraints before proceeding. Fix any violations before moving on.
+
+**Principles cited:** The overview must reference at least 2 brain principles by `[[wikilink]]`. If not, re-read `brain/principles.md` and add the most relevant ones to the overview's design decisions.
+
+**Phase sizing:** Review each phase. If any phase touches >3 files or lists >5 test cases, split it into smaller phases. Count the files listed under "Changes" — if the list exceeds 3, the phase is too big.
+
+**No code in phases:** Phase files must not contain Go/TS/Python code blocks. Name types and functions but do not define them. A phase should read like a brief to a senior engineer, not a diff or implementation spec. If you find code blocks, replace them with prose describing the intended shape.
 
 ## Step 6 — Present and Yield
 
