@@ -56,7 +56,10 @@ func (l *Loop) State() LoopState {
 }
 
 func (l *Loop) buildLoopStateSnapshot() *LoopState {
-	ordersFile, _ := l.currentOrders()
+	ordersFile := OrdersFile{}
+	if l.ordersLoaded {
+		ordersFile = cloneOrdersFile(l.orders)
+	}
 	ordersCopy := make([]Order, 0, len(ordersFile.Orders))
 	for _, order := range ordersFile.Orders {
 		ordersCopy = append(ordersCopy, cloneOrder(order))

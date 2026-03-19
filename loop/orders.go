@@ -285,23 +285,27 @@ func isOrdersNextRejectedError(err error) bool {
 
 // consumeOrdersNext atomically promotes orders-next.json into orders.json.
 //
-// Returns (promoted, emptyPromotion, error). emptyPromotion is true when the
-// incoming orders array was empty — the schedule agent ran but found nothing
-// actionable.
-//
-// Reads and validates orders-next.json, merges into existing orders.json via
-// WriteOrdersAtomic, THEN deletes orders-next.json. If the loop crashes after
-// writing orders.json but before deleting orders-next.json, the next cycle
+// Returns the merged in-memory result; the caller persists it and removes
+// orders-next.json after a successful write for crash safety.
+type mergeResult struct {
+	Orders         OrdersFile
+	Promoted       bool
+	EmptyPromotion bool
+}
+
+// Reads and validates orders-next.json, merges into the provided orders, and
+// returns the merged result. If the loop crashes after writing orders.json but
+// before deleting orders-next.json, the next cycle
 // re-promotes idempotently — duplicate order IDs across the two files are
 // skipped (not rejected), except when replacing a failed order with a new
 // active proposal for explicit restart.
-func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
+func consumeOrdersNext(nextPath string, existing OrdersFile) (mergeResult, error) {
 	nextData, err := os.ReadFile(nextPath)
 	if os.IsNotExist(err) {
-		return false, false, nil
+		return mergeResult{}, nil
 	}
 	if err != nil {
-		return false, false, fmt.Errorf("read orders-next: %w", err)
+		return mergeResult{}, fmt.Errorf("read orders-next: %w", err)
 	}
 
 	compact, err := orderx.ParseCompactOrders(nextData)
@@ -310,22 +314,16 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		// Preserve the file for debugging rather than deleting it.
 		_ = os.Rename(nextPath, nextPath+".bad")
 		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
-		return false, false, ordersNextRejectedError{cause: cause}
+		return mergeResult{}, ordersNextRejectedError{cause: cause}
 	}
 	incoming, err := orderx.ExpandCompactOrders(compact)
 	if err != nil {
 		_ = os.Rename(nextPath, nextPath+".bad")
 		cause := fmt.Errorf("invalid orders-next.json (renamed to .bad): %w", err)
-		return false, false, ordersNextRejectedError{cause: cause}
+		return mergeResult{}, ordersNextRejectedError{cause: cause}
 	}
 
 	emptyPromotion := len(incoming.Orders) == 0
-
-	// Read existing orders.
-	existing, err := orderx.ReadOrders(ordersPath)
-	if err != nil {
-		return false, false, fmt.Errorf("read existing orders: %w", err)
-	}
 
 	// Build index of existing order IDs for dedup/replacement decisions.
 	existingIndex := make(map[string]int, len(existing.Orders))
@@ -354,17 +352,11 @@ func consumeOrdersNext(nextPath, ordersPath string) (bool, bool, error) {
 		existingIndex[order.ID] = len(existing.Orders) - 1
 	}
 
-	// Write merged orders atomically.
-	if err := orderx.WriteOrdersAtomic(ordersPath, existing); err != nil {
-		return false, false, fmt.Errorf("promote orders-next.json: %w", err)
-	}
-
-	// Only delete after successful write — crash safety.
-	if err := os.Remove(nextPath); err != nil && !os.IsNotExist(err) {
-		return true, emptyPromotion, fmt.Errorf("remove orders-next.json: %w", err)
-	}
-
-	return true, emptyPromotion, nil
+	return mergeResult{
+		Orders:         existing,
+		Promoted:       true,
+		EmptyPromotion: emptyPromotion,
+	}, nil
 }
 
 func shouldReplaceFailedOrder(existing Order, incoming Order) bool {

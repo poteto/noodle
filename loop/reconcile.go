@@ -160,8 +160,24 @@ func (l *Loop) ensureScheduleOrderPresent() error {
 	}
 	switch injectedOrderID {
 	case scheduleOrderID:
+		if orders, err := l.currentOrders(); err == nil {
+			for _, order := range orders.Orders {
+				if order.ID == scheduleOrderID {
+					l.trackCanonicalOrder(order)
+					break
+				}
+			}
+		}
 		l.logger.Info("startup injected schedule order")
 	case scheduleBootstrapOrderID:
+		if orders, err := l.currentOrders(); err == nil {
+			for _, order := range orders.Orders {
+				if order.ID == scheduleBootstrapOrderID {
+					l.trackCanonicalOrder(order)
+					break
+				}
+			}
+		}
 		l.logger.Info("startup injected schedule bootstrap order")
 	}
 	return nil
@@ -578,8 +594,8 @@ type adoptedSession struct {
 	status string
 }
 
-func (s *adoptedSession) ID() string          { return s.id }
-func (s *adoptedSession) Status() string      { return s.status }
+func (s *adoptedSession) ID() string     { return s.id }
+func (s *adoptedSession) Status() string { return s.status }
 func (s *adoptedSession) Outcome() loopruntime.SessionOutcome {
 	return loopruntime.SessionOutcome{Status: loopruntime.SessionStatus(s.status)}
 }

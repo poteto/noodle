@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/poteto/noodle/internal/ingest"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -32,39 +31,47 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 // current orders. Returns whether promotion occurred and whether the incoming
 // orders array was empty. Does NOT handle promotion side effects (cooldown,
 // canonical emission, failure classification).
-func (l *Loop) mergeOrdersNext() (promoted bool, emptyPromotion bool, err error) {
-	return consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
+func (l *Loop) mergeOrdersNext() (mergeResult, error) {
+	orders, err := l.currentOrders()
+	if err != nil {
+		return mergeResult{}, err
+	}
+	return consumeOrdersNext(l.deps.OrdersNextFile, orders)
 }
 
 // handlePromotionResult processes the side effects of an orders-next
 // promotion: error classification, cooldown management, and canonical
 // event emission.
-func (l *Loop) handlePromotionResult(promoted, emptyPromotion bool, err error) error {
+func (l *Loop) handlePromotionResult(result mergeResult, err error) error {
 	if err != nil {
 		l.handlePromotionError(err)
 		return nil
 	}
-	if !promoted {
+	if !result.Promoted {
 		return nil
 	}
 
 	l.logger.Info("orders-next promoted")
 	l.schedulePromoted = true
 	l.lastPromotionError = ""
-	if emptyPromotion {
+	if result.EmptyPromotion {
 		l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
 		l.logger.Info("schedule produced no orders, entering cooldown")
 	} else {
 		l.scheduleNothingUntil = time.Time{}
 	}
-	if err := l.loadOrdersState(); err != nil {
-		return err
+	if err := l.writeOrdersState(result.Orders); err != nil {
+		l.handlePromotionError(err)
+		return nil
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
+	if err := os.Remove(l.deps.OrdersNextFile); err != nil && !os.IsNotExist(err) {
+		l.handlePromotionError(fmt.Errorf("remove orders-next.json: %w", err))
+		return nil
 	}
-	l.cancelSupersededActiveCooks(orders)
+	l.cancelSupersededActiveCooks(result.Orders)
+	for _, order := range result.Orders.Orders {
+		l.trackCanonicalOrder(order)
+	}
 	l.emitPromotedOrders()
 	return nil
 }
@@ -155,22 +162,7 @@ func (l *Loop) handlePromotionError(err error) {
 func (l *Loop) emitPromotedOrders() {
 	promotedOrders, _ := l.currentOrders()
 	for _, order := range promotedOrders.Orders {
-		if _, exists := l.canonical.Orders[order.ID]; exists {
-			continue
-		}
-		stages := make([]map[string]any, len(order.Stages))
-		for i, s := range order.Stages {
-			stages[i] = map[string]any{
-				"stage_index": i,
-				"status":      "pending",
-				"skill":       s.Skill,
-				"runtime":     s.Runtime,
-			}
-		}
-		l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
-			"order_id": order.ID,
-			"stages":   stages,
-		})
+		l.trackCanonicalOrder(order)
 	}
 }
 
@@ -209,6 +201,9 @@ func (l *Loop) bootstrapScheduleIfEmpty(brief mise.Brief, orders *OrdersFile) (i
 	if err := l.writeOrdersState(*orders); err != nil {
 		return false, err
 	}
+	if len(orders.Orders) > 0 {
+		l.trackCanonicalOrder(orders.Orders[len(orders.Orders)-1])
+	}
 	l.logger.Info("orders empty, bootstrapping schedule")
 	return false, nil
 }
@@ -225,8 +220,8 @@ func (l *Loop) applyRoutingDefaults(orders *OrdersFile) error {
 }
 
 func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
-	promoted, emptyPromotion, err := l.mergeOrdersNext()
-	if err := l.handlePromotionResult(promoted, emptyPromotion, err); err != nil {
+	result, err := l.mergeOrdersNext()
+	if err := l.handlePromotionResult(result, err); err != nil {
 		return OrdersFile{}, false, err
 	}
 

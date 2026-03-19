@@ -123,6 +123,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		Orders: map[string]state.OrderNode{},
 		Mode:   state.RunMode(cfg.Mode),
 	}
+	loop.effectLedger = reducer.NewEffectLedger()
 	loop.publishState()
 	return loop
 }
@@ -324,6 +325,9 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := l.loadOrdersState(); err != nil {
 		return err
 	}
+	if err := l.loadOrBootstrapCanonical(); err != nil {
+		return err
+	}
 	if err := l.reconcile(ctx); err != nil {
 		return err
 	}
@@ -380,7 +384,7 @@ func (l *Loop) Run(ctx context.Context) error {
 				return nil
 			}
 		case ev := <-watcher.Events:
-			if strings.HasSuffix(ev.Name, "orders.json") || strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
+			if strings.HasSuffix(ev.Name, "orders-next.json") || strings.HasSuffix(ev.Name, "control.ndjson") {
 				if err := l.Cycle(ctx); err != nil {
 					return err
 				}
@@ -397,13 +401,6 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	if l.registryStale.Load() {
 		l.rebuildRegistry()
 		l.registryStale.Store(false)
-	}
-	if err := l.loadOrdersState(); err != nil {
-		return l.classifySystemHard(
-			"cycle.load_orders",
-			formatCycleFailureMessage("cycle.load_orders", "load orders"),
-			err,
-		)
 	}
 
 	// Snapshot capacity before control commands can mutate it.
@@ -577,6 +574,15 @@ func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
 		return
 	}
 	l.canonical = next
+	if l.effectLedger == nil {
+		l.effectLedger = reducer.NewEffectLedger()
+	}
+	for _, effect := range effects {
+		l.effectLedger.Record(effect)
+	}
+	if err := l.persistCanonicalCheckpoint(); err != nil {
+		l.logger.Warn("canonical checkpoint persistence failed", "type", string(eventType), "error", err)
+	}
 	if len(effects) > 0 {
 		l.logger.Debug("canonical effects emitted", "type", string(eventType), "count", len(effects))
 	}

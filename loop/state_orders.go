@@ -84,7 +84,7 @@ func (l *Loop) ensureOrderStageStatus(orderID string, stageIndex int, status ord
 // write-to-temp + rename for atomic replacement.
 func (l *Loop) flushState() error {
 	if l.ordersLoaded {
-		if err := writeOrdersAtomic(l.deps.OrdersFile, l.orders); err != nil {
+		if err := l.writeOrdersState(l.orders); err != nil {
 			return fmt.Errorf("flush orders: %w", err)
 		}
 	}

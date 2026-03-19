@@ -3,6 +3,7 @@ package reducer
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/poteto/noodle/internal/filex"
@@ -41,4 +42,17 @@ func WriteSnapshotAtomic(path string, snapshot DurableSnapshot) error {
 		return fmt.Errorf("persist reducer snapshot: %w", err)
 	}
 	return nil
+}
+
+// ReadSnapshot loads one durable snapshot from disk.
+func ReadSnapshot(path string) (DurableSnapshot, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return DurableSnapshot{}, fmt.Errorf("read reducer snapshot: %w", err)
+	}
+	var snapshot DurableSnapshot
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		return DurableSnapshot{}, fmt.Errorf("decode reducer snapshot: %w", err)
+	}
+	return snapshot, nil
 }
