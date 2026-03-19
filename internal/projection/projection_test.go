@@ -102,6 +102,113 @@ func TestProjectMapsAllLifecycleStatuses(t *testing.T) {
 	}
 }
 
+func TestProjectRepresentativeLifecycleScenarios(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 2, 15, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name  string
+		state state.State
+		want  []OrderProjection
+	}{
+		{
+			name: "running stage remains visible with pending tail",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"pipeline-1": {
+						OrderID:   "pipeline-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageRunning, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "12",
+			},
+			want: []OrderProjection{{
+				ID:     "pipeline-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "running"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+		{
+			name: "merge review remains visible without mutating next stage",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"conflict-1": {
+						OrderID:   "conflict-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageReview, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "18",
+			},
+			want: []OrderProjection{{
+				ID:     "conflict-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "review"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+		{
+			name: "merge completion advances the next stage but keeps order active",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"advance-1": {
+						OrderID:   "advance-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageCompleted, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "24",
+			},
+			want: []OrderProjection{{
+				ID:     "advance-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "completed"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			bundle := mustProject(t, tc.state, mode.ModeState{EffectiveMode: tc.state.Mode, Epoch: tc.state.ModeEpoch})
+			if reflect.DeepEqual(bundle.OrdersProjection, tc.want) {
+				return
+			}
+			t.Fatalf("orders projection mismatch\nactual: %#v\nwant: %#v", bundle.OrdersProjection, tc.want)
+		})
+	}
+}
+
 func TestProjectionHashDeterministicAndChangesWhenStateChanges(t *testing.T) {
 	t.Parallel()
 
