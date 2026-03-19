@@ -33,6 +33,7 @@
 - [[codebase/failed-target-auto-repair-for-requeued-orders]]
 - [[codebase/fixture-directories]]
 - [[codebase/loop-test-overlap-matrix]]
+- [[codebase/merge-recovery-synthetic-cooks-must-preserve-task-key]]
 - [[codebase/orders-lifecycle-defaults-on-promotion]]
 - [[codebase/provider-routing-must-fail-loudly]]
 - [[codebase/projection-owns-snapshot-active-order-ids]]

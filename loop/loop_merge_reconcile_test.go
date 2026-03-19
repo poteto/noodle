@@ -526,6 +526,85 @@ func TestStageCompletedPersistsRemoteMergeRecovery(t *testing.T) {
 	}
 }
 
+func TestHandleAlreadyMergedStagePreservesTaskKeyInStageCompletedEvent(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{Orders: []Order{{
+		ID:     "order-taskkey",
+		Title:  "task key recovery",
+		Status: OrderStatusActive,
+		Stages: []Stage{{
+			TaskKey: "review",
+			Skill:   "execute",
+			Runtime: "process",
+			Status:  StageStatusMerging,
+		}},
+	}}}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+	l.canonical = state.State{
+		Orders: map[string]state.OrderNode{
+			"order-taskkey": {
+				OrderID: "order-taskkey",
+				Status:  state.OrderActive,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					TaskKey:    "review",
+					Skill:      "execute",
+					Runtime:    "process",
+					Status:     state.StageMerging,
+					Merge: &state.MergeRecoveryNode{
+						WorktreeName: "order-taskkey-0-review",
+						Mode:         "local",
+					},
+				}},
+			},
+		},
+		PendingReviews: map[string]state.PendingReviewNode{},
+		Mode:           state.RunModeAuto,
+		SchemaVersion:  statever.Current,
+	}
+	l.canonicalLoaded = true
+
+	md := mergeRecoveryStage{
+		orderID:     "order-taskkey",
+		stage:       l.canonical.Orders["order-taskkey"].Stages[0],
+		checkBranch: "order-taskkey-0-review",
+	}
+	if err := l.handleAlreadyMergedStage(md); err != nil {
+		t.Fatalf("handleAlreadyMergedStage: %v", err)
+	}
+
+	events := readNDJSON(t, filepath.Join(runtimeDir, "loop-events.ndjson"))
+	completed := findEvents(events, LoopEventStageCompleted)
+	if len(completed) != 1 {
+		t.Fatalf("stage.completed events = %d, want 1", len(completed))
+	}
+	var payload StageCompletedPayload
+	if err := json.Unmarshal(completed[0].Payload, &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if payload.TaskKey != "review" {
+		t.Fatalf("payload task_key = %q, want %q", payload.TaskKey, "review")
+	}
+}
+
 func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
