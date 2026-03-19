@@ -17,7 +17,7 @@ func TestPlanDispatches(t *testing.T) {
 		name          string
 		input         state.State
 		maxConcurrent int
-		failedOrders  map[string]bool
+		blockedOrders map[string]string
 		wantCand      []DispatchCandidate
 		wantBlocked   []BlockedCandidate
 		wantRemaining int
@@ -28,11 +28,11 @@ func TestPlanDispatches(t *testing.T) {
 				Orders: map[string]state.OrderNode{
 					"order-a": {
 						OrderID: "order-a",
-						Status:  state.OrderActive,
+						Status:  state.OrderPending,
 						Stages: []state.StageNode{
-							{StageIndex: 0, Status: state.StageCompleted, Group: "g1"},
-							{StageIndex: 1, Status: state.StagePending, Runtime: "", Group: "g2"},
-							{StageIndex: 2, Status: state.StagePending, Runtime: "cursor", Group: "g2"},
+							{StageIndex: 0, Status: state.StageCompleted, Group: 1},
+							{StageIndex: 1, Status: state.StagePending, Runtime: "", Group: 2},
+							{StageIndex: 2, Status: state.StagePending, Runtime: "cursor", Group: 2},
 						},
 					},
 					"order-b": {
@@ -90,19 +90,19 @@ func TestPlanDispatches(t *testing.T) {
 			wantRemaining: 1,
 		},
 		{
-			name: "skips failed orders",
+			name: "blocks failed orders from canonical status",
 			input: state.State{
 				Orders: map[string]state.OrderNode{
 					"order-a": {
 						OrderID: "order-a",
-						Status:  state.OrderActive,
+						Status:  state.OrderFailed,
 						Stages: []state.StageNode{
 							{StageIndex: 0, Status: state.StagePending},
 						},
 					},
 					"order-b": {
 						OrderID: "order-b",
-						Status:  state.OrderActive,
+						Status:  state.OrderPending,
 						Stages: []state.StageNode{
 							{StageIndex: 0, Status: state.StagePending},
 						},
@@ -110,7 +110,6 @@ func TestPlanDispatches(t *testing.T) {
 				},
 			},
 			maxConcurrent: 2,
-			failedOrders:  map[string]bool{"order-a": true},
 			wantCand: []DispatchCandidate{
 				{OrderID: "order-b", StageIndex: 0, Runtime: "process"},
 			},
@@ -125,7 +124,7 @@ func TestPlanDispatches(t *testing.T) {
 				Orders: map[string]state.OrderNode{
 					"order-a": {
 						OrderID: "order-a",
-						Status:  state.OrderActive,
+						Status:  state.OrderPending,
 						Stages: []state.StageNode{
 							{StageIndex: 0, Status: state.StagePending},
 						},
@@ -208,15 +207,45 @@ func TestPlanDispatches(t *testing.T) {
 				},
 			},
 			maxConcurrent: 2,
-			failedOrders:  map[string]bool{"order-b": true},
+			blockedOrders: map[string]string{"order-b": string(blockedReasonTicketed)},
 			wantCand: []DispatchCandidate{
 				{OrderID: "order-d", StageIndex: 0, Runtime: "process"},
 			},
 			wantBlocked: []BlockedCandidate{
 				{OrderID: "order-a", StageIndex: 1, Reason: "busy"},
-				{OrderID: "order-b", StageIndex: 0, Reason: "failed"},
+				{OrderID: "order-b", StageIndex: 0, Reason: "ticketed"},
 				{OrderID: "order-c", StageIndex: -1, Reason: "no pending stage"},
 				{OrderID: "order-e", StageIndex: 0, Reason: "capacity"},
+			},
+			wantRemaining: 0,
+		},
+		{
+			name: "applies external blocked reasons before capacity",
+			input: state.State{
+				Orders: map[string]state.OrderNode{
+					"order-a": {
+						OrderID: "order-a",
+						Status:  state.OrderPending,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StagePending},
+						},
+					},
+					"order-b": {
+						OrderID: "order-b",
+						Status:  state.OrderPending,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StagePending},
+						},
+					},
+				},
+			},
+			maxConcurrent: 1,
+			blockedOrders: map[string]string{"order-a": string(blockedReasonReview)},
+			wantCand: []DispatchCandidate{
+				{OrderID: "order-b", StageIndex: 0, Runtime: "process"},
+			},
+			wantBlocked: []BlockedCandidate{
+				{OrderID: "order-a", StageIndex: 0, Reason: "pending_review"},
 			},
 			wantRemaining: 0,
 		},
@@ -232,7 +261,7 @@ func TestPlanDispatches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := PlanDispatches(tt.input, tt.maxConcurrent, tt.failedOrders)
+			got := PlanDispatches(tt.input, tt.maxConcurrent, tt.blockedOrders)
 			assertCandidates(t, got.Candidates, tt.wantCand)
 			if !reflect.DeepEqual(got.Blocked, tt.wantBlocked) {
 				t.Fatalf("blocked mismatch:\n got=%+v\nwant=%+v", got.Blocked, tt.wantBlocked)
@@ -565,9 +594,9 @@ func TestEdgeCases(t *testing.T) {
 					OrderID: "grouped",
 					Status:  state.OrderActive,
 					Stages: []state.StageNode{
-						{StageIndex: 0, Status: state.StageCompleted, Group: "1"},
-						{StageIndex: 1, Status: state.StagePending, Group: "2"},
-						{StageIndex: 2, Status: state.StagePending, Group: "2"},
+						{StageIndex: 0, Status: state.StageCompleted, Group: 1},
+						{StageIndex: 1, Status: state.StagePending, Group: 2},
+						{StageIndex: 2, Status: state.StagePending, Group: 2},
 					},
 				},
 			},

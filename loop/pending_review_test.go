@@ -19,7 +19,9 @@ func TestParkPendingReviewWritesFile(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	if err := writeOrdersAtomic(ordersPath, OrdersFile{}); err != nil {
+	if err := writeOrdersAtomic(ordersPath, OrdersFile{Orders: []Order{
+		{ID: "42", Status: OrderStatusActive, Stages: []Stage{{TaskKey: "execute", Skill: "execute", Provider: "claude", Model: "claude-opus-4-6", Status: StageStatusActive}}},
+	}}); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
 
@@ -202,7 +204,10 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	})
 	l.cooks.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
-	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxConcurrency)
+	plan, err := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxConcurrency)
+	if err != nil {
+		t.Fatalf("planCycleSpawns: %v", err)
+	}
 	if len(plan) != 1 || plan[0].OrderID != "43" {
 		t.Fatalf("spawn plan = %#v, want only 43", plan)
 	}

@@ -1,9 +1,12 @@
 package loop
 
 import (
+	"encoding/json"
 	"sort"
 	"time"
 
+	"github.com/poteto/noodle/internal/mode"
+	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
@@ -25,21 +28,15 @@ type CookSummary struct {
 }
 
 type LoopState struct {
-	UpdatedAt          time.Time           `json:"updated_at"`
-	Orders             []Order             `json:"orders"`
-	ActiveCooks        []CookSummary       `json:"active_cooks"`
-	PendingReviews     []PendingReviewItem `json:"pending_reviews"`
-	PendingReviewCount int                 `json:"pending_review_count"`
-	RecentHistory      []mise.HistoryItem  `json:"recent_history"`
-	Status             string              `json:"status"`
-	ActiveSummary      mise.ActiveSummary  `json:"active_summary"`
-	ActiveOrderIDs     []string            `json:"active_order_ids"`
-	TotalCostUSD       float64             `json:"total_cost_usd"`
-	MaxConcurrency     int                 `json:"max_concurrency"`
-	Mode               string              `json:"mode"`
-	ModeEpoch          uint64              `json:"mode_epoch"`
-	ActionNeeded       []string            `json:"action_needed"`
-	Warnings           []string            `json:"warnings"`
+	UpdatedAt          time.Time               `json:"updated_at"`
+	Projection         projection.SnapshotView `json:"projection"`
+	ActiveCooks        []CookSummary           `json:"active_cooks"`
+	RecentHistory      []mise.HistoryItem      `json:"recent_history"`
+	Status             string                  `json:"status"`
+	ActiveSummary      mise.ActiveSummary      `json:"active_summary"`
+	TotalCostUSD       float64                 `json:"total_cost_usd"`
+	MaxConcurrency     int                     `json:"max_concurrency"`
+	Warnings           []string                `json:"warnings"`
 }
 
 func (l *Loop) publishState() {
@@ -56,10 +53,12 @@ func (l *Loop) State() LoopState {
 }
 
 func (l *Loop) buildLoopStateSnapshot() *LoopState {
-	ordersFile, _ := l.currentOrders()
-	ordersCopy := make([]Order, 0, len(ordersFile.Orders))
-	for _, order := range ordersFile.Orders {
-		ordersCopy = append(ordersCopy, cloneOrder(order))
+	projected := projection.SnapshotView{}
+	if bundle, err := projection.Project(l.canonical, mode.ModeState{
+		EffectiveMode: l.canonical.Mode,
+		Epoch:         l.canonical.ModeEpoch,
+	}); err == nil {
+		projected = bundle.SnapshotView
 	}
 	activeCooks := make([]CookSummary, 0, len(l.cooks.activeCooksByOrder)+1)
 	totalCost := 0.0
@@ -73,52 +72,15 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		return activeCooks[i].SessionID < activeCooks[j].SessionID
 	})
 
-	pendingReviews := make([]PendingReviewItem, 0, len(l.cooks.pendingReview))
-	for _, pending := range l.cooks.pendingReview {
-		if pending == nil {
-			continue
-		}
-		pendingReviews = append(pendingReviews, PendingReviewItem{
-			OrderID:      pending.orderID,
-			StageIndex:   pending.stageIndex,
-			TaskKey:      pending.stage.TaskKey,
-			Prompt:       pending.stage.Prompt,
-			Provider:     pending.stage.Provider,
-			Model:        pending.stage.Model,
-			Runtime:      pending.stage.Runtime,
-			Skill:        pending.stage.Skill,
-			Plan:         append([]string(nil), pending.plan...),
-			WorktreeName: pending.worktreeName,
-			WorktreePath: pending.worktreePath,
-			SessionID:    pending.sessionID,
-			Reason:       pending.reason,
-		})
-	}
-	sort.Slice(pendingReviews, func(i, j int) bool {
-		return pendingReviews[i].OrderID < pendingReviews[j].OrderID
-	})
-
-	// Read mode from canonical state (V2 source of truth).
-	mode := string(l.canonical.Mode)
-	if mode == "" {
-		mode = l.config.Mode
-	}
-
 	return &LoopState{
 		UpdatedAt:          l.deps.Now().UTC(),
-		Orders:             ordersCopy,
+		Projection:         projected,
 		ActiveCooks:        activeCooks,
-		PendingReviews:     pendingReviews,
-		PendingReviewCount: len(pendingReviews),
 		RecentHistory:      l.snapshotRecentHistory(),
 		Status:             string(l.state),
 		ActiveSummary:      l.snapshotActiveSummary(),
-		ActiveOrderIDs:     activeOrderIDs(ordersFile),
 		TotalCostUSD:       totalCost,
 		MaxConcurrency:     l.config.Concurrency.MaxConcurrency,
-		Mode:               mode,
-		ModeEpoch:          uint64(l.canonical.ModeEpoch),
-		ActionNeeded:       append([]string(nil), ordersFile.ActionNeeded...),
 		Warnings:           append([]string(nil), l.lastMiseWarnings...),
 	}
 }
@@ -151,19 +113,46 @@ func (l *Loop) appendActiveCookSummary(activeCooks *[]CookSummary, totalCost *fl
 
 func cloneLoopState(state LoopState) LoopState {
 	cloned := state
-	cloned.Orders = make([]Order, 0, len(state.Orders))
-	for _, order := range state.Orders {
-		cloned.Orders = append(cloned.Orders, cloneOrder(order))
+	cloned.Projection = projection.SnapshotView{
+		Orders:             make([]projection.OrderProjection, 0, len(state.Projection.Orders)),
+		ActiveOrderIDs:     append([]string(nil), state.Projection.ActiveOrderIDs...),
+		ActionNeeded:       append([]string(nil), state.Projection.ActionNeeded...),
+		PendingReviews:     make([]projection.PendingReviewProjection, 0, len(state.Projection.PendingReviews)),
+		PendingReviewCount: state.Projection.PendingReviewCount,
+		Mode:               state.Projection.Mode,
+		ModeEpoch:          state.Projection.ModeEpoch,
+		SchemaVersion:      state.Projection.SchemaVersion,
+		LastEventID:        state.Projection.LastEventID,
+		GeneratedAt:        state.Projection.GeneratedAt,
+	}
+	for _, order := range state.Projection.Orders {
+		stageCopy := make([]projection.StageProjection, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			stageClone := stage
+			if stage.Extra != nil {
+				stageClone.Extra = make(map[string]json.RawMessage, len(stage.Extra))
+				for key, value := range stage.Extra {
+					stageClone.Extra[key] = append(json.RawMessage(nil), value...)
+				}
+			}
+			stageCopy = append(stageCopy, stageClone)
+		}
+		cloned.Projection.Orders = append(cloned.Projection.Orders, projection.OrderProjection{
+			ID:        order.ID,
+			Title:     order.Title,
+			Plan:      append([]string(nil), order.Plan...),
+			Rationale: order.Rationale,
+			Status:    order.Status,
+			Stages:    stageCopy,
+		})
+	}
+	for _, review := range state.Projection.PendingReviews {
+		reviewCopy := review
+		reviewCopy.Plan = append([]string(nil), review.Plan...)
+		cloned.Projection.PendingReviews = append(cloned.Projection.PendingReviews, reviewCopy)
 	}
 	cloned.ActiveCooks = append([]CookSummary(nil), state.ActiveCooks...)
-	cloned.PendingReviews = make([]PendingReviewItem, 0, len(state.PendingReviews))
-	for _, item := range state.PendingReviews {
-		item.Plan = append([]string(nil), item.Plan...)
-		cloned.PendingReviews = append(cloned.PendingReviews, item)
-	}
 	cloned.RecentHistory = append([]mise.HistoryItem(nil), state.RecentHistory...)
-	cloned.ActiveOrderIDs = append([]string(nil), state.ActiveOrderIDs...)
-	cloned.ActionNeeded = append([]string(nil), state.ActionNeeded...)
 	cloned.Warnings = append([]string(nil), state.Warnings...)
 	cloned.ActiveSummary = mise.ActiveSummary{
 		Total:     state.ActiveSummary.Total,

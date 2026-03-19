@@ -173,6 +173,20 @@ func (l *Loop) controlRequeue(orderID string) error {
 	}); err != nil {
 		return err
 	}
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+	for _, order := range orders.Orders {
+		if order.ID != orderID {
+			continue
+		}
+		l.syncCanonicalOrderFromLegacy(order)
+		if err := l.persistCanonicalCheckpoint(); err != nil {
+			return err
+		}
+		break
+	}
 	_ = l.events.Emit(LoopEventOrderRequeued, OrderRequeuedPayload{
 		OrderID: orderID,
 	})

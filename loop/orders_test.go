@@ -26,6 +26,28 @@ func writeCompactOrders(t *testing.T, path string, compact orderx.CompactOrdersF
 	}
 }
 
+func consumeOrdersNextAndPersist(t *testing.T, nextPath, ordersPath string) mergeResult {
+	t.Helper()
+
+	existing, err := orderx.ReadOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read existing orders: %v", err)
+	}
+	result, err := consumeOrdersNext(nextPath, existing)
+	if err != nil {
+		t.Fatalf("consumeOrdersNext: %v", err)
+	}
+	if result.Promoted {
+		if err := orderx.WriteOrdersAtomic(ordersPath, result.Orders); err != nil {
+			t.Fatalf("write promoted orders: %v", err)
+		}
+		if err := os.Remove(nextPath); err != nil && !os.IsNotExist(err) {
+			t.Fatalf("remove orders-next.json: %v", err)
+		}
+	}
+	return result
+}
+
 func TestReadWriteOrdersRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "orders.json")
@@ -99,11 +121,8 @@ func TestConsumeOrdersNextPromotesFile(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -154,11 +173,8 @@ func TestConsumeOrdersNextDefaultsMissingLifecycleStatuses(t *testing.T) {
 		t.Fatalf("write orders-next: %v", err)
 	}
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -182,14 +198,13 @@ func TestConsumeOrdersNextDefaultsMissingLifecycleStatuses(t *testing.T) {
 
 func TestConsumeOrdersNextMissingReturnsNoop(t *testing.T) {
 	dir := t.TempDir()
-	ordersPath := filepath.Join(dir, "orders.json")
 	nextPath := filepath.Join(dir, "orders-next.json")
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
+	result, err := consumeOrdersNext(nextPath, orderx.OrdersFile{})
 	if err != nil {
 		t.Fatalf("consumeOrdersNext: %v", err)
 	}
-	if promoted {
+	if result.Promoted {
 		t.Fatal("expected promoted=false when orders-next missing")
 	}
 }
@@ -218,11 +233,8 @@ func TestConsumeOrdersNextDuplicateIDsSkipped(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -275,11 +287,8 @@ func TestConsumeOrdersNextDuplicateFailedIDReplaced(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -344,11 +353,8 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsPendingTail(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -402,11 +408,8 @@ func TestConsumeOrdersNextDuplicateActiveIDAmendsCurrentStage(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 
@@ -454,11 +457,8 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 	})
 
 	// Re-run: should be idempotent.
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true (file existed)")
 	}
 
@@ -486,18 +486,17 @@ func TestConsumeOrdersNextCrashSafety(t *testing.T) {
 
 func TestConsumeOrdersNextInvalidNextJSON(t *testing.T) {
 	dir := t.TempDir()
-	ordersPath := filepath.Join(dir, "orders.json")
 	nextPath := filepath.Join(dir, "orders-next.json")
 
 	if err := os.WriteFile(nextPath, []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
+	result, err := consumeOrdersNext(nextPath, orderx.OrdersFile{})
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
-	if promoted {
+	if result.Promoted {
 		t.Fatal("expected promoted=false on error")
 	}
 	if !strings.Contains(err.Error(), "invalid orders-next.json") {
@@ -522,11 +521,8 @@ func TestConsumeOrdersNextNoExistingOrders(t *testing.T) {
 		},
 	})
 
-	promoted, _, err := consumeOrdersNext(nextPath, ordersPath)
-	if err != nil {
-		t.Fatalf("consumeOrdersNext: %v", err)
-	}
-	if !promoted {
+	result := consumeOrdersNextAndPersist(t, nextPath, ordersPath)
+	if !result.Promoted {
 		t.Fatal("expected promoted=true")
 	}
 

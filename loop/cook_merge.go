@@ -45,14 +45,6 @@ func (l *Loop) mergeCookWorktree(ctx context.Context, cook *cookHandle) error {
 	return nil
 }
 
-// Merge metadata Extra keys.
-const (
-	mergeExtraWorktree   = "merge_worktree"
-	mergeExtraBranch     = "merge_branch"
-	mergeExtraGeneration = "merge_generation"
-	mergeExtraMode       = "merge_mode"
-)
-
 // resolveMergeMode determines whether the merge uses a local worktree or a
 // remote branch push. Returns the mode ("local" or "remote") and the branch
 // name (empty for local merges).
@@ -64,38 +56,22 @@ func (l *Loop) resolveMergeMode(cook *cookHandle) (mode string, branch string) {
 	return "local", ""
 }
 
-// persistMergeMetadata writes merge-related fields into the stage's Extra map
-// and sets the status to "merging" atomically. On crash recovery, reconcile
-// reads these fields to decide how to resume or fail the merge.
-func (l *Loop) persistMergeMetadata(cook *cookHandle, mode string, branch string) error {
-	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		for i := range orders.Orders {
-			if orders.Orders[i].ID != cook.orderID {
-				continue
-			}
-			stages := &orders.Orders[i].Stages
-			if cook.stageIndex < 0 || cook.stageIndex >= len(*stages) {
-				return false, nil
-			}
-			s := &(*stages)[cook.stageIndex]
-			if s.Extra == nil {
-				s.Extra = make(map[string]json.RawMessage)
-			}
-			s.Extra[mergeExtraWorktree] = jsonQuote(cook.worktreeName)
-			s.Extra[mergeExtraBranch] = jsonQuote(branch)
-			s.Extra[mergeExtraGeneration] = jsonQuote(fmt.Sprintf("%d", cook.generation))
-			s.Extra[mergeExtraMode] = jsonQuote(mode)
-			s.Status = StageStatusMerging
-			return true, nil
-		}
-		return true, nil
-	})
-}
-
-// jsonQuote returns a JSON-encoded string value as json.RawMessage.
-func jsonQuote(s string) json.RawMessage {
-	b, _ := json.Marshal(s)
-	return json.RawMessage(b)
+func (l *Loop) mergeLifecyclePayload(cook *cookHandle, mergeable bool) map[string]any {
+	payload := map[string]any{
+		"order_id":      cook.orderID,
+		"stage_index":   cook.stageIndex,
+		"worktree_name": cook.worktreeName,
+		"mergeable":     mergeable,
+	}
+	if !mergeable {
+		return payload
+	}
+	mergeMode, mergeBranch := l.resolveMergeMode(cook)
+	payload["merge_mode"] = mergeMode
+	if strings.TrimSpace(mergeBranch) != "" {
+		payload["merge_branch"] = mergeBranch
+	}
+	return payload
 }
 
 func (l *Loop) worktreeHasChanges(cook *cookHandle) (bool, error) {
@@ -103,26 +79,7 @@ func (l *Loop) worktreeHasChanges(cook *cookHandle) (bool, error) {
 		return false, nil
 	}
 
-	// Path 1: crash recovery from persisted merge metadata.
-	orders, err := l.currentOrders()
-	if err != nil {
-		return false, err
-	}
-	for _, order := range orders.Orders {
-		if order.ID != cook.orderID {
-			continue
-		}
-		if cook.stageIndex < 0 || cook.stageIndex >= len(order.Stages) {
-			break
-		}
-		stage := order.Stages[cook.stageIndex]
-		if stage.Status == StageStatusMerging && strings.TrimSpace(extraString(stage.Extra, mergeExtraBranch)) != "" {
-			return true, nil
-		}
-		break
-	}
-
-	// Path 2: runtime sync metadata (remote branch push).
+	// Path 1: runtime sync metadata (remote branch push).
 	sessionID := ""
 	if cook.session != nil {
 		sessionID = cook.session.ID()
@@ -135,7 +92,7 @@ func (l *Loop) worktreeHasChanges(cook *cookHandle) (bool, error) {
 		return true, nil
 	}
 
-	// Path 3: local worktree branch status.
+	// Path 2: local worktree branch status.
 	worktreeName := strings.TrimSpace(cook.worktreeName)
 	if worktreeName == "" {
 		return false, nil
@@ -189,12 +146,13 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 			StageIndex:   cook.stageIndex,
 			WorktreeName: cook.worktreeName,
 		})
-		// Emit V2 canonical state event for merge failure.
-		l.emitEvent(ingest.EventMergeFailed, map[string]any{
+		if err := l.emitEventChecked(ingest.EventMergeFailed, map[string]any{
 			"order_id":    cook.orderID,
 			"stage_index": cook.stageIndex,
 			"error":       reason,
-		})
+		}); err != nil {
+			return err
+		}
 
 		// Park for pending review so the chef can decide.
 		if parkErr := l.parkPendingReview(cook, reason); parkErr != nil {
@@ -210,23 +168,26 @@ func (l *Loop) handleMergeError(cook *cookHandle, err error) error {
 	schedulerHint := reason + ". Use Skill(schedule) and create a new order to fix this issue before retrying."
 	l.logger.Warn("merge failed, forwarding to scheduler", "order", cook.orderID, "reason", reason)
 	l.forwardToScheduler(cook, "merge_failed", schedulerHint, nil)
-
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, err := failStage(*orders, cook.orderID, reason)
-		if err != nil {
-			return false, err
-		}
-		*orders = updated
-		return true, nil
+	if err := l.ensureCanonicalOrderFromOrders(cook.orderID); err != nil {
+		return err
+	}
+	if err := l.emitEventChecked(ingest.EventStageFailed, map[string]any{
+		"order_id":      cook.orderID,
+		"stage_index":   cook.stageIndex,
+		"attempt_id":    dispatchAttemptID(cook.orderID, cook.stageIndex, cook.attempt),
+		"session_id":    sessionIDPtr(cook),
+		"worktree_name": cook.worktreeName,
+		"error":         reason,
 	}); err != nil {
 		return err
 	}
+	if err := l.mirrorLegacyOrderFromCanonical(cook.orderID); err != nil {
+		return err
+	}
+	if err := l.syncPendingReviewProjection(); err != nil {
+		return err
+	}
 	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
-	l.emitEvent(ingest.EventMergeFailed, map[string]any{
-		"order_id":    cook.orderID,
-		"stage_index": cook.stageIndex,
-		"error":       reason,
-	})
 	l.classifyOrderHard(
 		"cycle.merge_terminal",
 		OrderFailureClassStageTerminal,

@@ -123,6 +123,7 @@ func New(projectDir, noodleBin string, cfg config.Config, deps Dependencies) *Lo
 		Orders: map[string]state.OrderNode{},
 		Mode:   state.RunMode(cfg.Mode),
 	}
+	loop.effectLedger = reducer.NewEffectLedger()
 	loop.publishState()
 	return loop
 }
@@ -324,6 +325,9 @@ func (l *Loop) Run(ctx context.Context) error {
 	if err := l.loadOrdersState(); err != nil {
 		return err
 	}
+	if err := l.loadOrBootstrapCanonical(); err != nil {
+		return err
+	}
 	if err := l.reconcile(ctx); err != nil {
 		return err
 	}
@@ -454,12 +458,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		l.rebuildRegistry()
 		l.registryStale.Store(false)
 	}
-	if err := l.loadOrdersState(); err != nil {
-		return l.classifySystemHard(
-			"cycle.load_orders",
-			formatCycleFailureMessage("cycle.load_orders", "load orders"),
-			err,
-		)
+	if !l.canonicalLoaded {
+		if err := l.loadOrBootstrapCanonical(); err != nil {
+			return l.classifySystemHard(
+				"cycle.load_canonical",
+				formatCycleFailureMessage("cycle.load_canonical", "load canonical state"),
+				err,
+			)
+		}
 	}
 
 	// Snapshot capacity before control commands can mutate it.
@@ -524,7 +530,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return nil
 	}
 
-	candidates := l.planCycleSpawns(orders, brief, cycleCapacity)
+	candidates, err := l.planCycleSpawns(orders, brief, cycleCapacity)
+	if err != nil {
+		return l.classifySystemHard(
+			"cycle.plan_dispatch",
+			formatCycleFailureMessage("cycle.plan_dispatch", "plan dispatch"),
+			err,
+		)
+	}
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
 		return l.classifySystemHard(
 			"cycle.spawn",
@@ -614,11 +627,16 @@ func (l *Loop) shutdownAndDrain() {
 // reducer. Effects are logged but not executed — the loop already handles
 // execution via its existing paths.
 func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
+	if err := l.emitEventChecked(eventType, payload); err != nil {
+		l.logger.Warn("canonical event apply failed", "type", string(eventType), "error", err)
+	}
+}
+
+func (l *Loop) emitEventChecked(eventType ingest.EventType, payload any) error {
 	id := l.eventCounter.Add(1)
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		l.logger.Warn("canonical event payload encoding failed", "type", string(eventType), "error", err)
-		return
+		return fmt.Errorf("canonical event payload encoding failed: %w", err)
 	}
 	evt := ingest.StateEvent{
 		ID:        ingest.EventID(id),
@@ -629,11 +647,20 @@ func (l *Loop) emitEvent(eventType ingest.EventType, payload any) {
 	}
 	next, effects, err := reducer.Reduce(l.canonical, evt)
 	if err != nil {
-		l.logger.Warn("canonical reducer failed", "type", string(eventType), "error", err)
-		return
+		return fmt.Errorf("canonical reducer failed: %w", err)
 	}
 	l.canonical = next
+	if l.effectLedger == nil {
+		l.effectLedger = reducer.NewEffectLedger()
+	}
+	for _, effect := range effects {
+		l.effectLedger.Record(effect)
+	}
+	if err := l.persistCanonicalCheckpoint(); err != nil {
+		return fmt.Errorf("canonical checkpoint persistence failed: %w", err)
+	}
 	if len(effects) > 0 {
 		l.logger.Debug("canonical effects emitted", "type", string(eventType), "count", len(effects))
 	}
+	return nil
 }

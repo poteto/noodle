@@ -18,6 +18,9 @@ func (l *Loop) controlMerge(orderID string) error {
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
+	if err := l.ensureCanonicalOrderFromOrders(orderID); err != nil {
+		return err
+	}
 
 	// Merge the worktree.
 	cook := &cookHandle{
@@ -27,45 +30,36 @@ func (l *Loop) controlMerge(orderID string) error {
 		worktreePath: pending.worktreePath,
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
 	}
-	// Determine actual order status for advanceAndPersist.
-	orders, err := l.currentOrders()
-	if err != nil {
-		return fmt.Errorf("merge: read orders: %w", err)
-	}
-	for _, o := range orders.Orders {
-		if o.ID == orderID {
-			cook.orderStatus = o.Status
-			break
-		}
-	}
-
 	canMerge, err := l.worktreeHasChanges(cook)
 	if err != nil {
 		return fmt.Errorf("merge check: %w", err)
 	}
-	l.emitEvent(ingest.EventStageCompleted, map[string]any{
+	if err := l.emitEventChecked(ingest.EventStageReviewApproved, map[string]any{
 		"order_id":    cook.orderID,
 		"stage_index": cook.stageIndex,
-		"mergeable":   canMerge,
-	})
+		"reason":      "approved by user",
+	}); err != nil {
+		return err
+	}
+	if err := l.emitEventChecked(ingest.EventStageCompleted, l.mergeLifecyclePayload(cook, canMerge)); err != nil {
+		return err
+	}
 
 	if !canMerge {
 		if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 			return err
 		}
 	} else {
-		mergeMode, mergeBranch := l.resolveMergeMode(cook)
-		if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
-			return err
-		}
 		if l.mergeQueue == nil {
 			if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 				return err
 			}
-			l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+			if err := l.emitEventChecked(ingest.EventMergeCompleted, map[string]any{
 				"order_id":    cook.orderID,
 				"stage_index": cook.stageIndex,
-			})
+			}); err != nil {
+				return err
+			}
 			if err := l.advanceAndPersist(context.Background(), cook); err != nil {
 				return err
 			}
@@ -77,8 +71,7 @@ func (l *Loop) controlMerge(orderID string) error {
 			}
 		}
 	}
-	delete(l.cooks.pendingReview, orderID)
-	return l.writePendingReview()
+	return l.syncPendingReviewProjection()
 }
 
 func (l *Loop) controlReject(orderID string) error {
@@ -90,20 +83,23 @@ func (l *Loop) controlReject(orderID string) error {
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
 	}
+	if err := l.ensureCanonicalOrderFromOrders(orderID); err != nil {
+		return err
+	}
 	if strings.TrimSpace(pending.worktreeName) != "" {
 		_ = l.deps.Worktree.Cleanup(pending.worktreeName, worktree.CleanupOpts{Force: true})
 	}
-	// Cancel and remove the order directly.
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, err := cancelOrder(*orders, orderID)
-		if err != nil {
-			// Order may already be gone — not fatal.
-			l.logger.Warn("controlReject: cancelOrder", "error", err)
-			return false, nil
-		}
-		*orders = updated
-		return true, nil
+	if err := l.emitEventChecked(ingest.EventStageReviewRejected, map[string]any{
+		"order_id":    orderID,
+		"stage_index": pending.stageIndex,
+		"reason":      "rejected by user",
 	}); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(orderID); err != nil {
+		return err
+	}
+	if err := l.syncPendingReviewProjection(); err != nil {
 		return err
 	}
 	mistake := newCookMistakeEnvelope(cookRejectReasonForTask(pending.stage.TaskKey), orderID, pending.stageIndex)
@@ -121,8 +117,7 @@ func (l *Loop) controlReject(orderID string) error {
 		mistake.CookReason,
 	)
 	l.forwardToScheduler(cook, "review_rejected", "rejected by user", &mistake)
-	delete(l.cooks.pendingReview, orderID)
-	return l.writePendingReview()
+	return nil
 }
 
 func (l *Loop) controlRequestChanges(orderID, feedback string) error {
@@ -133,6 +128,9 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 	pending, ok := l.cooks.pendingReview[orderID]
 	if !ok {
 		return fmt.Errorf("no pending review for %q", orderID)
+	}
+	if err := l.ensureCanonicalOrderFromOrders(orderID); err != nil {
+		return err
 	}
 	if l.atMaxConcurrency() {
 		l.logger.Info("request-changes deferred: at max concurrency", "order", orderID)
@@ -145,14 +143,17 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 		reason += ": " + trimmedFeedback
 	}
 	mistake := newCookMistakeEnvelope(CookMistakeReasonRequestChanges, orderID, pending.stageIndex)
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, err := failStage(*orders, orderID, reason)
-		if err != nil {
-			return false, err
-		}
-		*orders = updated
-		return true, nil
+	if err := l.emitEventChecked(ingest.EventStageReviewChangesRequested, map[string]any{
+		"order_id":    orderID,
+		"stage_index": pending.stageIndex,
+		"reason":      reason,
 	}); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(orderID); err != nil {
+		return err
+	}
+	if err := l.syncPendingReviewProjection(); err != nil {
 		return err
 	}
 	cook := &cookHandle{
@@ -173,7 +174,5 @@ func (l *Loop) controlRequestChanges(orderID, feedback string) error {
 
 	// Clean up the worktree for the failed stage.
 	l.cleanupCookWorktree(cook)
-
-	delete(l.cooks.pendingReview, orderID)
-	return l.writePendingReview()
+	return nil
 }

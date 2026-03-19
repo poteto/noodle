@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -215,6 +218,84 @@ func TestResilienceVerification(t *testing.T) {
 		}
 		if deterministicMatchPercent != 100 {
 			t.Fatalf("replay determinism dropped below full match: percent=%d hash_a=%s hash_b=%s", deterministicMatchPercent, hashA, hashB)
+		}
+	})
+
+	t.Run("TestRepresentativeLifecycleParity", func(t *testing.T) {
+		baseAt := time.Date(2026, 3, 2, 9, 0, 0, 0, time.UTC)
+		cases := []parityCase{
+			{
+				name: "merge conflict parks order in review",
+				initial: state.State{
+					Orders:        map[string]state.OrderNode{},
+					Mode:          state.RunModeAuto,
+					SchemaVersion: statever.Current,
+				},
+				events: []ingest.StateEvent{
+					makeSchedulePromotedEvent(1, "conflict-1", []state.StageNode{{Skill: "execute", Runtime: "process", Status: state.StagePending}}, baseAt),
+					makeEvent(2, ingest.EventDispatchRequested, map[string]any{"order_id": "conflict-1", "stage_index": 0, "attempt_id": "attempt-conflict"}, baseAt.Add(10*time.Millisecond)),
+					makeEvent(3, ingest.EventDispatchCompleted, map[string]any{"order_id": "conflict-1", "stage_index": 0, "attempt_id": "attempt-conflict", "session_id": "sess-conflict", "worktree_name": "wt-conflict"}, baseAt.Add(20*time.Millisecond)),
+					makeEvent(4, ingest.EventStageCompleted, map[string]any{"order_id": "conflict-1", "stage_index": 0, "attempt_id": "attempt-conflict", "mergeable": true}, baseAt.Add(30*time.Millisecond)),
+					makeEvent(5, ingest.EventMergeFailed, map[string]any{"order_id": "conflict-1", "stage_index": 0}, baseAt.Add(40*time.Millisecond)),
+				},
+				cuts: []int{1, 3, 4},
+			},
+			{
+				name: "adopted session restores running attempt",
+				initial: state.State{
+					Orders:        map[string]state.OrderNode{},
+					Mode:          state.RunModeAuto,
+					SchemaVersion: statever.Current,
+				},
+				events: []ingest.StateEvent{
+					makeSchedulePromotedEvent(10, "adopted-1", []state.StageNode{{Skill: "execute", Runtime: "process", Status: state.StagePending}}, baseAt.Add(100*time.Millisecond)),
+					makeEvent(11, ingest.EventSessionAdopted, map[string]any{"order_id": "adopted-1", "stage_index": 0, "attempt_id": "adopted-sess-1", "session_id": "sess-adopted"}, baseAt.Add(110*time.Millisecond)),
+				},
+				cuts: []int{1},
+			},
+			{
+				name: "merge completion advances next stage",
+				initial: state.State{
+					Orders:        map[string]state.OrderNode{},
+					Mode:          state.RunModeAuto,
+					SchemaVersion: statever.Current,
+				},
+				events: []ingest.StateEvent{
+					makeSchedulePromotedEvent(20, "pipeline-1", []state.StageNode{
+						{Skill: "execute", Runtime: "process", Status: state.StagePending},
+						{Skill: "reflect", Runtime: "process", Status: state.StagePending},
+					}, baseAt.Add(200*time.Millisecond)),
+					makeEvent(21, ingest.EventDispatchRequested, map[string]any{"order_id": "pipeline-1", "stage_index": 0, "attempt_id": "attempt-pipeline-0"}, baseAt.Add(210*time.Millisecond)),
+					makeEvent(22, ingest.EventDispatchCompleted, map[string]any{"order_id": "pipeline-1", "stage_index": 0, "attempt_id": "attempt-pipeline-0", "session_id": "sess-pipeline-0", "worktree_name": "wt-pipeline-0"}, baseAt.Add(220*time.Millisecond)),
+					makeEvent(23, ingest.EventStageCompleted, map[string]any{"order_id": "pipeline-1", "stage_index": 0, "attempt_id": "attempt-pipeline-0", "mergeable": true}, baseAt.Add(230*time.Millisecond)),
+					makeEvent(24, ingest.EventMergeCompleted, map[string]any{"order_id": "pipeline-1", "stage_index": 0}, baseAt.Add(240*time.Millisecond)),
+				},
+				cuts: []int{2, 4},
+			},
+		}
+
+		for _, tc := range cases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				fullRun := applyEvents(t, tc.initial, tc.events, nil)
+				want := parityResultFromRun(t, fullRun)
+
+				for _, cut := range tc.cuts {
+					cut := cut
+					t.Run(fmt.Sprintf("cut-%d", cut), func(t *testing.T) {
+						beforeCrash := applyEvents(t, tc.initial, tc.events[:cut], nil)
+						snapshot := reducer.BuildSnapshot(beforeCrash.state, beforeCrash.ledger, tc.events[cut-1].Timestamp.Add(time.Second))
+						snapshot = writeReadSnapshot(t, snapshot)
+
+						recovered := applyEvents(t, snapshot.State, tc.events[cut:], ledgerFromRecords(snapshot.EffectLedger))
+						got := parityResultFromRun(t, recovered)
+						if reflect.DeepEqual(got, want) {
+							return
+						}
+						t.Fatalf("parity mismatch after restart\nfull: %#v\nrecovered: %#v", want, got)
+					})
+				}
+			})
 		}
 	})
 
@@ -820,6 +901,27 @@ type applyRun struct {
 	dispatchEffectIDs []string
 }
 
+type parityCase struct {
+	name    string
+	initial state.State
+	events  []ingest.StateEvent
+	cuts    []int
+}
+
+type parityResult struct {
+	ProjectionHash projection.ProjectionHash
+	LastEventID    string
+	Orders         []parityOrder
+	InFlight       []string
+}
+
+type parityOrder struct {
+	ID       string
+	Status   string
+	Stages   []string
+	Sessions []string
+}
+
 func applyEvents(t *testing.T, initial state.State, events []ingest.StateEvent, existingLedger *reducer.EffectLedger) applyRun {
 	t.Helper()
 	ledger := existingLedger
@@ -861,7 +963,7 @@ func makeState(orderCount, stageCount int, at time.Time) state.State {
 				Status:     state.StagePending,
 				Skill:      fmt.Sprintf("skill-%d", stageIndex),
 				Runtime:    "process",
-				Group:      "main",
+				Group:      0,
 			})
 		}
 
@@ -879,6 +981,13 @@ func makeState(orderCount, stageCount int, at time.Time) state.State {
 		Mode:          state.RunModeAuto,
 		SchemaVersion: statever.Current,
 	}
+}
+
+func makeSchedulePromotedEvent(id ingest.EventID, orderID string, stages []state.StageNode, at time.Time) ingest.StateEvent {
+	return makeEvent(id, ingest.EventSchedulePromoted, map[string]any{
+		"order_id": orderID,
+		"stages":   stages,
+	}, at)
 }
 
 func lifecycleEvents(orderCount, stageCount int, startID ingest.EventID, at time.Time) []ingest.StateEvent {
@@ -1062,6 +1171,58 @@ func mustStateSignature(s state.State) string {
 		panic(fmt.Sprintf("state signature encoding failed: %v", err))
 	}
 	return string(data)
+}
+
+func parityResultFromRun(t *testing.T, run applyRun) parityResult {
+	t.Helper()
+
+	bundle := mustProject(t, run.state, mode.ModeState{
+		EffectiveMode: run.state.Mode,
+		Epoch:         run.state.ModeEpoch,
+	})
+
+	orderIDs := make([]string, 0, len(run.state.Orders))
+	for orderID := range run.state.Orders {
+		orderIDs = append(orderIDs, orderID)
+	}
+	sort.Strings(orderIDs)
+
+	orders := make([]parityOrder, 0, len(orderIDs))
+	for _, orderID := range orderIDs {
+		order := run.state.Orders[orderID]
+		stageStatuses := make([]string, 0, len(order.Stages))
+		sessions := make([]string, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			stageStatuses = append(stageStatuses, string(stage.Status))
+			sessionID := ""
+			for _, attempt := range stage.Attempts {
+				if strings.TrimSpace(attempt.SessionID) != "" {
+					sessionID = attempt.SessionID
+				}
+			}
+			sessions = append(sessions, sessionID)
+		}
+		orders = append(orders, parityOrder{
+			ID:       orderID,
+			Status:   string(order.Status),
+			Stages:   stageStatuses,
+			Sessions: sessions,
+		})
+	}
+
+	inFlight := run.ledger.InFlight()
+	inFlightEffects := make([]string, 0, len(inFlight))
+	for _, record := range inFlight {
+		inFlightEffects = append(inFlightEffects, fmt.Sprintf("%s:%s", record.Effect.Type, record.EffectID))
+	}
+	sort.Strings(inFlightEffects)
+
+	return parityResult{
+		ProjectionHash: bundle.Hash,
+		LastEventID:    run.state.LastEventID,
+		Orders:         orders,
+		InFlight:       inFlightEffects,
+	}
 }
 
 func maxInt(a, b int) int {

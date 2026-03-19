@@ -3,18 +3,30 @@ package loop
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
+	if !l.canonicalLoaded {
+		if err := l.loadOrBootstrapCanonical(); err != nil {
+			return l.classifySystemHard(
+				"reconcile.load_canonical",
+				"reconcile load canonical state failed",
+				err,
+			)
+		}
+	}
 	if err := l.loadPendingReview(); err != nil {
 		return l.classifySystemHard(
 			"reconcile.load_pending_review",
@@ -48,10 +60,10 @@ func (l *Loop) reconcile(ctx context.Context) error {
 			err,
 		)
 	}
-	if err := l.reconcileStaleActiveStages(); err != nil {
+	if err := l.reconcileStaleDispatchStages(); err != nil {
 		return l.classifySystemHard(
-			"reconcile.stale_active",
-			"reconcile stale active stages failed",
+			"reconcile.stale_dispatch",
+			"reconcile stale dispatch stages failed",
 			err,
 		)
 	}
@@ -160,38 +172,95 @@ func (l *Loop) ensureScheduleOrderPresent() error {
 	}
 	switch injectedOrderID {
 	case scheduleOrderID:
+		if orders, err := l.currentOrders(); err == nil {
+			for _, order := range orders.Orders {
+				if order.ID == scheduleOrderID {
+					l.trackCanonicalOrder(order)
+					break
+				}
+			}
+		}
 		l.logger.Info("startup injected schedule order")
 	case scheduleBootstrapOrderID:
+		if orders, err := l.currentOrders(); err == nil {
+			for _, order := range orders.Orders {
+				if order.ID == scheduleBootstrapOrderID {
+					l.trackCanonicalOrder(order)
+					break
+				}
+			}
+		}
 		l.logger.Info("startup injected schedule bootstrap order")
 	}
 	return nil
 }
 
-func (l *Loop) reconcileStaleActiveStages() error {
-	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		changed := false
-		for oi := range orders.Orders {
-			order := &orders.Orders[oi]
-			if order.Status != OrderStatusActive {
+func (l *Loop) reconcileStaleDispatchStages() error {
+	changed := false
+	now := timeNowUTC(l.deps.Now)
+	for orderID, order := range l.canonical.Orders {
+		if order.Status.IsTerminal() {
+			continue
+		}
+		if _, adopted := l.cooks.adoptedTargets[orderID]; adopted {
+			continue
+		}
+		orderChanged := false
+		for i := range order.Stages {
+			stage := order.Stages[i]
+			if stage.Status != state.StageDispatching && stage.Status != state.StageRunning {
 				continue
 			}
+			stage.Status = state.StagePending
+			if len(stage.Attempts) > 0 {
+				last := len(stage.Attempts) - 1
+				if stage.Attempts[last].Status == state.AttemptLaunching || stage.Attempts[last].Status == state.AttemptRunning {
+					stage.Attempts[last].Status = state.AttemptCancelled
+					stage.Attempts[last].CompletedAt = now
+					if strings.TrimSpace(stage.Attempts[last].Error) == "" {
+						stage.Attempts[last].Error = "restart cleared stale dispatch"
+					}
+				}
+			}
+			order.Stages[i] = stage
+			orderChanged = true
+			changed = true
+			if strings.EqualFold(strings.TrimSpace(orderID), scheduleOrderID) {
+				l.logger.Info("startup reset stale canonical schedule stage", "order", orderID, "stage", i)
+			} else {
+				l.logger.Info("startup reset stale canonical dispatch stage", "order", orderID, "stage", i)
+			}
+		}
+		if !orderChanged {
+			continue
+		}
+		order.Status = state.OrderPending
+		order.UpdatedAt = now
+		l.canonical.Orders[orderID] = order
+	}
+	if !changed {
+		return nil
+	}
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		ordersChanged := false
+		for oi := range orders.Orders {
+			order := &orders.Orders[oi]
 			if _, adopted := l.cooks.adoptedTargets[order.ID]; adopted {
 				continue
 			}
 			for si := range order.Stages {
-				if order.Stages[si].Status == StageStatusActive {
-					order.Stages[si].Status = StageStatusPending
-					changed = true
-					if isScheduleOrder(*order) {
-						l.logger.Info("startup reset stale active schedule stage", "order", order.ID, "stage", si)
-					} else {
-						l.logger.Info("startup reset stale active stage", "order", order.ID, "stage", si)
-					}
+				if order.Stages[si].Status != StageStatusActive {
+					continue
 				}
+				order.Stages[si].Status = StageStatusPending
+				ordersChanged = true
 			}
 		}
-		return changed, nil
-	})
+		return ordersChanged, nil
+	}); err != nil {
+		return err
+	}
+	return l.persistCanonicalCheckpoint()
 }
 
 // reconcileFailedOrders removes failed orders from orders.json and stores
@@ -253,6 +322,13 @@ func (l *Loop) reconcileFailedOrders() error {
 	return nil
 }
 
+func timeNowUTC(nowFn func() time.Time) time.Time {
+	if nowFn != nil {
+		return nowFn().UTC()
+	}
+	return time.Now().UTC()
+}
+
 // reconciledFailure holds a summary of a failed order archived during startup.
 type reconciledFailure struct {
 	OrderID string
@@ -261,20 +337,17 @@ type reconciledFailure struct {
 	Reason  string
 }
 
-// mergeMetadata holds the fields extracted from a merging stage's Extra map.
-type mergeMetadata struct {
+// mergeRecoveryStage holds the canonical recovery data for a stage stuck in
+// merging during a crash window.
+type mergeRecoveryStage struct {
 	orderID     string
-	stageIdx    int
-	stage       Stage
-	order       Order
-	wtName      string
-	mode        string
-	branch      string
+	order       state.OrderNode
+	stage       state.StageNode
 	checkBranch string
 }
 
 // reconcileMergingStages recovers stages stuck in "merging" status after a
-// crash. For each merging stage it reads the merge metadata from Extra and
+// crash. For each merging stage it reads the canonical merge recovery record and
 // decides:
 //   - metadata missing -> fail the stage
 //   - live session adopted -> keep as "active"
@@ -294,22 +367,31 @@ func (l *Loop) reconcileMergingStages() error {
 	return nil
 }
 
-// collectMergingStages reads orders and returns metadata for every stage in
-// "merging" status.
-func (l *Loop) collectMergingStages() ([]mergeMetadata, error) {
-	orders, err := l.currentOrders()
-	if err != nil {
-		return nil, err
-	}
-	var result []mergeMetadata
-	for _, order := range orders.Orders {
-		if order.Status != OrderStatusActive {
+// collectMergingStages reads canonical state and returns recovery data for
+// every stage in "merging" status.
+func (l *Loop) collectMergingStages() ([]mergeRecoveryStage, error) {
+	var result []mergeRecoveryStage
+	for orderID, order := range l.canonical.Orders {
+		if order.Status != state.OrderActive {
 			continue
 		}
-		for si, s := range order.Stages {
-			if s.Status == StageStatusMerging {
-				result = append(result, extractMergeMetadata(order, si, s))
+		for _, stage := range order.Stages {
+			if stage.Status != state.StageMerging {
+				continue
 			}
+			checkBranch := ""
+			if stage.Merge != nil {
+				checkBranch = strings.TrimSpace(stage.Merge.WorktreeName)
+				if strings.EqualFold(strings.TrimSpace(stage.Merge.Mode), "remote") && strings.TrimSpace(stage.Merge.Branch) != "" {
+					checkBranch = strings.TrimSpace(stage.Merge.Branch)
+				}
+			}
+			result = append(result, mergeRecoveryStage{
+				orderID:     orderID,
+				order:       order,
+				stage:       stage,
+				checkBranch: checkBranch,
+			})
 		}
 	}
 	return result, nil
@@ -317,8 +399,8 @@ func (l *Loop) collectMergingStages() ([]mergeMetadata, error) {
 
 // reconcileOneMergingStage applies the correct recovery action for a single
 // merging stage based on its metadata and branch state.
-func (l *Loop) reconcileOneMergingStage(md mergeMetadata) error {
-	if md.wtName == "" && md.branch == "" {
+func (l *Loop) reconcileOneMergingStage(md mergeRecoveryStage) error {
+	if md.stage.Merge == nil || strings.TrimSpace(md.stage.Merge.WorktreeName) == "" {
 		return l.failMissingMetadataStage(md)
 	}
 	if _, adopted := l.cooks.adoptedTargets[md.orderID]; adopted {
@@ -333,148 +415,142 @@ func (l *Loop) reconcileOneMergingStage(md mergeMetadata) error {
 	return l.failMissingBranchStage(md)
 }
 
-// extractMergeMetadata reads merge-related fields from a stage's Extra map
-// and derives the branch to check.
-func extractMergeMetadata(order Order, stageIdx int, stage Stage) mergeMetadata {
-	wtName := extraString(stage.Extra, mergeExtraWorktree)
-	mode := extraString(stage.Extra, mergeExtraMode)
-	branch := extraString(stage.Extra, mergeExtraBranch)
-
-	checkBranch := wtName
-	if mode == "remote" && branch != "" {
-		checkBranch = branch
-	}
-
-	return mergeMetadata{
-		orderID:     order.ID,
-		stageIdx:    stageIdx,
-		stage:       stage,
-		order:       order,
-		wtName:      wtName,
-		mode:        mode,
-		branch:      branch,
-		checkBranch: checkBranch,
-	}
-}
-
 // failMissingMetadataStage fails a merging stage that has no merge metadata.
-func (l *Loop) failMissingMetadataStage(md mergeMetadata) error {
+func (l *Loop) failMissingMetadataStage(md mergeRecoveryStage) error {
 	l.logger.Warn("merging stage missing metadata, failing",
-		"order", md.orderID, "stage", md.stageIdx)
-	return l.failMergingStage(md.orderID, md.stageIdx,
+		"order", md.orderID, "stage", md.stage.StageIndex)
+	return l.failMergingStage(md.orderID, md.stage.StageIndex,
 		"merging stage missing merge metadata after crash")
 }
 
 // handleAlreadyAdoptedStage resets a merging stage back to active when a live
 // session was recovered for the order.
-func (l *Loop) handleAlreadyAdoptedStage(md mergeMetadata) error {
+func (l *Loop) handleAlreadyAdoptedStage(md mergeRecoveryStage) error {
 	l.logger.Info("merging stage has live session, resetting to active",
-		"order", md.orderID, "stage", md.stageIdx)
-	return l.persistOrderStageStatus(md.orderID, md.stageIdx, StageStatusActive)
+		"order", md.orderID, "stage", md.stage.StageIndex)
+	order := l.canonical.Orders[md.orderID]
+	stage := order.Stages[md.stage.StageIndex]
+	stage.Status = state.StageRunning
+	stage.Merge = nil
+	order.Stages[md.stage.StageIndex] = stage
+	order.Status = state.OrderActive
+	order.UpdatedAt = timeNowUTC(l.deps.Now)
+	l.canonical.Orders[md.orderID] = order
+	if err := l.persistCanonicalCheckpoint(); err != nil {
+		return err
+	}
+	return l.mirrorLegacyOrderFromCanonical(md.orderID)
 }
 
 // handleAlreadyMergedStage advances a merging stage whose branch is already
 // an ancestor of HEAD (merge completed before crash).
-func (l *Loop) handleAlreadyMergedStage(md mergeMetadata) error {
+func (l *Loop) handleAlreadyMergedStage(md mergeRecoveryStage) error {
 	l.logger.Info("merging stage branch already merged, advancing",
-		"order", md.orderID, "stage", md.stageIdx, "branch", md.checkBranch)
+		"order", md.orderID, "stage", md.stage.StageIndex, "branch", md.checkBranch)
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{
-			orderID:    md.orderID,
-			stageIndex: md.stageIdx,
-			stage:      md.stage,
-			plan:       md.order.Plan,
+				orderID:    md.orderID,
+				stageIndex: md.stage.StageIndex,
+				stage: Stage{
+					TaskKey: md.stage.TaskKey,
+					Skill:   md.stage.Skill,
+					Runtime: md.stage.Runtime,
+				},
 		},
-		orderStatus: md.order.Status,
+		worktreeName: md.stage.Merge.WorktreeName,
+		worktreePath: l.worktreePath(md.stage.Merge.WorktreeName),
 	}
-	l.emitEvent(ingest.EventStageCompleted, map[string]any{
+	if err := l.emitEventChecked(ingest.EventMergeCompleted, map[string]any{
 		"order_id":    md.orderID,
-		"stage_index": md.stageIdx,
-		"mergeable":   true,
-	})
-	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
-		"order_id":    md.orderID,
-		"stage_index": md.stageIdx,
-	})
+		"stage_index": md.stage.StageIndex,
+	}); err != nil {
+		return err
+	}
 	return l.advanceAndPersist(context.Background(), cook)
 }
 
 // requeueStaleMerge re-enqueues a merge for a stage whose branch still exists
 // but was not merged before the crash.
-func (l *Loop) requeueStaleMerge(md mergeMetadata) error {
+func (l *Loop) requeueStaleMerge(md mergeRecoveryStage) error {
 	l.logger.Info("merging stage branch exists, re-enqueueing merge",
-		"order", md.orderID, "stage", md.stageIdx, "branch", md.checkBranch)
+		"order", md.orderID, "stage", md.stage.StageIndex, "branch", md.checkBranch)
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{
-			orderID:    md.orderID,
-			stageIndex: md.stageIdx,
-			stage:      md.stage,
-			plan:       md.order.Plan,
+				orderID:    md.orderID,
+				stageIndex: md.stage.StageIndex,
+				stage: Stage{
+					TaskKey: md.stage.TaskKey,
+					Skill:   md.stage.Skill,
+					Runtime: md.stage.Runtime,
+				},
 		},
-		orderStatus:  md.order.Status,
-		worktreeName: md.wtName,
-		worktreePath: l.worktreePath(md.wtName),
+		worktreeName: md.stage.Merge.WorktreeName,
+		worktreePath: l.worktreePath(md.stage.Merge.WorktreeName),
 		session:      &adoptedSession{id: "crash-recovery", status: "completed"},
 	}
-	l.emitEvent(ingest.EventStageCompleted, map[string]any{
-		"order_id":    md.orderID,
-		"stage_index": md.stageIdx,
-		"mergeable":   true,
-	})
 	if l.mergeQueue != nil {
 		l.mergeQueue.Enqueue(MergeRequest{Cook: cook})
 		return nil
 	}
 	if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
-		l.logger.Warn("crash recovery merge failed, failing stage",
-			"order", md.orderID, "err", err)
-		return l.failMergingStage(md.orderID, md.stageIdx,
-			"crash recovery merge failed: "+err.Error())
+		if conflictErr := l.handleMergeConflict(cook, err); conflictErr != nil {
+			return conflictErr
+		}
+		return nil
 	}
-	l.emitEvent(ingest.EventMergeCompleted, map[string]any{
+	if err := l.emitEventChecked(ingest.EventMergeCompleted, map[string]any{
 		"order_id":    md.orderID,
-		"stage_index": md.stageIdx,
-	})
+		"stage_index": md.stage.StageIndex,
+	}); err != nil {
+		return err
+	}
 	return l.advanceAndPersist(context.Background(), cook)
 }
 
 // failMissingBranchStage fails a merging stage whose branch no longer exists
 // and has no live session.
-func (l *Loop) failMissingBranchStage(md mergeMetadata) error {
+func (l *Loop) failMissingBranchStage(md mergeRecoveryStage) error {
 	l.logger.Warn("merging stage branch not found, failing",
-		"order", md.orderID, "stage", md.stageIdx, "branch", md.checkBranch)
-	return l.failMergingStage(md.orderID, md.stageIdx,
+		"order", md.orderID, "stage", md.stage.StageIndex, "branch", md.checkBranch)
+	return l.failMergingStage(md.orderID, md.stage.StageIndex,
 		"merge branch "+md.checkBranch+" not found after crash")
 }
 
-// failMergingStage transitions a stuck merging stage to failed via failStage.
+// failMergingStage transitions a stuck merging stage to failed through the
+// canonical reducer and mirrors the legacy projection afterward.
 func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) error {
-	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		updated, err := failStage(*orders, orderID, reason)
-		if err != nil {
-			return false, &mergingStageMarkError{cause: err}
-		}
-		*orders = updated
-		return true, nil
-	}); err != nil {
-		if markErr, ok := err.(*mergingStageMarkError); ok {
-			return l.classifySystemHard(
-				"reconcile.fail_merging_stage_mark",
-				"reconcile mark merging stage failed",
-				markErr.cause,
-			)
-		}
-		return l.classifySystemHard(
-			"reconcile.fail_merging_stage_persist",
-			"reconcile persist merging-stage failure",
-			err,
-		)
+	order, ok := l.canonical.Orders[orderID]
+	if !ok {
+		return fmt.Errorf("canonical order %q missing for merging-stage failure", orderID)
 	}
+	if stageIdx < 0 || stageIdx >= len(order.Stages) {
+		return fmt.Errorf("canonical stage %d missing for order %q", stageIdx, orderID)
+	}
+	stage := order.Stages[stageIdx]
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{
-			orderID:    orderID,
-			stageIndex: stageIdx,
+				orderID:    orderID,
+				stageIndex: stageIdx,
+				stage: Stage{
+					TaskKey: stage.TaskKey,
+					Skill:   stage.Skill,
+					Runtime: stage.Runtime,
+				},
 		},
+		worktreeName: latestStageMergeWorktree(stage),
+	}
+	if err := l.emitEventChecked(ingest.EventStageFailed, map[string]any{
+		"order_id":      orderID,
+		"stage_index":   stageIdx,
+		"attempt_id":    latestAttemptID(stage),
+		"session_id":    latestSessionID(stage),
+		"worktree_name": latestStageWorktree(stage),
+		"error":         reason,
+	}); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(orderID); err != nil {
+		return err
 	}
 	l.recordStageFailure(cook, reason, OrderFailureClassStageTerminal, nil)
 	l.classifyOrderHard(
@@ -486,14 +562,6 @@ func (l *Loop) failMergingStage(orderID string, stageIdx int, reason string) err
 		nil,
 	)
 	return nil
-}
-
-type mergingStageMarkError struct {
-	cause error
-}
-
-func (e *mergingStageMarkError) Error() string {
-	return e.cause.Error()
 }
 
 // extraString reads a string value from a stage's Extra map.
@@ -510,6 +578,43 @@ func extraString(extra map[string]json.RawMessage, key string) string {
 		return ""
 	}
 	return s
+}
+
+func latestAttemptID(stage state.StageNode) string {
+	for i := len(stage.Attempts) - 1; i >= 0; i-- {
+		if id := strings.TrimSpace(stage.Attempts[i].AttemptID); id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+func latestSessionID(stage state.StageNode) string {
+	for i := len(stage.Attempts) - 1; i >= 0; i-- {
+		if id := strings.TrimSpace(stage.Attempts[i].SessionID); id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+func latestStageWorktree(stage state.StageNode) string {
+	if stage.Merge != nil && strings.TrimSpace(stage.Merge.WorktreeName) != "" {
+		return strings.TrimSpace(stage.Merge.WorktreeName)
+	}
+	for i := len(stage.Attempts) - 1; i >= 0; i-- {
+		if name := strings.TrimSpace(stage.Attempts[i].WorktreeName); name != "" {
+			return name
+		}
+	}
+	return ""
+}
+
+func latestStageMergeWorktree(stage state.StageNode) string {
+	if stage.Merge == nil {
+		return latestStageWorktree(stage)
+	}
+	return strings.TrimSpace(stage.Merge.WorktreeName)
 }
 
 // isBranchMerged checks if a branch is an ancestor of HEAD (already merged).
@@ -578,8 +683,8 @@ type adoptedSession struct {
 	status string
 }
 
-func (s *adoptedSession) ID() string          { return s.id }
-func (s *adoptedSession) Status() string      { return s.status }
+func (s *adoptedSession) ID() string     { return s.id }
+func (s *adoptedSession) Status() string { return s.status }
 func (s *adoptedSession) Outcome() loopruntime.SessionOutcome {
 	return loopruntime.SessionOutcome{Status: loopruntime.SessionStatus(s.status)}
 }

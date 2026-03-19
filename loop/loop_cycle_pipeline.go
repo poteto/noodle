@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/dispatch"
 	"github.com/poteto/noodle/mise"
 )
 
@@ -32,44 +32,59 @@ func (l *Loop) buildCycleBrief(ctx context.Context) (mise.Brief, []string, bool,
 // current orders. Returns whether promotion occurred and whether the incoming
 // orders array was empty. Does NOT handle promotion side effects (cooldown,
 // canonical emission, failure classification).
-func (l *Loop) mergeOrdersNext() (promoted bool, emptyPromotion bool, err error) {
-	return consumeOrdersNext(l.deps.OrdersNextFile, l.deps.OrdersFile)
+func (l *Loop) mergeOrdersNext() (mergeResult, error) {
+	orders, err := l.currentOrders()
+	if err != nil {
+		return mergeResult{}, err
+	}
+	return consumeOrdersNext(l.deps.OrdersNextFile, orders)
 }
 
 // handlePromotionResult processes the side effects of an orders-next
 // promotion: error classification, cooldown management, and canonical
 // event emission.
-func (l *Loop) handlePromotionResult(promoted, emptyPromotion bool, err error) error {
+func (l *Loop) handlePromotionResult(result mergeResult, err error) error {
 	if err != nil {
 		l.handlePromotionError(err)
 		return nil
 	}
-	if !promoted {
+	if !result.Promoted {
 		return nil
 	}
 
 	l.logger.Info("orders-next promoted")
 	l.schedulePromoted = true
 	l.lastPromotionError = ""
-	if emptyPromotion {
+	if result.EmptyPromotion {
 		l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
 		l.logger.Info("schedule produced no orders, entering cooldown")
 	} else {
 		l.scheduleNothingUntil = time.Time{}
 	}
-	if err := l.loadOrdersState(); err != nil {
-		return err
+	if err := l.writeOrdersState(result.Orders); err != nil {
+		l.handlePromotionError(err)
+		return nil
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return err
+	if err := os.Remove(l.deps.OrdersNextFile); err != nil && !os.IsNotExist(err) {
+		l.handlePromotionError(fmt.Errorf("remove orders-next.json: %w", err))
+		return nil
 	}
-	l.cancelSupersededActiveCooks(orders)
+	if err := l.cancelSupersededActiveCooks(result.Orders); err != nil {
+		l.handlePromotionError(err)
+		return nil
+	}
+	for _, order := range result.Orders.Orders {
+		l.syncCanonicalOrderFromLegacy(order)
+	}
+	if err := l.persistCanonicalCheckpoint(); err != nil {
+		l.handlePromotionError(err)
+		return nil
+	}
 	l.emitPromotedOrders()
 	return nil
 }
 
-func (l *Loop) cancelSupersededActiveCooks(orders OrdersFile) {
+func (l *Loop) cancelSupersededActiveCooks(orders OrdersFile) error {
 	orderByID := make(map[string]Order, len(orders.Orders))
 	for _, order := range orders.Orders {
 		orderByID[order.ID] = order
@@ -78,25 +93,32 @@ func (l *Loop) cancelSupersededActiveCooks(orders OrdersFile) {
 	for orderID, cook := range l.cooks.activeCooksByOrder {
 		order, ok := orderByID[orderID]
 		if !ok {
-			l.cancelSupersededCook(orderID, cook)
+			if err := l.cancelSupersededCook(orderID, cook, false); err != nil {
+				return err
+			}
 			continue
 		}
 		_, currentStage := activeStageForOrder(order)
 		if currentStage == nil {
-			l.cancelSupersededCook(orderID, cook)
+			if err := l.cancelSupersededCook(orderID, cook, false); err != nil {
+				return err
+			}
 			continue
 		}
 		if sameStageDefinition(cook.stage, *currentStage) {
 			continue
 		}
-		l.cancelSupersededCook(orderID, cook)
+		if err := l.cancelSupersededCook(orderID, cook, true); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (l *Loop) cancelSupersededCook(orderID string, cook *cookHandle) {
+func (l *Loop) cancelSupersededCook(orderID string, cook *cookHandle, resume bool) error {
 	if cook == nil || cook.session == nil {
 		delete(l.cooks.activeCooksByOrder, orderID)
-		return
+		return nil
 	}
 	l.logger.Info("order amendment superseded active stage, cancelling cook",
 		"order", orderID,
@@ -114,7 +136,27 @@ func (l *Loop) cancelSupersededCook(orderID string, cook *cookHandle) {
 		CompletedAt: l.deps.Now(),
 	})
 	delete(l.cooks.activeCooksByOrder, orderID)
+	if resume {
+		if err := l.ensureOrderStageStatus(orderID, cook.stageIndex, StageStatusPending); err != nil {
+			return err
+		}
+		orders, err := l.currentOrders()
+		if err != nil {
+			return err
+		}
+		for _, order := range orders.Orders {
+			if order.ID != orderID {
+				continue
+			}
+			l.syncCanonicalOrderFromLegacy(order)
+			if err := l.persistCanonicalCheckpoint(); err != nil {
+				return err
+			}
+			break
+		}
+	}
 	l.cleanupCookWorktree(cook)
+	return nil
 }
 
 // handlePromotionError classifies and emits events for a failed orders-next
@@ -155,22 +197,7 @@ func (l *Loop) handlePromotionError(err error) {
 func (l *Loop) emitPromotedOrders() {
 	promotedOrders, _ := l.currentOrders()
 	for _, order := range promotedOrders.Orders {
-		if _, exists := l.canonical.Orders[order.ID]; exists {
-			continue
-		}
-		stages := make([]map[string]any, len(order.Stages))
-		for i, s := range order.Stages {
-			stages[i] = map[string]any{
-				"stage_index": i,
-				"status":      "pending",
-				"skill":       s.Skill,
-				"runtime":     s.Runtime,
-			}
-		}
-		l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
-			"order_id": order.ID,
-			"stages":   stages,
-		})
+		l.trackCanonicalOrder(order)
 	}
 }
 
@@ -209,6 +236,9 @@ func (l *Loop) bootstrapScheduleIfEmpty(brief mise.Brief, orders *OrdersFile) (i
 	if err := l.writeOrdersState(*orders); err != nil {
 		return false, err
 	}
+	if len(orders.Orders) > 0 {
+		l.trackCanonicalOrder(orders.Orders[len(orders.Orders)-1])
+	}
 	l.logger.Info("orders empty, bootstrapping schedule")
 	return false, nil
 }
@@ -225,8 +255,8 @@ func (l *Loop) applyRoutingDefaults(orders *OrdersFile) error {
 }
 
 func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
-	promoted, emptyPromotion, err := l.mergeOrdersNext()
-	if err := l.handlePromotionResult(promoted, emptyPromotion, err); err != nil {
+	result, err := l.mergeOrdersNext()
+	if err := l.handlePromotionResult(result, err); err != nil {
 		return OrdersFile{}, false, err
 	}
 
@@ -345,53 +375,52 @@ func (l *Loop) emitSyncWarnings(warnings []string) {
 	})
 }
 
-func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) []dispatchCandidate {
+func (l *Loop) planCycleSpawns(orders OrdersFile, brief mise.Brief, capacity int) ([]dispatchCandidate, error) {
+	if !l.canonicalLoaded {
+		if err := l.loadOrBootstrapCanonical(); err != nil {
+			return nil, err
+		}
+	}
 	if l.mergeQueue != nil {
 		if l.mergeQueue.Pending()+l.mergeQueue.InFlight() > mergeBackpressureLimit {
-			return nil
+			return nil, nil
 		}
 	}
 
-	orderBusyTargets := busyTargets(orders)
-	busySet := make(map[string]struct{}, len(orderBusyTargets)+len(l.cooks.activeCooksByOrder)+len(l.cooks.adoptedTargets))
-	for targetID, busy := range orderBusyTargets {
-		if busy {
-			busySet[targetID] = struct{}{}
-		}
+	blockedOrders := make(map[string]string, len(l.cooks.pendingReview)+len(brief.Tickets))
+	for targetID := range activeTicketTargetSet(brief) {
+		blockedOrders[targetID] = "ticketed"
 	}
-
-	adoptedSet := make(map[string]struct{}, len(l.cooks.adoptedTargets))
-	for targetID := range l.cooks.adoptedTargets {
-		adoptedSet[targetID] = struct{}{}
-	}
-
 	for targetID := range l.cooks.pendingReview {
-		busySet[targetID] = struct{}{}
+		blockedOrders[targetID] = "pending_review"
 	}
 
-	for targetID := range l.cooks.activeCooksByOrder {
-		busySet[targetID] = struct{}{}
-	}
-	for targetID := range l.cooks.adoptedTargets {
-		busySet[targetID] = struct{}{}
+	plan := dispatch.PlanDispatches(l.canonical, capacity, blockedOrders)
+	if len(plan.Candidates) == 0 {
+		return nil, nil
 	}
 
-	candidates := dispatchableStages(orders, busySet, adoptedSet, activeTicketTargetSet(brief))
+	orderMap := make(map[string]Order, len(orders.Orders))
+	for _, order := range orders.Orders {
+		orderMap[order.ID] = order
+	}
 
-	// Limit to capacity.
-	limit := capacity
-	if limit <= 0 {
-		limit = 1
+	candidates := make([]dispatchCandidate, 0, len(plan.Candidates))
+	for _, candidate := range plan.Candidates {
+		order, ok := orderMap[candidate.OrderID]
+		if !ok {
+			return nil, fmt.Errorf("canonical dispatch candidate %q missing from orders state", candidate.OrderID)
+		}
+		if candidate.StageIndex < 0 || candidate.StageIndex >= len(order.Stages) {
+			return nil, fmt.Errorf("canonical dispatch candidate %q stage %d missing from orders state", candidate.OrderID, candidate.StageIndex)
+		}
+		candidates = append(candidates, dispatchCandidate{
+			OrderID:    candidate.OrderID,
+			StageIndex: candidate.StageIndex,
+			Stage:      order.Stages[candidate.StageIndex],
+		})
 	}
-	current := len(l.cooks.activeCooksByOrder) + len(l.cooks.adoptedTargets)
-	available := limit - current
-	if available <= 0 {
-		return nil
-	}
-	if len(candidates) > available {
-		candidates = candidates[:available]
-	}
-	return candidates
+	return candidates, nil
 }
 
 func (l *Loop) spawnPlannedCandidates(ctx context.Context, candidates []dispatchCandidate, orders OrdersFile) error {

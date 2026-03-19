@@ -27,10 +27,14 @@ const (
 	EventDispatchRequested EventType = "dispatch_requested"
 	EventDispatchCompleted EventType = "dispatch_completed"
 
-	EventStageCompleted EventType = "stage_completed"
-	EventStageFailed    EventType = "stage_failed"
-	EventOrderCompleted EventType = "order_completed"
-	EventOrderFailed    EventType = "order_failed"
+	EventStageCompleted              EventType = "stage_completed"
+	EventStageFailed                 EventType = "stage_failed"
+	EventStageReviewParked           EventType = "stage_review_parked"
+	EventStageReviewApproved         EventType = "stage_review_approved"
+	EventStageReviewChangesRequested EventType = "stage_review_changes_requested"
+	EventStageReviewRejected         EventType = "stage_review_rejected"
+	EventOrderCompleted              EventType = "order_completed"
+	EventOrderFailed                 EventType = "order_failed"
 
 	EventModeChanged    EventType = "mode_changed"
 	EventSessionAdopted EventType = "session_adopted"
@@ -45,6 +49,10 @@ var allEventTypes = []EventType{
 	EventDispatchCompleted,
 	EventStageCompleted,
 	EventStageFailed,
+	EventStageReviewParked,
+	EventStageReviewApproved,
+	EventStageReviewChangesRequested,
+	EventStageReviewRejected,
 	EventOrderCompleted,
 	EventOrderFailed,
 	EventModeChanged,

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/internal/testutil/fixturedir"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/mise"
@@ -86,25 +87,25 @@ func loadFixtureLoopState(t *testing.T, runtimeDir string) loop.LoopState {
 	t.Helper()
 	var state loop.LoopState
 
+	var ordersFile orderx.OrdersFile
+	var pendingReviews []loop.PendingReviewItem
+
 	// Read status.json for loop metadata.
 	if data, err := os.ReadFile(filepath.Join(runtimeDir, "status.json")); err == nil {
 		var s struct {
 			LoopState      string `json:"loop_state"`
 			MaxConcurrency int    `json:"max_concurrency"`
-			Mode           string `json:"mode"`
 		}
 		if json.Unmarshal(data, &s) == nil {
 			state.Status = s.LoopState
 			state.MaxConcurrency = s.MaxConcurrency
-			state.Mode = s.Mode
 		}
 	}
 
 	// Read orders.json.
 	if data, err := os.ReadFile(filepath.Join(runtimeDir, "orders.json")); err == nil {
-		var of orderx.OrdersFile
-		if json.Unmarshal(data, &of) == nil {
-			state.Orders = of.Orders
+		if json.Unmarshal(data, &ordersFile) == nil {
+			state.Projection.ActionNeeded = append([]string(nil), ordersFile.ActionNeeded...)
 		}
 	}
 
@@ -114,10 +115,10 @@ func loadFixtureLoopState(t *testing.T, runtimeDir string) loop.LoopState {
 			Items []loop.PendingReviewItem `json:"items"`
 		}
 		if json.Unmarshal(data, &pr) == nil {
-			state.PendingReviews = pr.Items
-			state.PendingReviewCount = len(pr.Items)
+			pendingReviews = append([]loop.PendingReviewItem(nil), pr.Items...)
 		}
 	}
+	state.Projection = fixtureProjection(ordersFile, pendingReviews)
 
 	// Read sessions.
 	sessionsDir := filepath.Join(runtimeDir, "sessions")
@@ -188,6 +189,66 @@ func loadFixtureLoopState(t *testing.T, runtimeDir string) loop.LoopState {
 	})
 
 	return state
+}
+
+func fixtureProjection(orders orderx.OrdersFile, pendingReviews []loop.PendingReviewItem) projection.SnapshotView {
+	projectedOrders := make([]projection.OrderProjection, 0, len(orders.Orders))
+	activeOrderIDs := make([]string, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		stages := make([]projection.StageProjection, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			stages = append(stages, projection.StageProjection{
+				TaskKey:     stage.TaskKey,
+				Prompt:      stage.Prompt,
+				Skill:       stage.Skill,
+				Provider:    stage.Provider,
+				Model:       stage.Model,
+				Runtime:     stage.Runtime,
+				Group:       stage.Group,
+				Status:      string(stage.Status),
+				Extra:       stage.Extra,
+				ExtraPrompt: stage.ExtraPrompt,
+			})
+		}
+		projectedOrders = append(projectedOrders, projection.OrderProjection{
+			ID:        order.ID,
+			Title:     order.Title,
+			Plan:      append([]string(nil), order.Plan...),
+			Rationale: order.Rationale,
+			Stages:    stages,
+			Status:    string(order.Status),
+		})
+		if order.Status != orderx.OrderStatusCompleted {
+			activeOrderIDs = append(activeOrderIDs, order.ID)
+		}
+	}
+
+	projectedReviews := make([]projection.PendingReviewProjection, 0, len(pendingReviews))
+	for _, review := range pendingReviews {
+		projectedReviews = append(projectedReviews, projection.PendingReviewProjection{
+			OrderID:      review.OrderID,
+			StageIndex:   review.StageIndex,
+			TaskKey:      review.TaskKey,
+			Prompt:       review.Prompt,
+			Provider:     review.Provider,
+			Model:        review.Model,
+			Runtime:      review.Runtime,
+			Skill:        review.Skill,
+			Plan:         append([]string(nil), review.Plan...),
+			WorktreeName: review.WorktreeName,
+			WorktreePath: review.WorktreePath,
+			SessionID:    review.SessionID,
+			Reason:       review.Reason,
+		})
+	}
+
+	return projection.SnapshotView{
+		Orders:             projectedOrders,
+		ActiveOrderIDs:     activeOrderIDs,
+		ActionNeeded:       append([]string(nil), orders.ActionNeeded...),
+		PendingReviews:     projectedReviews,
+		PendingReviewCount: len(projectedReviews),
+	}
 }
 
 // parseWorktreeOrderTask extracts orderID and taskKey from a worktree path.

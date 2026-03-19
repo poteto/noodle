@@ -12,6 +12,7 @@ import (
 	"github.com/poteto/noodle/dispatcher"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/reducer"
 	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/internal/taskreg"
@@ -206,6 +207,8 @@ type Loop struct {
 
 	// V2 canonical state — event-sourced pipeline.
 	canonical    state.State
+	canonicalLoaded bool
+	effectLedger *reducer.EffectLedger
 	eventCounter atomic.Uint64
 
 	reconciledFailures []reconciledFailure

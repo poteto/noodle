@@ -8,6 +8,7 @@ import (
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/loop"
 )
@@ -21,6 +22,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 	sessions := make([]Session, 0, len(state.ActiveCooks)+len(state.RecentHistory))
 	active := make([]Session, 0, len(state.ActiveCooks))
 	recent := make([]Session, 0, len(state.RecentHistory))
+	projected := state.Projection
 
 	reader := event.NewEventReader(runtimeDir)
 	for _, cook := range state.ActiveCooks {
@@ -90,25 +92,26 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		}
 	}
 
-	orders := make([]Order, 0, len(state.Orders))
-	for _, order := range state.Orders {
+	orders := make([]Order, 0, len(projected.Orders))
+	for _, order := range projected.Orders {
 		activeSessionID := cookSessionByOrder[order.ID]
 		stages := make([]Stage, 0, len(order.Stages))
 		for _, stage := range order.Stages {
 			s := Stage{
-				TaskKey:  stage.TaskKey,
-				Prompt:   stage.Prompt,
-				Skill:    stage.Skill,
-				Provider: stage.Provider,
-				Model:    stage.Model,
-				Runtime:  stage.Runtime,
-				Group:    stage.Group,
-				Status:   string(stage.Status),
-				Extra:    stage.Extra,
+				TaskKey:   stage.TaskKey,
+				Prompt:    stage.Prompt,
+				Skill:     stage.Skill,
+				Provider:  stage.Provider,
+				Model:     stage.Model,
+				Runtime:   stage.Runtime,
+				Group:     stage.Group,
+				Status:    stage.Status,
+				Extra:     cloneRawMap(stage.Extra),
+				SessionID: "",
 			}
-			if (stage.Status == orderx.StageStatusActive || stage.Status == orderx.StageStatusMerging) && activeSessionID != "" {
+			if (stage.Status == string(orderx.StageStatusActive) || stage.Status == string(orderx.StageStatusMerging)) && activeSessionID != "" {
 				s.SessionID = activeSessionID
-			} else if sid := completedSessionByStage[orderStageKey{order.ID, stage.TaskKey}]; sid != "" {
+			} else if sid := completedSessionByStage[orderStageKey{order.ID, s.TaskKey}]; sid != "" {
 				s.SessionID = sid
 			}
 			stages = append(stages, s)
@@ -119,7 +122,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 			Plan:      append([]string(nil), order.Plan...),
 			Rationale: order.Rationale,
 			Stages:    stages,
-			Status:    string(order.Status),
+			Status:    order.Status,
 		})
 	}
 
@@ -137,16 +140,49 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Active:             active,
 		Recent:             recent,
 		Orders:             orders,
-		ActiveOrderIDs:     nonNilStrings(cookingOrderIDs(cookSessionByOrder)),
-		ActionNeeded:       nonNilStrings(state.ActionNeeded),
+		ActiveOrderIDs:     nonNilStrings(projected.ActiveOrderIDs),
+		ActionNeeded:       nonNilStrings(projected.ActionNeeded),
 		EventsBySession:    map[string][]EventLine{},
 		FeedEvents:         nonNilFeedEvents(feedEvents),
 		TotalCostUSD:       state.TotalCostUSD,
-		PendingReviews:     nonNilReviews(state.PendingReviews),
-		PendingReviewCount: state.PendingReviewCount,
-		Mode:               state.Mode,
+		PendingReviews:     projectedPendingReviews(projected.PendingReviews),
+		PendingReviewCount: projected.PendingReviewCount,
+		Mode:               projected.Mode,
 		MaxConcurrency:     state.MaxConcurrency,
 	}, nil
+}
+
+func projectedPendingReviews(reviews []projection.PendingReviewProjection) []loop.PendingReviewItem {
+	items := make([]loop.PendingReviewItem, 0, len(reviews))
+	for _, review := range reviews {
+		items = append(items, loop.PendingReviewItem{
+			OrderID:      review.OrderID,
+			StageIndex:   review.StageIndex,
+			TaskKey:      review.TaskKey,
+			Prompt:       review.Prompt,
+			Provider:     review.Provider,
+			Model:        review.Model,
+			Runtime:      review.Runtime,
+			Skill:        review.Skill,
+			Plan:         append([]string(nil), review.Plan...),
+			WorktreeName: review.WorktreeName,
+			WorktreePath: review.WorktreePath,
+			SessionID:    review.SessionID,
+			Reason:       review.Reason,
+		})
+	}
+	return items
+}
+
+func cloneRawMap(src map[string]json.RawMessage) map[string]json.RawMessage {
+	if len(src) == 0 {
+		return nil
+	}
+	cloned := make(map[string]json.RawMessage, len(src))
+	for key, value := range src {
+		cloned[key] = append(json.RawMessage(nil), value...)
+	}
+	return cloned
 }
 
 // enrichActiveSession reads the session's event log and populates
@@ -200,18 +236,6 @@ func NormalizeLoopState(value string) string {
 	default:
 		return ""
 	}
-}
-
-// cookingOrderIDs returns order IDs that have an active cook session.
-// This is a subset of the loop's ActiveOrderIDs — it excludes orders that are
-// "active" but waiting to be dispatched (no cook yet).
-func cookingOrderIDs(sessionByOrder map[string]string) []string {
-	ids := make([]string, 0, len(sessionByOrder))
-	for orderID := range sessionByOrder {
-		ids = append(ids, orderID)
-	}
-	sort.Strings(ids)
-	return ids
 }
 
 // nonNil helpers ensure slices marshal to [] instead of null in JSON.

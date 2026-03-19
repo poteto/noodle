@@ -78,17 +78,23 @@ const MaxModeTransitionHistory = 50
 // State is the top-level canonical backend state. All loop scheduling
 // decisions derive from this single model.
 type State struct {
-	Orders          map[string]OrderNode       `json:"orders"`
-	Mode            RunMode                    `json:"mode"`
-	ModeEpoch       ModeEpoch                  `json:"mode_epoch"`
-	ModeTransitions []ModeTransitionRecord     `json:"mode_transitions"`
-	SchemaVersion   statever.SchemaVersion     `json:"schema_version"`
-	LastEventID     string                     `json:"last_event_id"`
+	Orders          map[string]OrderNode         `json:"orders"`
+	PendingReviews  map[string]PendingReviewNode `json:"pending_reviews"`
+	ActionNeeded    []string                     `json:"action_needed"`
+	Mode            RunMode                      `json:"mode"`
+	ModeEpoch       ModeEpoch                    `json:"mode_epoch"`
+	ModeTransitions []ModeTransitionRecord       `json:"mode_transitions"`
+	SchemaVersion   statever.SchemaVersion       `json:"schema_version"`
+	LastEventID     string                       `json:"last_event_id"`
 }
 
 // OrderNode represents an order's canonical state.
 type OrderNode struct {
 	OrderID   string               `json:"order_id"`
+	Sequence  int                  `json:"sequence"`
+	Title     string               `json:"title"`
+	Plan      []string             `json:"plan"`
+	Rationale string               `json:"rationale"`
 	Status    OrderLifecycleStatus `json:"status"`
 	Stages    []StageNode          `json:"stages"`
 	CreatedAt time.Time            `json:"created_at"`
@@ -98,12 +104,19 @@ type OrderNode struct {
 
 // StageNode represents a stage within an order.
 type StageNode struct {
-	StageIndex int                  `json:"stage_index"`
-	Status     StageLifecycleStatus `json:"status"`
-	Skill      string               `json:"skill"`
-	Runtime    string               `json:"runtime"`
-	Attempts   []AttemptNode        `json:"attempts"`
-	Group      string               `json:"group"`
+	StageIndex  int                        `json:"stage_index"`
+	TaskKey     string                     `json:"task_key"`
+	Prompt      string                     `json:"prompt"`
+	Skill       string                     `json:"skill"`
+	Provider    string                     `json:"provider"`
+	Model       string                     `json:"model"`
+	Runtime     string                     `json:"runtime"`
+	Group       int                        `json:"group"`
+	Status      StageLifecycleStatus       `json:"status"`
+	Extra       map[string]json.RawMessage `json:"extra,omitempty"`
+	ExtraPrompt string                     `json:"extra_prompt"`
+	Attempts    []AttemptNode              `json:"attempts"`
+	Merge       *MergeRecoveryNode         `json:"merge,omitempty"`
 }
 
 // AttemptNode represents a dispatch attempt for a stage.
@@ -116,6 +129,31 @@ type AttemptNode struct {
 	ExitCode     *int          `json:"exit_code"`
 	WorktreeName string        `json:"worktree_name"`
 	Error        string        `json:"error"`
+}
+
+// MergeRecoveryNode records the durable recovery data for a stage that has
+// completed execution and is waiting for merge convergence.
+type MergeRecoveryNode struct {
+	WorktreeName string `json:"worktree_name"`
+	Mode         string `json:"mode"`
+	Branch       string `json:"branch,omitempty"`
+}
+
+// PendingReviewNode records a stage parked for human review.
+type PendingReviewNode struct {
+	OrderID      string   `json:"order_id"`
+	StageIndex   int      `json:"stage_index"`
+	TaskKey      string   `json:"task_key"`
+	Prompt       string   `json:"prompt"`
+	Provider     string   `json:"provider"`
+	Model        string   `json:"model"`
+	Runtime      string   `json:"runtime"`
+	Skill        string   `json:"skill"`
+	Plan         []string `json:"plan"`
+	WorktreeName string   `json:"worktree_name"`
+	WorktreePath string   `json:"worktree_path"`
+	SessionID    string   `json:"session_id"`
+	Reason       string   `json:"reason"`
 }
 
 // IsTerminal reports whether the order status is terminal
@@ -160,6 +198,26 @@ func (s State) Clone() State {
 		out.ModeTransitions = transitionsCopy
 	}
 
+	if s.PendingReviews != nil {
+		reviewsCopy := make(map[string]PendingReviewNode, len(s.PendingReviews))
+		for orderID, review := range s.PendingReviews {
+			reviewCopy := review
+			if review.Plan != nil {
+				planCopy := make([]string, len(review.Plan))
+				copy(planCopy, review.Plan)
+				reviewCopy.Plan = planCopy
+			}
+			reviewsCopy[orderID] = reviewCopy
+		}
+		out.PendingReviews = reviewsCopy
+	}
+
+	if s.ActionNeeded != nil {
+		actionNeededCopy := make([]string, len(s.ActionNeeded))
+		copy(actionNeededCopy, s.ActionNeeded)
+		out.ActionNeeded = actionNeededCopy
+	}
+
 	if s.Orders == nil {
 		out.Orders = nil
 		return out
@@ -181,6 +239,17 @@ func (s State) Clone() State {
 			stagesCopy := make([]StageNode, len(order.Stages))
 			for i := range order.Stages {
 				stageCopy := order.Stages[i]
+				if order.Stages[i].Extra != nil {
+					extraCopy := make(map[string]json.RawMessage, len(order.Stages[i].Extra))
+					for key, value := range order.Stages[i].Extra {
+						extraCopy[key] = append(json.RawMessage(nil), value...)
+					}
+					stageCopy.Extra = extraCopy
+				}
+				if order.Stages[i].Merge != nil {
+					mergeCopy := *order.Stages[i].Merge
+					stageCopy.Merge = &mergeCopy
+				}
 				if order.Stages[i].Attempts != nil {
 					attemptsCopy := make([]AttemptNode, len(order.Stages[i].Attempts))
 					for j := range order.Stages[i].Attempts {
@@ -339,6 +408,26 @@ func (s *State) Validate() error {
 				if !hasRunningAttempt {
 					return fmt.Errorf("order %q stage %d has status running but no attempt is running", orderID, i)
 				}
+			}
+
+			if stage.Status == StageMerging {
+				if stage.Merge == nil {
+					return fmt.Errorf("order %q stage %d has status merging but no merge recovery", orderID, i)
+				}
+				if strings.TrimSpace(stage.Merge.WorktreeName) == "" {
+					return fmt.Errorf("order %q stage %d has merging recovery with empty worktree name", orderID, i)
+				}
+				switch strings.TrimSpace(stage.Merge.Mode) {
+				case "local":
+				case "remote":
+					if strings.TrimSpace(stage.Merge.Branch) == "" {
+						return fmt.Errorf("order %q stage %d has remote merge recovery without branch", orderID, i)
+					}
+				default:
+					return fmt.Errorf("order %q stage %d has invalid merge mode %q", orderID, i, stage.Merge.Mode)
+				}
+			} else if stage.Merge != nil {
+				return fmt.Errorf("order %q stage %d has merge recovery while status is %q", orderID, i, stage.Status)
 			}
 
 			// AttemptIDs must be unique across the entire state.

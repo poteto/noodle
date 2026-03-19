@@ -4,12 +4,18 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/mode"
+	"github.com/poteto/noodle/internal/projection"
+	"github.com/poteto/noodle/internal/state"
+	"github.com/poteto/noodle/internal/statever"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -43,6 +49,206 @@ func (e *integrationEnv) completeSessions(status string) {
 		if s.Status() == "running" {
 			s.complete(status)
 		}
+	}
+}
+
+type lifecycleParityOrder struct {
+	ID     string
+	Status string
+	Stages []string
+}
+
+func assertLegacyCanonicalParity(t *testing.T, env *integrationEnv) {
+	t.Helper()
+
+	legacyOrders := legacyParityOrders(t, env.readOrders(t), env.runtimeDir)
+	canonicalOrders := canonicalParityOrders(t, env.loop)
+	if reflect.DeepEqual(legacyOrders, canonicalOrders) {
+		return
+	}
+
+	t.Fatalf("legacy/canonical parity mismatch\nlegacy: %#v\ncanonical: %#v", legacyOrders, canonicalOrders)
+}
+
+func legacyParityOrders(t *testing.T, orders OrdersFile, runtimeDir string) []lifecycleParityOrder {
+	t.Helper()
+
+	pendingReview, err := ReadPendingReview(runtimeDir)
+	if err != nil {
+		t.Fatalf("read pending review: %v", err)
+	}
+
+	reviewStages := make(map[string]map[int]struct{}, len(pendingReview))
+	for _, item := range pendingReview {
+		orderID := strings.TrimSpace(item.OrderID)
+		if orderID == "" {
+			continue
+		}
+		if reviewStages[orderID] == nil {
+			reviewStages[orderID] = map[int]struct{}{}
+		}
+		reviewStages[orderID][item.StageIndex] = struct{}{}
+	}
+
+	out := make([]lifecycleParityOrder, 0, len(orders.Orders))
+	for _, order := range orders.Orders {
+		stages := make([]string, 0, len(order.Stages))
+		for i, stage := range order.Stages {
+			status := normalizeLegacyStageStatus(string(stage.Status))
+			if _, ok := reviewStages[order.ID][i]; ok {
+				status = "review"
+			}
+			stages = append(stages, status)
+		}
+		out = append(out, lifecycleParityOrder{
+			ID:     strings.TrimSpace(order.ID),
+			Status: normalizeLegacyOrderStatus(string(order.Status)),
+			Stages: stages,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+func canonicalParityOrders(t *testing.T, l *Loop) []lifecycleParityOrder {
+	t.Helper()
+
+	bundle, err := projection.Project(l.canonical, mode.ModeState{
+		EffectiveMode: l.canonical.Mode,
+		Epoch:         l.canonical.ModeEpoch,
+	})
+	if err != nil {
+		t.Fatalf("project canonical state: %v", err)
+	}
+
+	out := make([]lifecycleParityOrder, 0, len(bundle.OrdersProjection))
+	for _, order := range bundle.OrdersProjection {
+		status := normalizeCanonicalOrderStatus(order.Status)
+		if status == "" {
+			continue
+		}
+		stages := make([]string, 0, len(order.Stages))
+		for _, stage := range order.Stages {
+			stages = append(stages, normalizeCanonicalStageStatus(stage.Status))
+		}
+		out = append(out, lifecycleParityOrder{
+			ID:     strings.TrimSpace(order.ID),
+			Status: status,
+			Stages: stages,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+func normalizeLegacyOrderStatus(status string) string {
+	switch strings.TrimSpace(status) {
+	case string(OrderStatusActive):
+		return "active"
+	case string(OrderStatusFailed):
+		return "failed"
+	default:
+		return ""
+	}
+}
+
+func normalizeLegacyStageStatus(status string) string {
+	switch strings.TrimSpace(status) {
+	case string(StageStatusPending):
+		return "pending"
+	case string(StageStatusActive), string(StageStatusMerging):
+		return "busy"
+	case string(StageStatusCompleted):
+		return "completed"
+	case string(StageStatusFailed):
+		return "failed"
+	case string(StageStatusCancelled):
+		return "cancelled"
+	default:
+		return ""
+	}
+}
+
+func normalizeCanonicalOrderStatus(status string) string {
+	switch strings.TrimSpace(status) {
+	case "pending", "active":
+		return "active"
+	case "failed":
+		return "failed"
+	default:
+		return ""
+	}
+}
+
+func normalizeCanonicalStageStatus(status string) string {
+	switch strings.TrimSpace(status) {
+	case "pending":
+		return "pending"
+	case "dispatching", "running", "merging":
+		return "busy"
+	case "review":
+		return "review"
+	case "completed":
+		return "completed"
+	case "failed":
+		return "failed"
+	case "cancelled", "skipped":
+		return "cancelled"
+	default:
+		return ""
+	}
+}
+
+func seedCanonicalFromOrders(l *Loop, orders OrdersFile) {
+	canonicalOrders := make(map[string]state.OrderNode, len(orders.Orders))
+	for _, order := range orders.Orders {
+		stages := make([]state.StageNode, 0, len(order.Stages))
+		for i, stage := range order.Stages {
+			stages = append(stages, state.StageNode{
+				StageIndex: i,
+				Status:     legacyStageToCanonicalStatus(string(stage.Status)),
+				Skill:      stage.Skill,
+				Runtime:    stage.Runtime,
+			})
+		}
+		canonicalOrders[order.ID] = state.OrderNode{
+			OrderID: order.ID,
+			Status:  legacyOrderToCanonicalStatus(string(order.Status)),
+			Stages:  stages,
+		}
+	}
+	l.canonical = state.State{
+		Orders:        canonicalOrders,
+		Mode:          l.canonical.Mode,
+		ModeEpoch:     l.canonical.ModeEpoch,
+		SchemaVersion: statever.Current,
+	}
+	l.canonicalLoaded = true
+}
+
+func legacyOrderToCanonicalStatus(status string) state.OrderLifecycleStatus {
+	switch strings.TrimSpace(status) {
+	case string(OrderStatusFailed):
+		return state.OrderFailed
+	default:
+		return state.OrderActive
+	}
+}
+
+func legacyStageToCanonicalStatus(status string) state.StageLifecycleStatus {
+	switch strings.TrimSpace(status) {
+	case string(StageStatusActive):
+		return state.StageRunning
+	case string(StageStatusMerging):
+		return state.StageMerging
+	case string(StageStatusCompleted):
+		return state.StageCompleted
+	case string(StageStatusFailed):
+		return state.StageFailed
+	case string(StageStatusCancelled):
+		return state.StageCancelled
+	default:
+		return state.StagePending
 	}
 }
 
@@ -125,6 +331,7 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 		ic.cfg.Mode = "auto"
 	})
 	l, deps := env.loop, env
+	seedCanonicalFromOrders(l, orders)
 
 	// Cycle 1: dispatch stage 0 (execute).
 	if err := l.Cycle(context.Background()); err != nil {
@@ -145,6 +352,7 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 	if of.Orders[0].Stages[0].Status != StageStatusActive {
 		t.Fatalf("stage 0 status = %q, want active", of.Orders[0].Stages[0].Status)
 	}
+	assertLegacyCanonicalParity(t, env)
 
 	// Complete session → cycle 2: advance stage 0, dispatch stage 1 (review).
 	deps.completeSessions("completed")
@@ -162,6 +370,7 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 	if of.Orders[0].Stages[1].Status != StageStatusActive {
 		t.Fatalf("stage 1 status = %q, want active", of.Orders[0].Stages[1].Status)
 	}
+	assertLegacyCanonicalParity(t, env)
 
 	// Complete session → cycle 3: advance stage 1, dispatch stage 2 (reflect).
 	deps.completeSessions("completed")
@@ -179,6 +388,7 @@ func TestIntegrationSuccessPipeline(t *testing.T) {
 	if of.Orders[0].Stages[2].Status != StageStatusActive {
 		t.Fatalf("stage 2 status = %q, want active", of.Orders[0].Stages[2].Status)
 	}
+	assertLegacyCanonicalParity(t, env)
 
 	// Complete session → cycle 4: advance stage 2, order removed.
 	deps.completeSessions("completed")
@@ -232,6 +442,7 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 		ic.mergeErr = &worktree.MergeConflictError{Branch: "noodle/conflict-session"}
 	})
 	l := env.loop
+	seedCanonicalFromOrders(l, orders)
 
 	// Cycle 1: dispatch execute stage.
 	if err := l.Cycle(context.Background()); err != nil {
@@ -254,6 +465,7 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	if !strings.Contains(pending.reason, "merge conflict") {
 		t.Fatalf("pending reason = %q, want merge conflict", pending.reason)
 	}
+	assertLegacyCanonicalParity(t, env)
 
 	// Verify pending-review.json was written.
 	items, err := ReadPendingReview(env.runtimeDir)
@@ -294,6 +506,7 @@ func TestIntegrationMergeConflictResolution(t *testing.T) {
 	if of.Orders[0].Stages[1].Status != StageStatusPending {
 		t.Fatalf("stage 1 = %q, want pending", of.Orders[0].Stages[1].Status)
 	}
+	assertLegacyCanonicalParity(t, env)
 
 	// Verify pendingReview was cleared.
 	if len(l.cooks.pendingReview) != 0 {

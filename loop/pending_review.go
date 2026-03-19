@@ -9,6 +9,9 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/filex"
+	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/orderx"
+	"github.com/poteto/noodle/internal/state"
 )
 
 type PendingReviewItem struct {
@@ -58,38 +61,36 @@ func ReadPendingReview(runtimeDir string) ([]PendingReviewItem, error) {
 }
 
 func (l *Loop) parkPendingReview(cook *cookHandle, reason string) error {
-	l.cooks.pendingReview[cook.orderID] = &pendingReviewCook{
-		cookIdentity: cook.cookIdentity,
-		worktreeName: cook.worktreeName,
-		worktreePath: cook.worktreePath,
-		sessionID:    cook.session.ID(),
-		reason:       reason,
+	if err := l.ensureCanonicalOrderFromOrders(cook.orderID); err != nil {
+		return err
 	}
-	return l.writePendingReview()
+	if err := l.emitEventChecked(ingest.EventStageReviewParked, l.reviewPayloadForCook(cook, reason)); err != nil {
+		return err
+	}
+	if err := l.mirrorLegacyOrderFromCanonical(cook.orderID); err != nil {
+		return err
+	}
+	return l.syncPendingReviewProjection()
 }
 
 func (l *Loop) writePendingReview() error {
-	items := make([]PendingReviewItem, 0, len(l.cooks.pendingReview))
-	for _, pending := range l.cooks.pendingReview {
-		if pending == nil {
-			l.logger.Warn("nil entry in pendingReview map")
-			continue
-		}
+	items := make([]PendingReviewItem, 0, len(l.canonical.PendingReviews))
+	for _, review := range l.canonical.PendingReviews {
 		items = append(items, PendingReviewItem{
-			OrderID:      pending.orderID,
-			StageIndex:   pending.stageIndex,
-			TaskKey:      pending.stage.TaskKey,
+			OrderID:      review.OrderID,
+			StageIndex:   review.StageIndex,
+			TaskKey:      review.TaskKey,
 			Title:        "",
-			Prompt:       pending.stage.Prompt,
-			Provider:     pending.stage.Provider,
-			Model:        pending.stage.Model,
-			Runtime:      pending.stage.Runtime,
-			Skill:        pending.stage.Skill,
-			Plan:         pending.plan,
-			WorktreeName: pending.worktreeName,
-			WorktreePath: pending.worktreePath,
-			SessionID:    pending.sessionID,
-			Reason:       pending.reason,
+			Prompt:       review.Prompt,
+			Provider:     review.Provider,
+			Model:        review.Model,
+			Runtime:      review.Runtime,
+			Skill:        review.Skill,
+			Plan:         append([]string(nil), review.Plan...),
+			WorktreeName: review.WorktreeName,
+			WorktreePath: review.WorktreePath,
+			SessionID:    review.SessionID,
+			Reason:       review.Reason,
 		})
 	}
 	sort.Slice(items, func(i, j int) bool {
@@ -104,39 +105,34 @@ func (l *Loop) writePendingReview() error {
 }
 
 func (l *Loop) loadPendingReview() error {
-	items, err := ReadPendingReview(l.runtimeDir)
-	if err != nil {
-		return err
-	}
-
-	next := make(map[string]*pendingReviewCook, len(items))
-	for _, item := range items {
-		id := strings.TrimSpace(item.OrderID)
+	next := make(map[string]*pendingReviewCook, len(l.canonical.PendingReviews))
+	for _, review := range l.canonical.PendingReviews {
+		id := strings.TrimSpace(review.OrderID)
 		if id == "" {
 			continue
 		}
-		name := strings.TrimSpace(item.WorktreeName)
+		name := strings.TrimSpace(review.WorktreeName)
 		if name == "" {
-			name = defaultPendingReviewWorktreeName(id, item.StageIndex, item.TaskKey)
+			name = defaultPendingReviewWorktreeName(id, review.StageIndex, review.TaskKey)
 		}
 		next[id] = &pendingReviewCook{
 			cookIdentity: cookIdentity{
 				orderID:    id,
-				stageIndex: item.StageIndex,
+				stageIndex: review.StageIndex,
 				stage: Stage{
-					TaskKey:  strings.TrimSpace(item.TaskKey),
-					Prompt:   strings.TrimSpace(item.Prompt),
-					Skill:    strings.TrimSpace(item.Skill),
-					Provider: strings.TrimSpace(item.Provider),
-					Model:    strings.TrimSpace(item.Model),
-					Runtime:  strings.TrimSpace(item.Runtime),
+					TaskKey:  strings.TrimSpace(review.TaskKey),
+					Prompt:   strings.TrimSpace(review.Prompt),
+					Skill:    strings.TrimSpace(review.Skill),
+					Provider: strings.TrimSpace(review.Provider),
+					Model:    strings.TrimSpace(review.Model),
+					Runtime:  strings.TrimSpace(review.Runtime),
 				},
-				plan: item.Plan,
+				plan: append([]string(nil), review.Plan...),
 			},
 			worktreeName: name,
-			worktreePath: strings.TrimSpace(item.WorktreePath),
-			sessionID:    strings.TrimSpace(item.SessionID),
-			reason:       strings.TrimSpace(item.Reason),
+			worktreePath: strings.TrimSpace(review.WorktreePath),
+			sessionID:    strings.TrimSpace(review.SessionID),
+			reason:       strings.TrimSpace(review.Reason),
 		}
 	}
 	l.cooks.pendingReview = next
@@ -151,31 +147,157 @@ func defaultPendingReviewWorktreeName(orderID string, stageIndex int, taskKey st
 	return name
 }
 
-// reconcilePendingReview removes pending review entries whose order no longer
-// exists in orders.json. This covers the crash window between advancing
-// orders.json and updating pending-review.json.
+// reconcilePendingReview removes pending review entries whose canonical order
+// no longer exists.
 func (l *Loop) reconcilePendingReview() error {
 	if len(l.cooks.pendingReview) == 0 {
 		return nil
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return nil // no orders file yet — nothing to reconcile
-	}
-	orderIDs := make(map[string]struct{}, len(orders.Orders))
-	for _, o := range orders.Orders {
-		orderIDs[o.ID] = struct{}{}
-	}
 	pruned := false
 	for id := range l.cooks.pendingReview {
-		if _, ok := orderIDs[id]; !ok {
+		if _, ok := l.canonical.Orders[id]; !ok {
 			l.logger.Warn("pruning stale pending review", "order", id)
 			delete(l.cooks.pendingReview, id)
+			delete(l.canonical.PendingReviews, id)
 			pruned = true
 		}
 	}
 	if pruned {
-		return l.writePendingReview()
+		if err := l.persistCanonicalCheckpoint(); err != nil {
+			return err
+		}
+		return l.syncPendingReviewProjection()
 	}
 	return nil
+}
+
+func (l *Loop) syncPendingReviewProjection() error {
+	if err := l.loadPendingReview(); err != nil {
+		return err
+	}
+	return l.writePendingReview()
+}
+
+func (l *Loop) ensureCanonicalOrderFromOrders(orderID string) error {
+	if err := l.ensureCanonicalLoadedFromBridge(); err != nil {
+		return err
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("canonical sync requires order_id")
+	}
+	if _, ok := l.canonical.Orders[orderID]; ok {
+		return nil
+	}
+	orders, err := l.currentOrders()
+	if err != nil {
+		return err
+	}
+	for _, order := range orders.Orders {
+		if order.ID != orderID {
+			continue
+		}
+		l.syncCanonicalOrderFromLegacy(order)
+		return l.persistCanonicalCheckpoint()
+	}
+	return fmt.Errorf("canonical order %q missing from orders state", orderID)
+}
+
+func (l *Loop) reviewPayloadForCook(cook *cookHandle, reason string) map[string]any {
+	sessionID := ""
+	if cook.session != nil {
+		sessionID = cook.session.ID()
+	}
+	attemptID := ""
+	if cook.attempt > 0 || cook.session != nil {
+		attemptID = dispatchAttemptID(cook.orderID, cook.stageIndex, cook.attempt)
+	}
+	return map[string]any{
+		"order_id":      cook.orderID,
+		"stage_index":   cook.stageIndex,
+		"attempt_id":    attemptID,
+		"session_id":    sessionID,
+		"worktree_name": cook.worktreeName,
+		"worktree_path": cook.worktreePath,
+		"reason":        reason,
+		"task_key":      cook.stage.TaskKey,
+		"prompt":        cook.stage.Prompt,
+		"provider":      cook.stage.Provider,
+		"model":         cook.stage.Model,
+		"runtime":       cook.stage.Runtime,
+		"skill":         cook.stage.Skill,
+		"plan":          append([]string(nil), cook.plan...),
+	}
+}
+
+func canonicalStageStatusToLegacy(status state.StageLifecycleStatus) orderx.StageStatus {
+	switch status {
+	case state.StageDispatching, state.StageRunning, state.StageReview:
+		return StageStatusActive
+	case state.StageMerging:
+		return StageStatusMerging
+	case state.StageCompleted:
+		return StageStatusCompleted
+	case state.StageFailed:
+		return StageStatusFailed
+	case state.StageCancelled, state.StageSkipped:
+		return StageStatusCancelled
+	default:
+		return StageStatusPending
+	}
+}
+
+func canonicalOrderStatusToLegacy(status state.OrderLifecycleStatus) (orderx.OrderStatus, bool) {
+	switch status {
+	case state.OrderCompleted, state.OrderCancelled:
+		return "", true
+	case state.OrderFailed:
+		return OrderStatusFailed, false
+	default:
+		return OrderStatusActive, false
+	}
+}
+
+func (l *Loop) mirrorLegacyOrderFromCanonical(orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("mirror canonical order requires order_id")
+	}
+	node, exists := l.canonical.Orders[orderID]
+	legacyStatus, remove := canonicalOrderStatusToLegacy(node.Status)
+	if !exists {
+		remove = true
+	}
+	return l.mutateProjectedMirrorState(func(orders *OrdersFile) (bool, error) {
+		for i := range orders.Orders {
+			if orders.Orders[i].ID != orderID {
+				continue
+			}
+			if remove {
+				orders.Orders = append(orders.Orders[:i], orders.Orders[i+1:]...)
+				return true, nil
+			}
+			changed := false
+			if orders.Orders[i].Status != legacyStatus {
+				orders.Orders[i].Status = legacyStatus
+				changed = true
+			}
+			limit := len(orders.Orders[i].Stages)
+			if len(node.Stages) < limit {
+				limit = len(node.Stages)
+			}
+			for si := 0; si < limit; si++ {
+				legacyStage := canonicalStageStatusToLegacy(node.Stages[si].Status)
+				if orders.Orders[i].Stages[si].Status != legacyStage {
+					orders.Orders[i].Stages[si].Status = legacyStage
+					changed = true
+				}
+			}
+			return changed, nil
+		}
+		if remove {
+			return false, nil
+		}
+		return false, fmt.Errorf("mirror canonical order %q missing from orders state", orderID)
+	})
 }

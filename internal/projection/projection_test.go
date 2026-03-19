@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/internal/mode"
+	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/statever"
 )
@@ -64,7 +65,7 @@ func TestProjectMapsAllLifecycleStatuses(t *testing.T) {
 				Status:     stageStatus,
 				Skill:      "skill",
 				Runtime:    "runtime",
-				Group:      "g",
+				Group:      1,
 			})
 		}
 		orderID := "order-" + string(rune('a'+i))
@@ -99,6 +100,113 @@ func TestProjectMapsAllLifecycleStatuses(t *testing.T) {
 		if gotOrders[orderID] != string(orderStatus) {
 			t.Fatalf("order %s status = %q, want %q", orderID, gotOrders[orderID], orderStatus)
 		}
+	}
+}
+
+func TestProjectRepresentativeLifecycleScenarios(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 2, 15, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name  string
+		state state.State
+		want  []OrderProjection
+	}{
+		{
+			name: "running stage remains visible with pending tail",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"pipeline-1": {
+						OrderID:   "pipeline-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageRunning, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "12",
+			},
+			want: []OrderProjection{{
+				ID:     "pipeline-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "running"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+		{
+			name: "merge review remains visible without mutating next stage",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"conflict-1": {
+						OrderID:   "conflict-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageReview, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "18",
+			},
+			want: []OrderProjection{{
+				ID:     "conflict-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "review"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+		{
+			name: "merge completion advances the next stage but keeps order active",
+			state: state.State{
+				Orders: map[string]state.OrderNode{
+					"advance-1": {
+						OrderID:   "advance-1",
+						Status:    state.OrderActive,
+						CreatedAt: now,
+						UpdatedAt: now,
+						Stages: []state.StageNode{
+							{StageIndex: 0, Status: state.StageCompleted, Skill: "execute", Runtime: "process"},
+							{StageIndex: 1, Status: state.StagePending, Skill: "reflect", Runtime: "process"},
+						},
+					},
+				},
+				Mode:          state.RunModeAuto,
+				SchemaVersion: statever.Current,
+				LastEventID:   "24",
+			},
+			want: []OrderProjection{{
+				ID:     "advance-1",
+				Status: "active",
+				Stages: []StageProjection{
+					{Skill: "execute", Runtime: "process", Status: "completed"},
+					{Skill: "reflect", Runtime: "process", Status: "pending"},
+				},
+			}},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			bundle := mustProject(t, tc.state, mode.ModeState{EffectiveMode: tc.state.Mode, Epoch: tc.state.ModeEpoch})
+			if reflect.DeepEqual(bundle.OrdersProjection, tc.want) {
+				return
+			}
+			t.Fatalf("orders projection mismatch\nactual: %#v\nwant: %#v", bundle.OrdersProjection, tc.want)
+		})
 	}
 }
 
@@ -146,7 +254,7 @@ func TestProjectionHashIdenticalForIdenticalStates(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "x", Runtime: "go", Status: state.StagePending, Group: "g1"},
+					{StageIndex: 0, Skill: "x", Runtime: "go", Status: state.StagePending, Group: 1},
 				},
 			},
 			"a": {
@@ -155,7 +263,7 @@ func TestProjectionHashIdenticalForIdenticalStates(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "y", Runtime: "go", Status: state.StageCompleted, Group: "g2"},
+					{StageIndex: 0, Skill: "y", Runtime: "go", Status: state.StageCompleted, Group: 2},
 				},
 			},
 		},
@@ -199,12 +307,19 @@ func TestWriteProjectionFilesCreatesValidJSONFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read orders file: %v", err)
 	}
-	var orders projectedOrdersFile
+	var orders orderx.OrdersFile
 	if err := json.Unmarshal(ordersData, &orders); err != nil {
 		t.Fatalf("decode orders file: %v", err)
 	}
-	if len(orders.Orders) != len(bundle.OrdersProjection) {
-		t.Fatalf("orders count = %d, want %d", len(orders.Orders), len(bundle.OrdersProjection))
+	expectedOrders := 0
+	for _, order := range bundle.OrdersProjection {
+		if legacyOrderRemoves(order.Status) {
+			continue
+		}
+		expectedOrders++
+	}
+	if len(orders.Orders) != expectedOrders {
+		t.Fatalf("orders count = %d, want %d", len(orders.Orders), expectedOrders)
 	}
 
 	stateData, err := os.ReadFile(filepath.Join(dir, stateFileName))
@@ -257,7 +372,7 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: "main"},
+					{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: 1},
 				},
 			},
 			"order-b": {
@@ -266,7 +381,7 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "debugging", Runtime: "go", Status: state.StageFailed, Group: "main"},
+					{StageIndex: 0, Skill: "debugging", Runtime: "go", Status: state.StageFailed, Group: 1},
 				},
 			},
 		},
@@ -282,7 +397,7 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now.Add(1 * time.Minute),
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageRunning, Group: "main"},
+					{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageRunning, Group: 1},
 				},
 			},
 			"order-c": {
@@ -291,7 +406,7 @@ func TestComputeDeltaDetectsAddedRemovedAndChangedOrders(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 				Stages: []state.StageNode{
-					{StageIndex: 0, Skill: "quality", Runtime: "go", Status: state.StagePending, Group: "post"},
+					{StageIndex: 0, Skill: "quality", Runtime: "go", Status: state.StagePending, Group: 2},
 				},
 			},
 		},
@@ -424,7 +539,7 @@ func TestOrderProjectionMapsFromOrderNode(t *testing.T) {
 						Skill:      "execute",
 						Runtime:    "go",
 						Status:     state.StageCancelled,
-						Group:      "g-final",
+						Group:      9,
 					},
 				},
 			},
@@ -450,7 +565,7 @@ func TestOrderProjectionMapsFromOrderNode(t *testing.T) {
 		t.Fatalf("stage projection count = %d, want 1", len(order.Stages))
 	}
 	stage := order.Stages[0]
-	if stage.Skill != "execute" || stage.Runtime != "go" || stage.Status != string(state.StageCancelled) || stage.Group != "g-final" {
+	if stage.Skill != "execute" || stage.Runtime != "go" || stage.Status != string(state.StageCancelled) || stage.Group != 9 {
 		t.Fatalf("stage projection mismatch: %+v", stage)
 	}
 }
@@ -495,7 +610,7 @@ func TestProjectEdgeCases(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 			Stages: []state.StageNode{
-				{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: "g"},
+				{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: 1},
 			},
 		}
 	}
@@ -534,7 +649,7 @@ func TestProjectEdgeCases(t *testing.T) {
 						CreatedAt: now,
 						UpdatedAt: now,
 						Stages: []state.StageNode{
-							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: "main"},
+							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StagePending, Group: 1},
 						},
 					},
 				},
@@ -583,8 +698,8 @@ func TestProjectEdgeCases(t *testing.T) {
 						CreatedAt: now,
 						UpdatedAt: now,
 						Stages: []state.StageNode{
-							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageCompleted, Group: "main"},
-							{StageIndex: 1, Skill: "quality", Runtime: "go", Status: state.StageSkipped, Group: "main"},
+							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageCompleted, Group: 1},
+							{StageIndex: 1, Skill: "quality", Runtime: "go", Status: state.StageSkipped, Group: 1},
 						},
 					},
 					"failed": {
@@ -593,8 +708,8 @@ func TestProjectEdgeCases(t *testing.T) {
 						CreatedAt: now,
 						UpdatedAt: now,
 						Stages: []state.StageNode{
-							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageFailed, Group: "main"},
-							{StageIndex: 1, Skill: "cleanup", Runtime: "go", Status: state.StageCancelled, Group: "main"},
+							{StageIndex: 0, Skill: "execute", Runtime: "go", Status: state.StageFailed, Group: 1},
+							{StageIndex: 1, Skill: "cleanup", Runtime: "go", Status: state.StageCancelled, Group: 1},
 						},
 					},
 				},
@@ -649,7 +764,7 @@ func fixtureStateForProjection() state.State {
 						Status:     state.StageCompleted,
 						Skill:      "quality",
 						Runtime:    "go",
-						Group:      "g2",
+						Group:      2,
 						Attempts: []state.AttemptNode{
 							{
 								AttemptID:    "att-2",
@@ -675,7 +790,7 @@ func fixtureStateForProjection() state.State {
 						Status:     state.StagePending,
 						Skill:      "execute",
 						Runtime:    "go",
-						Group:      "g1",
+						Group:      1,
 						Attempts:   []state.AttemptNode{},
 					},
 				},
