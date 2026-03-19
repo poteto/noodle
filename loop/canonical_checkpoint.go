@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -131,6 +132,7 @@ func synthesizeCanonicalState(
 				Skill:      strings.TrimSpace(stage.Skill),
 				Runtime:    strings.TrimSpace(stage.Runtime),
 			}
+			stageNode.Merge = canonicalMergeRecoveryFromLegacyStage(stage, stageStatus)
 			if stageNode.Runtime == "" {
 				stageNode.Runtime = "process"
 			}
@@ -255,28 +257,24 @@ func parseLastEventID(raw string) (uint64, error) {
 }
 
 func (l *Loop) trackCanonicalOrder(order Order) {
-	if _, exists := l.canonical.Orders[order.ID]; exists {
-		return
-	}
-	stages := make([]map[string]any, 0, len(order.Stages))
-	for i, stage := range order.Stages {
-		stages = append(stages, map[string]any{
-			"stage_index": i,
-			"status":      legacyStageStatusToCanonical(stage.Status),
-			"skill":       stage.Skill,
-			"runtime":     nonEmpty(stage.Runtime, "process"),
-		})
-	}
-	l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
-		"order_id": order.ID,
-		"stages":   stages,
-	})
+	l.syncCanonicalOrderFromLegacy(order)
 }
 
 func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
 	if _, exists := l.canonical.Orders[order.ID]; !exists {
-		l.trackCanonicalOrder(order)
-		return
+		stages := make([]map[string]any, 0, len(order.Stages))
+		for i, stage := range order.Stages {
+			stages = append(stages, map[string]any{
+				"stage_index": i,
+				"status":      legacyStageStatusToCanonical(stage.Status),
+				"skill":       stage.Skill,
+				"runtime":     nonEmpty(stage.Runtime, "process"),
+			})
+		}
+		l.emitEvent(ingest.EventSchedulePromoted, map[string]any{
+			"order_id": order.ID,
+			"stages":   stages,
+		})
 	}
 
 	node := l.canonical.Orders[order.ID]
@@ -295,9 +293,64 @@ func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
 		}
 		if i < len(node.Stages) {
 			stageNode.Attempts = slices.Clone(node.Stages[i].Attempts)
+			if node.Stages[i].Merge != nil {
+				mergeCopy := *node.Stages[i].Merge
+				stageNode.Merge = &mergeCopy
+			}
+		}
+		if mergeRecovery := canonicalMergeRecoveryFromLegacyStage(stage, stageNode.Status); mergeRecovery != nil {
+			stageNode.Merge = mergeRecovery
 		}
 		stages = append(stages, stageNode)
 	}
 	node.Stages = stages
 	l.canonical.Orders[order.ID] = node
+}
+
+func canonicalMergeRecoveryFromLegacyStage(stage Stage, status state.StageLifecycleStatus) *state.MergeRecoveryNode {
+	if status != state.StageMerging {
+		return nil
+	}
+	worktreeName := strings.TrimSpace(legacyExtraString(stage.Extra, "merge_worktree"))
+	if worktreeName == "" {
+		return nil
+	}
+	mergeMode := strings.TrimSpace(legacyExtraString(stage.Extra, "merge_mode"))
+	mergeBranch := strings.TrimSpace(legacyExtraString(stage.Extra, "merge_branch"))
+	switch mergeMode {
+	case "":
+		if mergeBranch != "" {
+			mergeMode = "remote"
+		} else {
+			mergeMode = "local"
+		}
+	case "local":
+		mergeBranch = ""
+	case "remote":
+		if mergeBranch == "" {
+			return nil
+		}
+	default:
+		return nil
+	}
+	return &state.MergeRecoveryNode{
+		WorktreeName: worktreeName,
+		Mode:         mergeMode,
+		Branch:       mergeBranch,
+	}
+}
+
+func legacyExtraString(extra map[string]json.RawMessage, key string) string {
+	if extra == nil {
+		return ""
+	}
+	raw, ok := extra[key]
+	if !ok {
+		return ""
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return ""
+	}
+	return value
 }

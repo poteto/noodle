@@ -104,6 +104,7 @@ type StageNode struct {
 	Skill      string               `json:"skill"`
 	Runtime    string               `json:"runtime"`
 	Attempts   []AttemptNode        `json:"attempts"`
+	Merge      *MergeRecoveryNode   `json:"merge,omitempty"`
 	Group      string               `json:"group"`
 }
 
@@ -117,6 +118,14 @@ type AttemptNode struct {
 	ExitCode     *int          `json:"exit_code"`
 	WorktreeName string        `json:"worktree_name"`
 	Error        string        `json:"error"`
+}
+
+// MergeRecoveryNode records the durable recovery data for a stage that has
+// completed execution and is waiting for merge convergence.
+type MergeRecoveryNode struct {
+	WorktreeName string `json:"worktree_name"`
+	Mode         string `json:"mode"`
+	Branch       string `json:"branch,omitempty"`
 }
 
 // PendingReviewNode records a stage parked for human review.
@@ -213,6 +222,10 @@ func (s State) Clone() State {
 			stagesCopy := make([]StageNode, len(order.Stages))
 			for i := range order.Stages {
 				stageCopy := order.Stages[i]
+				if order.Stages[i].Merge != nil {
+					mergeCopy := *order.Stages[i].Merge
+					stageCopy.Merge = &mergeCopy
+				}
 				if order.Stages[i].Attempts != nil {
 					attemptsCopy := make([]AttemptNode, len(order.Stages[i].Attempts))
 					for j := range order.Stages[i].Attempts {
@@ -371,6 +384,26 @@ func (s *State) Validate() error {
 				if !hasRunningAttempt {
 					return fmt.Errorf("order %q stage %d has status running but no attempt is running", orderID, i)
 				}
+			}
+
+			if stage.Status == StageMerging {
+				if stage.Merge == nil {
+					return fmt.Errorf("order %q stage %d has status merging but no merge recovery", orderID, i)
+				}
+				if strings.TrimSpace(stage.Merge.WorktreeName) == "" {
+					return fmt.Errorf("order %q stage %d has merging recovery with empty worktree name", orderID, i)
+				}
+				switch strings.TrimSpace(stage.Merge.Mode) {
+				case "local":
+				case "remote":
+					if strings.TrimSpace(stage.Merge.Branch) == "" {
+						return fmt.Errorf("order %q stage %d has remote merge recovery without branch", orderID, i)
+					}
+				default:
+					return fmt.Errorf("order %q stage %d has invalid merge mode %q", orderID, i, stage.Merge.Mode)
+				}
+			} else if stage.Merge != nil {
+				return fmt.Errorf("order %q stage %d has merge recovery while status is %q", orderID, i, stage.Status)
 			}
 
 			// AttemptIDs must be unique across the entire state.

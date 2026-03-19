@@ -147,24 +147,15 @@ func defaultPendingReviewWorktreeName(orderID string, stageIndex int, taskKey st
 	return name
 }
 
-// reconcilePendingReview removes pending review entries whose order no longer
-// exists in orders.json. This covers the crash window between advancing
-// orders.json and updating pending-review.json.
+// reconcilePendingReview removes pending review entries whose canonical order
+// no longer exists.
 func (l *Loop) reconcilePendingReview() error {
 	if len(l.cooks.pendingReview) == 0 {
 		return nil
 	}
-	orders, err := l.currentOrders()
-	if err != nil {
-		return nil // no orders file yet — nothing to reconcile
-	}
-	orderIDs := make(map[string]struct{}, len(orders.Orders))
-	for _, o := range orders.Orders {
-		orderIDs[o.ID] = struct{}{}
-	}
 	pruned := false
 	for id := range l.cooks.pendingReview {
-		if _, ok := orderIDs[id]; !ok {
+		if _, ok := l.canonical.Orders[id]; !ok {
 			l.logger.Warn("pruning stale pending review", "order", id)
 			delete(l.cooks.pendingReview, id)
 			delete(l.canonical.PendingReviews, id)

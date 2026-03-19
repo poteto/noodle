@@ -57,6 +57,8 @@ type orderStagePayload struct {
 	AttemptID    string `json:"attempt_id"`
 	SessionID    string `json:"session_id"`
 	WorktreeName string `json:"worktree_name"`
+	MergeMode    string `json:"merge_mode"`
+	MergeBranch  string `json:"merge_branch"`
 	Error        string `json:"error"`
 	Mergeable    *bool  `json:"mergeable"`
 	ExitCode     *int   `json:"exit_code"`
@@ -121,6 +123,7 @@ func reduceDispatchRequested(current state.State, event ingest.StateEvent) (stat
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageDispatching
+	stage.Merge = nil
 	order.Status = state.OrderActive
 	order.UpdatedAt = event.Timestamp
 	order.Stages[payload.StageIndex] = stage
@@ -155,6 +158,7 @@ func reduceDispatchCompleted(current state.State, event ingest.StateEvent) (stat
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageRunning
+	stage.Merge = nil
 	order.Status = state.OrderActive
 	order.UpdatedAt = event.Timestamp
 
@@ -200,7 +204,12 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 	finalizeAttempt(&stage, payload, event, state.AttemptCompleted)
 
 	if stageMergeable(stage, payload) {
+		mergeRecovery, err := mergeRecoveryForStage(stage, payload)
+		if err != nil {
+			return current, nil, fmt.Errorf("reduce stage_completed merge recovery: %w", err)
+		}
 		stage.Status = state.StageMerging
+		stage.Merge = mergeRecovery
 		order.Stages[payload.StageIndex] = stage
 		next.Orders[payload.OrderID] = order
 		next.LastEventID = strconv.FormatUint(uint64(event.ID), 10)
@@ -208,7 +217,9 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 		effect, err := makeEffect(event, 0, EffectMerge, map[string]any{
 			"order_id":      payload.OrderID,
 			"stage_index":   payload.StageIndex,
-			"worktree_name": latestWorktreeName(stage),
+			"worktree_name": mergeRecovery.WorktreeName,
+			"merge_mode":    mergeRecovery.Mode,
+			"merge_branch":  mergeRecovery.Branch,
 		})
 		if err != nil {
 			return current, nil, fmt.Errorf("reduce stage_completed merge: %w", err)
@@ -218,6 +229,7 @@ func reduceStageCompleted(current state.State, event ingest.StateEvent) (state.S
 
 	// Non-mergeable: complete immediately and check order advancement.
 	stage.Status = state.StageCompleted
+	stage.Merge = nil
 	order.Stages[payload.StageIndex] = stage
 
 	if allStagesTerminal(order) {
@@ -255,6 +267,7 @@ func reduceStageFailed(current state.State, event ingest.StateEvent) (state.Stat
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageFailed
+	stage.Merge = nil
 	order.UpdatedAt = event.Timestamp
 	finalizeAttempt(&stage, payload, event, state.AttemptFailed)
 	order.Stages[payload.StageIndex] = stage
@@ -509,6 +522,7 @@ func reduceMergeCompleted(current state.State, event ingest.StateEvent) (state.S
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageCompleted
+	stage.Merge = nil
 	order.Stages[payload.StageIndex] = stage
 	order.UpdatedAt = event.Timestamp
 
@@ -545,6 +559,7 @@ func reduceMergeFailed(current state.State, event ingest.StateEvent) (state.Stat
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageReview
+	stage.Merge = nil
 	order.UpdatedAt = event.Timestamp
 	order.Stages[payload.StageIndex] = stage
 	next.Orders[payload.OrderID] = order
@@ -577,6 +592,7 @@ func reduceStageReviewParked(current state.State, event ingest.StateEvent) (stat
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageReview
+	stage.Merge = nil
 	order.Status = state.OrderActive
 	order.UpdatedAt = event.Timestamp
 	recordReviewAttempt(&stage, payload, event)
@@ -629,6 +645,7 @@ func reduceStageReviewChangesRequested(current state.State, event ingest.StateEv
 	order = next.Orders[payload.OrderID]
 	stage = order.Stages[payload.StageIndex]
 	stage.Status = state.StageFailed
+	stage.Merge = nil
 	if len(stage.Attempts) > 0 {
 		last := len(stage.Attempts) - 1
 		stage.Attempts[last].Status = state.AttemptFailed
@@ -656,6 +673,7 @@ func reduceStageReviewRejected(current state.State, event ingest.StateEvent) (st
 	next := current.Clone()
 	order = next.Orders[payload.OrderID]
 	for i := range order.Stages {
+		order.Stages[i].Merge = nil
 		if order.Stages[i].Status.IsTerminal() {
 			continue
 		}
@@ -771,6 +789,41 @@ func latestWorktreeName(stage state.StageNode) string {
 		}
 	}
 	return ""
+}
+
+func mergeRecoveryForStage(stage state.StageNode, payload orderStagePayload) (*state.MergeRecoveryNode, error) {
+	worktreeName := strings.TrimSpace(payload.WorktreeName)
+	if worktreeName == "" {
+		worktreeName = latestWorktreeName(stage)
+	}
+	if worktreeName == "" {
+		return nil, fmt.Errorf("mergeable stage missing worktree name")
+	}
+
+	mergeMode := stringx.Normalize(payload.MergeMode)
+	mergeBranch := strings.TrimSpace(payload.MergeBranch)
+	switch mergeMode {
+	case "":
+		if mergeBranch != "" {
+			mergeMode = "remote"
+		} else {
+			mergeMode = "local"
+		}
+	case "local":
+		mergeBranch = ""
+	case "remote":
+		if mergeBranch == "" {
+			return nil, fmt.Errorf("remote merge missing branch")
+		}
+	default:
+		return nil, fmt.Errorf("invalid merge mode %q", payload.MergeMode)
+	}
+
+	return &state.MergeRecoveryNode{
+		WorktreeName: worktreeName,
+		Mode:         mergeMode,
+		Branch:       mergeBranch,
+	}, nil
 }
 
 func stageMergeable(stage state.StageNode, payload orderStagePayload) bool {

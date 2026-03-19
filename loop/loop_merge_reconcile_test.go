@@ -11,6 +11,10 @@ import (
 
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
+	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/reducer"
+	"github.com/poteto/noodle/internal/state"
+	"github.com/poteto/noodle/internal/statever"
 	"github.com/poteto/noodle/mise"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -394,7 +398,7 @@ func TestAutoMergeWithRemoteSyncResult(t *testing.T) {
 	}
 }
 
-func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
+func TestStageCompletedPersistsCanonicalMergeRecovery(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -416,44 +420,49 @@ func TestPersistMergeMetadataWritesExtraFields(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
+	l.canonical = state.State{
+		Orders:         map[string]state.OrderNode{},
+		PendingReviews: map[string]state.PendingReviewNode{},
+		Mode:           state.RunModeAuto,
+		SchemaVersion:  statever.Current,
+	}
+	l.canonicalLoaded = true
+	l.syncCanonicalOrderFromLegacy(orders.Orders[0])
 
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{orderID: "order-1", stageIndex: 0},
 		worktreeName: "order-1-0-execute",
-		generation:   42,
 		session:      &adoptedSession{id: "sess-1", status: "completed"},
 	}
 
-	if err := l.persistMergeMetadata(cook, "local", ""); err != nil {
-		t.Fatalf("persistMergeMetadata: %v", err)
+	if err := l.emitEventChecked(ingest.EventStageCompleted, l.mergeLifecyclePayload(cook, true)); err != nil {
+		t.Fatalf("emit stage_completed: %v", err)
 	}
 
-	got, err := l.currentOrders()
+	stage := l.canonical.Orders["order-1"].Stages[0]
+	if stage.Status != state.StageMerging {
+		t.Fatalf("status = %q, want %q", stage.Status, state.StageMerging)
+	}
+	if stage.Merge == nil {
+		t.Fatal("expected canonical merge recovery")
+	}
+	if stage.Merge.WorktreeName != "order-1-0-execute" {
+		t.Fatalf("merge worktree = %q, want %q", stage.Merge.WorktreeName, "order-1-0-execute")
+	}
+	if stage.Merge.Mode != "local" {
+		t.Fatalf("merge mode = %q, want %q", stage.Merge.Mode, "local")
+	}
+	snapshot, err := reducer.ReadSnapshot(l.canonicalSnapshotPath())
 	if err != nil {
-		t.Fatalf("currentOrders: %v", err)
+		t.Fatalf("read snapshot: %v", err)
 	}
-	stage := got.Orders[0].Stages[0]
-	if stage.Status != StageStatusMerging {
-		t.Errorf("status = %q, want %q", stage.Status, StageStatusMerging)
+	snapStage := snapshot.State.Orders["order-1"].Stages[0]
+	if snapStage.Merge == nil || snapStage.Merge.WorktreeName != "order-1-0-execute" {
+		t.Fatalf("snapshot merge recovery = %#v", snapStage.Merge)
 	}
-	assertExtra := func(key, want string) {
-		t.Helper()
-		var val string
-		if err := json.Unmarshal(stage.Extra[key], &val); err != nil {
-			t.Errorf("Extra[%s] unmarshal: %v", key, err)
-			return
-		}
-		if val != want {
-			t.Errorf("Extra[%s] = %q, want %q", key, val, want)
-		}
-	}
-	assertExtra(mergeExtraWorktree, "order-1-0-execute")
-	assertExtra(mergeExtraMode, "local")
-	assertExtra(mergeExtraGeneration, "42")
-	assertExtra(mergeExtraBranch, "")
 }
 
-func TestPersistMergeMetadataRemoteMode(t *testing.T) {
+func TestStageCompletedPersistsRemoteMergeRecovery(t *testing.T) {
 	projectDir := t.TempDir()
 	runtimeDir := filepath.Join(projectDir, ".noodle")
 	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
@@ -475,36 +484,45 @@ func TestPersistMergeMetadataRemoteMode(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
+	l.canonical = state.State{
+		Orders:         map[string]state.OrderNode{},
+		PendingReviews: map[string]state.PendingReviewNode{},
+		Mode:           state.RunModeAuto,
+		SchemaVersion:  statever.Current,
+	}
+	l.canonicalLoaded = true
+	l.syncCanonicalOrderFromLegacy(orders.Orders[0])
 
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{orderID: "order-r", stageIndex: 0},
 		worktreeName: "order-r-0-execute",
-		generation:   7,
 		session:      &adoptedSession{id: "sess-r", status: "completed"},
 	}
-
-	if err := l.persistMergeMetadata(cook, "remote", "noodle/remote-branch"); err != nil {
-		t.Fatalf("persistMergeMetadata: %v", err)
+	sessionPath := filepath.Join(runtimeDir, "sessions", "sess-r")
+	if err := os.MkdirAll(sessionPath, 0o755); err != nil {
+		t.Fatalf("mkdir session path: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sessionPath, "spawn.json"),
+		[]byte(`{"sync":{"type":"branch","branch":"noodle/remote-branch"}}`),
+		0o644,
+	); err != nil {
+		t.Fatalf("write spawn metadata: %v", err)
 	}
 
-	got, err := l.currentOrders()
-	if err != nil {
-		t.Fatalf("currentOrders: %v", err)
+	if err := l.emitEventChecked(ingest.EventStageCompleted, l.mergeLifecyclePayload(cook, true)); err != nil {
+		t.Fatalf("emit stage_completed: %v", err)
 	}
-	stage := got.Orders[0].Stages[0]
-	var mode string
-	if err := json.Unmarshal(stage.Extra[mergeExtraMode], &mode); err != nil {
-		t.Fatalf("unmarshal mode: %v", err)
+
+	stage := l.canonical.Orders["order-r"].Stages[0]
+	if stage.Merge == nil {
+		t.Fatal("expected canonical merge recovery")
 	}
-	if mode != "remote" {
-		t.Errorf("mode = %q, want %q", mode, "remote")
+	if stage.Merge.Mode != "remote" {
+		t.Fatalf("merge mode = %q, want %q", stage.Merge.Mode, "remote")
 	}
-	var branch string
-	if err := json.Unmarshal(stage.Extra[mergeExtraBranch], &branch); err != nil {
-		t.Fatalf("unmarshal branch: %v", err)
-	}
-	if branch != "noodle/remote-branch" {
-		t.Errorf("branch = %q, want %q", branch, "noodle/remote-branch")
+	if stage.Merge.Branch != "noodle/remote-branch" {
+		t.Fatalf("merge branch = %q, want %q", stage.Merge.Branch, "noodle/remote-branch")
 	}
 }
 
@@ -539,6 +557,20 @@ func TestReconcileMergingStagesMissingMetadataFails(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
+	l.canonical = state.State{
+		Orders: map[string]state.OrderNode{
+			"stuck-1": {
+				OrderID:  "stuck-1",
+				Status:   state.OrderActive,
+				Stages:   []state.StageNode{{StageIndex: 0, Status: state.StageMerging, Skill: "execute", Runtime: "process"}},
+				Metadata: map[string]string{},
+			},
+		},
+		PendingReviews: map[string]state.PendingReviewNode{},
+		Mode:           state.RunModeAuto,
+		SchemaVersion:  statever.Current,
+	}
+	l.canonicalLoaded = true
 
 	if err := l.reconcileMergingStages(); err != nil {
 		t.Fatalf("reconcileMergingStages: %v", err)
@@ -566,19 +598,7 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 		t.Fatalf("mkdir runtime: %v", err)
 	}
 	ordersPath := filepath.Join(runtimeDir, "orders.json")
-	orders := OrdersFile{Orders: []Order{{
-		ID:     "adopted-1",
-		Status: OrderStatusActive,
-		Stages: []Stage{{
-			TaskKey: "execute",
-			Skill:   "execute",
-			Status:  StageStatusMerging,
-			Extra: map[string]json.RawMessage{
-				mergeExtraWorktree: jsonQuote("adopted-1-0-execute"),
-				mergeExtraMode:     jsonQuote("local"),
-			},
-		}},
-	}}}
+	orders := OrdersFile{Orders: []Order{testOrder("adopted-1", "execute", "execute", "claude", "claude-opus-4-6")}}
 	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
 		t.Fatalf("write orders: %v", err)
 	}
@@ -593,6 +613,28 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 		Now:        time.Now,
 		OrdersFile: ordersPath,
 	})
+	l.canonical = state.State{
+		Orders: map[string]state.OrderNode{
+			"adopted-1": {
+				OrderID: "adopted-1",
+				Status:  state.OrderActive,
+				Stages: []state.StageNode{{
+					StageIndex: 0,
+					Status:     state.StageMerging,
+					Skill:      "execute",
+					Runtime:    "process",
+					Merge: &state.MergeRecoveryNode{
+						WorktreeName: "adopted-1-0-execute",
+						Mode:         "local",
+					},
+				}},
+			},
+		},
+		PendingReviews: map[string]state.PendingReviewNode{},
+		Mode:           state.RunModeAuto,
+		SchemaVersion:  statever.Current,
+	}
+	l.canonicalLoaded = true
 
 	// Simulate adopted session for this order.
 	l.cooks.adoptedTargets = map[string]string{"adopted-1": "sess-adopted"}
@@ -610,6 +652,9 @@ func TestReconcileMergingStagesAdoptedSessionResetsToActive(t *testing.T) {
 	}
 	if got.Orders[0].Stages[0].Status != StageStatusActive {
 		t.Errorf("status = %q, want %q", got.Orders[0].Stages[0].Status, StageStatusActive)
+	}
+	if stage := l.canonical.Orders["adopted-1"].Stages[0]; stage.Status != state.StageRunning || stage.Merge != nil {
+		t.Fatalf("canonical stage after reconcile = %#v", stage)
 	}
 }
 
@@ -660,8 +705,8 @@ func TestExtraString(t *testing.T) {
 		want  string
 	}{
 		{"nil map", nil, "key", ""},
-		{"missing key", map[string]json.RawMessage{"other": jsonQuote("val")}, "key", ""},
-		{"present", map[string]json.RawMessage{"key": jsonQuote("hello")}, "key", "hello"},
+		{"missing key", map[string]json.RawMessage{"other": json.RawMessage(`"val"`)}, "key", ""},
+		{"present", map[string]json.RawMessage{"key": json.RawMessage(`"hello"`)}, "key", "hello"},
 		{"invalid json", map[string]json.RawMessage{"key": json.RawMessage(`not-json`)}, "key", ""},
 	}
 	for _, tt := range tests {
@@ -671,12 +716,5 @@ func TestExtraString(t *testing.T) {
 				t.Errorf("extraString() = %q, want %q", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestJsonQuote(t *testing.T) {
-	got := jsonQuote("hello world")
-	if string(got) != `"hello world"` {
-		t.Errorf("jsonQuote = %s, want %q", got, `"hello world"`)
 	}
 }

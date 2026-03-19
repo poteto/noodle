@@ -141,11 +141,7 @@ func (l *Loop) handleCompletion(ctx context.Context, cook *cookHandle, resultSta
 			return l.parkPendingReview(cook, reason)
 		}
 		mergeable := canMerge && canAutoMerge
-		if err := l.emitEventChecked(ingest.EventStageCompleted, map[string]any{
-			"order_id":    cook.orderID,
-			"stage_index": cook.stageIndex,
-			"mergeable":   mergeable,
-		}); err != nil {
+		if err := l.emitEventChecked(ingest.EventStageCompleted, l.mergeLifecyclePayload(cook, mergeable)); err != nil {
 			return err
 		}
 		if mergeable {
@@ -189,10 +185,6 @@ func (l *Loop) processStageMessage(cook *cookHandle) (bool, *string) {
 // completeWithMerge handles a successful mergeable stage by persisting merge
 // metadata and either directly merging or enqueueing to the merge queue.
 func (l *Loop) completeWithMerge(ctx context.Context, cook *cookHandle, msg *string) error {
-	mergeMode, mergeBranch := l.resolveMergeMode(cook)
-	if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
-		return err
-	}
 	l.logger.Info("cook completing",
 		"order", cook.orderID, "session", cook.session.ID())
 	if l.mergeQueue != nil {

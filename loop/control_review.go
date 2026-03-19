@@ -30,18 +30,6 @@ func (l *Loop) controlMerge(orderID string) error {
 		worktreePath: pending.worktreePath,
 		session:      &adoptedSession{id: pending.sessionID, status: "completed"},
 	}
-	// Determine actual order status for advanceAndPersist.
-	orders, err := l.currentOrders()
-	if err != nil {
-		return fmt.Errorf("merge: read orders: %w", err)
-	}
-	for _, o := range orders.Orders {
-		if o.ID == orderID {
-			cook.orderStatus = o.Status
-			break
-		}
-	}
-
 	canMerge, err := l.worktreeHasChanges(cook)
 	if err != nil {
 		return fmt.Errorf("merge check: %w", err)
@@ -53,11 +41,7 @@ func (l *Loop) controlMerge(orderID string) error {
 	}); err != nil {
 		return err
 	}
-	if err := l.emitEventChecked(ingest.EventStageCompleted, map[string]any{
-		"order_id":    cook.orderID,
-		"stage_index": cook.stageIndex,
-		"mergeable":   canMerge,
-	}); err != nil {
+	if err := l.emitEventChecked(ingest.EventStageCompleted, l.mergeLifecyclePayload(cook, canMerge)); err != nil {
 		return err
 	}
 
@@ -66,10 +50,6 @@ func (l *Loop) controlMerge(orderID string) error {
 			return err
 		}
 	} else {
-		mergeMode, mergeBranch := l.resolveMergeMode(cook)
-		if err := l.persistMergeMetadata(cook, mergeMode, mergeBranch); err != nil {
-			return err
-		}
 		if l.mergeQueue == nil {
 			if err := l.mergeCookWorktree(context.Background(), cook); err != nil {
 				return err
