@@ -22,7 +22,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 	sessions := make([]Session, 0, len(state.ActiveCooks)+len(state.RecentHistory))
 	active := make([]Session, 0, len(state.ActiveCooks))
 	recent := make([]Session, 0, len(state.RecentHistory))
-	projected := structuralSnapshotView(state)
+	projected := state.Projection
 
 	reader := event.NewEventReader(runtimeDir)
 	for _, cook := range state.ActiveCooks {
@@ -140,7 +140,7 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Active:             active,
 		Recent:             recent,
 		Orders:             orders,
-		ActiveOrderIDs:     nonNilStrings(cookingOrderIDs(cookSessionByOrder)),
+		ActiveOrderIDs:     nonNilStrings(projected.ActiveOrderIDs),
 		ActionNeeded:       nonNilStrings(projected.ActionNeeded),
 		EventsBySession:    map[string][]EventLine{},
 		FeedEvents:         nonNilFeedEvents(feedEvents),
@@ -150,81 +150,6 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		Mode:               projected.Mode,
 		MaxConcurrency:     state.MaxConcurrency,
 	}, nil
-}
-
-func structuralSnapshotView(state loop.LoopState) projection.SnapshotView {
-	if len(state.Projection.Orders) != 0 || len(state.Projection.PendingReviews) != 0 || state.Projection.SchemaVersion != 0 {
-		return state.Projection
-	}
-
-	orders := make([]projection.OrderProjection, 0, len(state.Orders))
-	activeOrderIDs := make([]string, 0, len(state.Orders))
-	for _, order := range state.Orders {
-		orders = append(orders, projection.OrderProjection{
-			ID:        order.ID,
-			Title:     order.Title,
-			Plan:      append([]string(nil), order.Plan...),
-			Rationale: order.Rationale,
-			Status:    string(order.Status),
-			Stages:    projectLoopStages(order.Stages),
-		})
-		if order.Status != orderx.OrderStatusCompleted && order.Status != orderx.OrderStatusFailed {
-			activeOrderIDs = append(activeOrderIDs, order.ID)
-		}
-	}
-	sort.Strings(activeOrderIDs)
-
-	return projection.SnapshotView{
-		Orders:             orders,
-		ActiveOrderIDs:     activeOrderIDs,
-		ActionNeeded:       append([]string(nil), state.ActionNeeded...),
-		PendingReviews:     projectLoopPendingReviews(state.PendingReviews),
-		PendingReviewCount: state.PendingReviewCount,
-		Mode:               state.Mode,
-		ModeEpoch:          state.ModeEpoch,
-		GeneratedAt:        state.UpdatedAt,
-	}
-}
-
-func projectLoopStages(stages []loop.Stage) []projection.StageProjection {
-	projected := make([]projection.StageProjection, 0, len(stages))
-	for _, stage := range stages {
-		projected = append(projected, projection.StageProjection{
-			TaskKey:     stage.TaskKey,
-			Prompt:      stage.Prompt,
-			Skill:       stage.Skill,
-			Provider:    stage.Provider,
-			Model:       stage.Model,
-			Runtime:     stage.Runtime,
-			Group:       stage.Group,
-			Status:      string(stage.Status),
-			Extra:       cloneRawMap(stage.Extra),
-			ExtraPrompt: stage.ExtraPrompt,
-		})
-	}
-	return projected
-}
-
-func projectLoopPendingReviews(reviews []loop.PendingReviewItem) []projection.PendingReviewProjection {
-	projected := make([]projection.PendingReviewProjection, 0, len(reviews))
-	for _, review := range reviews {
-		projected = append(projected, projection.PendingReviewProjection{
-			OrderID:      review.OrderID,
-			StageIndex:   review.StageIndex,
-			TaskKey:      review.TaskKey,
-			Prompt:       review.Prompt,
-			Provider:     review.Provider,
-			Model:        review.Model,
-			Runtime:      review.Runtime,
-			Skill:        review.Skill,
-			Plan:         append([]string(nil), review.Plan...),
-			WorktreeName: review.WorktreeName,
-			WorktreePath: review.WorktreePath,
-			SessionID:    review.SessionID,
-			Reason:       review.Reason,
-		})
-	}
-	return projected
 }
 
 func projectedPendingReviews(reviews []projection.PendingReviewProjection) []loop.PendingReviewItem {
@@ -311,18 +236,6 @@ func NormalizeLoopState(value string) string {
 	default:
 		return ""
 	}
-}
-
-// cookingOrderIDs returns order IDs that have an active cook session.
-// This is a subset of the loop's ActiveOrderIDs — it excludes orders that are
-// "active" but waiting to be dispatched (no cook yet).
-func cookingOrderIDs(sessionByOrder map[string]string) []string {
-	ids := make([]string, 0, len(sessionByOrder))
-	for orderID := range sessionByOrder {
-		ids = append(ids, orderID)
-	}
-	sort.Strings(ids)
-	return ids
 }
 
 // nonNil helpers ensure slices marshal to [] instead of null in JSON.

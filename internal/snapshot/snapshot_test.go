@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/loop"
 	"github.com/poteto/noodle/mise"
 )
@@ -480,23 +481,23 @@ func TestLoadSnapshotFromLoopState(t *testing.T) {
 				CompletedAt: now.Add(-5 * time.Minute),
 			},
 		},
-		Orders: []loop.Order{
-			{
-				ID:    "order-1",
-				Title: "Test order",
-				Stages: []loop.Stage{
-					{TaskKey: "execute", Status: "active"},
+		Projection: projection.SnapshotView{
+			Orders: []projection.OrderProjection{
+				{
+					ID:    "order-1",
+					Title: "Test order",
+					Stages: []projection.StageProjection{
+						{TaskKey: "execute", Status: "active"},
+					},
+					Status: "active",
 				},
-				Status: "active",
 			},
+			ActiveOrderIDs: []string{"order-1"},
+			ActionNeeded:   []string{"check order-1"},
+			Mode:           "auto",
 		},
-		ActiveOrderIDs:     []string{"order-1"},
-		ActionNeeded:       []string{"check order-1"},
 		TotalCostUSD:       1.23,
 		MaxConcurrency:     4,
-		Mode:               "auto",
-		PendingReviews:     nil,
-		PendingReviewCount: 0,
 	}
 
 	snap, err := LoadSnapshot(dir, now, state)

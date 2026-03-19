@@ -963,7 +963,7 @@ func makeState(orderCount, stageCount int, at time.Time) state.State {
 				Status:     state.StagePending,
 				Skill:      fmt.Sprintf("skill-%d", stageIndex),
 				Runtime:    "process",
-				Group:      "main",
+				Group:      0,
 			})
 		}
 

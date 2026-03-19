@@ -35,6 +35,7 @@
 - [[codebase/loop-test-overlap-matrix]]
 - [[codebase/orders-lifecycle-defaults-on-promotion]]
 - [[codebase/provider-routing-must-fail-loudly]]
+- [[codebase/projection-owns-snapshot-active-order-ids]]
 - [[codebase/release-changelog-wrapper-script]]
 - [[codebase/root-tests-require-ui-dist-assets]]
 - [[codebase/runtime-routing-owned-by-orders]]
