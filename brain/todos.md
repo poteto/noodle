@@ -21,7 +21,7 @@ priority: [115, 84, 88, 90, 118, 116, 117, 110, 96, 101, 100, 86, 111, 85, 69]
 
 # Todos
 
-<!-- next-id: 119 -->
+<!-- next-id: 120 -->
 <!-- completed todos live in archive/completed_todos.md -->
 <!-- completed plans live in archive/plans/ -->
 
@@ -53,6 +53,10 @@ priority: [115, 84, 88, 90, 118, 116, 117, 110, 96, 101, 100, 86, 111, 85, 69]
 
 96. [ ] Custom dispatcher/runtime plugins — allow users to write their own dispatcher or runtime plugin so they can add a custom VM by implementing Noodle's interface. [[plans/96-101-runtime-plugins/overview]]
 101. [ ] Split out Sprites runtime into its own runtime plugin (`noodle-runtime-sprites`). Sprites should not be a built-in default, it should be an installable plugin that uses the custom runtime interface (#96). [[plans/96-101-runtime-plugins/overview]]
+
+## Brainmaxxing
+
+119. [ ] Brainmaxxing autoresearch improvements — curator gate for meditate, structured findings in reflect, new optimize skill for GEPA-inspired skill hill-climbing. [[plans/119-brainmaxxing-autoresearch/overview]]
 
 ## Design Explorations
 
