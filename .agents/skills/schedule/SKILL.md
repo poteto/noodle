@@ -1,6 +1,6 @@
 ---
 name: schedule
-description: Orders scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json. Schedules work orders based on backlog state, plan phases, session history, and task type schedules.
+description: Orders scheduler. Reads .noodle/mise.json, writes .noodle/orders-next.json. Schedules work orders based on backlog state, plan phases, session history, and task type schedules. Triggers when orders are empty, after backlog changes, when the loop re-evaluates, or when /schedule is invoked.
 schedule: "When orders are empty, after backlog changes, or when session history suggests re-evaluation"
 ---
 
@@ -76,14 +76,7 @@ Don't react mechanically to every event. Use judgment: a single stage failure in
 
 ## Model Routing
 
-| Task type | Provider | Model |
-|-----------|----------|-------|
-| Tiny/small tasks (no deep thinking needed) | codex | gpt-5.3-codex-spark |
-| Tiny/small tasks (no deep thinking needed) | claude | claude-sonnet-4-6 |
-| Implementation, execution, coding | codex | gpt-5.4 |
-| Judgment, strategy, planning, review | claude | claude-opus-4-6 |
-
-Use spark or sonnet for small, mechanical tasks (simple renames, one-liner fixes, straightforward additions). Use full codex for anything requiring multi-step reasoning or cross-file coordination. When uncertain, codex for implementation, opus for judgment.
+See [references/model-routing.md](references/model-routing.md) for model selection.
 
 ## Runtime Routing
 

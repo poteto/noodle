@@ -4,8 +4,8 @@ description: >-
   Operate the Noodle CLI — explain commands, find flags, create/edit .noodle.toml config.
   Also covers writing skills for Noodle: the orders pipeline, task-type schedule fields,
   stage composition, and the orders-next.json schema. Use when running noodle commands,
-  editing .noodle.toml, writing or updating a skill's schedule field, or authoring new
-  task-type skills.
+  editing .noodle.toml, writing or updating a skill's schedule field, authoring new
+  task-type skills, or asking "how to run noodle", "noodle help", "configure noodle".
 ---
 
 # Noodle
@@ -55,7 +55,7 @@ model = "claude-opus-4-6"
 paths = [".agents/skills"]
 ```
 
-Full config reference: https://poteto.github.io/noodle/reference/configuration
+Full config reference: [references/configuration.md](references/configuration.md)
 
 ## CLI
 

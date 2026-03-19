@@ -1,8 +1,9 @@
 ---
 name: worktree
 description: >-
-  Manage git worktrees for isolated branch work. Use for "worktree", "new worktree",
-  "clean up worktrees", or when spawning agent teams needing file-level isolation.
+  Use for concurrent sessions, agent team isolation, or any work needing a separate branch.
+  Critical for multi-agent workflows. Triggers: "worktree", "new worktree", "clean up worktrees",
+  "need isolation", or when spawning agent teams.
 ---
 
 # Worktree
@@ -47,7 +48,6 @@ Runs the command inside the worktree via `cmd.Dir`. **The parent shell's CWD nev
 # Examples
 noodle worktree exec my-feature go test ./...
 noodle worktree exec my-feature go build ./...
-noodle worktree exec my-feature go test ./...
 ```
 
 For git operations, `git -C` also works and doesn't need `exec`:

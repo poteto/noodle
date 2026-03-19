@@ -2,7 +2,8 @@
 name: meditate
 description: >-
   Audit and evolve the brain vault — prune outdated content, discover cross-cutting principles,
-  review skills for structural encoding opportunities. Triggers: "meditate", "audit the brain".
+  review skills for structural encoding opportunities. Triggers: "meditate", "audit the brain",
+  "prune brain", "review skills", "consolidate notes", "prune notes".
 schedule: "Standalone single-stage order after several reflect cycles have accumulated. Expensive — don't over-schedule."
 ---
 

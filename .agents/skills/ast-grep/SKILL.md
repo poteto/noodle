@@ -10,8 +10,6 @@ description: >-
 
 ## Workflow
 
-**Use Tasks to track progress.** Create a task for each step below (TaskCreate), mark each in_progress when starting and completed when done (TaskUpdate). Check TaskList after each step.
-
 1. Write a test snippet representing the target code
 2. Write the rule (start with `pattern`, escalate to `kind` + `has`/`inside` if needed)
 3. Test with `--stdin` before searching the codebase

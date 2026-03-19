@@ -40,18 +40,7 @@ pnpm fixtures:hash:sync
 
 ### Bug Fixtures
 
-To add a fixture for a known bug that isn't fixed yet:
-
-1. Scaffold the fixture with the script above
-2. Set `expected_failure: true` and `bug: true` in `expected.md` frontmatter
-3. Add `## Expected Error` section with `{"any": true}`
-4. Verify: `pnpm bugs` lists it
-5. Commit: `test: add bug fixture for <description>`
-
-When the bug is later fixed:
-1. Record the correct expected output (`pnpm fixtures:loop:record` for loop, or manually update `expected.md`)
-2. Set `expected_failure: false` and `bug: false`
-3. Sync hashes: `pnpm fixtures:hash:sync`
+See [references/fixtures.md](references/fixtures.md) for full bug fixture format (frontmatter fields, expected error sections, and the fix workflow).
 
 ## Key Commands
 

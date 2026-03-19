@@ -2,7 +2,8 @@
 name: review
 description: >-
   Review plans and code changes. Walks Architecture → Code Quality → Tests → Performance,
-  numbering issues with tradeoff options. Triggers: "review", "review this", "code review".
+  numbering issues with tradeoff options. Triggers: "review", "review this", "code review",
+  "look over this", "check my changes", "audit", "critique", "what do you think", "sanity check".
 ---
 
 # Review

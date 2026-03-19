@@ -15,7 +15,7 @@ Read `brain/todos.md` and refine unclear items into actionable prompts through t
 
 1. **Read** `brain/todos.md` and review items under `## Open`.
 2. **Triage** each item: is it clear enough to act on without further context? A clear item specifies *what* is wrong, *where* it happens, and *what the fix should be*. Skip items that already meet this bar.
-3. **Ask** clarifying questions about unclear items using `AskUserQuestion`. Group related questions — aim for one round of questions, not a back-and-forth. Good clarifying questions target:
+3. **Ask** clarifying questions about unclear items using `AskUserQuestion`. Group related questions — aim for one round of questions, not a back-and-forth (to minimize back-and-forth and user fatigue). Good clarifying questions target:
    - **What** — what exactly is the problem or desired behavior?
    - **Where** — which part of the app, which component, which flow?
    - **How** — how should it work instead? What does "fixed" look like?

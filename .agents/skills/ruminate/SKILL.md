@@ -2,7 +2,8 @@
 name: ruminate
 description: >-
   Mine past Claude Code and Codex conversations for uncaptured patterns, corrections, and knowledge.
-  Cross-references with existing brain content. Triggers: "ruminate", "mine my history".
+  Cross-references with existing brain content. Triggers: "ruminate", "mine my history",
+  "what have I been working on", "review past sessions", "extract learnings".
 ---
 
 # Ruminate

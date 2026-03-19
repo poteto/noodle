@@ -2,12 +2,11 @@
 name: go-best-practices
 description: >
   Production Go patterns — lifecycle, concurrency, config, testing, CI. Use when
-  writing, reviewing, or refactoring Go code.
+  writing, reviewing, or refactoring Go code. Triggers on Go code review, Go refactoring,
+  or 'go best practices'.
 ---
 
 # Go Best Practices
-
-Apply when writing or reviewing Go code in this codebase.
 
 | Pattern | When to apply |
 |---------|---------------|

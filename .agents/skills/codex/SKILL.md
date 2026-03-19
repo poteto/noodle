@@ -1,8 +1,9 @@
 ---
 name: codex
 description: >-
-  Run Codex CLI (exec, resume) for code analysis, refactoring, or automated editing.
-  Includes Spark vs standard guidance. Triggers: "codex", "run codex", "use codex to".
+  Run Codex CLI (exec, resume) for parallel work, delegating tasks to another model, or background
+  code generation. Handles code analysis, refactoring, and automated editing. Includes Spark vs
+  standard guidance. Triggers: "codex", "run codex", "use codex to".
 ---
 
 # Codex

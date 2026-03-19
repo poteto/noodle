@@ -1,6 +1,9 @@
 ---
 name: todo
-description: Add, complete, or view items in the brain/todos.md backlog. Use when the user says "todo", "add a todo", "mark done", "what's on the backlog", or wants to manage their task list.
+description: >-
+  Add, complete, or view items in the brain/todos.md backlog. Use when the user says "todo",
+  "add a todo", "mark done", "what's on the backlog", "show todos", "list tasks", "check off",
+  or wants to manage their task list.
 ---
 
 # Todo
@@ -40,7 +43,7 @@ Change `[ ]` to `[x]` and update the description with a reason:
 2. [x] Old description — superseded by #75 channel UI redesign
 ```
 
-Then move the done item from `brain/todos.md` to `brain/archive/todos.md`. Remove empty sections left behind.
+Then move the done item from `brain/todos.md` to `brain/archive/todos.md` (create the file if it doesn't exist). Remove empty sections left behind.
 
 ### Edit description
 

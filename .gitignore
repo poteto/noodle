@@ -40,5 +40,8 @@ ui/dist/client/*
 !ui/dist/client/.gitkeep
 ui/.output/
 
+# Python
+__pycache__/
+
 # Test artifacts
 e2e/ui/test-results/

@@ -1,6 +1,11 @@
 ---
 name: react-best-practices
-description: "React performance optimization guidelines. Use when writing, reviewing, or refactoring React components, hooks, effects, data fetching, or bundle optimization. Includes useEffect best practices — when NOT to use effects and better alternatives."
+description: >-
+  React performance optimization guidelines. Use when writing, reviewing, or refactoring React
+  components, hooks, effects, data fetching, or bundle optimization. Includes useEffect best
+  practices — when NOT to use effects and better alternatives. Triggers: "when writing React code",
+  "reviewing a React PR", "why is this component re-rendering", "reviewing code for performance
+  issues", "optimizing bundle size".
 ---
 
 # React Best Practices
