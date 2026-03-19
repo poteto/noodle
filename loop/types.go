@@ -207,6 +207,7 @@ type Loop struct {
 
 	// V2 canonical state — event-sourced pipeline.
 	canonical    state.State
+	canonicalLoaded bool
 	effectLedger *reducer.EffectLedger
 	eventCounter atomic.Uint64
 

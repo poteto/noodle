@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -56,6 +57,7 @@ func (l *Loop) loadCanonicalSnapshot() (bool, error) {
 		return false, err
 	}
 	l.eventCounter.Store(lastEventID)
+	l.canonicalLoaded = true
 	return true, nil
 }
 
@@ -77,6 +79,7 @@ func (l *Loop) bootstrapCanonicalFromLegacy() error {
 	l.canonical = synthesizeCanonicalState(orders, pendingReview, state.RunMode(l.config.Mode), now)
 	l.effectLedger = reducer.NewEffectLedger()
 	l.eventCounter.Store(0)
+	l.canonicalLoaded = true
 	return l.persistCanonicalCheckpoint()
 }
 
@@ -245,4 +248,33 @@ func (l *Loop) trackCanonicalOrder(order Order) {
 		"order_id": order.ID,
 		"stages":   stages,
 	})
+}
+
+func (l *Loop) syncCanonicalOrderFromLegacy(order Order) {
+	if _, exists := l.canonical.Orders[order.ID]; !exists {
+		l.trackCanonicalOrder(order)
+		return
+	}
+
+	node := l.canonical.Orders[order.ID]
+	node.OrderID = strings.TrimSpace(order.ID)
+	node.Status = legacyOrderStatusToCanonical(order.Status)
+	now := timeNowUTC(l.deps.Now)
+	node.UpdatedAt = now
+
+	stages := make([]state.StageNode, 0, len(order.Stages))
+	for i, stage := range order.Stages {
+		stageNode := state.StageNode{
+			StageIndex: i,
+			Status:     legacyStageStatusToCanonical(stage.Status),
+			Skill:      strings.TrimSpace(stage.Skill),
+			Runtime:    nonEmpty(stage.Runtime, "process"),
+		}
+		if i < len(node.Stages) {
+			stageNode.Attempts = slices.Clone(node.Stages[i].Attempts)
+		}
+		stages = append(stages, stageNode)
+	}
+	node.Stages = stages
+	l.canonical.Orders[order.ID] = node
 }

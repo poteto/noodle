@@ -321,6 +321,20 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 				}); err != nil {
 					return err
 				}
+				orders, err := l.currentOrders()
+				if err != nil {
+					return err
+				}
+				for _, order := range orders.Orders {
+					if order.ID != scheduleOrderID {
+						continue
+					}
+					l.syncCanonicalOrderFromLegacy(order)
+					if err := l.persistCanonicalCheckpoint(); err != nil {
+						return err
+					}
+					break
+				}
 				l.scheduleNothingUntil = time.Time{}
 				l.logger.Info("schedule bootstrap completed, injected schedule order")
 			} else {
@@ -472,6 +486,10 @@ func (l *Loop) removeOrder(id string) error {
 		return err
 	}
 	if removed {
+		delete(l.canonical.Orders, id)
+		if err := l.persistCanonicalCheckpoint(); err != nil {
+			return err
+		}
 		l.logger.Info("order removed", "order", id)
 	}
 	return nil

@@ -35,7 +35,7 @@ func BenchmarkPlanCycleSpawnsScale(b *testing.B) {
 			brief := mise.Brief{}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = l.planCycleSpawns(orders, brief, size)
+				_, _ = l.planCycleSpawns(orders, brief, size)
 			}
 		})
 	}

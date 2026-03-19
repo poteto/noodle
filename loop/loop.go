@@ -402,6 +402,15 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		l.rebuildRegistry()
 		l.registryStale.Store(false)
 	}
+	if !l.canonicalLoaded {
+		if err := l.loadOrBootstrapCanonical(); err != nil {
+			return l.classifySystemHard(
+				"cycle.load_canonical",
+				formatCycleFailureMessage("cycle.load_canonical", "load canonical state"),
+				err,
+			)
+		}
+	}
 
 	// Snapshot capacity before control commands can mutate it.
 	cycleCapacity := l.config.Concurrency.MaxConcurrency
@@ -465,7 +474,14 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return nil
 	}
 
-	candidates := l.planCycleSpawns(orders, brief, cycleCapacity)
+	candidates, err := l.planCycleSpawns(orders, brief, cycleCapacity)
+	if err != nil {
+		return l.classifySystemHard(
+			"cycle.plan_dispatch",
+			formatCycleFailureMessage("cycle.plan_dispatch", "plan dispatch"),
+			err,
+		)
+	}
 	if err := l.spawnPlannedCandidates(ctx, candidates, orders); err != nil {
 		return l.classifySystemHard(
 			"cycle.spawn",

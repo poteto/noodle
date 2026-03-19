@@ -223,6 +223,7 @@ func seedCanonicalFromOrders(l *Loop, orders OrdersFile) {
 		ModeEpoch:     l.canonical.ModeEpoch,
 		SchemaVersion: statever.Current,
 	}
+	l.canonicalLoaded = true
 }
 
 func legacyOrderToCanonicalStatus(status string) state.OrderLifecycleStatus {

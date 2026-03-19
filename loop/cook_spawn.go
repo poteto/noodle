@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/poteto/noodle/internal/ingest"
-	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/stringx"
 	loopruntime "github.com/poteto/noodle/runtime"
 	"github.com/poteto/noodle/worktree"
@@ -94,18 +93,22 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 		Title:        order.Title,
 		RetryCount:   opts.attempt,
 	}
-
-	// Persist active status BEFORE spawning session — restart safety.
-	if err := l.persistOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusActive); err != nil {
-		if created {
-			_ = l.deps.Worktree.Cleanup(name, worktree.CleanupOpts{Force: true})
-		}
-		return err
-	}
+	attemptID := dispatchAttemptID(cand.OrderID, cand.StageIndex, opts.attempt)
+	l.emitEvent(ingest.EventDispatchRequested, map[string]any{
+		"order_id":    cand.OrderID,
+		"stage_index": cand.StageIndex,
+		"attempt_id":  attemptID,
+	})
 
 	session, fallbackOutcome, err := l.dispatchSession(ctx, req)
 	if err != nil {
-		return l.handleCookDispatchFailure(cand, stage, name, created, err)
+		return l.handleCookDispatchFailure(cand, stage, name, created, attemptID, err)
+	}
+	if err := l.ensureOrderStageStatus(cand.OrderID, cand.StageIndex, StageStatusActive); err != nil {
+		l.logger.Warn("mirror active stage status failed",
+			"order", cand.OrderID,
+			"stage", cand.StageIndex,
+			"error", err)
 	}
 
 	displayName := strings.TrimSpace(opts.displayName)
@@ -142,14 +145,10 @@ func (l *Loop) spawnCook(ctx context.Context, cand dispatchCandidate, order Orde
 	l.startSessionWatcher(ctx, cook, false)
 
 	// Emit V2 canonical state events for dispatch.
-	dispatchPayload := map[string]any{
-		"order_id":    cand.OrderID,
-		"stage_index": cand.StageIndex,
-	}
-	l.emitEvent(ingest.EventDispatchRequested, dispatchPayload)
 	l.emitEvent(ingest.EventDispatchCompleted, map[string]any{
 		"order_id":      cand.OrderID,
 		"stage_index":   cand.StageIndex,
+		"attempt_id":    attemptID,
 		"session_id":    session.ID(),
 		"worktree_name": name,
 	})
@@ -199,7 +198,7 @@ func (l *Loop) dispatchSession(ctx context.Context, req loopruntime.DispatchRequ
 	return nil, RuntimeFallbackOutcome{}, classifyAgentStartFailure(runtimeName, err)
 }
 
-func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, worktreeName string, created bool, err error) error {
+func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, worktreeName string, created bool, attemptID string, err error) error {
 	if created {
 		_ = l.deps.Worktree.Cleanup(worktreeName, worktree.CleanupOpts{Force: true})
 	}
@@ -230,6 +229,8 @@ func (l *Loop) handleCookDispatchFailure(cand dispatchCandidate, stage Stage, wo
 	l.emitEvent(ingest.EventStageFailed, map[string]any{
 		"order_id":    cand.OrderID,
 		"stage_index": cand.StageIndex,
+		"attempt_id":  attemptID,
+		"worktree_name": worktreeName,
 		"error":       reason,
 	})
 	l.forwardToScheduler(cook, "dispatch_failed", reason, nil)
@@ -288,6 +289,6 @@ func (l *Loop) ensureWorktree(name string) (bool, error) {
 	return true, nil
 }
 
-func (l *Loop) persistOrderStageStatus(orderID string, stageIndex int, status orderx.StageStatus) error {
-	return l.ensureOrderStageStatus(orderID, stageIndex, status)
+func dispatchAttemptID(orderID string, stageIndex, attempt int) string {
+	return fmt.Sprintf("%s-%d-attempt-%d", strings.TrimSpace(orderID), stageIndex, attempt)
 }

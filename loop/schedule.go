@@ -165,16 +165,25 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 		Title:                order.Title,
 		RetryCount:           attempt,
 	}
-	if err := l.persistOrderStageStatus(order.ID, stageIndex, StageStatusActive); err != nil {
-		return err
-	}
+	attemptID := dispatchAttemptID(order.ID, stageIndex, attempt)
+	l.emitEvent(ingest.EventDispatchRequested, map[string]any{
+		"order_id":    order.ID,
+		"stage_index": stageIndex,
+		"attempt_id":  attemptID,
+	})
 	session, _, err := l.dispatchSession(ctx, req)
 	if err != nil {
 		return l.handleCookDispatchFailure(dispatchCandidate{
 			OrderID:    order.ID,
 			StageIndex: stageIndex,
 			Stage:      stage,
-		}, stage, "", false, err)
+		}, stage, "", false, attemptID, err)
+	}
+	if err := l.ensureOrderStageStatus(order.ID, stageIndex, StageStatusActive); err != nil {
+		l.logger.Warn("mirror active schedule stage status failed",
+			"order", order.ID,
+			"stage", stageIndex,
+			"error", err)
 	}
 	l.reconciledFailures = nil // clear only after successful dispatch
 	cook := &cookHandle{
@@ -196,13 +205,10 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	l.startSessionWatcher(ctx, cook, false)
 
 	// Emit V2 canonical state events for schedule dispatch.
-	l.emitEvent(ingest.EventDispatchRequested, map[string]any{
-		"order_id":    order.ID,
-		"stage_index": stageIndex,
-	})
 	l.emitEvent(ingest.EventDispatchCompleted, map[string]any{
 		"order_id":    order.ID,
 		"stage_index": stageIndex,
+		"attempt_id":  attemptID,
 		"session_id":  session.ID(),
 	})
 

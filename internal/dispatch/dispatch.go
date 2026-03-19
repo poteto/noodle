@@ -19,6 +19,8 @@ const (
 	blockedReasonBusy      blockedReason = "busy"
 	blockedReasonCapacity  blockedReason = "capacity"
 	blockedReasonFailed    blockedReason = "failed"
+	blockedReasonTicketed  blockedReason = "ticketed"
+	blockedReasonReview    blockedReason = "pending_review"
 	blockedReasonNoPending blockedReason = "no pending stage"
 )
 
@@ -31,8 +33,9 @@ type completionEventPayload struct {
 }
 
 // PlanDispatches scans canonical state and returns dispatch candidates plus
-// blocked reasons.
-func PlanDispatches(s state.State, maxConcurrent int, failedOrders map[string]bool) DispatchPlan {
+// blocked reasons. blockedOrders are external blockers such as ticket ownership
+// or pending review that should prevent dispatch before capacity is applied.
+func PlanDispatches(s state.State, maxConcurrent int, blockedOrders map[string]string) DispatchPlan {
 	if maxConcurrent < 0 {
 		maxConcurrent = 0
 	}
@@ -52,11 +55,26 @@ func PlanDispatches(s state.State, maxConcurrent int, failedOrders map[string]bo
 	orderIDs := sortedOrderIDs(s.Orders)
 	for _, orderID := range orderIDs {
 		order := s.Orders[orderID]
-		if order.Status != state.OrderActive {
+		if order.Status.IsTerminal() && order.Status != state.OrderFailed {
 			continue
 		}
 
 		stageIndex, stage, ok := firstPendingStage(order)
+		if order.Status == state.OrderFailed {
+			if !ok {
+				stageIndex = firstBlockedStageIndex(order)
+			}
+			plan.Blocked = append(plan.Blocked, BlockedCandidate{
+				OrderID:    orderID,
+				StageIndex: stageIndex,
+				Reason:     string(blockedReasonFailed),
+			})
+			continue
+		}
+
+		if order.Status != state.OrderPending && order.Status != state.OrderActive {
+			continue
+		}
 		if !ok {
 			plan.Blocked = append(plan.Blocked, BlockedCandidate{
 				OrderID:    orderID,
@@ -66,13 +84,15 @@ func PlanDispatches(s state.State, maxConcurrent int, failedOrders map[string]bo
 			continue
 		}
 
-		if failedOrders != nil && failedOrders[orderID] {
-			plan.Blocked = append(plan.Blocked, BlockedCandidate{
-				OrderID:    orderID,
-				StageIndex: stageIndex,
-				Reason:     string(blockedReasonFailed),
-			})
-			continue
+		if blockedOrders != nil {
+			if reason := strings.TrimSpace(blockedOrders[orderID]); reason != "" {
+				plan.Blocked = append(plan.Blocked, BlockedCandidate{
+					OrderID:    orderID,
+					StageIndex: stageIndex,
+					Reason:     reason,
+				})
+				continue
+			}
 		}
 
 		if _, busy := busyIndex[orderID]; busy {
@@ -257,6 +277,18 @@ func firstPendingStage(order state.OrderNode) (int, state.StageNode, bool) {
 		}
 	}
 	return -1, state.StageNode{}, false
+}
+
+func firstBlockedStageIndex(order state.OrderNode) int {
+	for i := range order.Stages {
+		if !order.Stages[i].Status.IsTerminal() {
+			return order.Stages[i].StageIndex
+		}
+	}
+	if len(order.Stages) == 0 {
+		return -1
+	}
+	return order.Stages[0].StageIndex
 }
 
 func isPendingStage(status state.StageLifecycleStatus) bool {

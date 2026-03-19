@@ -7,14 +7,25 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/poteto/noodle/internal/ingest"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/stringx"
 	"github.com/poteto/noodle/monitor"
 	loopruntime "github.com/poteto/noodle/runtime"
 )
 
 func (l *Loop) reconcile(ctx context.Context) error {
+	if !l.canonicalLoaded {
+		if err := l.loadOrBootstrapCanonical(); err != nil {
+			return l.classifySystemHard(
+				"reconcile.load_canonical",
+				"reconcile load canonical state failed",
+				err,
+			)
+		}
+	}
 	if err := l.loadPendingReview(); err != nil {
 		return l.classifySystemHard(
 			"reconcile.load_pending_review",
@@ -48,10 +59,10 @@ func (l *Loop) reconcile(ctx context.Context) error {
 			err,
 		)
 	}
-	if err := l.reconcileStaleActiveStages(); err != nil {
+	if err := l.reconcileStaleDispatchStages(); err != nil {
 		return l.classifySystemHard(
-			"reconcile.stale_active",
-			"reconcile stale active stages failed",
+			"reconcile.stale_dispatch",
+			"reconcile stale dispatch stages failed",
 			err,
 		)
 	}
@@ -183,31 +194,72 @@ func (l *Loop) ensureScheduleOrderPresent() error {
 	return nil
 }
 
-func (l *Loop) reconcileStaleActiveStages() error {
-	return l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
-		changed := false
-		for oi := range orders.Orders {
-			order := &orders.Orders[oi]
-			if order.Status != OrderStatusActive {
+func (l *Loop) reconcileStaleDispatchStages() error {
+	changed := false
+	now := timeNowUTC(l.deps.Now)
+	for orderID, order := range l.canonical.Orders {
+		if order.Status.IsTerminal() {
+			continue
+		}
+		if _, adopted := l.cooks.adoptedTargets[orderID]; adopted {
+			continue
+		}
+		orderChanged := false
+		for i := range order.Stages {
+			stage := order.Stages[i]
+			if stage.Status != state.StageDispatching && stage.Status != state.StageRunning {
 				continue
 			}
+			stage.Status = state.StagePending
+			if len(stage.Attempts) > 0 {
+				last := len(stage.Attempts) - 1
+				if stage.Attempts[last].Status == state.AttemptLaunching || stage.Attempts[last].Status == state.AttemptRunning {
+					stage.Attempts[last].Status = state.AttemptCancelled
+					stage.Attempts[last].CompletedAt = now
+					if strings.TrimSpace(stage.Attempts[last].Error) == "" {
+						stage.Attempts[last].Error = "restart cleared stale dispatch"
+					}
+				}
+			}
+			order.Stages[i] = stage
+			orderChanged = true
+			changed = true
+			if strings.EqualFold(strings.TrimSpace(orderID), scheduleOrderID) {
+				l.logger.Info("startup reset stale canonical schedule stage", "order", orderID, "stage", i)
+			} else {
+				l.logger.Info("startup reset stale canonical dispatch stage", "order", orderID, "stage", i)
+			}
+		}
+		if !orderChanged {
+			continue
+		}
+		order.Status = state.OrderPending
+		order.UpdatedAt = now
+		l.canonical.Orders[orderID] = order
+	}
+	if !changed {
+		return nil
+	}
+	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
+		ordersChanged := false
+		for oi := range orders.Orders {
+			order := &orders.Orders[oi]
 			if _, adopted := l.cooks.adoptedTargets[order.ID]; adopted {
 				continue
 			}
 			for si := range order.Stages {
-				if order.Stages[si].Status == StageStatusActive {
-					order.Stages[si].Status = StageStatusPending
-					changed = true
-					if isScheduleOrder(*order) {
-						l.logger.Info("startup reset stale active schedule stage", "order", order.ID, "stage", si)
-					} else {
-						l.logger.Info("startup reset stale active stage", "order", order.ID, "stage", si)
-					}
+				if order.Stages[si].Status != StageStatusActive {
+					continue
 				}
+				order.Stages[si].Status = StageStatusPending
+				ordersChanged = true
 			}
 		}
-		return changed, nil
-	})
+		return ordersChanged, nil
+	}); err != nil {
+		return err
+	}
+	return l.persistCanonicalCheckpoint()
 }
 
 // reconcileFailedOrders removes failed orders from orders.json and stores
@@ -267,6 +319,13 @@ func (l *Loop) reconcileFailedOrders() error {
 			"order", f.OrderID, "title", f.Title, "task_key", f.TaskKey)
 	}
 	return nil
+}
+
+func timeNowUTC(nowFn func() time.Time) time.Time {
+	if nowFn != nil {
+		return nowFn().UTC()
+	}
+	return time.Now().UTC()
 }
 
 // reconciledFailure holds a summary of a failed order archived during startup.
@@ -386,7 +445,7 @@ func (l *Loop) failMissingMetadataStage(md mergeMetadata) error {
 func (l *Loop) handleAlreadyAdoptedStage(md mergeMetadata) error {
 	l.logger.Info("merging stage has live session, resetting to active",
 		"order", md.orderID, "stage", md.stageIdx)
-	return l.persistOrderStageStatus(md.orderID, md.stageIdx, StageStatusActive)
+	return l.ensureOrderStageStatus(md.orderID, md.stageIdx, StageStatusActive)
 }
 
 // handleAlreadyMergedStage advances a merging stage whose branch is already

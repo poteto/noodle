@@ -13,6 +13,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/internal/failure"
+	"github.com/poteto/noodle/internal/state"
 	"github.com/poteto/noodle/internal/statusfile"
 	"github.com/poteto/noodle/mise"
 	"github.com/poteto/noodle/monitor"
@@ -918,6 +919,60 @@ func TestRemoveOrderMissingIDUsesFailureStateMessage(t *testing.T) {
 		t.Fatalf("message = %q, want %q", err.Error(), "remove order ID missing")
 	}
 	assertFailureStateMessage(t, err.Error())
+}
+
+func TestRemoveOrderDeletesCanonicalOrder(t *testing.T) {
+	projectDir := t.TempDir()
+	runtimeDir := filepath.Join(projectDir, ".noodle")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	ordersPath := filepath.Join(runtimeDir, "orders.json")
+	orders := OrdersFile{
+		Orders: []Order{
+			scheduleOrder(config.DefaultConfig(), ""),
+			testOrder("42", "execute", "execute", "claude", "claude-opus-4-6"),
+		},
+	}
+	if err := writeOrdersAtomic(ordersPath, orders); err != nil {
+		t.Fatalf("write orders: %v", err)
+	}
+
+	l := New(projectDir, "noodle", config.DefaultConfig(), Dependencies{
+		Runtimes:   map[string]loopruntime.Runtime{"process": newMockRuntime()},
+		Worktree:   &fakeWorktree{},
+		Adapter:    &fakeAdapterRunner{},
+		Mise:       &fakeMise{},
+		Monitor:    fakeMonitor{},
+		Registry:   testLoopRegistry(),
+		Now:        time.Now,
+		OrdersFile: ordersPath,
+	})
+	l.canonical = state.State{
+		Orders: map[string]state.OrderNode{
+			scheduleOrderID: {OrderID: scheduleOrderID, Status: state.OrderActive},
+			"42":            {OrderID: "42", Status: state.OrderActive},
+		},
+		Mode: state.RunModeAuto,
+	}
+	l.canonicalLoaded = true
+
+	if err := l.removeOrder(scheduleOrderID); err != nil {
+		t.Fatalf("removeOrder: %v", err)
+	}
+	if _, ok := l.canonical.Orders[scheduleOrderID]; ok {
+		t.Fatal("expected canonical schedule order to be removed")
+	}
+	if _, ok := l.canonical.Orders["42"]; !ok {
+		t.Fatal("expected non-removed canonical order to remain")
+	}
+	current, err := readOrders(ordersPath)
+	if err != nil {
+		t.Fatalf("read orders: %v", err)
+	}
+	if len(current.Orders) != 1 || current.Orders[0].ID != "42" {
+		t.Fatalf("orders after remove = %#v, want only order 42", current.Orders)
+	}
 }
 
 func TestSteerScheduleRegeneratesOrdersWithPromptRationale(t *testing.T) {

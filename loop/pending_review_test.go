@@ -202,7 +202,10 @@ func TestPlanCycleSpawnsSkipsPendingReviewTargets(t *testing.T) {
 	})
 	l.cooks.pendingReview["42"] = &pendingReviewCook{cookIdentity: cookIdentity{orderID: "42"}}
 
-	plan := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxConcurrency)
+	plan, err := l.planCycleSpawns(orders, mise.Brief{}, l.config.Concurrency.MaxConcurrency)
+	if err != nil {
+		t.Fatalf("planCycleSpawns: %v", err)
+	}
 	if len(plan) != 1 || plan[0].OrderID != "43" {
 		t.Fatalf("spawn plan = %#v, want only 43", plan)
 	}
