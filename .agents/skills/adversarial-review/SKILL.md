@@ -1,21 +1,23 @@
 ---
 name: adversarial-review
 description: >-
-  Adversarial code review using cross-model approach. Spawns reviewers on the opposing model
-  (Claude uses Codex, Codex uses Claude) to challenge work from distinct critical lenses.
+  Adversarial code review using an external CLI reviewer. During the no-Claude
+  temp window, Codex-hosted sessions use codex-temp as same-provider review.
   Produces a synthesized verdict with findings and lead judgment. Triggers: "adversarial review".
 schedule: "After cook sessions that produce large diffs (200+ lines), implement plan phases, or complete a planning session"
 ---
 
 # Adversarial Review
 
-Spawn reviewers on the **opposite model** to challenge work. Reviewers attack from distinct
-lenses grounded in brain principles. The deliverable is a synthesized verdict — do NOT make
-changes.
+Spawn reviewers through an **external CLI process** to challenge work. During the
+no-Claude temp window this may be same-provider review via codex-temp rather than
+opposite-model review. Reviewers attack from distinct lenses grounded in brain
+principles. The deliverable is a synthesized verdict — do NOT make changes.
 
-**Hard constraint:** Reviewers MUST run via the opposite model's CLI (`codex exec` or
-`claude -p`). Do NOT use subagents, the Agent tool, or any internal delegation mechanism as
-reviewers — those run on *your own* model, which defeats the purpose.
+**Hard constraint:** Reviewers MUST run through an external CLI process. During the
+no-Claude temp window, Codex-hosted sessions MUST use `~/bin/codex-temp`.
+Label the verdict as same-provider when this removes the opposite-model property.
+<!-- TEMP SWAP 2026-05-01: original opposite-model wording allowed `claude -p`. -->
 
 ## Step 1 — Load Principles
 
@@ -48,7 +50,7 @@ Create a temp directory for reviewer output:
 REVIEW_DIR=$(mktemp -d /tmp/adversarial-review.XXXXXX)
 ```
 
-Determine which model you are, then spawn reviewers on the opposite:
+Determine which model you are, then spawn reviewers through the external CLI:
 
 **If you are Claude** — spawn Codex reviewers via `codex exec`:
 
@@ -59,11 +61,13 @@ codex exec --skip-git-repo-check -o "$REVIEW_DIR/skeptic.md" "prompt" 2>/dev/nul
 Use `--profile edit` only if the reviewer needs to run tests. Default to read-only.
 Run with `run_in_background: true`, monitor via `TaskOutput` with `block: true, timeout: 600000`.
 
-**If you are Codex** — spawn Claude reviewers via `claude` CLI:
+**If you are Codex** — spawn same-provider external reviewers via `codex-temp`
+during the no-Claude temp window:
 
 ```sh
-claude -p "prompt" > "$REVIEW_DIR/skeptic.md" 2>/dev/null
+printf '%s' "prompt" | ~/bin/codex-temp exec --skip-git-repo-check --ephemeral - > "$REVIEW_DIR/skeptic.md" 2>/dev/null
 ```
+<!-- TEMP SWAP 2026-05-01: original Claude command for revert: claude -p --model claude-opus-4-7 "prompt" > "$REVIEW_DIR/skeptic.md" 2>/dev/null -->
 
 Run with `run_in_background: true`.
 
@@ -76,7 +80,7 @@ Build each reviewer's prompt using the template in `references/reviewer-prompt.m
 Before reading reviewer output, log which CLI was used and confirm the output files exist:
 
 ```sh
-echo "reviewer_cli=codex|claude"
+echo "reviewer_cli=codex|codex-temp"
 ls "$REVIEW_DIR"/*.md
 ```
 
