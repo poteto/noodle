@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SchedulerFeed } from "./SchedulerFeed";
 import { buildSession, buildSnapshot } from "../test-utils";
@@ -110,6 +110,17 @@ describe("SchedulerFeed", () => {
       target: "schedule",
       prompt: "run tests",
     });
+  });
+
+  it("does not send on Enter while an IME composition is active", async () => {
+    render(<SchedulerFeed />);
+    const user = userEvent.setup();
+    const textarea = screen.getByPlaceholderText("Enter instructions or critique...");
+    await user.type(textarea, "설명해줘");
+
+    fireEvent.keyDown(textarea, { key: "Enter", isComposing: true });
+
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
   it("clears input after submit", async () => {
