@@ -167,7 +167,7 @@ func (d *SpritesDispatcher) prepareSpriteSessionDir(
 		return nil, loadedSkill{}, "", "", err
 	}
 
-	preamble := buildSessionPreamble()
+	preamble := buildSessionPreamble(req.AllowPrimaryCheckout)
 	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 
 	inputFile, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt)

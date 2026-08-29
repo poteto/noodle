@@ -151,12 +151,16 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	}
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
+	// ensureSkillFresh above guarantees this resolves; SkillPath is the
+	// resolved schedule skill's on-disk identity, injected as a typed fact
+	// so the agent never has to guess a global filesystem path.
+	resolvedSkill, _ := l.registry.ByKey(skillName)
 	promotionError := l.lastPromotionError
 	l.lastPromotionError = ""
 	failures := l.reconciledFailures
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures, l.lastMiseWarnings),
+		Prompt:               buildSchedulePrompt(skillName, resolvedSkill.SkillPath, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures, l.lastMiseWarnings),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -281,19 +285,43 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure, miseWarnings []string) string {
+// buildSchedulePrompt composes the runtime-owned half of the schedule
+// dispatch prompt. When skillPath is set (the normal case — a schedule
+// skill is configured and resolved), the prompt carries only a typed
+// mechanical envelope: resolved skill identity, runtime paths, the compact
+// orders schema, and receipts (promotion errors, archived failures, adapter
+// warnings). All project scheduling policy — write/publish flow, when to
+// ask the human, what may be synthesized — belongs to the skill's own
+// SKILL.md, which is loaded separately as the session's system prompt.
+//
+// When skillPath is empty (no schedule skill resolved), the legacy prompt
+// is used unchanged so skill-less projects keep working exactly as before.
+func buildSchedulePrompt(skillName, skillPath, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure, miseWarnings []string) string {
 	miseFile := filepath.Join(runtimeDir, "mise.json")
 	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
-	parts := []string{
-		"Use Skill(" + skillName + ") to refresh the schedule from " + miseFile + ".",
-		"Write to `" + ordersNextFile + "` (not orders.json). The loop promotes it atomically.",
-		"Do not modify " + miseFile + ".",
-		"Operate fully autonomously. Only ask the user a question when backlog is empty and no actionable work exists; ask whether to schedule an order that creates a backlog adapter.",
-		"You may synthesize orders for task types that don't require backlog items, based on workflow rules in the skill and the task types list below.",
-		"Each order is a pipeline of stages. Group related stages into one order.",
-		"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
-		ordersSchemaPrompt(),
-		taskTypesPrompt,
+
+	var parts []string
+	if strings.TrimSpace(skillPath) != "" {
+		parts = []string{
+			"Resolved schedule skill: " + skillName + " at " + skillPath + ". Use Skill(" + skillName + ") — it owns all scheduling policy for this project.",
+			"Runtime paths: mise state = " + miseFile + " (read-only input, do not modify); orders output destination = " + ordersNextFile + " (the loop atomically promotes this into orders.json when it validates).",
+			"Each order is a pipeline of stages. Group related stages into one order.",
+			"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
+			ordersSchemaPrompt(),
+			taskTypesPrompt,
+		}
+	} else {
+		parts = []string{
+			"Use Skill(" + skillName + ") to refresh the schedule from " + miseFile + ".",
+			"Write to `" + ordersNextFile + "` (not orders.json). The loop promotes it atomically.",
+			"Do not modify " + miseFile + ".",
+			"Operate fully autonomously. Only ask the user a question when backlog is empty and no actionable work exists; ask whether to schedule an order that creates a backlog adapter.",
+			"You may synthesize orders for task types that don't require backlog items, based on workflow rules in the skill and the task types list below.",
+			"Each order is a pipeline of stages. Group related stages into one order.",
+			"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
+			ordersSchemaPrompt(),
+			taskTypesPrompt,
+		}
 	}
 	if errMsg := strings.TrimSpace(lastPromotionError); errMsg != "" {
 		parts = append(parts, "PREVIOUS ORDERS ISSUE: The loop rejected or repaired your recent schedule output. Fix the following issue in your next orders-next.json output:\n"+errMsg)
@@ -342,13 +370,15 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 	var b strings.Builder
 	b.WriteString("Task types you may schedule:")
-	if len(taskTypes) == 0 {
-		b.WriteString("\n- (none configured)")
-		return b.String()
-	}
+	wrote := false
 	for _, taskType := range taskTypes {
 		key := strings.TrimSpace(taskType.Key)
 		if key == "" {
+			continue
+		}
+		// The transient schedule task is never itself schedulable —
+		// self-scheduling is not a task the scheduler may emit.
+		if strings.EqualFold(key, scheduleOrderID) {
 			continue
 		}
 		schedule := strings.TrimSpace(taskType.Schedule)
@@ -356,6 +386,10 @@ func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 			schedule = key
 		}
 		b.WriteString("\n- " + key + ": " + schedule)
+		wrote = true
+	}
+	if !wrote {
+		b.WriteString("\n- (none configured)")
 	}
 	return b.String()
 }

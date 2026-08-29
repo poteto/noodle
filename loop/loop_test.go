@@ -746,13 +746,21 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if rt.calls[0].Skill != "schedule" {
 		t.Fatalf("spawn skill = %q", rt.calls[0].Skill)
 	}
+	// With a schedule skill resolved from the registry (the real-world
+	// case — the registry always carries a "schedule" entry), the prompt
+	// is a typed mechanical envelope: skill identity/path, runtime paths,
+	// schema, and receipts. No project scheduling policy — that's the
+	// skill's own SKILL.md, loaded separately as the system prompt.
 	expectedMise := filepath.Join(runtimeDir, "mise.json")
-	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from "+expectedMise+".") {
-		t.Fatalf("spawn prompt missing skill invocation: %q", rt.calls[0].Prompt)
+	if !strings.Contains(rt.calls[0].Prompt, "Resolved schedule skill: schedule at /skills/schedule. Use Skill(schedule)") {
+		t.Fatalf("spawn prompt missing resolved skill identity: %q", rt.calls[0].Prompt)
 	}
 	expectedOrdersNext := filepath.Join(runtimeDir, "orders-next.json")
 	if !strings.Contains(rt.calls[0].Prompt, expectedOrdersNext) {
-		t.Fatalf("spawn prompt missing orders-next.json instruction: %q", rt.calls[0].Prompt)
+		t.Fatalf("spawn prompt missing orders-next.json path fact: %q", rt.calls[0].Prompt)
+	}
+	if strings.Contains(rt.calls[0].Prompt, "Write to `"+expectedOrdersNext+"`") {
+		t.Fatalf("spawn prompt should not carry the direct-write instruction: %q", rt.calls[0].Prompt)
 	}
 	if !strings.Contains(rt.calls[0].Prompt, "orders.json schema (JSON):") {
 		t.Fatalf("spawn prompt missing orders schema: %q", rt.calls[0].Prompt)
@@ -760,23 +768,26 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if !strings.Contains(rt.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "- schedule: ") || !strings.Contains(rt.calls[0].Prompt, "- execute: ") {
-		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", rt.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "- schedule: ") {
+		t.Fatalf("spawn prompt must not self-advertise the transient schedule task: %q", rt.calls[0].Prompt)
+	}
+	if !strings.Contains(rt.calls[0].Prompt, "- execute: ") {
+		t.Fatalf("spawn prompt missing real task type guidance: %q", rt.calls[0].Prompt)
 	}
 	if strings.Contains(rt.calls[0].Prompt, "| config: ") || strings.Contains(rt.calls[0].Prompt, "| synthetic: ") {
 		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Do not modify "+expectedMise+".") {
+	if !strings.Contains(rt.calls[0].Prompt, expectedMise) {
+		t.Fatalf("spawn prompt missing mise state path: %q", rt.calls[0].Prompt)
+	}
+	if !strings.Contains(rt.calls[0].Prompt, "read-only input, do not modify") {
 		t.Fatalf("spawn prompt missing mise immutability note: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Only ask the user a question when backlog is empty and no actionable work exists") {
-		t.Fatalf("spawn prompt missing empty-backlog question guidance: %q", rt.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "Only ask the user a question") {
+		t.Fatalf("spawn prompt must not carry human-question policy — that's the skill's job: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(
-		rt.calls[0].Prompt,
-		"You may synthesize orders for task types that don't require backlog items",
-	) {
-		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", rt.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "You may synthesize orders for task types") {
+		t.Fatalf("spawn prompt must not carry scheduling policy — that's the skill's job: %q", rt.calls[0].Prompt)
 	}
 	if strings.Contains(rt.calls[0].Prompt, "mise.json schema (JSON):") {
 		t.Fatalf("spawn prompt must not include mise schema: %q", rt.calls[0].Prompt)
