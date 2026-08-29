@@ -186,6 +186,9 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 			"error", err)
 	}
 	l.reconciledFailures = nil // clear only after successful dispatch
+	// Record the state this session is deciding about. Its promotion memoizes
+	// this digest, so anything that changes afterwards still earns a dispatch.
+	l.scheduleDispatchDigest = l.decisionDigest
 	cook := &cookHandle{
 		cookIdentity: cookIdentity{
 			orderID:    order.ID,
@@ -361,6 +364,9 @@ func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 }
 
 func (l *Loop) rescheduleForChefPrompt(prompt string) error {
+	// An explicit chef steer always earns a schedule dispatch, even when
+	// decision-relevant state has not moved.
+	l.scheduleDecidedDigest = ""
 	next := OrdersFile{
 		Orders: []Order{
 			scheduleOrder(l.config, prompt),

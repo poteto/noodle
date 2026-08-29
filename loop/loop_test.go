@@ -82,7 +82,7 @@ type fakeMise struct {
 	calls    int
 }
 
-func (f *fakeMise) Build(_ context.Context, _ mise.ActiveSummary, _ []mise.HistoryItem) (mise.Brief, []string, bool, error) {
+func (f *fakeMise) Build(_ context.Context, _ mise.ActiveSummary, _ []mise.HistoryItem) (mise.Brief, []string, error) {
 	f.calls++
 	if len(f.results) > 0 {
 		index := f.calls - 1
@@ -90,9 +90,9 @@ func (f *fakeMise) Build(_ context.Context, _ mise.ActiveSummary, _ []mise.Histo
 			index = len(f.results) - 1
 		}
 		current := f.results[index]
-		return current.brief, current.warnings, false, current.err
+		return current.brief, current.warnings, current.err
 	}
-	return f.brief, f.warnings, false, f.err
+	return f.brief, f.warnings, f.err
 }
 
 type fakeMiseResult struct {

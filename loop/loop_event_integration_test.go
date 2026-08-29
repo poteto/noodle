@@ -105,7 +105,7 @@ func TestEventIntegrationStageCompleted(t *testing.T) {
 	// Build a mise brief and verify recent_events contains the event.
 	builder := mise.NewBuilder(env.projectDir, env.loop.config)
 
-	brief, _, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
+	brief, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build brief: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestEventIntegrationWatermarkAdvances(t *testing.T) {
 	projectDir := filepath.Dir(filepath.Dir(eventsPath))
 	builder := mise.NewBuilder(projectDir, testDefaultConfig())
 
-	brief, _, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
+	brief, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestEventIntegrationExternalEvent(t *testing.T) {
 	projectDir := filepath.Dir(filepath.Dir(eventsPath))
 	builder := mise.NewBuilder(projectDir, testDefaultConfig())
 
-	brief, _, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
+	brief, _, err := builder.Build(context.Background(), mise.ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}

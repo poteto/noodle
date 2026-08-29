@@ -37,7 +37,7 @@ func NewBuilder(projectDir string, cfg config.Config) *Builder {
 	}
 }
 
-func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, bool, error) {
+func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recentHistory []HistoryItem) (Brief, []string, error) {
 	warnings := make([]string, 0)
 	backlog := make([]adapter.BacklogItem, 0)
 
@@ -50,7 +50,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 				if isMissingSyncScriptError(err) {
 					warnings = append(warnings, "backlog sync script missing; returning empty backlog")
 				} else {
-					return Brief{}, warnings, false, err
+					return Brief{}, warnings, err
 				}
 			} else {
 				warnings = append(warnings, parseWarnings...)
@@ -61,7 +61,7 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 
 	tickets, err := b.readTickets()
 	if err != nil {
-		return Brief{}, warnings, false, err
+		return Brief{}, warnings, err
 	}
 
 	if activeSummary.ByTaskKey == nil {
@@ -111,16 +111,15 @@ func (b *Builder) Build(ctx context.Context, activeSummary ActiveSummary, recent
 	cmp.GeneratedAt = time.Time{}
 	content, err := json.Marshal(cmp)
 	if err != nil {
-		return Brief{}, warnings, false, fmt.Errorf("encode mise json for comparison: %w", err)
+		return Brief{}, warnings, fmt.Errorf("encode mise json for comparison: %w", err)
 	}
-	changed := !bytes.Equal(content, b.lastContent)
-	if changed {
+	if !bytes.Equal(content, b.lastContent) {
 		if err := writeBriefAtomic(filepath.Join(b.runtimeDir, "mise.json"), brief); err != nil {
-			return Brief{}, warnings, false, err
+			return Brief{}, warnings, err
 		}
 		b.lastContent = content
 	}
-	return brief, warnings, changed, nil
+	return brief, warnings, nil
 }
 
 func routingPolicyFromModelPolicy(policy config.ModelPolicy) RoutingPolicy {

@@ -335,7 +335,7 @@ func (l *Loop) advanceAndPersist(ctx context.Context, cook *cookHandle, message 
 					}
 					break
 				}
-				l.scheduleNothingUntil = time.Time{}
+				l.scheduleDecidedDigest = ""
 				l.logger.Info("schedule bootstrap completed, injected schedule order")
 			} else {
 				l.logger.Warn("schedule bootstrap completed but schedule skill is still missing")

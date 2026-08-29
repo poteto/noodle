@@ -44,7 +44,7 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 	builder := NewBuilder(projectDir, cfg)
 	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 1, 0, 0, time.UTC) }
 
-	brief, warnings, _, err := builder.Build(context.Background(), ActiveSummary{
+	brief, warnings, err := builder.Build(context.Background(), ActiveSummary{
 		Total:     1,
 		ByTaskKey: map[string]int{"execute": 1},
 		ByStatus:  map[string]int{"active": 1},
@@ -87,7 +87,7 @@ func TestBuilderBuildWritesMiseJSON(t *testing.T) {
 
 	// Advance the clock so GeneratedAt differs, but content is the same.
 	builder.now = func() time.Time { return time.Date(2026, 2, 22, 16, 2, 0, 0, time.UTC) }
-	_, _, _, err = builder.Build(context.Background(), ActiveSummary{
+	_, _, err = builder.Build(context.Background(), ActiveSummary{
 		Total:     1,
 		ByTaskKey: map[string]int{"execute": 1},
 		ByStatus:  map[string]int{"active": 1},
@@ -122,7 +122,7 @@ func TestBuilderMissingSyncScriptWarnsAndContinues(t *testing.T) {
 	}
 
 	builder := NewBuilder(projectDir, cfg)
-	brief, warnings, _, err := builder.Build(context.Background(), ActiveSummary{}, nil)
+	brief, warnings, err := builder.Build(context.Background(), ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build mise: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestBuilderBacklogParseWarningsAreRecoverable(t *testing.T) {
 	}
 
 	builder := NewBuilder(projectDir, cfg)
-	brief, warnings, _, err := builder.Build(context.Background(), ActiveSummary{}, nil)
+	brief, warnings, err := builder.Build(context.Background(), ActiveSummary{}, nil)
 	if err != nil {
 		t.Fatalf("build mise: %v", err)
 	}

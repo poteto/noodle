@@ -142,7 +142,7 @@ type AdapterRunner interface {
 }
 
 type MiseBuilder interface {
-	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, bool, error)
+	Build(ctx context.Context, activeSummary mise.ActiveSummary, recentHistory []mise.HistoryItem) (mise.Brief, []string, error)
 }
 
 type Monitor interface {
@@ -192,11 +192,17 @@ type Loop struct {
 	bootstrapExhausted bool
 	bootstrapInFlight  *cookHandle
 
-	orders               OrdersFile
-	ordersLoaded         bool
-	schedulePromoted     bool      // set when consumeOrdersNext promotes after a schedule dispatch
-	scheduleNothingUntil time.Time // cooldown: suppress schedule re-spawn until this time
-	lastPromotionError   string    // latest scheduler-output validation issue to inject into next schedule prompt
+	orders             OrdersFile
+	ordersLoaded       bool
+	schedulePromoted   bool   // set when consumeOrdersNext promotes after a schedule dispatch
+	lastPromotionError string // latest scheduler-output validation issue to inject into next schedule prompt
+
+	// Empty-decision memo. The scheduler is only re-dispatched when the
+	// decision-relevant state digest moves (see schedule_digest.go), so
+	// schedule-order lifecycle churn cannot wake the scheduler up.
+	decisionDigest         string // digest computed for the latest cycle ("" before the first)
+	scheduleDispatchDigest string // digest the in-flight schedule session is deciding about
+	scheduleDecidedDigest  string // digest whose scheduling decision is already memoized
 
 	activeSummary  mise.ActiveSummary
 	recentHistory  []mise.HistoryItem
@@ -206,10 +212,10 @@ type Loop struct {
 	lastStatus statusfile.Status
 
 	// V2 canonical state — event-sourced pipeline.
-	canonical    state.State
+	canonical       state.State
 	canonicalLoaded bool
-	effectLedger *reducer.EffectLedger
-	eventCounter atomic.Uint64
+	effectLedger    *reducer.EffectLedger
+	eventCounter    atomic.Uint64
 
 	reconciledFailures []reconciledFailure
 	lastMiseWarnings   []string

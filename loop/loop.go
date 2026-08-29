@@ -491,7 +491,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 	}
 
 	l.lastMiseWarnings = nil
-	brief, warnings, running, miseChanged, err := l.buildCycleBrief(ctx)
+	brief, warnings, running, err := l.buildCycleBrief(ctx)
 	if err != nil {
 		return l.classifySystemHard(
 			"build.brief",
@@ -511,7 +511,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		return nil
 	}
 
-	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings, miseChanged)
+	orders, shouldContinue, err := l.prepareOrdersForCycle(brief, warnings)
 	if err != nil {
 		return l.classifySystemHard(
 			"build.prepare_orders",

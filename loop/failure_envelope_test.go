@@ -135,7 +135,7 @@ func TestCycleDoesNotClassifyBackendPromotionFailureAsSchedulerMistake(t *testin
 		t.Fatalf("replace orders.json with directory: %v", err)
 	}
 
-	_, _, err := l.prepareOrdersForCycle(mise.Brief{}, nil, false)
+	_, _, err := l.prepareOrdersForCycle(mise.Brief{}, nil)
 	if err != nil {
 		t.Fatalf("prepareOrdersForCycle: %v", err)
 	}

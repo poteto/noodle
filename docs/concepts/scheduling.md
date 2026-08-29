@@ -31,6 +31,22 @@ Before each scheduling decision, Noodle builds a mise (a snapshot of everything 
 
 Because the mise is plain JSON, you can inspect it directly to see exactly what the scheduler sees.
 
+## Empty Decisions
+
+When the scheduling agent writes `{"orders": []}`, it has decided there is nothing to do. Noodle memoizes that decision against a digest of the state the decision depended on: backlog items and their state, tickets, active non-schedule orders, task types, routing, and sync warnings. While that digest is unchanged, no new scheduling session is spawned — the answer would be the same one, at the cost of another agent session.
+
+The digest deliberately excludes everything the scheduling cycle itself produces: the mise timestamp, active agent counts, recent history, lifecycle events, and the schedule order's own progress. Dispatching, completing, or emitting `schedule.completed` for a schedule order therefore cannot wake the scheduler back up.
+
+The memo is dropped, and exactly one scheduling session is dispatched, when:
+
+- a backlog item appears, disappears, or changes state or dependencies;
+- an active non-schedule order is added, lands, or has a stage fail;
+- a ticket, task type, routing default, or sync warning changes;
+- you steer the scheduler from the web UI;
+- the scheduler's output was rejected and needs repair.
+
+The memo lives in memory, so restarting the loop costs at most one extra scheduling session: the first cycle after restart has nothing memoized, dispatches once, and goes quiet again as soon as that session promotes its result.
+
 ## Orders
 
 An order is a unit of work with one or more stages. The scheduling agent writes orders to `.noodle/orders-next.json`.
