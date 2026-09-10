@@ -120,7 +120,7 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	taskTypes := buildOrderTaskTypesPrompt([]TaskType{
 		{Key: "execute", Schedule: "When ready"},
 	})
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
+	prompt := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 
 	if !strings.Contains(prompt, "/tmp/test/.noodle/orders-next.json") {
 		t.Fatal("prompt should reference absolute path to orders-next.json")
@@ -134,6 +134,17 @@ func TestBuildSchedulePromptIncludesOrdersSchema(t *testing.T) {
 	if !strings.Contains(prompt, "execute: When ready") {
 		t.Fatal("prompt should include task types")
 	}
+	if !strings.Contains(prompt, "selected_skill_path: /skills/schedule") {
+		t.Fatal("prompt should include resolved skill path")
+	}
+	if strings.Contains(prompt, "Write to `") {
+		t.Fatal("runtime prompt should not duplicate the selected skill's publication policy")
+	}
+	for _, forbidden := range []string{"Only ask the user", "You may synthesize orders"} {
+		if strings.Contains(prompt, forbidden) {
+			t.Fatalf("runtime prompt contains project policy %q", forbidden)
+		}
+	}
 }
 
 func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
@@ -143,7 +154,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 		Stages: []Stage{{TaskKey: "schedule", Skill: "schedule", Status: StageStatusPending}},
 	}
 	taskTypes := buildOrderTaskTypesPrompt(nil)
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil, nil)
+	prompt := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "unknown field on_failure", nil, nil)
 
 	if !strings.Contains(prompt, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should include rejection header when promotion error is set")
@@ -153,7 +164,7 @@ func TestBuildSchedulePromptIncludesPromotionError(t *testing.T) {
 	}
 
 	// No error — should not include rejection header.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
+	promptClean := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 	if strings.Contains(promptClean, "PREVIOUS ORDERS ISSUE") {
 		t.Fatal("prompt should not include rejection header when no promotion error")
 	}
@@ -170,7 +181,7 @@ func TestBuildSchedulePromptIncludesReconciledFailures(t *testing.T) {
 		{OrderID: "abc-123", Title: "fix auth bug", TaskKey: "execute", Reason: "stage execute failed"},
 		{OrderID: "def-456", Title: "add logging", TaskKey: "quality", Reason: "stage quality failed"},
 	}
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", failures, nil)
+	prompt := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", failures, nil)
 
 	if !strings.Contains(prompt, "Orders failed in a previous session") {
 		t.Fatal("prompt should mention archived failures")
@@ -186,7 +197,7 @@ func TestBuildSchedulePromptIncludesReconciledFailures(t *testing.T) {
 	}
 
 	// No failures — specific failures section should be absent.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
+	promptClean := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 	if strings.Contains(promptClean, "Orders failed in a previous session") {
 		t.Fatal("prompt should not include failures section when none exist")
 	}
@@ -310,7 +321,7 @@ func TestBuildSchedulePromptIncludesMiseWarnings(t *testing.T) {
 		"backlog sync line 3: invalid JSON: unexpected end of JSON input",
 		"backlog sync line 5: missing required field title",
 	}
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
+	prompt := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
 
 	if !strings.Contains(prompt, "ADAPTER WARNINGS") {
 		t.Fatal("prompt should contain ADAPTER WARNINGS header when warnings present")
@@ -323,7 +334,7 @@ func TestBuildSchedulePromptIncludesMiseWarnings(t *testing.T) {
 	}
 
 	// No warnings — section should be absent.
-	promptClean := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
+	promptClean := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, nil)
 	if strings.Contains(promptClean, "ADAPTER WARNINGS") {
 		t.Fatal("prompt should not contain ADAPTER WARNINGS when no warnings")
 	}
@@ -340,7 +351,7 @@ func TestBuildSchedulePromptCapsWarningsAt20(t *testing.T) {
 	for i := range warnings {
 		warnings[i] = fmt.Sprintf("backlog sync line %d: missing required field id", i+1)
 	}
-	prompt := buildSchedulePrompt("schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
+	prompt := buildSchedulePrompt("schedule", "/skills/schedule", taskTypes, order, "", "/tmp/test/.noodle", "", nil, warnings)
 
 	if !strings.Contains(prompt, "ADAPTER WARNINGS") {
 		t.Fatal("prompt should contain ADAPTER WARNINGS header")

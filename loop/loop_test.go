@@ -747,8 +747,14 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 		t.Fatalf("spawn skill = %q", rt.calls[0].Skill)
 	}
 	expectedMise := filepath.Join(runtimeDir, "mise.json")
-	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule) to refresh the schedule from "+expectedMise+".") {
+	if !strings.Contains(rt.calls[0].Prompt, "Use Skill(schedule).") {
 		t.Fatalf("spawn prompt missing skill invocation: %q", rt.calls[0].Prompt)
+	}
+	if !strings.Contains(rt.calls[0].Prompt, "selected_skill_path: /skills/schedule") {
+		t.Fatalf("spawn prompt missing resolved schedule skill path: %q", rt.calls[0].Prompt)
+	}
+	if !strings.Contains(rt.calls[0].Prompt, "mise_input: "+expectedMise) {
+		t.Fatalf("spawn prompt missing typed mise input: %q", rt.calls[0].Prompt)
 	}
 	expectedOrdersNext := filepath.Join(runtimeDir, "orders-next.json")
 	if !strings.Contains(rt.calls[0].Prompt, expectedOrdersNext) {
@@ -760,23 +766,19 @@ func TestCycleBootstrapsScheduleUsesRegistrySkill(t *testing.T) {
 	if !strings.Contains(rt.calls[0].Prompt, "Task types you may schedule:") {
 		t.Fatalf("spawn prompt missing task type catalog: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "- schedule: ") || !strings.Contains(rt.calls[0].Prompt, "- execute: ") {
-		t.Fatalf("spawn prompt missing key+schedule task type guidance: %q", rt.calls[0].Prompt)
+	if strings.Contains(rt.calls[0].Prompt, "- schedule: ") {
+		t.Fatalf("spawn prompt advertised transient scheduler task: %q", rt.calls[0].Prompt)
+	}
+	if !strings.Contains(rt.calls[0].Prompt, "- execute: ") {
+		t.Fatalf("spawn prompt missing executable task type guidance: %q", rt.calls[0].Prompt)
 	}
 	if strings.Contains(rt.calls[0].Prompt, "| config: ") || strings.Contains(rt.calls[0].Prompt, "| synthetic: ") {
 		t.Fatalf("spawn prompt should not include verbose task type metadata: %q", rt.calls[0].Prompt)
 	}
-	if !strings.Contains(rt.calls[0].Prompt, "Do not modify "+expectedMise+".") {
-		t.Fatalf("spawn prompt missing mise immutability note: %q", rt.calls[0].Prompt)
-	}
-	if !strings.Contains(rt.calls[0].Prompt, "Only ask the user a question when backlog is empty and no actionable work exists") {
-		t.Fatalf("spawn prompt missing empty-backlog question guidance: %q", rt.calls[0].Prompt)
-	}
-	if !strings.Contains(
-		rt.calls[0].Prompt,
-		"You may synthesize orders for task types that don't require backlog items",
-	) {
-		t.Fatalf("spawn prompt missing synthesized-order guidance: %q", rt.calls[0].Prompt)
+	for _, forbidden := range []string{"Only ask the user", "You may synthesize orders", "todos.md"} {
+		if strings.Contains(rt.calls[0].Prompt, forbidden) {
+			t.Fatalf("spawn prompt contains project policy %q: %q", forbidden, rt.calls[0].Prompt)
+		}
 	}
 	if strings.Contains(rt.calls[0].Prompt, "mise.json schema (JSON):") {
 		t.Fatalf("spawn prompt must not include mise schema: %q", rt.calls[0].Prompt)

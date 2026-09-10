@@ -73,3 +73,15 @@ func TestUnknownItemDoesNotResolve(t *testing.T) {
 		t.Fatal("unknown item should not resolve")
 	}
 }
+
+func TestRegistryToTaskTypeSummariesExcludesSchedulerItself(t *testing.T) {
+	summaries := registryToTaskTypeSummaries(testLoopRegistry())
+	for _, summary := range summaries {
+		if summary.Key == scheduleOrderID {
+			t.Fatalf("scheduler advertised itself in mise task types: %#v", summaries)
+		}
+	}
+	if len(summaries) == 0 {
+		t.Fatal("non-schedule task types were removed")
+	}
+}

@@ -1,6 +1,8 @@
 package loop
 
 import (
+	"strings"
+
 	"github.com/poteto/noodle/internal/taskreg"
 	"github.com/poteto/noodle/mise"
 )
@@ -20,12 +22,15 @@ func RepairTaskSkill() string {
 
 func registryToTaskTypeSummaries(reg taskreg.Registry) []mise.TaskTypeSummary {
 	all := reg.All()
-	summaries := make([]mise.TaskTypeSummary, len(all))
-	for i, tt := range all {
-		summaries[i] = mise.TaskTypeSummary{
+	summaries := make([]mise.TaskTypeSummary, 0, len(all))
+	for _, tt := range all {
+		if strings.EqualFold(strings.TrimSpace(tt.Key), scheduleOrderID) {
+			continue
+		}
+		summaries = append(summaries, mise.TaskTypeSummary{
 			Key:      tt.Key,
 			Schedule: tt.Schedule,
-		}
+		})
 	}
 	return summaries
 }

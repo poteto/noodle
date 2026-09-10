@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	sprites "github.com/superfly/sprites-go"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	sprites "github.com/superfly/sprites-go"
 
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/shellx"
@@ -167,7 +167,7 @@ func (d *SpritesDispatcher) prepareSpriteSessionDir(
 		return nil, loadedSkill{}, "", "", err
 	}
 
-	preamble := buildSessionPreamble()
+	preamble := buildSessionPreamble(req)
 	systemPrompt, composedPrompt := composePrompts(req.Provider, req.Prompt, preamble, skillBundle.SystemPrompt)
 
 	inputFile, err := writePromptFiles(sessionDir, promptPath, req.Prompt, composedPrompt)

@@ -149,6 +149,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	if !l.ensureSkillFresh(skillName) {
 		return l.spawnBootstrapIfNeeded(ctx, order)
 	}
+	scheduleType, _ := l.registry.ByKey(skillName)
 
 	taskTypesPrompt := buildOrderTaskTypesPrompt(l.registry.All())
 	promotionError := l.lastPromotionError
@@ -156,7 +157,7 @@ func (l *Loop) spawnSchedule(ctx context.Context, order Order, attempt int, resu
 	failures := l.reconciledFailures
 	req := loopruntime.DispatchRequest{
 		Name:                 name,
-		Prompt:               buildSchedulePrompt(skillName, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures, l.lastMiseWarnings),
+		Prompt:               buildSchedulePrompt(skillName, scheduleType.SkillPath, taskTypesPrompt, order, resumePrompt, l.runtimeDir, promotionError, failures, l.lastMiseWarnings),
 		Provider:             nonEmpty(stage.Provider, l.config.Routing.Defaults.Provider),
 		Model:                nonEmpty(stage.Model, l.config.Routing.Defaults.Model),
 		Skill:                skillName,
@@ -281,18 +282,21 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 	return nil
 }
 
-func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure, miseWarnings []string) string {
+func buildSchedulePrompt(skillName, skillPath, taskTypesPrompt string, order Order, resumePrompt string, runtimeDir string, lastPromotionError string, failures []reconciledFailure, miseWarnings []string) string {
 	miseFile := filepath.Join(runtimeDir, "mise.json")
 	ordersNextFile := filepath.Join(runtimeDir, "orders-next.json")
 	parts := []string{
-		"Use Skill(" + skillName + ") to refresh the schedule from " + miseFile + ".",
-		"Write to `" + ordersNextFile + "` (not orders.json). The loop promotes it atomically.",
-		"Do not modify " + miseFile + ".",
-		"Operate fully autonomously. Only ask the user a question when backlog is empty and no actionable work exists; ask whether to schedule an order that creates a backlog adapter.",
-		"You may synthesize orders for task types that don't require backlog items, based on workflow rules in the skill and the task types list below.",
-		"Each order is a pipeline of stages. Group related stages into one order.",
-		"Failed orders are archived on startup and their details are included below (if any). Use control commands (advance, add-stage, park-review) to manage recovery.",
-		ordersSchemaPrompt(),
+		"Use Skill(" + skillName + "). The selected skill is the single owner of project scheduling and output policy.",
+		strings.Join([]string{
+			"Runtime interface:",
+			"- checkout_mode: primary-checkout",
+			"- selected_skill: " + skillName,
+			"- selected_skill_path: " + strings.TrimSpace(skillPath),
+			"- mise_input: " + miseFile,
+			"- promotion_input: " + ordersNextFile,
+			"- canonical_orders: " + filepath.Join(runtimeDir, "orders.json") + " (read-only; the loop promotes atomically)",
+		}, "\n"),
+		"Supported compact transport schema (the selected skill may impose stricter project policy):\n" + ordersSchemaPrompt(),
 		taskTypesPrompt,
 	}
 	if errMsg := strings.TrimSpace(lastPromotionError); errMsg != "" {
@@ -342,13 +346,10 @@ func buildSchedulePrompt(skillName, taskTypesPrompt string, order Order, resumeP
 func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 	var b strings.Builder
 	b.WriteString("Task types you may schedule:")
-	if len(taskTypes) == 0 {
-		b.WriteString("\n- (none configured)")
-		return b.String()
-	}
+	written := 0
 	for _, taskType := range taskTypes {
 		key := strings.TrimSpace(taskType.Key)
-		if key == "" {
+		if key == "" || strings.EqualFold(key, scheduleOrderID) {
 			continue
 		}
 		schedule := strings.TrimSpace(taskType.Schedule)
@@ -356,6 +357,10 @@ func buildOrderTaskTypesPrompt(taskTypes []TaskType) string {
 			schedule = key
 		}
 		b.WriteString("\n- " + key + ": " + schedule)
+		written++
+	}
+	if written == 0 {
+		b.WriteString("\n- (none configured)")
 	}
 	return b.String()
 }

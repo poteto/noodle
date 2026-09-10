@@ -1,5 +1,10 @@
 package dispatcher
 
+import (
+	"fmt"
+	"strings"
+)
+
 const noodlePreamble = `# Noodle Context
 
 You are running inside a Noodle cook session — an autonomous coding agent managed by the Noodle framework.
@@ -20,4 +25,17 @@ The ` + "`" + `.noodle/` + "`" + ` directory (mise.json, orders.json, tickets.js
 - Write learnings to brain/ files when you discover something notable
 `
 
-func buildSessionPreamble() string { return noodlePreamble }
+func buildSessionPreamble(req DispatchRequest) string {
+	if !req.AllowPrimaryCheckout {
+		return noodlePreamble
+	}
+	return fmt.Sprintf(`# Noodle Runtime Context
+
+This session is managed by Noodle. The following are runtime facts, not project workflow policy:
+
+- working_directory: %s
+- checkout_mode: primary-checkout
+- selected_skill: %s
+
+Project workflow policy comes from the selected skill or explicit system prompt.`, strings.TrimSpace(req.WorktreePath), strings.TrimSpace(req.Skill))
+}
