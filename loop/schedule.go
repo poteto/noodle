@@ -264,8 +264,8 @@ func (l *Loop) spawnBootstrapIfNeeded(ctx context.Context, order Order) error {
 		cookIdentity: cookIdentity{
 			orderID: order.ID,
 			stage: Stage{
-				TaskKey: scheduleOrderID,
-				Skill:   "bootstrap",
+				TaskKey:  scheduleOrderID,
+				Skill:    "bootstrap",
 				Provider: provider,
 				Model:    model,
 				Runtime:  "process",

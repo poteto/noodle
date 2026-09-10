@@ -40,6 +40,9 @@ func (l *Loop) steer(target string, prompt string) error {
 		return fmt.Errorf("steer requires target")
 	}
 	if strings.EqualFold(target, ScheduleTaskKey()) {
+		if err := l.clearScheduleEmptyMemo(); err != nil {
+			return err
+		}
 		for _, cook := range l.cooks.activeCooksByOrder {
 			if !isScheduleStage(cook.stage) && !strings.EqualFold(cook.orderID, ScheduleTaskKey()) {
 				continue

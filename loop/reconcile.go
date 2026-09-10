@@ -149,6 +149,12 @@ func (l *Loop) recoverAdoptedSessions(ctx context.Context) error {
 }
 
 func (l *Loop) ensureScheduleOrderPresent() error {
+	if _, exists, err := l.readScheduleEmptyMemo(); err == nil && exists {
+		l.logger.Info("startup deferred schedule decision to cycle", "reason", "empty decision memo present")
+		return nil
+	} else if err != nil {
+		l.logger.Warn("empty schedule memo unreadable during startup, allowing scheduler", "error", err)
+	}
 	injectedOrderID := ""
 	if err := l.mutateOrdersState(func(orders *OrdersFile) (bool, error) {
 		if hasScheduleOrder(*orders) || hasScheduleBootstrapOrder(*orders) {

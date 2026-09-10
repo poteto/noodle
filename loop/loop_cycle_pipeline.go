@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/poteto/noodle/internal/dispatch"
 	"github.com/poteto/noodle/mise"
@@ -41,9 +40,9 @@ func (l *Loop) mergeOrdersNext() (mergeResult, error) {
 }
 
 // handlePromotionResult processes the side effects of an orders-next
-// promotion: error classification, cooldown management, and canonical
+// promotion: error classification, empty-decision memoization, and canonical
 // event emission.
-func (l *Loop) handlePromotionResult(result mergeResult, err error) error {
+func (l *Loop) handlePromotionResult(result mergeResult, brief mise.Brief, err error) error {
 	if err != nil {
 		l.handlePromotionError(err)
 		return nil
@@ -55,13 +54,17 @@ func (l *Loop) handlePromotionResult(result mergeResult, err error) error {
 	l.logger.Info("orders-next promoted")
 	l.schedulePromoted = true
 	l.lastPromotionError = ""
-	if result.EmptyPromotion {
-		l.scheduleNothingUntil = l.deps.Now().Add(5 * time.Minute)
-		l.logger.Info("schedule produced no orders, entering cooldown")
-	} else {
-		l.scheduleNothingUntil = time.Time{}
-	}
 	if err := l.writeOrdersState(result.Orders); err != nil {
+		l.handlePromotionError(err)
+		return nil
+	}
+	if result.EmptyPromotion {
+		if err := l.writeScheduleEmptyMemo(brief, result.Orders); err != nil {
+			l.handlePromotionError(err)
+			return nil
+		}
+		l.logger.Info("schedule produced no orders, memoized decision state")
+	} else if err := l.clearScheduleEmptyMemo(); err != nil {
 		l.handlePromotionError(err)
 		return nil
 	}
@@ -211,7 +214,7 @@ func (l *Loop) ensureScheduleIfNeeded(brief mise.Brief, orders *OrdersFile, mise
 			return idle, err
 		}
 	}
-	if miseChanged && !l.hasActiveScheduleCook() && !hasScheduleOrder(*orders) {
+	if miseChanged && !l.hasActiveScheduleCook() && !hasScheduleOrder(*orders) && !l.scheduleEmptyMemoMatches(brief, *orders) {
 		orders.Orders = append(orders.Orders, scheduleOrder(l.config, ""))
 		if err := l.writeOrdersState(*orders); err != nil {
 			return false, err
@@ -228,7 +231,7 @@ func (l *Loop) bootstrapScheduleIfEmpty(brief mise.Brief, orders *OrdersFile) (i
 	if hasScheduleOrder(*orders) {
 		return false, nil
 	}
-	if len(brief.Backlog) == 0 || l.scheduleNothingCooldownActive() {
+	if len(brief.Backlog) == 0 || l.scheduleEmptyMemoMatches(brief, *orders) {
 		l.setState(StateIdle)
 		return true, nil
 	}
@@ -256,13 +259,8 @@ func (l *Loop) applyRoutingDefaults(orders *OrdersFile) error {
 
 func (l *Loop) prepareOrdersForCycle(brief mise.Brief, warnings []string, miseChanged bool) (OrdersFile, bool, error) {
 	result, err := l.mergeOrdersNext()
-	if err := l.handlePromotionResult(result, err); err != nil {
+	if err := l.handlePromotionResult(result, brief, err); err != nil {
 		return OrdersFile{}, false, err
-	}
-
-	// Reset cooldown when backlog changes (mise content changed).
-	if miseChanged {
-		l.scheduleNothingUntil = time.Time{}
 	}
 
 	orders, err := l.currentOrders()
@@ -349,7 +347,9 @@ func (l *Loop) recoverFromOrdersValidationError(normErr error) (OrdersFile, erro
 		repairMessage += "\nInvalid orders snapshot: " + archivedPath
 	}
 	l.lastPromotionError = repairMessage
-	l.scheduleNothingUntil = time.Time{}
+	if err := l.clearScheduleEmptyMemo(); err != nil {
+		return OrdersFile{}, err
+	}
 
 	repairOrders := bootstrapScheduleOrder(l.config)
 	if err := l.writeOrdersState(repairOrders); err != nil {
