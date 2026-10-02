@@ -2049,3 +2049,89 @@ foreignObject.node.node-clickable .tree-node-card:active {
     transform: translateY(0);
   }
 }
+
+/* Backlog */
+.backlog-page {
+  overflow-y: auto;
+  height: 100%;
+}
+
+.backlog-add {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.backlog-add .review-action-btn {
+  flex-shrink: 0;
+}
+
+.backlog-error {
+  margin: 16px 24px 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-red);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.backlog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.backlog-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.backlog-id {
+  flex-shrink: 0;
+  min-width: 32px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.backlog-title {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  text-align: left;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: none;
+  border: none;
+  overflow-wrap: anywhere;
+}
+
+button.backlog-title {
+  cursor: text;
+}
+
+button.backlog-title:hover {
+  color: var(--color-accent);
+}
+
+.backlog-edit-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.backlog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.backlog-done-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+}

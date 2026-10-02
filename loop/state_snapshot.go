@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/internal/mode"
 	"github.com/poteto/noodle/internal/projection"
 	"github.com/poteto/noodle/internal/stringx"
@@ -37,6 +38,8 @@ type LoopState struct {
 	TotalCostUSD       float64                 `json:"total_cost_usd"`
 	MaxConcurrency     int                     `json:"max_concurrency"`
 	Warnings           []string                `json:"warnings"`
+	Backlog            []adapter.BacklogItem   `json:"backlog"`
+	BacklogError       string                  `json:"backlog_error"`
 }
 
 func (l *Loop) publishState() {
@@ -82,6 +85,8 @@ func (l *Loop) buildLoopStateSnapshot() *LoopState {
 		TotalCostUSD:       totalCost,
 		MaxConcurrency:     l.config.Concurrency.MaxConcurrency,
 		Warnings:           append([]string(nil), l.lastMiseWarnings...),
+		Backlog:            cloneBacklog(l.lastBacklog),
+		BacklogError:       l.lastBacklogError,
 	}
 }
 
@@ -154,6 +159,7 @@ func cloneLoopState(state LoopState) LoopState {
 	cloned.ActiveCooks = append([]CookSummary(nil), state.ActiveCooks...)
 	cloned.RecentHistory = append([]mise.HistoryItem(nil), state.RecentHistory...)
 	cloned.Warnings = append([]string(nil), state.Warnings...)
+	cloned.Backlog = cloneBacklog(state.Backlog)
 	cloned.ActiveSummary = mise.ActiveSummary{
 		Total:     state.ActiveSummary.Total,
 		ByTaskKey: make(map[string]int, len(state.ActiveSummary.ByTaskKey)),
@@ -177,4 +183,19 @@ func sessionStatusForSnapshot(outcome loopruntime.SessionOutcome) string {
 		return "running"
 	}
 	return stringx.Normalize(outcome.Status.String())
+}
+
+// cloneBacklog copies items and their Extra maps for a published LoopState.
+func cloneBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {
+	cloned := make([]adapter.BacklogItem, len(items))
+	for i, item := range items {
+		cloned[i] = item
+		if item.Extra != nil {
+			cloned[i].Extra = make(map[string]any, len(item.Extra))
+			for key, value := range item.Extra {
+				cloned[i].Extra[key] = value
+			}
+		}
+	}
+	return cloned
 }

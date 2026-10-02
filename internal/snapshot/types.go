@@ -55,6 +55,24 @@ type Snapshot struct {
 	Mode               string                   `json:"mode"`
 	MaxConcurrency     int                      `json:"max_concurrency"`
 	Warnings           []string                 `json:"warnings"`
+
+	// Backlog is the active backlog from the latest sync — the items the
+	// scheduler sees, so done items are absent. BacklogError is the most
+	// recent failed backlog control, empty once a later one succeeds.
+	Backlog      []BacklogItem `json:"backlog"`
+	BacklogError string        `json:"backlog_error"`
+}
+
+// BacklogItem is a backlog entry as the UI shows it. Section, Tags, and
+// Estimate come from adapter-specific fields; the default todos.md adapter
+// emits all three, other adapters may leave them empty.
+type BacklogItem struct {
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Status   string   `json:"status"`
+	Section  string   `json:"section"`
+	Tags     []string `json:"tags"`
+	Estimate string   `json:"estimate"`
 }
 
 // Session represents a single agent session.

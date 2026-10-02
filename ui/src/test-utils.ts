@@ -1,4 +1,4 @@
-import type { Snapshot, Session, Order, Stage, PendingReviewItem } from "~/client";
+import type { Snapshot, Session, Order, Stage, PendingReviewItem, BacklogItem } from "~/client";
 
 export function buildStage(overrides?: Partial<Stage>): Stage {
   return {
@@ -69,6 +69,20 @@ export function buildSnapshot(overrides?: Partial<Snapshot>): Snapshot {
     mode: "supervised",
     max_concurrency: 4,
     warnings: [],
+    backlog: [],
+    backlog_error: "",
+    ...overrides,
+  };
+}
+
+export function buildBacklogItem(overrides?: Partial<BacklogItem>): BacklogItem {
+  return {
+    id: `${Math.floor(Math.random() * 1000)}`,
+    title: "Backlog item",
+    status: "open",
+    section: "",
+    tags: [],
+    estimate: "",
     ...overrides,
   };
 }

@@ -214,6 +214,13 @@ type Loop struct {
 	reconciledFailures []reconciledFailure
 	lastMiseWarnings   []string
 
+	// lastBacklog is the backlog from the most recent mise sync, published in
+	// LoopState so the UI can show it. lastBacklogError is the failure from the
+	// most recent backlog control, cleared by the next one that succeeds —
+	// control acks never reach the UI, so this is how a failed edit surfaces.
+	lastBacklog      []adapter.BacklogItem
+	lastBacklogError string
+
 	lastLoopFailure *LoopFailureEnvelope
 
 	// Test hooks — nil in production. These allow tests to simulate crashes

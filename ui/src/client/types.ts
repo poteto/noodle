@@ -10,7 +10,7 @@ import type {
   EventLine as RawEventLine,
 } from "./generated-types";
 import type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
-export type { FeedEvent } from "./generated-types";
+export type { FeedEvent, BacklogItem } from "./generated-types";
 export type { PendingReviewItem } from "./generated-loop-types";
 
 export type { LoopState, Health, TraceFilter, StageStatus, OrderStatus } from "./enums";
@@ -83,6 +83,9 @@ export type ControlCommand = { id?: string } & (
   | ({ action: "enqueue"; order_id: string } & StageFields)
   | ({ action: "edit-item"; order_id: string } & StageFields)
   | ({ action: "add-stage"; order_id: string; task_key: string } & Omit<StageFields, "task_key">)
+  | { action: "backlog-add"; prompt: string }
+  | { action: "backlog-edit"; target: string; prompt: string }
+  | { action: "backlog-done"; target: string }
 );
 
 export type ControlAction = ControlCommand["action"];

@@ -13,9 +13,33 @@ mkdir -p "$(dirname "$TODOS_FILE")"
 INIT
 }
 
+# Prints the string value of key $2 in JSON object $1, unescaped and on one
+# line: \" and \\ decode, \n and \t become spaces so an item stays one line.
+json_field() {
+  printf '%s' "$1" | awk -v key="$2" '
+    { s = s $0 }
+    END {
+      if (!match(s, "\"" key "\"[ \t]*:[ \t]*\"")) exit
+      rest = substr(s, RSTART + RLENGTH)
+      out = ""
+      for (i = 1; i <= length(rest); i++) {
+        c = substr(rest, i, 1)
+        if (c == "\\") {
+          i++
+          c = substr(rest, i, 1)
+          if (c == "n" || c == "t") c = " "
+        } else if (c == "\"") {
+          break
+        }
+        out = out c
+      }
+      printf "%s", out
+    }'
+}
+
 payload=$(cat)
-title=$(printf '%s' "$payload" | sed -n 's/.*"title"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
-section=$(printf '%s' "$payload" | sed -n 's/.*"section"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+title=$(json_field "$payload" title)
+section=$(json_field "$payload" section)
 [ -n "$title" ] || { echo "title required" >&2; exit 1; }
 [ -n "$section" ] || section="Inbox"
 
@@ -26,10 +50,31 @@ if [ -z "$next_id" ]; then
   next_id=$((max_id + 1))
 fi
 
-if ! grep -q "^##[[:space:]]\+$section$" "$TODOS_FILE"; then
-  printf '\n## %s\n' "$section" >> "$TODOS_FILE"
-fi
-printf '%s. [ ] %s\n' "$next_id" "$title" >> "$TODOS_FILE"
+# Insert after the last item in the section, before the next "## " header, so
+# the item lands in its section rather than at the end of the file. A missing
+# section is appended.
+tmp="$TODOS_FILE.tmp"
+NOODLE_SECTION="## $section" NOODLE_LINE="$next_id. [ ] $title" awk '
+  BEGIN { header = ENVIRON["NOODLE_SECTION"]; line = ENVIRON["NOODLE_LINE"] }
+  { lines[NR] = $0 }
+  END {
+    start = 0
+    for (i = 1; i <= NR; i++) if (lines[i] == header) { start = i; break }
+    if (start == 0) {
+      for (i = 1; i <= NR; i++) print lines[i]
+      print ""
+      print header
+      print line
+      exit
+    }
+    last = start
+    for (i = start + 1; i <= NR && lines[i] !~ /^## /; i++) if (lines[i] != "") last = i
+    for (i = 1; i <= NR; i++) {
+      print lines[i]
+      if (i == last) print line
+    }
+  }' "$TODOS_FILE" > "$tmp"
+mv "$tmp" "$TODOS_FILE"
 
 next_next=$((next_id + 1))
 if grep -q 'next-id:' "$TODOS_FILE"; then

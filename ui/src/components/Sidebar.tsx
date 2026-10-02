@@ -7,6 +7,7 @@ import {
   User,
   Network,
   BadgeCheck,
+  ListTodo,
   Play,
   Check,
   X,
@@ -178,6 +179,12 @@ export function Sidebar() {
           label="Topology"
           active={pathname === "/topology"}
           icon={<Network className="nav-icon" size={16} strokeWidth={1.5} />}
+        />
+        <NavLink
+          to="/backlog"
+          label="Backlog"
+          active={pathname === "/backlog"}
+          icon={<ListTodo className="nav-icon" size={16} strokeWidth={1.5} />}
         />
         <NavLink
           to="/reviews"

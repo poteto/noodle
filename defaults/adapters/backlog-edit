@@ -6,10 +6,59 @@ id=${1:-}
 TODOS_FILE="${NOODLE_TODOS_FILE:-todos.md}"
 [ -f "$TODOS_FILE" ] || { echo "todos file not found" >&2; exit 1; }
 
+# Prints the string value of key $2 in JSON object $1, unescaped and on one
+# line: \" and \\ decode, \n and \t become spaces so an item stays one line.
+json_field() {
+  printf '%s' "$1" | awk -v key="$2" '
+    { s = s $0 }
+    END {
+      if (!match(s, "\"" key "\"[ \t]*:[ \t]*\"")) exit
+      rest = substr(s, RSTART + RLENGTH)
+      out = ""
+      for (i = 1; i <= length(rest); i++) {
+        c = substr(rest, i, 1)
+        if (c == "\\") {
+          i++
+          c = substr(rest, i, 1)
+          if (c == "n" || c == "t") c = " "
+        } else if (c == "\"") {
+          break
+        }
+        out = out c
+      }
+      printf "%s", out
+    }'
+}
+
 payload=$(cat)
-title=$(printf '%s' "$payload" | sed -n 's/.*"title"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+title=$(json_field "$payload" title)
 [ -n "$title" ] || { echo "title required" >&2; exit 1; }
 
+# Replace the title but keep the line's #tags, ~estimate and [[plans/...]]
+# link: backlog-sync strips those from the title, so a caller editing what it
+# was shown would otherwise erase them. awk takes the title as data, so "/",
+# "&" and "\" in it are not sed replacement syntax.
 tmp="$TODOS_FILE.tmp"
-sed -E "s/^(${id}\. \[[ xX]\] ).*/\\1${title}/" "$TODOS_FILE" > "$tmp"
+NOODLE_ID="$id" NOODLE_TITLE="$title" awk '
+  BEGIN {
+    prefix = ENVIRON["NOODLE_ID"] ". ["
+    title = ENVIRON["NOODLE_TITLE"]
+    n = split(title, words, " ")
+    for (i = 1; i <= n; i++) inTitle[words[i]] = 1
+  }
+  index($0, prefix) == 1 && match($0, /^[0-9]+\. \[[ xX]\] /) {
+    head = substr($0, 1, RLENGTH)
+    n = split(substr($0, RLENGTH + 1), words, " ")
+    meta = ""
+    for (i = 1; i <= n; i++) {
+      w = words[i]
+      if ((w ~ /^#[A-Za-z0-9_-]+$/ || w ~ /^~(small|medium|large)$/ || w ~ /^\[\[plans\/[^]]+\]\]$/) && !(w in inTitle)) {
+        meta = meta " " w
+      }
+    }
+    print head title meta
+    next
+  }
+  { print }
+' "$TODOS_FILE" > "$tmp"
 mv "$tmp" "$TODOS_FILE"

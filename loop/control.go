@@ -278,6 +278,12 @@ func (l *Loop) dispatchControlCommand(cmd ControlCommand) error {
 		return l.controlAddStage(cmd)
 	case "park-review":
 		return l.controlParkReview(cmd.OrderID, cmd.Prompt)
+	case "backlog-add":
+		return l.recordBacklogResult(l.controlBacklogAdd(cmd.Prompt))
+	case "backlog-edit":
+		return l.recordBacklogResult(l.controlBacklogEdit(cmd.Target, cmd.Prompt))
+	case "backlog-done":
+		return l.recordBacklogResult(l.controlBacklogDone(cmd.Target))
 	default:
 		return fmt.Errorf("unsupported action")
 	}

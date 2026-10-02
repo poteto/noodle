@@ -7,6 +7,7 @@ export type {
   OrderStatus,
   EventLine,
   FeedEvent,
+  BacklogItem,
   PendingReviewItem,
   ControlAction,
   ControlCommand,

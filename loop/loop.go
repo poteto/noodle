@@ -500,6 +500,7 @@ func (l *Loop) Cycle(ctx context.Context) error {
 		)
 	}
 	l.lastMiseWarnings = warnings
+	l.lastBacklog = brief.Backlog
 	if !running {
 		if err := l.stampStatus(); err != nil {
 			return l.classifySystemHard(

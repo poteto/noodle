@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/event"
 	"github.com/poteto/noodle/internal/orderx"
 	"github.com/poteto/noodle/internal/projection"
@@ -149,7 +150,40 @@ func LoadSnapshot(runtimeDir string, now time.Time, state loop.LoopState) (Snaps
 		PendingReviewCount: projected.PendingReviewCount,
 		Mode:               projected.Mode,
 		MaxConcurrency:     state.MaxConcurrency,
+		Backlog:            snapshotBacklog(state.Backlog),
+		BacklogError:       state.BacklogError,
 	}, nil
+}
+
+func snapshotBacklog(items []adapter.BacklogItem) []BacklogItem {
+	backlog := make([]BacklogItem, 0, len(items))
+	for _, item := range items {
+		backlog = append(backlog, BacklogItem{
+			ID:       item.ID,
+			Title:    item.Title,
+			Status:   item.Status,
+			Section:  extraString(item.Extra, "section"),
+			Tags:     extraStrings(item.Extra, "tags"),
+			Estimate: extraString(item.Extra, "estimate"),
+		})
+	}
+	return backlog
+}
+
+func extraString(extra map[string]any, key string) string {
+	value, _ := extra[key].(string)
+	return value
+}
+
+func extraStrings(extra map[string]any, key string) []string {
+	values, _ := extra[key].([]any)
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if s, ok := value.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func projectedPendingReviews(reviews []projection.PendingReviewProjection) []loop.PendingReviewItem {

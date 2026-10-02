@@ -93,3 +93,57 @@ func TestDefaultBacklogAddDoneEditRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDefaultBacklogAddAndEditKeepTitlesSectionsAndMetadata(t *testing.T) {
+	todos := filepath.Join(t.TempDir(), "todos.md")
+	content := `# Todos
+
+<!-- next-id: 11 -->
+
+## Inbox
+
+1. [ ] Fix login bug #auth ~medium [[plans/03-auth-refactor/overview]]
+10. [ ] Ten stays put #keep
+
+## Later
+2. [ ] Someday
+`
+	if err := os.WriteFile(todos, []byte(content), 0o644); err != nil {
+		t.Fatalf("write todos: %v", err)
+	}
+	run := func(name, stdin string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(filepath.Join("defaults", "adapters", name), args...)
+		cmd.Env = append(os.Environ(), "NOODLE_TODOS_FILE="+todos)
+		cmd.Stdin = strings.NewReader(stdin)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s failed: %v\n%s", name, err, out)
+		}
+	}
+
+	// Titles arrive JSON-encoded; quotes, slashes, ampersands and backslashes
+	// must reach the file as typed.
+	run("backlog-add", `{"title":"Ship \"v2\" / fix & polish \\ path"}`)
+	// #auth is already in the new title, so the kept metadata must not repeat it.
+	run("backlog-edit", `{"title":"Fix login & logout / SSO #auth"}`, "1")
+
+	data, err := os.ReadFile(todos)
+	if err != nil {
+		t.Fatalf("read todos: %v", err)
+	}
+	want := `# Todos
+
+<!-- next-id: 12 -->
+
+## Inbox
+
+1. [ ] Fix login & logout / SSO #auth ~medium [[plans/03-auth-refactor/overview]]
+10. [ ] Ten stays put #keep
+11. [ ] Ship "v2" / fix & polish \ path
+
+## Later
+2. [ ] Someday
+`
+	if string(data) != want {
+		t.Fatalf("todos after add and edit:\n%s\nwant:\n%s", data, want)
+	}
+}

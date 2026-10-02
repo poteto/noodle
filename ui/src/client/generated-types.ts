@@ -64,6 +64,26 @@ export interface Snapshot {
   mode: string;
   max_concurrency: number /* int */;
   warnings: string[];
+  /**
+   * Backlog is the active backlog from the latest sync — the items the
+   * scheduler sees, so done items are absent. BacklogError is the most
+   * recent failed backlog control, empty once a later one succeeds.
+   */
+  backlog: BacklogItem[];
+  backlog_error: string;
+}
+/**
+ * BacklogItem is a backlog entry as the UI shows it. Section, Tags, and
+ * Estimate come from adapter-specific fields; the default todos.md adapter
+ * emits all three, other adapters may leave them empty.
+ */
+export interface BacklogItem {
+  id: string;
+  title: string;
+  status: string;
+  section: string;
+  tags: string[];
+  estimate: string;
 }
 /**
  * Session represents a single agent session.

@@ -29,6 +29,7 @@ export function normalizeSnapshot(raw: Snapshot): Snapshot {
     feed_events: raw.feed_events ?? [],
     pending_reviews: raw.pending_reviews ?? [],
     warnings: raw.warnings ?? [],
+    backlog: raw.backlog ?? [],
   };
 }
 
