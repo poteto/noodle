@@ -14,6 +14,7 @@ import (
 	"github.com/poteto/noodle/adapter"
 	"github.com/poteto/noodle/config"
 	"github.com/poteto/noodle/event"
+	"github.com/poteto/noodle/internal/filex"
 )
 
 type Builder struct {
@@ -143,7 +144,7 @@ func filterActiveBacklog(items []adapter.BacklogItem) []adapter.BacklogItem {
 
 func (b *Builder) readTickets() ([]event.Ticket, error) {
 	path := filepath.Join(b.runtimeDir, "tickets.json")
-	data, err := os.ReadFile(path)
+	data, err := filex.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []event.Ticket{}, nil

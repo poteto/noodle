@@ -3,7 +3,6 @@ package reducer
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/poteto/noodle/internal/filex"
@@ -46,7 +45,7 @@ func WriteSnapshotAtomic(path string, snapshot DurableSnapshot) error {
 
 // ReadSnapshot loads one durable snapshot from disk.
 func ReadSnapshot(path string) (DurableSnapshot, error) {
-	data, err := os.ReadFile(path)
+	data, err := filex.ReadFile(path)
 	if err != nil {
 		return DurableSnapshot{}, fmt.Errorf("read reducer snapshot: %w", err)
 	}

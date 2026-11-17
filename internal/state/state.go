@@ -353,7 +353,7 @@ func (s *State) Persist(path string) error {
 // Load reads canonical state from path. Returns a zero State and no error
 // if the file does not exist (first run).
 func Load(path string) (State, error) {
-	data, err := os.ReadFile(path)
+	data, err := filex.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return State{}, nil

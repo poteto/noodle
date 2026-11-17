@@ -1,11 +1,26 @@
 package filex
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
+	"time"
 )
+
+// ReadFile reads an atomic state file without preventing its replacement.
+func ReadFile(path string) ([]byte, error) {
+	f, err := openShared(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(f)
+}
 
 // ExpandHome expands a leading ~ or ~/ prefix to the user's home directory.
 // Returns path unchanged if there is no ~ prefix or if the home directory
@@ -52,9 +67,22 @@ func WriteFileAtomic(path string, data []byte) error {
 		os.Remove(tmpPath)
 		return fmt.Errorf("chmod temp file: %w", err)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := renameWithSharingRetry(tmpPath, path); err != nil {
 		os.Remove(tmpPath)
 		return fmt.Errorf("rename temp file: %w", err)
 	}
 	return nil
+}
+
+// Windows readers can temporarily omit FILE_SHARE_DELETE. Preserve atomic
+// replacement and the old destination; never remove it to force a rename.
+func renameWithSharingRetry(source, destination string) error {
+	for attempt := 0; ; attempt++ {
+		err := renameAtomic(source, destination)
+		transient := errors.Is(err, syscall.Errno(5)) || errors.Is(err, syscall.Errno(32)) || errors.Is(err, syscall.Errno(33))
+		if err == nil || runtime.GOOS != "windows" || !transient || attempt >= 20 {
+			return err
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }
