@@ -13,7 +13,7 @@ import (
 // Returns the zero value and nil if the file does not exist.
 func ReadJSON[T any](path string) (T, error) {
 	var zero T
-	data, err := os.ReadFile(path)
+	data, err := filex.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return zero, nil
